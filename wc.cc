@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
-#include <google/sparse_hash_set>
+#include <google/dense_hash_set>
 #include <unordered_set>
 
 #include <git2.h>
 
-using google::sparse_hash_set;
+using google::dense_hash_set;
 using std::hash;
 
 struct eqstr {
@@ -70,7 +71,7 @@ public:
     }
 };
 
-typedef sparse_hash_set<const char*, hash<const char*>, eqstr> string_hash;
+typedef dense_hash_set<const char*, hash<const char*>, eqstr> string_hash;
 
 class code_counter {
 public:
@@ -78,6 +79,7 @@ public:
         : repo_(repo), bytes_(0), dedup_bytes_(0),
           line_count_(0), dedup_line_count_(0)
     {
+        lines_.set_empty_key(NULL);
     }
 
     void run() {
