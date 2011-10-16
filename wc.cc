@@ -5,13 +5,18 @@
 #include <google/dense_hash_set>
 
 #include <locale>
+#include <list>
+#include <iostream>
+#include <string>
+
+#include <re2/re2.h>
 
 #include "smart_git.h"
 
 using google::dense_hash_set;
-using std::locale;
-using std::collate;
-using std::use_facet;
+using re2::RE2;
+using re2::StringPiece;
+using namespace std;
 
 class line_ref {
 public:
@@ -67,11 +72,52 @@ public:
 
         walk_tree(tree);
     }
+
     void dump_stats() {
         printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
         printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
     }
+
+    bool match(RE2& pat) {
+        list<StringPiece>::iterator it;
+        StringPiece match;
+        int matches = 0;
+
+        for (it = chunks.begin(); it != chunks.end(); it++) {
+            int pos = 0;
+            while (pos < (*it).size()) {
+                    if (!pat.Match(*it, pos, (*it).size(), RE2::UNANCHORED, &match, 1))
+                        break;
+                    assert(memchr(match.data(), '\n', match.size()) == NULL);
+                    StringPiece line = find_line(*it, match);
+                    printf("%.*s\n", line.size(), line.data());
+                    pos = line.size() + line.data() - (*it).data();
+                    if (++matches == 10)
+                        return true;
+                }
+        }
+        return matches > 0;
+    }
 protected:
+    StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
+        const char *start, *end;
+        assert(match.data() >= chunk.data());
+        assert(match.data() < chunk.data() + chunk.size());
+        assert(match.size() < (chunk.size() - (match.data() - chunk.data())));
+        start = static_cast<const char*>
+            (memrchr(chunk.data(), '\n', match.data() - chunk.data()));
+        if (start == NULL)
+            start = chunk.data();
+        else
+            start++;
+        end = static_cast<const char*>
+            (memchr(match.data() + match.size(), '\n',
+                    chunk.size() - (match.data() - chunk.data()) - match.size()));
+        if (end == NULL)
+            end = chunk.data() + chunk.size();
+        return StringPiece(start, end - start);
+    }
+
     void walk_tree(git_tree *tree) {
         int entries = git_tree_entrycount(tree);
         int i;
@@ -94,6 +140,7 @@ protected:
         char *f;
         string_hash::iterator it;
         memcpy(p, git_blob_rawcontent(blob), len);
+        chunks.push_back(StringPiece(p, len));
 
         while ((f = static_cast<char*>(memchr(p, '\n', end - p))) != 0) {
             line_ref line(p, f);
@@ -132,6 +179,7 @@ protected:
 
     git_repository *repo_;
     string_hash lines_;
+    std::list<StringPiece> chunks;
     struct {
         unsigned long bytes, dedup_bytes;
         unsigned long lines, dedup_lines;
@@ -149,6 +197,23 @@ int main(int argc, char **argv) {
         counter.walk_ref(argv[i]);
     }
     counter.dump_stats();
+    RE2::Options opts;
+    opts.set_never_nl(true);
+    opts.set_one_line(false);
+    opts.set_posix_syntax(true);
+    while (true) {
+        printf("regex> ");
+        string line;
+        getline(cin, line);
+        if (cin.eof())
+            break;
+        RE2 re(line, opts);
+        if (re.ok()) {
+            if (!counter.match(re)) {
+                printf("no match\n");
+            }
+        }
+    }
 
     return 0;
 }
