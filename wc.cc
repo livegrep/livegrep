@@ -1,7 +1,20 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <google/sparse_hash_set>
+#include <unordered_set>
+
 #include <git2.h>
+
+using google::sparse_hash_set;
+using std::hash;
+
+struct eqstr {
+    bool operator()(const char* s1, const char* s2) const
+    {
+        return (s1 == s2) || (s1 && s2 && strcmp(s1, s2) == 0);
+    }
+};
 
 class smart_object_base {
 public:
@@ -57,9 +70,14 @@ public:
     }
 };
 
+typedef sparse_hash_set<const char*, hash<const char*>, eqstr> string_hash;
+
 class code_counter {
 public:
-    code_counter(git_repository *repo) : repo_(repo) {
+    code_counter(git_repository *repo)
+        : repo_(repo), bytes_(0), dedup_bytes_(0),
+          line_count_(0), dedup_line_count_(0)
+    {
     }
 
     void run() {
@@ -73,7 +91,8 @@ public:
 
         walk_tree(tree);
 
-        printf("Bytes: %ld\n", bytes);
+        printf("Bytes: %ld (dedup: %ld)\n", bytes_, dedup_bytes_);
+        printf("Lines: %ld (dedup: %ld)\n", line_count_, dedup_line_count_);
     }
 protected:
     void walk_tree(git_tree *tree) {
@@ -92,7 +111,27 @@ protected:
     }
 
     void update_stats(git_blob *blob) {
-        bytes += git_blob_rawsize(blob);
+        char *str;
+        size_t len = git_blob_rawsize(blob);
+        char *p = new char[len];
+        char *end = p + len;
+        char *f;
+        string_hash::iterator it;
+        memcpy(p, git_blob_rawcontent(blob), len);
+
+        while ((f = static_cast<char*>(memchr(p, '\n', end - p))) != 0) {
+            *f = '\0';
+            it = lines_.find(p);
+            if (it == lines_.end()) {
+                lines_.insert(p);
+                dedup_bytes_ += (f - p);
+                dedup_line_count_++;
+            }
+            p = f + 1;
+            line_count_++;
+        }
+
+        bytes_ += len;
     }
 
 
@@ -107,7 +146,9 @@ protected:
     }
 
     git_repository *repo_;
-    unsigned long bytes;
+    unsigned long bytes_, dedup_bytes_;
+    unsigned long line_count_, dedup_line_count_;
+    string_hash lines_;
 };
 
 int main(int argc, char **argv) {
