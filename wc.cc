@@ -13,30 +13,50 @@ using std::locale;
 using std::collate;
 using std::use_facet;
 
-struct eqstr {
-    bool operator()(const char* s1, const char* s2) const
-    {
-        return (s1 == s2) || (s1 && s2 && strcmp(s1, s2) == 0);
+class line_ref {
+public:
+    line_ref ()
+        : start_(NULL), end_(NULL) {
     }
+    line_ref (const char *start, const char *end)
+        : start_(start), end_(end) {
+    }
+
+    bool operator==(const line_ref &rhs) const {
+        if (this == &rhs)
+            return true;
+        if (start_ == NULL && rhs.start_ == NULL)
+            return true;
+        if (start_ == NULL || rhs.start_ == NULL)
+            return false;
+        if (end_ - start_ != rhs.end_ - rhs.start_)
+            return false;
+        return memcmp(start_, rhs.start_, end_ - start_) == 0;
+    }
+
+    struct hash {
+        locale loc;
+        size_t operator()(const line_ref &l) const {
+            const collate<char> &coll = use_facet<collate<char> >(loc);
+            return coll.hash(l.start_, l.end_);
+        }
+    };
+
+    static line_ref empty;
+protected:
+    const char *start_, *end_;
 };
 
-struct hashstr {
-    locale loc;
+line_ref line_ref::empty(NULL, NULL);
 
-    size_t operator()(const char *str) const {
-        const collate<char> &coll = use_facet<collate<char> >(loc);
-        return coll.hash(str, str + strlen(str));
-    }
-};
-
-typedef dense_hash_set<const char*, hashstr, eqstr> string_hash;
+typedef dense_hash_set<line_ref, line_ref::hash> string_hash;
 
 class code_counter {
 public:
     code_counter(git_repository *repo)
         : repo_(repo), stats_()
     {
-        lines_.set_empty_key(NULL);
+        lines_.set_empty_key(line_ref::empty);
     }
 
     void walk_ref(const char *ref) {
@@ -77,10 +97,10 @@ protected:
         memcpy(p, git_blob_rawcontent(blob), len);
 
         while ((f = static_cast<char*>(memchr(p, '\n', end - p))) != 0) {
-            *f = '\0';
-            it = lines_.find(p);
+            line_ref line(p, f);
+            it = lines_.find(line);
             if (it == lines_.end()) {
-                lines_.insert(p);
+                lines_.insert(line);
                 stats_.dedup_bytes += (f - p);
                 stats_.dedup_lines ++;
             }
