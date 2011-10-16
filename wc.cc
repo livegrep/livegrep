@@ -82,11 +82,16 @@ protected:
     void resolve_ref(smart_object<git_commit> &out, const char *refname) {
         git_reference *ref;
         const git_oid *oid;
+        git_oid tmp;
         smart_object<git_object> obj;
-        git_reference_lookup(&ref, repo_, refname);
-        git_reference_resolve(&ref, ref);
-        oid = git_reference_oid(ref);
-        git_object_lookup(obj, repo_, oid, GIT_OBJ_ANY);
+        if (git_oid_fromstr(&tmp, refname) == GIT_SUCCESS) {
+            git_object_lookup(obj, repo_, &tmp, GIT_OBJ_ANY);
+        } else {
+            git_reference_lookup(&ref, repo_, refname);
+            git_reference_resolve(&ref, ref);
+            oid = git_reference_oid(ref);
+            git_object_lookup(obj, repo_, oid, GIT_OBJ_ANY);
+        }
         if (git_object_type(obj) == GIT_OBJ_TAG) {
             git_tag_target(out, obj);
         } else {
