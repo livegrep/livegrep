@@ -5,6 +5,10 @@ public:
     smart_object_base() : obj_(0) {
     };
 
+    operator git_object* () {
+        return obj_;
+    }
+
     operator git_object** () {
         return &obj_;
     }
@@ -12,6 +16,12 @@ public:
     ~smart_object_base() {
         if (obj_)
             git_object_close(obj_);
+    }
+
+    git_object *release() {
+        git_object *o = obj_;
+        obj_ = 0;
+        return o;
     }
 
 protected:
@@ -29,6 +39,8 @@ template <>
 struct object_traits<git_commit> { const static git_otype git_type = GIT_OBJ_COMMIT; };
 template <>
 struct object_traits<git_blob> { const static git_otype git_type = GIT_OBJ_BLOB; };
+template <>
+struct object_traits<git_tag> { const static git_otype git_type = GIT_OBJ_TAG; };
 
 template <class T>
 class smart_object : public smart_object_base {
@@ -42,6 +54,19 @@ public:
         assert(obj_ == 0);
         return reinterpret_cast<T**>(&obj_);
     }
+
+    T *release() {
+        T *o = this;
+        obj_ = 0;
+        return o;
+    }
+
+    smart_object<T>& operator=(git_object *rhs) {
+        assert(obj_ == 0);
+        assert(git_object_type(rhs) == object_traits<T>::git_type);
+        obj_ = rhs;
+        return *this;
+    }
 };
 
 template <>
@@ -52,4 +77,11 @@ public:
         assert(git_object_type(obj_) == object_traits<O>::git_type);
         return reinterpret_cast<O*>(obj_);
     }
+
+    template <class O>
+    operator O** () {
+        assert(object_traits<O>::git_type);
+        return reinterpret_cast<O**>(&obj_);
+    }
+
 };

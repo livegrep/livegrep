@@ -27,17 +27,15 @@ public:
         lines_.set_empty_key(NULL);
     }
 
-    void run() {
-        const git_oid *oid;
-        lookup_head(&oid);
-
+    void walk_ref(const char *ref) {
         smart_object<git_commit> commit;
         smart_object<git_tree> tree;
-        git_commit_lookup(commit, repo_, oid);
+        resolve_ref(commit, ref);
         git_commit_tree(tree, commit);
 
         walk_tree(tree);
-
+    }
+    void dump_stats() {
         printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
         printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
     }
@@ -81,14 +79,19 @@ protected:
         stats_.bytes += len;
     }
 
-    void lookup_head(const git_oid **oid) {
+    void resolve_ref(smart_object<git_commit> &out, const char *refname) {
         git_reference *ref;
-        git_reference_lookup(&ref, repo_, "HEAD");
-        if (git_reference_type(ref) == GIT_REF_SYMBOLIC) {
-            const char *target = git_reference_target(ref);
-            git_reference_lookup(&ref, repo_, target);
+        const git_oid *oid;
+        smart_object<git_object> obj;
+        git_reference_lookup(&ref, repo_, refname);
+        git_reference_resolve(&ref, ref);
+        oid = git_reference_oid(ref);
+        git_object_lookup(obj, repo_, oid, GIT_OBJ_ANY);
+        if (git_object_type(obj) == GIT_OBJ_TAG) {
+            git_tag_target(out, obj);
+        } else {
+            out = obj.release();
         }
-        *oid = git_reference_oid(ref);
     }
 
     git_repository *repo_;
@@ -104,7 +107,12 @@ int main(int argc, char **argv) {
     git_repository_open(&repo, ".git");
 
     code_counter counter(repo);
-    counter.run();
+
+    for (int i = 1; i < argc; i++) {
+        printf("Walking %s...\n", argv[i]);
+        counter.walk_ref(argv[i]);
+    }
+    counter.dump_stats();
 
     return 0;
 }
