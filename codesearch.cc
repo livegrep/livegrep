@@ -44,6 +44,10 @@ public:
         return chunks_.end();
     }
 
+    void finish(void) {
+        new_chunk();
+    }
+
 protected:
     void new_chunk() {
         if (current_ != 0)
@@ -115,6 +119,7 @@ public:
         list<StringPiece>::iterator it;
         StringPiece match;
         int matches = 0;
+        alloc_.finish();
 
         for (it = alloc_.begin(); it != alloc_.end(); it++) {
             int pos = 0;
