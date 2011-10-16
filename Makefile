@@ -9,7 +9,7 @@ ifneq ($(re2),)
 	LDFLAGS += -L$(re2)/lib -Wl,-R$(re2)/lib
 endif
 
-CXXFLAGS +=-ggdb3 -std=c++0x -Wall -Werror
+CXXFLAGS +=-ggdb3 -std=c++0x -Wall -Werror -O2
 LDFLAGS += $(LIBS)
 LIBS=-lgit2 -lre2
 
