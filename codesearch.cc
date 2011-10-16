@@ -12,6 +12,7 @@
 #include <re2/re2.h>
 
 #include "smart_git.h"
+#include "timer.h"
 
 using google::dense_hash_set;
 using re2::RE2;
@@ -193,8 +194,14 @@ int main(int argc, char **argv) {
     code_counter counter(repo);
 
     for (int i = 1; i < argc; i++) {
-        printf("Walking %s...\n", argv[i]);
+        timer tm;
+        struct timeval elapsed;
+        printf("Walking %s...", argv[i]);
+        fflush(stdout);
         counter.walk_ref(argv[i]);
+        elapsed = tm.elapsed();
+        printf(" done in %d.%06ds\n",
+               (int)elapsed.tv_sec, (int)elapsed.tv_usec);
     }
     counter.dump_stats();
     RE2::Options opts;
@@ -209,9 +216,14 @@ int main(int argc, char **argv) {
             break;
         RE2 re(line, opts);
         if (re.ok()) {
+            timer tm;
+            struct timeval elapsed;
             if (!counter.match(re)) {
                 printf("no match\n");
             }
+            elapsed = tm.elapsed();
+            printf("Match completed in %d.%06ds.\n",
+                   (int)elapsed.tv_sec, (int)elapsed.tv_usec);
         }
     }
 
