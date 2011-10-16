@@ -76,8 +76,7 @@ typedef dense_hash_set<const char*, hash<const char*>, eqstr> string_hash;
 class code_counter {
 public:
     code_counter(git_repository *repo)
-        : repo_(repo), bytes_(0), dedup_bytes_(0),
-          line_count_(0), dedup_line_count_(0)
+        : repo_(repo), stats_()
     {
         lines_.set_empty_key(NULL);
     }
@@ -93,8 +92,8 @@ public:
 
         walk_tree(tree);
 
-        printf("Bytes: %ld (dedup: %ld)\n", bytes_, dedup_bytes_);
-        printf("Lines: %ld (dedup: %ld)\n", line_count_, dedup_line_count_);
+        printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
+        printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
     }
 protected:
     void walk_tree(git_tree *tree) {
@@ -126,16 +125,15 @@ protected:
             it = lines_.find(p);
             if (it == lines_.end()) {
                 lines_.insert(p);
-                dedup_bytes_ += (f - p);
-                dedup_line_count_++;
+                stats_.dedup_bytes += (f - p);
+                stats_.dedup_lines ++;
             }
             p = f + 1;
-            line_count_++;
+            stats_.lines++;
         }
 
-        bytes_ += len;
+        stats_.bytes += len;
     }
-
 
     void lookup_head(const git_oid **oid) {
         git_reference *ref;
@@ -148,9 +146,11 @@ protected:
     }
 
     git_repository *repo_;
-    unsigned long bytes_, dedup_bytes_;
-    unsigned long line_count_, dedup_line_count_;
     string_hash lines_;
+    struct {
+        unsigned long bytes, dedup_bytes;
+        unsigned long lines, dedup_lines;
+    } stats_;
 };
 
 int main(int argc, char **argv) {
