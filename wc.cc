@@ -3,12 +3,15 @@
 #include <string.h>
 
 #include <google/dense_hash_set>
-#include <unordered_set>
+
+#include <locale>
 
 #include "smart_git.h"
 
 using google::dense_hash_set;
-using std::hash;
+using std::locale;
+using std::collate;
+using std::use_facet;
 
 struct eqstr {
     bool operator()(const char* s1, const char* s2) const
@@ -17,7 +20,16 @@ struct eqstr {
     }
 };
 
-typedef dense_hash_set<const char*, hash<const char*>, eqstr> string_hash;
+struct hashstr {
+    locale loc;
+
+    size_t operator()(const char *str) const {
+        const collate<char> &coll = use_facet<collate<char> >(loc);
+        return coll.hash(str, str + strlen(str));
+    }
+};
+
+typedef dense_hash_set<const char*, hashstr, eqstr> string_hash;
 
 class code_counter {
 public:
