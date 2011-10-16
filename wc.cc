@@ -71,24 +71,28 @@ public:
         git_commit_lookup(commit, repo_, oid);
         git_commit_tree(tree, commit);
 
-        walk_tree(tree, 0);
-        git_tree_close(tree);
+        walk_tree(tree);
+
+        printf("Bytes: %ld\n", bytes);
     }
 protected:
-    void walk_tree(git_tree *tree, int indent) {
+    void walk_tree(git_tree *tree) {
         int entries = git_tree_entrycount(tree);
         int i;
         for (i = 0; i < entries; i++) {
             const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
-            smart_object<git_tree> obj;
+            smart_object<git_object> obj;
             git_tree_entry_2object(obj, repo_, ent);
-            printf("%*s%s\n", indent, "", git_tree_entry_name(ent));
             if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
-                walk_tree(obj, indent + 1);
+                walk_tree(obj);
             } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
-
+                update_stats(obj);
             }
         }
+    }
+
+    void update_stats(git_blob *blob) {
+        bytes += git_blob_rawsize(blob);
     }
 
 
@@ -103,6 +107,7 @@ protected:
     }
 
     git_repository *repo_;
+    unsigned long bytes;
 };
 
 int main(int argc, char **argv) {
