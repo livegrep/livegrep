@@ -18,3 +18,6 @@ HEADERS = smart_git.h timer.h
 all: codesearch
 
 codesearch.o: codesearch.cc $(HEADERS)
+
+clean:
+	rm -f codesearch codesearch.o
