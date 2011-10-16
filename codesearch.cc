@@ -19,7 +19,45 @@ using re2::RE2;
 using re2::StringPiece;
 using namespace std;
 
-#define CHUNK
+#define CHUNK_SIZE (1 << 20)
+
+class chunk_allocator {
+public:
+    chunk_allocator() : current_() {
+        new_chunk();
+    }
+
+    char *alloc(size_t len) {
+        assert(len < CHUNK_SIZE);
+        if (alloc_ + len > end_)
+            new_chunk();
+        char *out = alloc_;
+        alloc_ += len;
+        return out;
+    }
+
+    list<StringPiece>::iterator begin () {
+        return chunks_.begin();
+    }
+
+    list<StringPiece>::iterator end () {
+        return chunks_.end();
+    }
+
+protected:
+    void new_chunk() {
+        if (current_ != 0)
+            chunks_.push_back(StringPiece(current_, alloc_ - current_));
+        current_ = new char[CHUNK_SIZE];
+        alloc_ = current_;
+        end_ = current_ + CHUNK_SIZE;
+    }
+
+    list<StringPiece> chunks_;
+    char *current_;
+    char *alloc_;
+    char *end_;
+};
 
 
 /*
@@ -78,7 +116,7 @@ public:
         StringPiece match;
         int matches = 0;
 
-        for (it = chunks.begin(); it != chunks.end(); it++) {
+        for (it = alloc_.begin(); it != alloc_.end(); it++) {
             int pos = 0;
             while (pos < (*it).size()) {
                     if (!pat.Match(*it, pos, (*it).size(), RE2::UNANCHORED, &match, 1))
@@ -130,20 +168,21 @@ protected:
 
     void update_stats(git_blob *blob) {
         size_t len = git_blob_rawsize(blob);
-        char *p = new char[len];
-        char *end = p + len;
-        char *f;
+        const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
+        const char *end = p + len;
+        const char *f;
         string_hash::iterator it;
-        memcpy(p, git_blob_rawcontent(blob), len);
-        chunks.push_back(StringPiece(p, len));
 
-        while ((f = static_cast<char*>(memchr(p, '\n', end - p))) != 0) {
-            StringPiece line(p, f - p);
-            it = lines_.find(line);
+        while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
+            it = lines_.find(StringPiece(p, f - p));
             if (it == lines_.end()) {
-                lines_.insert(line);
-                stats_.dedup_bytes += (f - p);
+                stats_.dedup_bytes += (f - p) + 1;
                 stats_.dedup_lines ++;
+
+                // Include the trailing '\n' in the chunk buffer
+                char *alloc = alloc_.alloc(f - p + 1);
+                memcpy(alloc, p, f - p + 1);
+                lines_.insert(StringPiece(alloc, f - p));
             }
             p = f + 1;
             stats_.lines++;
@@ -174,11 +213,11 @@ protected:
 
     git_repository *repo_;
     string_hash lines_;
-    std::list<StringPiece> chunks;
     struct {
         unsigned long bytes, dedup_bytes;
         unsigned long lines, dedup_lines;
     } stats_;
+    chunk_allocator alloc_;
 };
 
 int main(int argc, char **argv) {
