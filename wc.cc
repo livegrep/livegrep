@@ -88,7 +88,6 @@ protected:
     }
 
     void update_stats(git_blob *blob) {
-        char *str;
         size_t len = git_blob_rawsize(blob);
         char *p = new char[len];
         char *end = p + len;
