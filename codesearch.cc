@@ -19,50 +19,44 @@ using re2::RE2;
 using re2::StringPiece;
 using namespace std;
 
-class line_ref {
-public:
-    line_ref ()
-        : start_(NULL), end_(NULL) {
-    }
-    line_ref (const char *start, const char *end)
-        : start_(start), end_(end) {
-    }
+#define CHUNK
 
-    bool operator==(const line_ref &rhs) const {
-        if (this == &rhs)
+
+/*
+ * We special-case data() == NULL to provide an "empty" element for
+ * dense_hash_set.
+ *
+ * StringPiece::operator== will consider a zero-length string equal to a
+ * zero-length string with a NULL data().
+ */
+struct eqstr {
+    bool operator()(const StringPiece& lhs, const StringPiece& rhs) const {
+        if (lhs.data() == NULL && rhs.data() == NULL)
             return true;
-        if (start_ == NULL && rhs.start_ == NULL)
-            return true;
-        if (start_ == NULL || rhs.start_ == NULL)
+        if (lhs.data() == NULL || rhs.data() == NULL)
             return false;
-        if (end_ - start_ != rhs.end_ - rhs.start_)
-            return false;
-        return memcmp(start_, rhs.start_, end_ - start_) == 0;
+        return lhs == rhs;
     }
-
-    struct hash {
-        locale loc;
-        size_t operator()(const line_ref &l) const {
-            const collate<char> &coll = use_facet<collate<char> >(loc);
-            return coll.hash(l.start_, l.end_);
-        }
-    };
-
-    static line_ref empty;
-protected:
-    const char *start_, *end_;
 };
 
-line_ref line_ref::empty(NULL, NULL);
+struct hashstr {
+    locale loc;
+    size_t operator()(const StringPiece &str) const {
+        const collate<char> &coll = use_facet<collate<char> >(loc);
+        return coll.hash(str.data(), str.data() + str.size());
+    }
+};
 
-typedef dense_hash_set<line_ref, line_ref::hash> string_hash;
+const StringPiece empty_string(NULL, 0);
+
+typedef dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
 
 class code_counter {
 public:
     code_counter(git_repository *repo)
         : repo_(repo), stats_()
     {
-        lines_.set_empty_key(line_ref::empty);
+        lines_.set_empty_key(empty_string);
     }
 
     void walk_ref(const char *ref) {
@@ -144,7 +138,7 @@ protected:
         chunks.push_back(StringPiece(p, len));
 
         while ((f = static_cast<char*>(memchr(p, '\n', end - p))) != 0) {
-            line_ref line(p, f);
+            StringPiece line(p, f - p);
             it = lines_.find(line);
             if (it == lines_.end()) {
                 lines_.insert(line);
