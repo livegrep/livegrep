@@ -13,4 +13,4 @@ CXXFLAGS +=-ggdb3 -std=c++0x -Wall -Werror
 LDFLAGS += $(LIBS)
 LIBS=-lgit2 -lre2
 
-all: wc
+all: codesearch
