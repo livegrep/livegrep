@@ -172,7 +172,7 @@ public:
                         break;
                     assert(memchr(match.data(), '\n', match.size()) == NULL);
                     StringPiece line = find_line(str, match);
-                    print_match(pat, line);
+                    print_match(line);
                     pos = line.size() + line.data() - str.data();
                     if (++matches == 10)
                         return true;
@@ -181,20 +181,24 @@ public:
         return matches > 0;
     }
 protected:
-    void print_match (RE2& pat, const StringPiece& line) {
+    void print_match (const StringPiece& line) {
         chunk *c = find_chunk(line.data());
         unsigned int off = line.data() - c->data;
         int lno;
+        int matches = 0;
         for(vector<chunk_file>::iterator it = c->files.begin();
             it != c->files.end(); it++) {
             if (off >= it->left && off < it->right) {
                 lno = try_match(line, it->file);
-                if (lno > 0)
-                    printf("%s:%s:%d: %.*s)\n",
+                if (lno > 0) {
+                    printf("%s:%s:%d: %.*s\n",
                            it->file->ref,
                            it->file->path.c_str(),
                            lno,
                            line.size(), line.data());
+                    if (++matches == 10)
+                        break;
+                }
             }
         }
     }
