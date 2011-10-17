@@ -186,9 +186,11 @@ protected:
         unsigned int off = line.data() - c->data;
         int lno;
         int matches = 0;
+        int searched = 0;
         for(vector<chunk_file>::iterator it = c->files.begin();
             it != c->files.end(); it++) {
             if (off >= it->left && off < it->right) {
+                searched++;
                 lno = try_match(line, it->file);
                 if (lno > 0) {
                     printf("%s:%s:%d: %.*s\n",
@@ -201,6 +203,7 @@ protected:
                 }
             }
         }
+        printf(" (searched %d files)\n", searched);
     }
 
     int try_match(const StringPiece &line, search_file *sf) {
