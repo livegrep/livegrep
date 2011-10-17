@@ -21,6 +21,21 @@ using namespace std;
 
 #define CHUNK_SIZE (1 << 20)
 
+struct chunk {
+    int size;
+    int nfiles;
+    char data[];
+};
+
+#define CHUNK_SPACE (CHUNK_SIZE - (sizeof chunk))
+
+chunk *alloc_chunk() {
+    void *p;
+    if (posix_memalign(&p, CHUNK_SIZE, CHUNK_SIZE) != 0)
+        return NULL;
+    return static_cast<chunk*>(p);
+};
+
 class chunk_allocator {
 public:
     chunk_allocator() : current_() {
@@ -29,40 +44,35 @@ public:
 
     char *alloc(size_t len) {
         assert(len < CHUNK_SIZE);
-        if (alloc_ + len > end_)
+        if ((current_->size + len) > CHUNK_SIZE)
             new_chunk();
-        char *out = alloc_;
-        alloc_ += len;
+        char *out = current_->data + current_->size;
+        current_->size += len;
         return out;
     }
 
-    list<StringPiece>::iterator begin () {
+    list<chunk*>::iterator begin () {
         return chunks_.begin();
     }
 
-    list<StringPiece>::iterator end () {
+    typename list<chunk*>::iterator end () {
         return chunks_.end();
     }
 
-    void finish(void) {
-        new_chunk();
+    chunk *current_chunk() {
+        return current_;
     }
 
 protected:
     void new_chunk() {
-        if (current_ != 0)
-            chunks_.push_back(StringPiece(current_, alloc_ - current_));
-        current_ = new char[CHUNK_SIZE];
-        alloc_ = current_;
-        end_ = current_ + CHUNK_SIZE;
+        current_ = alloc_chunk();
+        current_->size = 0;
+        chunks_.push_back(current_);
     }
 
-    list<StringPiece> chunks_;
-    char *current_;
-    char *alloc_;
-    char *end_;
+    list<chunk*> chunks_;
+    chunk *current_;
 };
-
 
 /*
  * We special-case data() == NULL to provide an "empty" element for
@@ -116,20 +126,20 @@ public:
     }
 
     bool match(RE2& pat) {
-        list<StringPiece>::iterator it;
+        list<chunk*>::iterator it;
         StringPiece match;
         int matches = 0;
-        alloc_.finish();
 
         for (it = alloc_.begin(); it != alloc_.end(); it++) {
+            StringPiece str((*it)->data, (*it)->size);
             int pos = 0;
-            while (pos < (*it).size()) {
-                    if (!pat.Match(*it, pos, (*it).size(), RE2::UNANCHORED, &match, 1))
+            while (pos < str.size()) {
+                    if (!pat.Match(str, pos, str.size(), RE2::UNANCHORED, &match, 1))
                         break;
                     assert(memchr(match.data(), '\n', match.size()) == NULL);
-                    StringPiece line = find_line(*it, match);
+                    StringPiece line = find_line(str, match);
                     printf("%.*s\n", line.size(), line.data());
-                    pos = line.size() + line.data() - (*it).data();
+                    pos = line.size() + line.data() - str.data();
                     if (++matches == 10)
                         return true;
                 }
@@ -171,12 +181,20 @@ protected:
         }
     }
 
+    chunk* find_chunk(const char *p) {
+        return reinterpret_cast<chunk*>
+            (reinterpret_cast<uintptr_t>(p) & ~(CHUNK_SIZE - 1));
+    }
+
     void update_stats(git_blob *blob) {
         size_t len = git_blob_rawsize(blob);
         const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
         const char *end = p + len;
         const char *f;
         string_hash::iterator it;
+        chunk *c;
+        dense_hash_set<chunk*> seen;
+        seen.set_empty_key(NULL);
 
         while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
             it = lines_.find(StringPiece(p, f - p));
@@ -188,6 +206,13 @@ protected:
                 char *alloc = alloc_.alloc(f - p + 1);
                 memcpy(alloc, p, f - p + 1);
                 lines_.insert(StringPiece(alloc, f - p));
+                c = alloc_.current_chunk();
+            } else {
+                c = find_chunk(it->data());
+            }
+            if (seen.find(c) == seen.end()) {
+                seen.insert(c);
+                c->nfiles++;
             }
             p = f + 1;
             stats_.lines++;
