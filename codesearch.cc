@@ -237,11 +237,11 @@ protected:
         int i;
         for (i = 0; i < entries; i++) {
             const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
-            path = pfx + "/" + git_tree_entry_name(ent);
+            path = pfx + git_tree_entry_name(ent);
             smart_object<git_object> obj;
             git_tree_entry_2object(obj, repo_, ent);
             if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
-                walk_tree(ref, path, obj);
+                walk_tree(ref, path + "/", obj);
             } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
                 update_stats(ref, path, obj);
             }
