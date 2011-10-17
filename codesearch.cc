@@ -21,17 +21,43 @@ using namespace std;
 
 #define CHUNK_SIZE (1 << 20)
 
+struct search_file {
+    string path;
+    const char *ref;
+    git_oid oid;
+};
+
+struct chunk_file {
+    search_file *file;
+    int left;
+    int right;
+};
+
+#define CHUNK_MAGIC 0xC407FADE
+
 struct chunk {
     int size;
-    int nfiles;
-    char data[];
+    unsigned magic;
+    vector<chunk_file> files;
+    char data[0];
 
     chunk()
-        : size(0), nfiles(0) {
+        : size(0), magic(CHUNK_MAGIC), files() {
+    }
+
+    chunk_file &get_chunk_file(search_file *sf, const char *p) {
+        if (files.empty() || files.back().file != sf) {
+            int off = p - data;
+            files.push_back(chunk_file());
+            chunk_file &cf = files.back();
+            cf.file = sf;
+            cf.left = cf.right = off;
+        }
+        return files.back();
     }
 };
 
-#define CHUNK_SPACE (CHUNK_SIZE - (sizeof chunk))
+#define CHUNK_SPACE  (CHUNK_SIZE - (sizeof(chunk)))
 
 chunk *alloc_chunk() {
     void *p;
@@ -47,8 +73,8 @@ public:
     }
 
     char *alloc(size_t len) {
-        assert(len < CHUNK_SIZE);
-        if ((current_->size + len) > CHUNK_SIZE)
+        assert(len < CHUNK_SPACE);
+        if ((current_->size + len) > CHUNK_SPACE)
             new_chunk();
         char *out = current_->data + current_->size;
         current_->size += len;
@@ -120,16 +146,12 @@ public:
         resolve_ref(commit, ref);
         git_commit_tree(tree, commit);
 
-        walk_tree(tree);
+        walk_tree(ref, "", tree);
     }
 
     void dump_stats() {
         printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
         printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
-        printf("Files per chunk: \n");
-        for (list<chunk*>::iterator it = alloc_.begin(); it != alloc_.end(); it++)
-            printf("%d ", (*it)->nfiles);
-        printf("\n");
     }
 
     bool match(RE2& pat) {
@@ -146,6 +168,7 @@ public:
                     assert(memchr(match.data(), '\n', match.size()) == NULL);
                     StringPiece line = find_line(str, match);
                     printf("%.*s\n", line.size(), line.data());
+                    print_files(line.data());
                     pos = line.size() + line.data() - str.data();
                     if (++matches == 10)
                         return true;
@@ -154,6 +177,16 @@ public:
         return matches > 0;
     }
 protected:
+    void print_files (const char *p) {
+        chunk *c = find_chunk(p);
+        int off = p - c->data;
+        for(vector<chunk_file>::iterator it = c->files.begin();
+            it != c->files.end(); it++) {
+            if (off >= it->left && off < it->right) {
+                printf(" (%s:%s)\n", it->file->ref, it->file->path.c_str());
+            }
+        }
+    }
     StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
         const char *start, *end;
         assert(match.data() >= chunk.data());
@@ -173,35 +206,42 @@ protected:
         return StringPiece(start, end - start);
     }
 
-    void walk_tree(git_tree *tree) {
+    void walk_tree(const char *ref, const string& pfx, git_tree *tree) {
+        string path;
         int entries = git_tree_entrycount(tree);
         int i;
         for (i = 0; i < entries; i++) {
             const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
+            path = pfx + "/" + git_tree_entry_name(ent);
             smart_object<git_object> obj;
             git_tree_entry_2object(obj, repo_, ent);
             if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
-                walk_tree(obj);
+                walk_tree(ref, path, obj);
             } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
-                update_stats(obj);
+                update_stats(ref, path, obj);
             }
         }
     }
 
     chunk* find_chunk(const char *p) {
-        return reinterpret_cast<chunk*>
+        chunk *out = reinterpret_cast<chunk*>
             (reinterpret_cast<uintptr_t>(p) & ~(CHUNK_SIZE - 1));
+        assert(out->magic == CHUNK_MAGIC);
+        return out;
     }
 
-    void update_stats(git_blob *blob) {
+    void update_stats(const char *ref, const string& path, git_blob *blob) {
         size_t len = git_blob_rawsize(blob);
         const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
         const char *end = p + len;
         const char *f;
         string_hash::iterator it;
+        search_file *sf = new search_file;
+        sf->path = path;
+        sf->ref = ref;
+        git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
         chunk *c;
-        dense_hash_set<chunk*> seen;
-        seen.set_empty_key(NULL);
+        const char *line;
 
         while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
             it = lines_.find(StringPiece(p, f - p));
@@ -214,13 +254,14 @@ protected:
                 memcpy(alloc, p, f - p + 1);
                 lines_.insert(StringPiece(alloc, f - p));
                 c = alloc_.current_chunk();
+                line = alloc;
             } else {
-                c = find_chunk(it->data());
+                line = it->data();
+                c = find_chunk(line);
             }
-            if (seen.find(c) == seen.end()) {
-                seen.insert(c);
-                c->nfiles++;
-            }
+            chunk_file &cf = c->get_chunk_file(sf, line);
+            cf.left = min(static_cast<long>(cf.left), p - c->data);
+            cf.right = max(static_cast<long>(cf.right), f - c->data);
             p = f + 1;
             stats_.lines++;
         }
