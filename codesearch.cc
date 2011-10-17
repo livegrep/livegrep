@@ -29,8 +29,8 @@ struct search_file {
 
 struct chunk_file {
     search_file *file;
-    int left;
-    int right;
+    unsigned int left;
+    unsigned int right;
 };
 
 #define CHUNK_MAGIC 0xC407FADE
@@ -260,8 +260,10 @@ protected:
                 c = find_chunk(line);
             }
             chunk_file &cf = c->get_chunk_file(sf, line);
-            cf.left = min(static_cast<long>(cf.left), p - c->data);
-            cf.right = max(static_cast<long>(cf.right), f - c->data);
+            cf.left = min(static_cast<long>(cf.left), p - blob_data);
+            cf.right = max(static_cast<long>(cf.right), f - blob_data);
+            assert(cf.left < CHUNK_SPACE);
+            assert(cf.right < CHUNK_SPACE);
             p = f + 1;
             stats_.lines++;
         }
