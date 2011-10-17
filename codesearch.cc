@@ -19,7 +19,7 @@ using re2::RE2;
 using re2::StringPiece;
 using namespace std;
 
-#define CHUNK_SIZE (1 << 20)
+#define CHUNK_SIZE (1 << 16)
 
 struct search_file {
     string path;
