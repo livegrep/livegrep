@@ -167,8 +167,7 @@ public:
                         break;
                     assert(memchr(match.data(), '\n', match.size()) == NULL);
                     StringPiece line = find_line(str, match);
-                    printf("%.*s\n", line.size(), line.data());
-                    print_files(line.data());
+                    print_match(pat, line);
                     pos = line.size() + line.data() - str.data();
                     if (++matches == 10)
                         return true;
@@ -177,16 +176,37 @@ public:
         return matches > 0;
     }
 protected:
-    void print_files (const char *p) {
-        chunk *c = find_chunk(p);
-        int off = p - c->data;
+    void print_match (RE2& pat, const StringPiece& line) {
+        chunk *c = find_chunk(line.data());
+        unsigned int off = line.data() - c->data;
+        int lno;
         for(vector<chunk_file>::iterator it = c->files.begin();
             it != c->files.end(); it++) {
             if (off >= it->left && off < it->right) {
-                printf(" (%s:%s)\n", it->file->ref, it->file->path.c_str());
+                lno = try_match(line, it->file);
+                if (lno > 0)
+                    printf("%s:%s:%d: %.*s)\n",
+                           it->file->ref,
+                           it->file->path.c_str(),
+                           lno,
+                           line.size(), line.data());
             }
         }
     }
+
+    int try_match(const StringPiece &line, search_file *sf) {
+        smart_object<git_blob> blob;
+        git_blob_lookup(blob, repo_, &sf->oid);
+        int pos;
+        StringPiece search(static_cast<const char*>(git_blob_rawcontent(blob)),
+                           git_blob_rawsize(blob));
+        pos = search.find(line);
+        if (pos == StringPiece::npos) {
+            return 0;
+        }
+        return 1 + count(search.data(), search.data() + pos, '\n');
+    }
+
     StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
         const char *start, *end;
         assert(match.data() >= chunk.data());
@@ -232,7 +252,8 @@ protected:
 
     void update_stats(const char *ref, const string& path, git_blob *blob) {
         size_t len = git_blob_rawsize(blob);
-        const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
+        const char *blob_data = static_cast<const char*>(git_blob_rawcontent(blob));
+        const char *p = blob_data;
         const char *end = p + len;
         const char *f;
         string_hash::iterator it;
