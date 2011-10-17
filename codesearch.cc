@@ -348,6 +348,7 @@ int main(int argc, char **argv) {
     RE2::Options opts;
     opts.set_never_nl(true);
     opts.set_one_line(false);
+    opts.set_perl_classes(true);
     opts.set_posix_syntax(true);
     while (true) {
         printf("regex> ");
