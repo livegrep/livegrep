@@ -45,15 +45,20 @@ struct chunk {
         : size(0), magic(CHUNK_MAGIC), files() {
     }
 
-    chunk_file &get_chunk_file(search_file *sf, const char *p) {
+    void add_chunk_file(search_file *sf, const StringPiece &line) {
+        unsigned l = line.data() - data;
+        unsigned r = l + line.size();
         if (files.empty() || files.back().file != sf) {
-            int off = p - data;
             files.push_back(chunk_file());
             chunk_file &cf = files.back();
             cf.file = sf;
-            cf.left = cf.right = off;
+            cf.left = l;
+            cf.right = r;
+        } else {
+            chunk_file &cf = files.back();
+            cf.left = min(l, cf.left);
+            cf.right = max(r, cf.right);
         }
-        return files.back();
     }
 };
 
@@ -252,8 +257,7 @@ protected:
 
     void update_stats(const char *ref, const string& path, git_blob *blob) {
         size_t len = git_blob_rawsize(blob);
-        const char *blob_data = static_cast<const char*>(git_blob_rawcontent(blob));
-        const char *p = blob_data;
+        const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
         const char *end = p + len;
         const char *f;
         string_hash::iterator it;
@@ -262,7 +266,7 @@ protected:
         sf->ref = ref;
         git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
         chunk *c;
-        const char *line;
+        StringPiece line;
 
         while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
             it = lines_.find(StringPiece(p, f - p));
@@ -273,18 +277,14 @@ protected:
                 // Include the trailing '\n' in the chunk buffer
                 char *alloc = alloc_.alloc(f - p + 1);
                 memcpy(alloc, p, f - p + 1);
-                lines_.insert(StringPiece(alloc, f - p));
+                line = StringPiece(alloc, f - p);
+                lines_.insert(line);
                 c = alloc_.current_chunk();
-                line = alloc;
             } else {
-                line = it->data();
-                c = find_chunk(line);
+                line = *it;
+                c = find_chunk(line.data());
             }
-            chunk_file &cf = c->get_chunk_file(sf, line);
-            cf.left = min(static_cast<long>(cf.left), p - blob_data);
-            cf.right = max(static_cast<long>(cf.right), f - blob_data);
-            assert(cf.left < CHUNK_SPACE);
-            assert(cf.right < CHUNK_SPACE);
+            c->add_chunk_file(sf, line);
             p = f + 1;
             stats_.lines++;
         }
