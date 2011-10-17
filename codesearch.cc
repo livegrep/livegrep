@@ -25,6 +25,10 @@ struct chunk {
     int size;
     int nfiles;
     char data[];
+
+    chunk()
+        : size(0), nfiles(0) {
+    }
 };
 
 #define CHUNK_SPACE (CHUNK_SIZE - (sizeof chunk))
@@ -33,7 +37,7 @@ chunk *alloc_chunk() {
     void *p;
     if (posix_memalign(&p, CHUNK_SIZE, CHUNK_SIZE) != 0)
         return NULL;
-    return static_cast<chunk*>(p);
+    return new(p) chunk;
 };
 
 class chunk_allocator {
@@ -66,7 +70,6 @@ public:
 protected:
     void new_chunk() {
         current_ = alloc_chunk();
-        current_->size = 0;
         chunks_.push_back(current_);
     }
 
@@ -123,6 +126,10 @@ public:
     void dump_stats() {
         printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
         printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
+        printf("Files per chunk: \n");
+        for (list<chunk*>::iterator it = alloc_.begin(); it != alloc_.end(); it++)
+            printf("%d ", (*it)->nfiles);
+        printf("\n");
     }
 
     bool match(RE2& pat) {
