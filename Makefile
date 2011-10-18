@@ -9,9 +9,17 @@ ifneq ($(re2),)
 	LDFLAGS += -L$(re2)/lib -Wl,-R$(re2)/lib
 endif
 
-CXXFLAGS +=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare -O2
+CXXFLAGS +=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare
 LDFLAGS += $(LIBS)
 LIBS=-lgit2 -lre2
+
+ifneq ($(noopt),)
+CXXFLAGS+=-O2
+endif
+ifneq ($(profile),)
+CXXFLAGS+=-g
+LDFLAGS+=-g
+endif
 
 HEADERS = smart_git.h timer.h
 
