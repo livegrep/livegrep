@@ -17,8 +17,8 @@ ifneq ($(noopt),)
 CXXFLAGS+=-O2
 endif
 ifneq ($(profile),)
-CXXFLAGS+=-g
-LDFLAGS+=-g
+CXXFLAGS+=-pg
+LDFLAGS+=-pg
 endif
 
 HEADERS = smart_git.h timer.h
