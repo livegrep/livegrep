@@ -19,7 +19,8 @@ using re2::RE2;
 using re2::StringPiece;
 using namespace std;
 
-#define CHUNK_SIZE (1 << 16)
+#define CHUNK_SIZE (1 << 20)
+#define MAX_GAP    (1 << 12)
 
 struct search_file {
     string path;
@@ -29,8 +30,16 @@ struct search_file {
 
 struct chunk_file {
     search_file *file;
-    unsigned int left;
-    unsigned int right;
+    int left;
+    int right;
+    void expand(int l, int r) {
+        left  = min(left, l);
+        right = max(right, r);
+    }
+
+    bool operator<(const chunk_file& rhs) const {
+        return left < rhs.left;
+    }
 };
 
 #define CHUNK_MAGIC 0xC407FADE
@@ -39,6 +48,7 @@ struct chunk {
     int size;
     unsigned magic;
     vector<chunk_file> files;
+    vector<chunk_file> cur_file;
     char data[0];
 
     chunk()
@@ -46,19 +56,45 @@ struct chunk {
     }
 
     void add_chunk_file(search_file *sf, const StringPiece &line) {
-        unsigned l = line.data() - data;
-        unsigned r = l + line.size();
-        if (files.empty() || files.back().file != sf) {
-            files.push_back(chunk_file());
-            chunk_file &cf = files.back();
-            cf.file = sf;
-            cf.left = l;
-            cf.right = r;
-        } else {
-            chunk_file &cf = files.back();
-            cf.left = min(l, cf.left);
-            cf.right = max(r, cf.right);
+        int l = line.data() - data;
+        int r = l + line.size();
+        chunk_file *f = NULL;
+        int min_dist = numeric_limits<int>::max(), dist;
+        for (vector<chunk_file>::iterator it = cur_file.begin();
+             it != cur_file.end(); it ++) {
+            if (l <= it->left)
+                dist = max(0, it->left - r);
+            else if (r >= it->right)
+                dist = max(0, l - it->right);
+            else
+                dist = 0;
+            assert(dist == 0 || r < it->left || l > it->right);
+            if (dist < min_dist) {
+                min_dist = dist;
+                f = &(*it);
+            }
         }
+        if (f && min_dist < MAX_GAP) {
+            f->expand(l, r);
+            return;
+        }
+        cur_file.push_back(chunk_file());
+        chunk_file &cf = cur_file.back();
+        cf.file = sf;
+        cf.left = l;
+        cf.right = r;
+    }
+
+    void finish_file() {
+        int right = -1;
+        sort(cur_file.begin(), cur_file.end());
+        for (vector<chunk_file>::iterator it = cur_file.begin();
+             it != cur_file.end(); it ++) {
+            assert(right < it->left);
+            right = max(right, it->right);
+        }
+        files.insert(files.end(), cur_file.begin(), cur_file.end());
+        cur_file.clear();
     }
 };
 
@@ -182,8 +218,10 @@ public:
     }
 protected:
     void print_match (const StringPiece& line) {
+        timer tm;
+        struct timeval elapsed;
         chunk *c = find_chunk(line.data());
-        unsigned int off = line.data() - c->data;
+        int off = line.data() - c->data;
         int lno;
         int matches = 0;
         int searched = 0;
@@ -203,7 +241,9 @@ protected:
                 }
             }
         }
-        printf(" (searched %d files)\n", searched);
+        elapsed = tm.elapsed();
+        printf(" (searched %d files in %d.%06ds)\n", searched,
+               int(elapsed.tv_sec), int(elapsed.tv_usec));
     }
 
     int try_match(const StringPiece &line, search_file *sf) {
@@ -267,7 +307,6 @@ protected:
         const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
         const char *end = p + len;
         const char *f;
-        string_hash::iterator it;
         search_file *sf = new search_file;
         sf->path = path;
         sf->ref = ref;
@@ -276,7 +315,7 @@ protected:
         StringPiece line;
 
         while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
-            it = lines_.find(StringPiece(p, f - p));
+            string_hash::iterator it = lines_.find(StringPiece(p, f - p));
             if (it == lines_.end()) {
                 stats_.dedup_bytes += (f - p) + 1;
                 stats_.dedup_lines ++;
@@ -295,6 +334,10 @@ protected:
             p = f + 1;
             stats_.lines++;
         }
+
+        for (list<chunk*>::iterator it = alloc_.begin();
+             it != alloc_.end(); it++)
+            (*it)->finish_file();
 
         stats_.bytes += len;
     }
