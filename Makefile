@@ -10,8 +10,7 @@ ifneq ($(re2),)
 endif
 
 CXXFLAGS +=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare
-LDFLAGS += $(LIBS)
-LIBS=-lgit2 -lre2
+LDLIBS=-lgit2 -lre2
 
 ifneq ($(noopt),)
 CXXFLAGS+=-O2
