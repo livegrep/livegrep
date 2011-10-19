@@ -9,7 +9,8 @@ ifneq ($(re2),)
 	LDFLAGS += -L$(re2)/lib -Wl,-R$(re2)/lib
 endif
 
-CXXFLAGS +=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare
+CXXFLAGS+=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
+LDFLAGS+=-pthread
 LDLIBS=-lgit2 -lre2
 
 ifeq ($(noopt),)
@@ -20,7 +21,7 @@ CXXFLAGS+=-pg
 LDFLAGS+=-pg
 endif
 
-HEADERS = smart_git.h timer.h
+HEADERS = smart_git.h timer.h thread_queue.h mutex.h thread_pool.h
 
 all: codesearch
 

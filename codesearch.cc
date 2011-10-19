@@ -13,6 +13,8 @@
 
 #include "smart_git.h"
 #include "timer.h"
+#include "thread_queue.h"
+#include "thread_pool.h"
 
 using google::dense_hash_set;
 using re2::RE2;
@@ -40,6 +42,12 @@ struct chunk_file {
     bool operator<(const chunk_file& rhs) const {
         return left < rhs.left;
     }
+};
+
+struct match_result {
+    search_file *file;
+    int lno;
+    StringPiece line;
 };
 
 #define CHUNK_MAGIC 0xC407FADE
@@ -95,6 +103,13 @@ struct chunk {
         }
         files.insert(files.end(), cur_file.begin(), cur_file.end());
         cur_file.clear();
+    }
+
+    static chunk* from_str(const char *p) {
+        chunk *out = reinterpret_cast<chunk*>
+            (reinterpret_cast<uintptr_t>(p) & ~(CHUNK_SIZE - 1));
+        assert(out->magic == CHUNK_MAGIC);
+        return out;
     }
 };
 
@@ -173,6 +188,81 @@ const StringPiece empty_string(NULL, 0);
 
 typedef dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
 
+class code_counter;
+
+class searcher {
+public:
+    searcher(code_counter *cc, thread_queue<match_result*> &queue, RE2& pat) :
+        cc_(cc), pat_(pat), queue_(queue) {
+    }
+
+    bool operator()(const chunk *chunk) {
+        if (chunk == NULL) {
+            queue_.push(NULL);
+            return true;
+        }
+        StringPiece str(chunk->data, chunk->size);
+        StringPiece match;
+        int pos = 0;
+        int matched = 0;
+        while (pos < str.size()) {
+            if (!pat_.Match(str, pos, str.size(), RE2::UNANCHORED, &match, 1))
+                break;
+            assert(memchr(match.data(), '\n', match.size()) == NULL);
+            StringPiece line = find_line(str, match);
+            find_match(line);
+            pos = line.size() + line.data() - str.data();
+            if (++matched == 10)
+                break;
+        }
+        return false;
+    }
+
+protected:
+    void find_match (const StringPiece& line) {
+        chunk *c = chunk::from_str(line.data());
+        int off = line.data() - c->data;
+        int lno;
+        int searched = 0;
+        for(vector<chunk_file>::iterator it = c->files.begin();
+            it != c->files.end(); it++) {
+            if (off >= it->left && off < it->right) {
+                searched++;
+                lno = try_match(line, it->file);
+                if (lno > 0) {
+                    match_result *m = new match_result({it->file, lno, line});
+                    queue_.push(m);
+                }
+            }
+        }
+    }
+
+    int try_match(const StringPiece &line, search_file *sf);
+
+    static StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
+        const char *start, *end;
+        assert(match.data() >= chunk.data());
+        assert(match.data() < chunk.data() + chunk.size());
+        assert(match.size() < (chunk.size() - (match.data() - chunk.data())));
+        start = static_cast<const char*>
+            (memrchr(chunk.data(), '\n', match.data() - chunk.data()));
+        if (start == NULL)
+            start = chunk.data();
+        else
+            start++;
+        end = static_cast<const char*>
+            (memchr(match.data() + match.size(), '\n',
+                    chunk.size() - (match.data() - chunk.data()) - match.size()));
+        if (end == NULL)
+            end = chunk.data() + chunk.size();
+        return StringPiece(start, end - start);
+    }
+
+    code_counter *cc_;
+    RE2& pat_;
+    thread_queue<match_result*> &queue_;
+};
+
 class code_counter {
 public:
     code_counter(git_repository *repo)
@@ -197,85 +287,39 @@ public:
 
     bool match(RE2& pat) {
         list<chunk*>::iterator it;
-        StringPiece match;
+        match_result *m;
         int matches = 0;
+        int threads = 4;
+
+        thread_queue<match_result*> results;
+        searcher search(this, results, pat);
+        thread_pool<chunk*, searcher&> pool(threads, search);
 
         for (it = alloc_.begin(); it != alloc_.end(); it++) {
-            StringPiece str((*it)->data, (*it)->size);
-            int pos = 0;
-            while (pos < str.size()) {
-                    if (!pat.Match(str, pos, str.size(), RE2::UNANCHORED, &match, 1))
-                        break;
-                    assert(memchr(match.data(), '\n', match.size()) == NULL);
-                    StringPiece line = find_line(str, match);
-                    print_match(line);
-                    pos = line.size() + line.data() - str.data();
-                    if (++matches == 10)
-                        return true;
-                }
+            pool.queue(*it);
+        }
+        for (int i = 0; i < threads; i++)
+            pool.queue(NULL);
+
+        while (threads) {
+            m = results.pop();
+            if (!m) {
+                threads--;
+                continue;
+            }
+            if (++matches < 10)
+                print_match(m);
+            delete m;
         }
         return matches > 0;
     }
 protected:
-    void print_match (const StringPiece& line) {
-        timer tm;
-        struct timeval elapsed;
-        chunk *c = find_chunk(line.data());
-        int off = line.data() - c->data;
-        int lno;
-        int matches = 0;
-        int searched = 0;
-        for(vector<chunk_file>::iterator it = c->files.begin();
-            it != c->files.end(); it++) {
-            if (off >= it->left && off < it->right) {
-                searched++;
-                lno = try_match(line, it->file);
-                if (lno > 0) {
-                    printf("%s:%s:%d: %.*s\n",
-                           it->file->ref,
-                           it->file->path.c_str(),
-                           lno,
-                           line.size(), line.data());
-                    if (++matches == 10)
-                        break;
-                }
-            }
-        }
-        elapsed = tm.elapsed();
-        printf(" (searched %d files in %d.%06ds)\n", searched,
-               int(elapsed.tv_sec), int(elapsed.tv_usec));
-    }
-
-    int try_match(const StringPiece &line, search_file *sf) {
-        smart_object<git_blob> blob;
-        git_blob_lookup(blob, repo_, &sf->oid);
-        int pos;
-        StringPiece search(static_cast<const char*>(git_blob_rawcontent(blob)),
-                           git_blob_rawsize(blob));
-        pos = search.find(line);
-        if (pos == StringPiece::npos) {
-            return 0;
-        }
-        return 1 + count(search.data(), search.data() + pos, '\n');
-    }
-
-    StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
-        const char *start, *end;
-        assert(match.data() >= chunk.data());
-        assert(match.data() < chunk.data() + chunk.size());
-        assert(match.size() < (chunk.size() - (match.data() - chunk.data())));
-        start = static_cast<const char*>
-            (memrchr(chunk.data(), '\n', match.data() - chunk.data()));
-        if (start == NULL)
-            start = chunk.data();
-        else
-            start++;
-        end = static_cast<const char*>
-            (memchr(match.data() + match.size(), '\n',
-                    chunk.size() - (match.data() - chunk.data()) - match.size()));
-        if (end == NULL)
-            end = chunk.data() + chunk.size();
-        return StringPiece(start, end - start);
+    void print_match(const match_result *m) {
+        printf("%s:%s:%d: %.*s\n",
+               m->file->ref,
+               m->file->path.c_str(),
+               m->lno,
+               m->line.size(), m->line.data());
     }
 
     void walk_tree(const char *ref, const string& pfx, git_tree *tree) {
@@ -293,13 +337,6 @@ protected:
                 update_stats(ref, path, obj);
             }
         }
-    }
-
-    chunk* find_chunk(const char *p) {
-        chunk *out = reinterpret_cast<chunk*>
-            (reinterpret_cast<uintptr_t>(p) & ~(CHUNK_SIZE - 1));
-        assert(out->magic == CHUNK_MAGIC);
-        return out;
     }
 
     void update_stats(const char *ref, const string& path, git_blob *blob) {
@@ -328,7 +365,7 @@ protected:
                 c = alloc_.current_chunk();
             } else {
                 line = *it;
-                c = find_chunk(line.data());
+                c = chunk::from_str(line.data());
             }
             c->add_chunk_file(sf, line);
             p = f + 1;
@@ -362,6 +399,7 @@ protected:
         }
     }
 
+    mutex repo_lock_;
     git_repository *repo_;
     string_hash lines_;
     struct {
@@ -369,7 +407,23 @@ protected:
         unsigned long lines, dedup_lines;
     } stats_;
     chunk_allocator alloc_;
+
+    friend class searcher;
 };
+
+int searcher::try_match(const StringPiece &line, search_file *sf) {
+    smart_object<git_blob> blob;
+    mutex_locker locked(cc_->repo_lock_);
+    git_blob_lookup(blob, cc_->repo_, &sf->oid);
+    int pos;
+    StringPiece search(static_cast<const char*>(git_blob_rawcontent(blob)),
+                       git_blob_rawsize(blob));
+    pos = search.find(line);
+    if (pos == StringPiece::npos) {
+        return 0;
+    }
+    return 1 + count(search.data(), search.data() + pos, '\n');
+}
 
 int main(int argc, char **argv) {
     git_repository *repo;
