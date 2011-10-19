@@ -24,6 +24,7 @@ using namespace std;
 
 #define CHUNK_SIZE (1 << 20)
 #define MAX_GAP    (1 << 12)
+#define MAX_MATCHES 10
 
 struct search_file {
     string path;
@@ -194,7 +195,8 @@ class code_counter;
 class searcher {
 public:
     searcher(code_counter *cc, thread_queue<match_result*> &queue, RE2& pat) :
-        cc_(cc), pat_(pat), queue_(queue), matches_(0) {
+        cc_(cc), pat_(pat), queue_(queue),
+        matches_(0), searched_(0), hit_rate_(0) {
     }
 
     bool operator()(const chunk *chunk) {
@@ -212,12 +214,14 @@ public:
             StringPiece line = find_line(str, match);
             find_match(line);
             pos = line.size() + line.data() - str.data();
-            if (matches_ >= 10) {
-                queue_.push(NULL);
-                return true;
-            }
         }
         return false;
+    }
+
+    int approx_matches() {
+        if (hit_rate_ == 0)
+            return matches_;
+        return searched_ / hit_rate_;
     }
 
 protected:
@@ -228,12 +232,15 @@ protected:
         for(vector<chunk_file>::iterator it = c->files.begin();
             it != c->files.end(); it++) {
             if (off >= it->left && off < it->right) {
+                searched_++;
+                if (matches_.load() >= MAX_MATCHES)
+                    continue;
                 lno = try_match(line, it->file);
                 if (lno > 0) {
                     match_result *m = new match_result({it->file, lno, line});
                     queue_.push(m);
-                    if (++matches_ >= 10)
-                        return;
+                    if (++matches_ == 10)
+                        hit_rate_ = float(searched_) / matches_;
                 }
             }
         }
@@ -264,6 +271,8 @@ protected:
     RE2& pat_;
     thread_queue<match_result*> &queue_;
     atomic_int matches_;
+    atomic_int searched_;
+    float hit_rate_;
 };
 
 class code_counter {
@@ -314,6 +323,8 @@ public:
             print_match(m);
             delete m;
         }
+        if (matches)
+            printf("Results 1-%d of about %d.\n", matches, search.approx_matches());
         return matches > 0;
     }
 protected:
