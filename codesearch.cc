@@ -8,6 +8,7 @@
 #include <list>
 #include <iostream>
 #include <string>
+#include <atomic>
 
 #include <re2/re2.h>
 
@@ -193,7 +194,7 @@ class code_counter;
 class searcher {
 public:
     searcher(code_counter *cc, thread_queue<match_result*> &queue, RE2& pat) :
-        cc_(cc), pat_(pat), queue_(queue) {
+        cc_(cc), pat_(pat), queue_(queue), matches_(0) {
     }
 
     bool operator()(const chunk *chunk) {
@@ -204,7 +205,6 @@ public:
         StringPiece str(chunk->data, chunk->size);
         StringPiece match;
         int pos = 0;
-        int matched = 0;
         while (pos < str.size()) {
             if (!pat_.Match(str, pos, str.size(), RE2::UNANCHORED, &match, 1))
                 break;
@@ -212,8 +212,10 @@ public:
             StringPiece line = find_line(str, match);
             find_match(line);
             pos = line.size() + line.data() - str.data();
-            if (++matched == 10)
-                break;
+            if (matches_ >= 10) {
+                queue_.push(NULL);
+                return true;
+            }
         }
         return false;
     }
@@ -223,15 +225,15 @@ protected:
         chunk *c = chunk::from_str(line.data());
         int off = line.data() - c->data;
         int lno;
-        int searched = 0;
         for(vector<chunk_file>::iterator it = c->files.begin();
             it != c->files.end(); it++) {
             if (off >= it->left && off < it->right) {
-                searched++;
                 lno = try_match(line, it->file);
                 if (lno > 0) {
                     match_result *m = new match_result({it->file, lno, line});
                     queue_.push(m);
+                    if (++matches_ >= 10)
+                        return;
                 }
             }
         }
@@ -261,6 +263,7 @@ protected:
     code_counter *cc_;
     RE2& pat_;
     thread_queue<match_result*> &queue_;
+    atomic_int matches_;
 };
 
 class code_counter {
@@ -307,8 +310,8 @@ public:
                 threads--;
                 continue;
             }
-            if (++matches < 10)
-                print_match(m);
+            matches++;
+            print_match(m);
             delete m;
         }
         return matches > 0;
