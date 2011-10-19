@@ -12,7 +12,7 @@ endif
 CXXFLAGS +=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare
 LDLIBS=-lgit2 -lre2
 
-ifneq ($(noopt),)
+ifeq ($(noopt),)
 CXXFLAGS+=-O2
 endif
 ifneq ($(profile),)
