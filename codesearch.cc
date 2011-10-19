@@ -239,7 +239,7 @@ protected:
                 if (lno > 0) {
                     match_result *m = new match_result({it->file, lno, line});
                     queue_.push(m);
-                    if (++matches_ == 10)
+                    if (++matches_ == MAX_MATCHES)
                         hit_rate_ = float(searched_) / matches_;
                 }
             }
