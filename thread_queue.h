@@ -30,6 +30,7 @@ public:
             return false;
         ret = queue_.front();
         queue_.pop_front();
+        return true;
     }
 
     ~thread_queue() {
