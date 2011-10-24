@@ -25,6 +25,8 @@ HEADERS = smart_git.h timer.h thread_queue.h mutex.h thread_pool.h codesearch.h
 
 all: codesearch
 
+codesearch: codesearch.o main.o
+
 codesearch.o: codesearch.cc $(HEADERS)
 
 clean:
