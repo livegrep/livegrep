@@ -16,6 +16,7 @@
 #include "timer.h"
 #include "thread_queue.h"
 #include "thread_pool.h"
+#include "codesearch.h"
 
 using google::dense_hash_set;
 using re2::RE2;
@@ -161,34 +162,20 @@ protected:
     chunk *current_;
 };
 
-/*
- * We special-case data() == NULL to provide an "empty" element for
- * dense_hash_set.
- *
- * StringPiece::operator== will consider a zero-length string equal to a
- * zero-length string with a NULL data().
- */
-struct eqstr {
-    bool operator()(const StringPiece& lhs, const StringPiece& rhs) const {
-        if (lhs.data() == NULL && rhs.data() == NULL)
-            return true;
-        if (lhs.data() == NULL || rhs.data() == NULL)
-            return false;
-        return lhs == rhs;
-    }
-};
+bool eqstr::operator()(const StringPiece &lhs, const StringPiece &rhs) const {
+    if (lhs.data() == NULL && rhs.data() == NULL)
+        return true;
+    if (lhs.data() == NULL || rhs.data() == NULL)
+        return false;
+    return lhs == rhs;
+}
 
-struct hashstr {
-    locale loc;
-    size_t operator()(const StringPiece &str) const {
-        const collate<char> &coll = use_facet<collate<char> >(loc);
-        return coll.hash(str.data(), str.data() + str.size());
-    }
-};
+size_t hashstr::operator()(const StringPiece &str) const {
+    const std::collate<char> &coll = std::use_facet<std::collate<char> >(loc);
+    return coll.hash(str.data(), str.data() + str.size());
+}
 
 const StringPiece empty_string(NULL, 0);
-
-typedef dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
 
 class code_counter;
 
@@ -275,155 +262,146 @@ protected:
     float hit_rate_;
 };
 
-class code_counter {
-public:
-    code_counter(git_repository *repo)
-        : repo_(repo), stats_()
-    {
-        lines_.set_empty_key(empty_string);
+code_counter::code_counter(git_repository *repo)
+    : repo_(repo), stats_()
+{
+    lines_.set_empty_key(empty_string);
+    alloc_ = new chunk_allocator();
+}
+
+code_counter::~code_counter() {
+    delete alloc_;
+}
+
+void code_counter::walk_ref(const char *ref) {
+    smart_object<git_commit> commit;
+    smart_object<git_tree> tree;
+    resolve_ref(commit, ref);
+    git_commit_tree(tree, commit);
+
+    walk_tree(ref, "", tree);
+}
+
+void code_counter::dump_stats() {
+    printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
+    printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
+}
+
+bool code_counter::match(RE2& pat) {
+    list<chunk*>::iterator it;
+    match_result *m;
+    int matches = 0;
+    int threads = 4;
+
+    thread_queue<match_result*> results;
+    searcher search(this, results, pat);
+    thread_pool<chunk*, searcher&> pool(threads, search);
+
+    for (it = alloc_->begin(); it != alloc_->end(); it++) {
+        pool.queue(*it);
     }
+    for (int i = 0; i < threads; i++)
+        pool.queue(NULL);
 
-    void walk_ref(const char *ref) {
-        smart_object<git_commit> commit;
-        smart_object<git_tree> tree;
-        resolve_ref(commit, ref);
-        git_commit_tree(tree, commit);
-
-        walk_tree(ref, "", tree);
-    }
-
-    void dump_stats() {
-        printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
-        printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
-    }
-
-    bool match(RE2& pat) {
-        list<chunk*>::iterator it;
-        match_result *m;
-        int matches = 0;
-        int threads = 4;
-
-        thread_queue<match_result*> results;
-        searcher search(this, results, pat);
-        thread_pool<chunk*, searcher&> pool(threads, search);
-
-        for (it = alloc_.begin(); it != alloc_.end(); it++) {
-            pool.queue(*it);
+    while (threads) {
+        m = results.pop();
+        if (!m) {
+            threads--;
+            continue;
         }
-        for (int i = 0; i < threads; i++)
-            pool.queue(NULL);
-
-        while (threads) {
-            m = results.pop();
-            if (!m) {
-                threads--;
-                continue;
-            }
-            matches++;
-            print_match(m);
-            delete m;
-        }
-        if (matches)
-            printf("Results 1-%d of about %d.\n", matches, search.approx_matches());
-        return matches > 0;
+        matches++;
+        print_match(m);
+        delete m;
     }
-protected:
-    void print_match(const match_result *m) {
-        printf("%s:%s:%d: %.*s\n",
-               m->file->ref,
-               m->file->path.c_str(),
-               m->lno,
-               m->line.size(), m->line.data());
-    }
+    if (matches)
+        printf("Results 1-%d of about %d.\n", matches, search.approx_matches());
+    return matches > 0;
+}
 
-    void walk_tree(const char *ref, const string& pfx, git_tree *tree) {
-        string path;
-        int entries = git_tree_entrycount(tree);
-        int i;
-        for (i = 0; i < entries; i++) {
-            const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
-            path = pfx + git_tree_entry_name(ent);
-            smart_object<git_object> obj;
-            git_tree_entry_2object(obj, repo_, ent);
-            if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
-                walk_tree(ref, path + "/", obj);
-            } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
-                update_stats(ref, path, obj);
-            }
-        }
-    }
+void code_counter::print_match(const match_result *m) {
+    printf("%s:%s:%d: %.*s\n",
+           m->file->ref,
+           m->file->path.c_str(),
+           m->lno,
+           m->line.size(), m->line.data());
+}
 
-    void update_stats(const char *ref, const string& path, git_blob *blob) {
-        size_t len = git_blob_rawsize(blob);
-        const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
-        const char *end = p + len;
-        const char *f;
-        search_file *sf = new search_file;
-        sf->path = path;
-        sf->ref = ref;
-        git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
-        chunk *c;
-        StringPiece line;
-
-        while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
-            string_hash::iterator it = lines_.find(StringPiece(p, f - p));
-            if (it == lines_.end()) {
-                stats_.dedup_bytes += (f - p) + 1;
-                stats_.dedup_lines ++;
-
-                // Include the trailing '\n' in the chunk buffer
-                char *alloc = alloc_.alloc(f - p + 1);
-                memcpy(alloc, p, f - p + 1);
-                line = StringPiece(alloc, f - p);
-                lines_.insert(line);
-                c = alloc_.current_chunk();
-            } else {
-                line = *it;
-                c = chunk::from_str(line.data());
-            }
-            c->add_chunk_file(sf, line);
-            p = f + 1;
-            stats_.lines++;
-        }
-
-        for (list<chunk*>::iterator it = alloc_.begin();
-             it != alloc_.end(); it++)
-            (*it)->finish_file();
-
-        stats_.bytes += len;
-    }
-
-    void resolve_ref(smart_object<git_commit> &out, const char *refname) {
-        git_reference *ref;
-        const git_oid *oid;
-        git_oid tmp;
+void code_counter::walk_tree(const char *ref, const string& pfx, git_tree *tree) {
+    string path;
+    int entries = git_tree_entrycount(tree);
+    int i;
+    for (i = 0; i < entries; i++) {
+        const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
+        path = pfx + git_tree_entry_name(ent);
         smart_object<git_object> obj;
-        if (git_oid_fromstr(&tmp, refname) == GIT_SUCCESS) {
-            git_object_lookup(obj, repo_, &tmp, GIT_OBJ_ANY);
-        } else {
-            git_reference_lookup(&ref, repo_, refname);
-            git_reference_resolve(&ref, ref);
-            oid = git_reference_oid(ref);
-            git_object_lookup(obj, repo_, oid, GIT_OBJ_ANY);
-        }
-        if (git_object_type(obj) == GIT_OBJ_TAG) {
-            git_tag_target(out, obj);
-        } else {
-            out = obj.release();
+        git_tree_entry_2object(obj, repo_, ent);
+        if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
+            walk_tree(ref, path + "/", obj);
+        } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
+            update_stats(ref, path, obj);
         }
     }
+}
 
-    mutex repo_lock_;
-    git_repository *repo_;
-    string_hash lines_;
-    struct {
-        unsigned long bytes, dedup_bytes;
-        unsigned long lines, dedup_lines;
-    } stats_;
-    chunk_allocator alloc_;
+void code_counter::update_stats(const char *ref, const string& path, git_blob *blob) {
+    size_t len = git_blob_rawsize(blob);
+    const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
+    const char *end = p + len;
+    const char *f;
+    search_file *sf = new search_file;
+    sf->path = path;
+    sf->ref = ref;
+    git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
+    chunk *c;
+    StringPiece line;
 
-    friend class searcher;
-};
+    while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
+        string_hash::iterator it = lines_.find(StringPiece(p, f - p));
+        if (it == lines_.end()) {
+            stats_.dedup_bytes += (f - p) + 1;
+            stats_.dedup_lines ++;
+
+            // Include the trailing '\n' in the chunk buffer
+            char *alloc = alloc_->alloc(f - p + 1);
+            memcpy(alloc, p, f - p + 1);
+            line = StringPiece(alloc, f - p);
+            lines_.insert(line);
+            c = alloc_->current_chunk();
+        } else {
+            line = *it;
+            c = chunk::from_str(line.data());
+        }
+        c->add_chunk_file(sf, line);
+        p = f + 1;
+        stats_.lines++;
+    }
+
+    for (list<chunk*>::iterator it = alloc_->begin();
+         it != alloc_->end(); it++)
+        (*it)->finish_file();
+
+    stats_.bytes += len;
+}
+
+void code_counter::resolve_ref(smart_object<git_commit> &out, const char *refname) {
+    git_reference *ref;
+    const git_oid *oid;
+    git_oid tmp;
+    smart_object<git_object> obj;
+    if (git_oid_fromstr(&tmp, refname) == GIT_SUCCESS) {
+        git_object_lookup(obj, repo_, &tmp, GIT_OBJ_ANY);
+    } else {
+        git_reference_lookup(&ref, repo_, refname);
+        git_reference_resolve(&ref, ref);
+        oid = git_reference_oid(ref);
+        git_object_lookup(obj, repo_, oid, GIT_OBJ_ANY);
+    }
+    if (git_object_type(obj) == GIT_OBJ_TAG) {
+        git_tag_target(out, obj);
+    } else {
+        out = obj.release();
+    }
+}
 
 int searcher::try_match(const StringPiece &line, search_file *sf) {
     smart_object<git_blob> blob;

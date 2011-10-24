@@ -1,3 +1,6 @@
+#ifndef CODESEARCH_MUTEX_H
+#define CODESEARCH_MUTEX_H
+
 #include <pthread.h>
 
 class cond_var;
@@ -69,3 +72,6 @@ public:
 
     mutex &mutex_;
 };
+
+
+#endif /* !defined(CODESEARCH_MUTEX_H) */
