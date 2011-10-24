@@ -43,10 +43,10 @@ struct hashstr {
 
 typedef dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
 
-class code_counter {
+class code_searcher {
 public:
-    code_counter(git_repository *repo);
-    ~code_counter();
+    code_searcher(git_repository *repo);
+    ~code_searcher();
     void walk_ref(const char *ref);
     void dump_stats();
     bool match(RE2& pat);

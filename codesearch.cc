@@ -177,11 +177,11 @@ size_t hashstr::operator()(const StringPiece &str) const {
 
 const StringPiece empty_string(NULL, 0);
 
-class code_counter;
+class code_searcher;
 
 class searcher {
 public:
-    searcher(code_counter *cc, thread_queue<match_result*> &queue, RE2& pat) :
+    searcher(code_searcher *cc, thread_queue<match_result*> &queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
         matches_(0), searched_(0), hit_rate_(0) {
     }
@@ -254,7 +254,7 @@ protected:
         return StringPiece(start, end - start);
     }
 
-    code_counter *cc_;
+    code_searcher *cc_;
     RE2& pat_;
     thread_queue<match_result*> &queue_;
     atomic_int matches_;
@@ -262,18 +262,18 @@ protected:
     float hit_rate_;
 };
 
-code_counter::code_counter(git_repository *repo)
+code_searcher::code_searcher(git_repository *repo)
     : repo_(repo), stats_()
 {
     lines_.set_empty_key(empty_string);
     alloc_ = new chunk_allocator();
 }
 
-code_counter::~code_counter() {
+code_searcher::~code_searcher() {
     delete alloc_;
 }
 
-void code_counter::walk_ref(const char *ref) {
+void code_searcher::walk_ref(const char *ref) {
     smart_object<git_commit> commit;
     smart_object<git_tree> tree;
     resolve_ref(commit, ref);
@@ -282,12 +282,12 @@ void code_counter::walk_ref(const char *ref) {
     walk_tree(ref, "", tree);
 }
 
-void code_counter::dump_stats() {
+void code_searcher::dump_stats() {
     printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
 }
 
-bool code_counter::match(RE2& pat) {
+bool code_searcher::match(RE2& pat) {
     list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
@@ -318,7 +318,7 @@ bool code_counter::match(RE2& pat) {
     return matches > 0;
 }
 
-void code_counter::print_match(const match_result *m) {
+void code_searcher::print_match(const match_result *m) {
     printf("%s:%s:%d: %.*s\n",
            m->file->ref,
            m->file->path.c_str(),
@@ -326,7 +326,7 @@ void code_counter::print_match(const match_result *m) {
            m->line.size(), m->line.data());
 }
 
-void code_counter::walk_tree(const char *ref, const string& pfx, git_tree *tree) {
+void code_searcher::walk_tree(const char *ref, const string& pfx, git_tree *tree) {
     string path;
     int entries = git_tree_entrycount(tree);
     int i;
@@ -343,7 +343,7 @@ void code_counter::walk_tree(const char *ref, const string& pfx, git_tree *tree)
     }
 }
 
-void code_counter::update_stats(const char *ref, const string& path, git_blob *blob) {
+void code_searcher::update_stats(const char *ref, const string& path, git_blob *blob) {
     size_t len = git_blob_rawsize(blob);
     const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
     const char *end = p + len;
@@ -383,7 +383,7 @@ void code_counter::update_stats(const char *ref, const string& path, git_blob *b
     stats_.bytes += len;
 }
 
-void code_counter::resolve_ref(smart_object<git_commit> &out, const char *refname) {
+void code_searcher::resolve_ref(smart_object<git_commit> &out, const char *refname) {
     git_reference *ref;
     const git_oid *oid;
     git_oid tmp;
@@ -421,7 +421,7 @@ int main(int argc, char **argv) {
     git_repository *repo;
     git_repository_open(&repo, ".git");
 
-    code_counter counter(repo);
+    code_searcher counter(repo);
 
     for (int i = 1; i < argc; i++) {
         timer tm;
