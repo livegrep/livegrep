@@ -5,20 +5,18 @@
 template <class T>
 class thread_queue {
 public:
-    thread_queue () {
-        pthread_cond_init(&cond_, NULL);
-    }
+    thread_queue () {}
 
     void push(const T& val) {
         mutex_locker locked(mutex_);
         queue_.push_back(val);
-        pthread_cond_signal(&cond_);
+        cond_.signal();
     }
 
     T pop() {
         mutex_locker locked(mutex_);
         while (queue_.empty())
-            pthread_cond_wait(&cond_, mutex_);
+            cond_.wait(&mutex_);
         T rv = queue_.front();
         queue_.pop_front();
         return rv;
@@ -33,13 +31,10 @@ public:
         return true;
     }
 
-    ~thread_queue() {
-        pthread_cond_destroy(&cond_);
-    }
  protected:
     thread_queue(const thread_queue&);
     thread_queue operator=(const thread_queue &);
     mutex mutex_;
-    pthread_cond_t cond_;
+    cond_var cond_;
     std::list<T> queue_;
 };
