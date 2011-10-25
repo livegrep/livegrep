@@ -49,7 +49,7 @@ public:
     ~code_searcher();
     void walk_ref(const char *ref);
     void dump_stats();
-    bool match(RE2& pat);
+    int match(RE2& pat);
 protected:
     void print_match(const match_result *m);
     void walk_tree(const char *ref, const string& pfx, git_tree *tree);

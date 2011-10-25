@@ -286,7 +286,7 @@ void code_searcher::dump_stats() {
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
 }
 
-bool code_searcher::match(RE2& pat) {
+int code_searcher::match(RE2& pat) {
     list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
@@ -312,9 +312,7 @@ bool code_searcher::match(RE2& pat) {
         print_match(m);
         delete m;
     }
-    if (matches)
-        printf("Results 1-%d of about %d.\n", matches, search.approx_matches());
-    return matches > 0;
+    return matches;
 }
 
 void code_searcher::print_match(const match_result *m) {
