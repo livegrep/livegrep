@@ -1,8 +1,11 @@
 var spawn   = require('child_process').spawn,
     path    = require('path'),
-    carrier = require('carrier');
+    carrier = require('carrier'),
+    util    = require('util'),
+    events = require("events");
 
 function Codesearch(dir, refs) {
+  events.EventEmitter.call(this);
   this.child = spawn(path.join(__dirname, '..', 'codesearch'),
                      (refs || ['HEAD']), {
                        cwd: dir,
@@ -13,10 +16,12 @@ function Codesearch(dir, refs) {
   this.readyState = 'init';
 }
 
+util.inherits(Codesearch, events.EventEmitter);
+
 Codesearch.prototype.search = function(str) {
   console.assert(this.readyState == 'ready');
   this.child.stdin.write(str + "\n");
-  this.readyState = 'searching';
+  this.setState('searching');
 }
 
 Codesearch.prototype.got_line = function(line) {
@@ -36,7 +41,7 @@ Codesearch.prototype.handle_line = {
     if (match) {
       this.error(match[1]);
     } else if (line == 'DONE') {
-      this.readyState = 'search_done';
+      this.setState('search_done');
     } else {
       this.match(line);
     }
@@ -48,16 +53,22 @@ Codesearch.prototype.handle_line = {
 }
 
 Codesearch.prototype.ready = function() {
-  this.readyState = 'ready';
+  this.setState('ready');
 }
 
 Codesearch.prototype.error = function(err) {
-  console.log("ERROR: " + err);
-  this.readyState = 'search_done';
+  this.setState('search_done');
+  this.emit('error', err);
 }
 
 Codesearch.prototype.match = function(match) {
-  console.log("MATCH: " + match);
+  var evt = JSON.parse(match);
+  this.emit('match', evt);
+}
+
+Codesearch.prototype.setState = function(state) {
+  this.readyState = state;
+  this.emit('readystatechange', state);
 }
 
 module.exports = Codesearch;
