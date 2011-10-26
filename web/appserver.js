@@ -29,10 +29,12 @@ Client.prototype.dispatch_search = function() {
     var remote = this.remote;
     this.pending_search = null;
     search.on('error', function (err) {
-                remote.error(search.search, err)
+                if (remote.error)
+                  remote.error(search.search, err)
               }.bind(this));
     search.on('match', function (match) {
-                remote.match(search.search, match);
+                if (remote.match)
+                  remote.match(search.search, match);
               });
   }
 }
