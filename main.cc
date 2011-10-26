@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <iostream>
 
-bool FLAG_machine_interface = false;
+bool FLAG_machine_interface = true;
 
 using namespace std;
 
