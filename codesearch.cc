@@ -182,7 +182,7 @@ class searcher {
 public:
     searcher(code_searcher *cc, thread_queue<match_result*> &queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
-        matches_(0), searched_(0), hit_rate_(0) {
+        matches_(0) {
     }
 
     bool operator()(const chunk *chunk) {
@@ -193,7 +193,7 @@ public:
         StringPiece str(chunk->data, chunk->size);
         StringPiece match;
         int pos = 0, new_pos;
-        while (pos < str.size()) {
+        while (pos < str.size() && matches_.load() < MAX_MATCHES) {
             if (!pat_.Match(str, pos, str.size(), RE2::UNANCHORED, &match, 1))
                 break;
             assert(memchr(match.data(), '\n', match.size()) == NULL);
@@ -203,13 +203,11 @@ public:
             assert(new_pos > pos);
             pos = new_pos;
         }
+        if (matches_.load() >= MAX_MATCHES) {
+            queue_.push(NULL);
+            return true;
+        }
         return false;
-    }
-
-    int approx_matches() {
-        if (hit_rate_ == 0)
-            return matches_;
-        return searched_ / hit_rate_;
     }
 
 protected:
@@ -220,15 +218,13 @@ protected:
         for(vector<chunk_file>::iterator it = c->files.begin();
             it != c->files.end(); it++) {
             if (off >= it->left && off < it->right) {
-                searched_++;
                 if (matches_.load() >= MAX_MATCHES)
                     continue;
                 lno = try_match(line, it->file);
                 if (lno > 0) {
                     match_result *m = new match_result({it->file, lno, line});
                     queue_.push(m);
-                    if (++matches_ == MAX_MATCHES)
-                        hit_rate_ = float(searched_) / matches_;
+                    ++matches_;
                 }
             }
         }
@@ -259,8 +255,6 @@ protected:
     RE2& pat_;
     thread_queue<match_result*> &queue_;
     atomic_int matches_;
-    atomic_int searched_;
-    float hit_rate_;
 };
 
 code_searcher::code_searcher(git_repository *repo)
