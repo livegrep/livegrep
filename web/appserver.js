@@ -1,8 +1,9 @@
 var Codesearch = require('./codesearch.js');
 
-var REPO = '/home/nelhage/code/codesearch/'
+var REPO = '/home/nelhage/code/linux-2.6/';
+var REF  = 'refs/tags/v3.0';
 
-var searcher = new Codesearch(REPO);
+var searcher = new Codesearch(REPO, [REF]);
 
 var clients = {};
 
