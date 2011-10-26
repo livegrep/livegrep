@@ -23,8 +23,8 @@ using re2::StringPiece;
 using namespace std;
 
 #define CHUNK_SIZE (1 << 20)
-#define MAX_GAP    (1 << 12)
-#define MAX_MATCHES 10
+#define MAX_GAP    (1 << 10)
+#define MAX_MATCHES 50
 
 struct search_file {
     string path;
