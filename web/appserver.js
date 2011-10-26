@@ -37,6 +37,10 @@ Client.prototype.dispatch_search = function() {
                 if (remote.match)
                   remote.match(search.search, match);
               });
+    search.on('done', function () {
+                if (remote.search_done)
+                  remote.search_done(search.search);
+              });
   }
 }
 
