@@ -192,14 +192,16 @@ public:
         }
         StringPiece str(chunk->data, chunk->size);
         StringPiece match;
-        int pos = 0;
+        int pos = 0, new_pos;
         while (pos < str.size()) {
             if (!pat_.Match(str, pos, str.size(), RE2::UNANCHORED, &match, 1))
                 break;
             assert(memchr(match.data(), '\n', match.size()) == NULL);
             StringPiece line = find_line(str, match);
             find_match(line);
-            pos = line.size() + line.data() - str.data();
+            new_pos = line.size() + line.data() - str.data() + 1;
+            assert(new_pos > pos);
+            pos = new_pos;
         }
         return false;
     }
