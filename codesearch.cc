@@ -17,6 +17,8 @@
 #include "thread_pool.h"
 #include "codesearch.h"
 
+#include "utf8.h"
+
 using google::dense_hash_set;
 using re2::RE2;
 using re2::StringPiece;
@@ -312,6 +314,9 @@ int code_searcher::match(RE2& pat) {
 }
 
 void code_searcher::print_match(const match_result *m) {
+    if (!utf8::is_valid(m->line.data(),
+                        m->line.data() + m->line.size()))
+        return;
     printf("%s:%s:%d: %.*s\n",
            m->file->ref,
            m->file->path.c_str(),
