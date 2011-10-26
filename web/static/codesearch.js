@@ -2,6 +2,7 @@
 var Codesearch = function() {
   return {
     remote: null,
+    displaying: null,
     onload: function() {
       Codesearch.input = $('#searchbox');
       Codesearch.input.keydown(Codesearch.keypress);
@@ -23,7 +24,10 @@ var Codesearch = function() {
     error: function(str, error) {
     },
     match: function(str, match) {
-      console.log(match);
+      if (str != Codesearch.displaying) {
+        $('#results').children().remove();
+        Codesearch.displaying = str;
+      }
       var li = document.createElement('li');
       var pre = document.createElement('pre');
       pre.appendChild(document.createTextNode(
