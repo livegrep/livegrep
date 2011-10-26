@@ -26,13 +26,14 @@ Client.prototype.dispatch_search = function() {
     this.last_search = this.pending_search;
     console.log('dispatching: %s...', this.pending_search)
     var search = searcher.search(this.pending_search);
+    var remote = this.remote;
     this.pending_search = null;
-    search.on('error', function () {
-
-              });
+    search.on('error', function (err) {
+                remote.error(search.search, err)
+              }.bind(this));
     search.on('match', function (match) {
-      console.log("[%s]: %j", search.search, match);
-    });
+                remote.match(search.search, match);
+              });
   }
 }
 
