@@ -1,0 +1,10 @@
+#searcharea {
+    width: 100%;
+    margin-bottom: 1em;
+    border: 1px solid black;
+}
+
+#resultarea {
+    width: 100%;
+    border: 1px solid blue;
+}
