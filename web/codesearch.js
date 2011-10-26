@@ -14,18 +14,25 @@ function Codesearch(dir, refs) {
   this.child.stdout.setEncoding('utf8');
   carrier.carry(this.child.stdout, this.got_line.bind(this));
   this.readyState = 'init';
+  this.current_search = null;
 }
 
 util.inherits(Codesearch, events.EventEmitter);
 
 Codesearch.prototype.search = function(str) {
+  var evt;
   console.assert(this.readyState == 'ready');
   this.child.stdin.write(str + "\n");
   this.setState('searching');
+
+  evt = new events.EventEmitter();
+  evt.search = str;
+  this.current_search = evt;
+  return evt;
 }
 
 Codesearch.prototype.got_line = function(line) {
-  console.log("< "+ line);
+  console.log("< " + line);
   this.handle_line[this.readyState].call(this, line);
 }
 
@@ -41,7 +48,7 @@ Codesearch.prototype.handle_line = {
     if (match) {
       this.error(match[1]);
     } else if (line == 'DONE') {
-      this.setState('search_done');
+      this.endSearch();
     } else {
       this.match(line);
     }
@@ -54,16 +61,22 @@ Codesearch.prototype.handle_line = {
 
 Codesearch.prototype.ready = function() {
   this.setState('ready');
+  this.emit('ready');
 }
 
 Codesearch.prototype.error = function(err) {
+  this.current_search.emit('error', err);
+  this.endSearch();
+}
+
+Codesearch.prototype.endSearch = function() {
   this.setState('search_done');
-  this.emit('error', err);
+  this.current_search = null;
 }
 
 Codesearch.prototype.match = function(match) {
   var evt = JSON.parse(match);
-  this.emit('match', evt);
+  this.current_search.emit('match', evt);
 }
 
 Codesearch.prototype.setState = function(state) {
