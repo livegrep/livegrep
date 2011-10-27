@@ -82,7 +82,6 @@ Codesearch.prototype.match = function(match) {
 
 Codesearch.prototype.setState = function(state) {
   this.readyState = state;
-  this.emit('readystatechange', state);
 }
 
 module.exports = Codesearch;
