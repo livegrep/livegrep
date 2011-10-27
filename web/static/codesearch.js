@@ -72,7 +72,7 @@ var Codesearch = function() {
     handle_result: function(search) {
       Codesearch.hide_error();
       if (search != Codesearch.displaying) {
-        $('#results').children().remove();
+        $('#results').empty();
         Codesearch.displaying = search;
       }
     }
