@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
     opts.set_one_line(false);
     opts.set_perl_classes(true);
     opts.set_posix_syntax(true);
+    opts.set_word_boundary(true);
     opts.set_log_errors(false);
     while (true) {
         if (FLAG_machine_interface)
