@@ -8,15 +8,23 @@ var Codesearch = function() {
     return document.createTextNode(name);
   }
   function render_match(match) {
+    var pieces = [match.line.substring(0, match.bounds[0]),
+                  match.line.substring(match.bounds[0], match.bounds[1]),
+                  match.line.substring(match.bounds[1])];
     return $(elt('div')).addClass('match').append(
       $(elt('div')).addClass('label').text(
         match.file
       )).append(
         $(elt('div')).addClass('contents').append(
           $(elt('span')).addClass('lno').text(match.lno + ":")
-        ).append(text(match.line))
-      );
-  }
+        ).append(
+          text(pieces[0])
+        ).append(
+          $(elt('span')).addClass('matchstr').text(pieces[1])
+        ).append(
+          text(pieces[2])
+        ));
+      }
   return {
     remote: null,
     displaying: null,

@@ -57,3 +57,7 @@ body {
     margin-left: 1em;
     padding: 3px;
 }
+
+.match .matchstr {
+    font-weight: bold;
+}
