@@ -1,10 +1,34 @@
+body {
+    margin: 3em;
+}
+
 #searcharea {
-    width: 100%;
+    width: 30em;
+    margin: auto;
     margin-bottom: 1em;
+    padding: 5px;
     border: 1px solid black;
+}
+
+#regex-error {
+    float: right;
+    display: none;
+}
+
+#errortext {
+    color: red;
 }
 
 #resultarea {
     width: 100%;
-    border: 1px solid blue;
+    border: 1px solid black;
+    padding: 5px;
+}
+
+.label {
+    font-weight: bold;
+}
+
+.clear {
+    clear: both;
 }

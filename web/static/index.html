@@ -8,8 +8,14 @@
   </head>
   <body>
     <div id='searcharea'>
-      <input type="text" id='searchbox'> 
-      </input>
+      <span class='label'>regex:</span>
+      <input type="text" id='searchbox'></input>
+      <div id='regex-error'>
+        <span class='label'> Error: </span>
+        <span id='errortext'>
+        </span>
+      </div>
+      <div class='clear'> </div>
     </div>
     <div id='resultarea'>
       <ul id='results'>

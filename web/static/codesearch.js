@@ -16,7 +16,7 @@ var Codesearch = function() {
       console.log("Connecting...");
       Codesearch.remote = null;
       var timer = setTimeout(Codesearch.connect_failed, 500);
-      DNode({ error: Codesearch.regex_error,
+      DNode({ error: Codesearch.error,
               match: Codesearch.match,
               search_done: Codesearch.search_done,
             }).connect(function (remote, conn) {
@@ -45,6 +45,17 @@ var Codesearch = function() {
         Codesearch.remote.new_search(Codesearch.input.val());
     },
     error: function(search, error) {
+      console.log('error(' + search + '): ' + error);
+      if (search === Codesearch.input.val()) {
+        Codesearch.show_error(error);
+      }
+    },
+    show_error: function (error) {
+      $('#errortext').text(error);
+      $('#regex-error').show();
+    },
+    hide_error: function (){
+      $('#regex-error').hide();
     },
     match: function(search, match) {
       Codesearch.handle_result(search);
@@ -59,6 +70,7 @@ var Codesearch = function() {
       Codesearch.handle_result(search);
     },
     handle_result: function(search) {
+      Codesearch.hide_error();
       if (search != Codesearch.displaying) {
         $('#results').children().remove();
         Codesearch.displaying = search;
