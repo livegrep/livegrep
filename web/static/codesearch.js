@@ -25,6 +25,17 @@ var Codesearch = function() {
           text(pieces[2])
         ));
       }
+  function connectFailedMiddleware(cb) {
+    return function (remote, client) {
+      var timer = setTimeout(function() {
+                               client.socketio.disconnect();
+                               cb();
+                             }, 500);
+      client.on('remote', function() {
+                  clearTimeout(timer);
+                });
+    }
+  };
   return {
     remote: null,
     displaying: null,
@@ -39,19 +50,17 @@ var Codesearch = function() {
         return;
       console.log("Connecting...");
       Codesearch.remote = null;
-      var timer = setTimeout(Codesearch.connect_failed, 500);
       DNode({ error: Codesearch.error,
               match: Codesearch.match,
               search_done: Codesearch.search_done,
-            }).connect(function (remote, conn) {
-                         Codesearch.remote = remote;
-                         conn.on('end', Codesearch.disconnected);
-                         clearTimeout(timer);
-                         Codesearch.reconnect_interval = 50;
-                    });
-    },
-    connect_failed: function() {
-      Codesearch.disconnected();
+            }).use(
+              connectFailedMiddleware(Codesearch.disconnected)
+            ).connect(
+              function (remote, conn) {
+                Codesearch.remote = remote;
+                conn.on('end', Codesearch.disconnected);
+                Codesearch.reconnect_interval = 50;
+              });
     },
     disconnected: function() {
       console.log("Reconnecting in " + Codesearch.reconnect_interval)
