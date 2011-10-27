@@ -32,3 +32,28 @@ body {
 .clear {
     clear: both;
 }
+
+.match {
+    margin-top: 1em;
+    margin-botton: 1em;
+    margin-right: 2em;
+    margin-left: 2em;
+}
+
+.match .label {
+    font-family: monospace;
+}
+
+.match .lno {
+    width: 4em;
+    padding-right: 1em;
+}
+
+.match .contents {
+    white-space: pre;
+    font-family: monospace;
+    background: #eee;
+    border: 1px solid black;
+    margin-left: 1em;
+    padding: 3px;
+}

@@ -1,6 +1,22 @@
 "use strict";
 var Codesearch = function() {
   var MAX_RECONNECT_INTERVAL = 1000*60*1;
+  function elt(name) {
+    return document.createElement(name);
+  }
+  function text(name) {
+    return document.createTextNode(name);
+  }
+  function render_match(match) {
+    return $(elt('div')).addClass('match').append(
+      $(elt('div')).addClass('label').text(
+        match.file
+      )).append(
+        $(elt('div')).addClass('contents').append(
+          $(elt('span')).addClass('lno').text(match.lno + ":")
+        ).append(text(match.line))
+      );
+  }
   return {
     remote: null,
     displaying: null,
@@ -45,7 +61,6 @@ var Codesearch = function() {
         Codesearch.remote.new_search(Codesearch.input.val());
     },
     error: function(search, error) {
-      console.log('error(' + search + '): ' + error);
       if (search === Codesearch.input.val()) {
         Codesearch.show_error(error);
       }
@@ -59,12 +74,7 @@ var Codesearch = function() {
     },
     match: function(search, match) {
       Codesearch.handle_result(search);
-      var li = document.createElement('li');
-      var pre = document.createElement('pre');
-      pre.appendChild(document.createTextNode(
-                      match.file + ":" + match.lno + ":" + match.line));
-      li.appendChild(pre);
-      $('#results').append(li);
+      $('#results').append(render_match(match));
     },
     search_done: function(search) {
       Codesearch.handle_result(search);
