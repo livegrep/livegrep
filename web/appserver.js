@@ -24,6 +24,7 @@ Client.prototype.new_search = function (str) {
 
 Client.prototype.dispatch_search = function() {
   if (this.pending_search !== null) {
+    var start = new Date();
     this.last_search = this.pending_search;
     console.log('dispatching: %s...', this.pending_search)
     var search = searcher.search(this.pending_search);
@@ -39,7 +40,7 @@ Client.prototype.dispatch_search = function() {
               });
     search.on('done', function () {
                 if (remote.search_done)
-                  remote.search_done(search.search);
+                  remote.search_done(search.search, (new Date()) - start);
               });
   }
 }

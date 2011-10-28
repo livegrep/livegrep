@@ -93,13 +93,16 @@ var Codesearch = function() {
       Codesearch.handle_result(search);
       $('#results').append(render_match(match));
     },
-    search_done: function(search) {
+    search_done: function(search, time) {
       Codesearch.handle_result(search);
+      $('#searchtime').text((time/1000) + "s");
+      $('#searchtimebox').show();
     },
     handle_result: function(search) {
       Codesearch.hide_error();
       if (search != Codesearch.displaying) {
         $('#results').empty();
+        $('#searchtimebox').hide();
         Codesearch.displaying = search;
       }
     }

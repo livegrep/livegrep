@@ -19,6 +19,10 @@ body {
     color: red;
 }
 
+#searchtimebox {
+    display: none
+}
+
 #resultarea {
     width: 100%;
     border: 1px solid black;
