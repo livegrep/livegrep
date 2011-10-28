@@ -181,7 +181,22 @@ class searcher {
 public:
     searcher(code_searcher *cc, thread_queue<match_result*> &queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
-        matches_(0) {
+        matches_(0)
+#ifdef PROFILE_CODESEARCH
+        , re2_time_(false), our_time_(false)
+#endif
+    {
+    }
+
+    ~searcher() {
+#ifdef PROFILE_CODESEARCH
+        printf("re2 time: %d.%06ds\n",
+               int(re2_time_.elapsed().tv_sec),
+               int(re2_time_.elapsed().tv_usec));
+        printf("our time: %d.%06ds\n",
+               int(our_time_.elapsed().tv_sec),
+               int(our_time_.elapsed().tv_usec));
+#endif
     }
 
     bool operator()(const chunk *chunk) {
@@ -192,16 +207,30 @@ public:
         StringPiece str(chunk->data, chunk->size);
         StringPiece match;
         int pos = 0, new_pos;
+        timer re2_time(false), our_time(false);
         while (pos < str.size() && matches_.load() < MAX_MATCHES) {
-            if (!pat_.Match(str, pos, str.size(), RE2::UNANCHORED, &match, 1))
-                break;
-            assert(memchr(match.data(), '\n', match.size()) == NULL);
-            StringPiece line = find_line(str, match);
-            find_match(line);
-            new_pos = line.size() + line.data() - str.data() + 1;
-            assert(new_pos > pos);
-            pos = new_pos;
+            {
+                run_timer run(re2_time);
+                if (!pat_.Match(str, pos, str.size(), RE2::UNANCHORED, &match, 1))
+                    break;
+            }
+            {
+                run_timer run(our_time);
+                assert(memchr(match.data(), '\n', match.size()) == NULL);
+                StringPiece line = find_line(str, match);
+                find_match(line);
+                new_pos = line.size() + line.data() - str.data() + 1;
+                assert(new_pos > pos);
+                pos = new_pos;
+            }
         }
+#ifdef PROFILE_CODESEARCH
+        {
+            mutex_locker locked(timer_mtx_);
+            re2_time_.add(re2_time);
+            our_time_.add(our_time);
+        }
+#endif
         if (matches_.load() >= MAX_MATCHES) {
             queue_.push(NULL);
             return true;
@@ -254,6 +283,11 @@ protected:
     RE2& pat_;
     thread_queue<match_result*> &queue_;
     atomic_int matches_;
+#ifdef PROFILE_CODESEARCH
+    timer re2_time_;
+    timer our_time_;
+    mutex timer_mtx_;
+#endif
 };
 
 code_searcher::code_searcher(git_repository *repo)

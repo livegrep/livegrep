@@ -22,6 +22,9 @@ endif
 ifneq ($(densehash),)
 CXXFLAGS+=-DUSE_DENSE_HASH_SET
 endif
+ifneq ($(profile),)
+CXXFLAGS+=-DPROFILE_CODESEARCH
+endif
 
 HEADERS = smart_git.h timer.h thread_queue.h mutex.h thread_pool.h codesearch.h
 
