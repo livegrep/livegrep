@@ -60,6 +60,7 @@ struct match_result {
 #define CHUNK_MAGIC 0xC407FADE
 
 struct chunk {
+    static int chunk_files;
     int size;
     unsigned magic;
     vector<chunk_file> files;
@@ -93,6 +94,7 @@ struct chunk {
             f->expand(l, r);
             return;
         }
+        chunk_files++;
         cur_file.push_back(chunk_file());
         chunk_file &cf = cur_file.back();
         cf.file = sf;
@@ -119,6 +121,8 @@ struct chunk {
         return out;
     }
 };
+
+int chunk::chunk_files = 0;
 
 #define CHUNK_SPACE  (CHUNK_SIZE - (sizeof(chunk)))
 
@@ -320,6 +324,7 @@ void code_searcher::walk_ref(const char *ref) {
 }
 
 void code_searcher::dump_stats() {
+    log_profile("chunk_files: %d\n", chunk::chunk_files);
     printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
 }
