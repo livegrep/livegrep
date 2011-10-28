@@ -25,6 +25,12 @@ using namespace std;
 #define MAX_GAP    (1 << 10)
 #define MAX_MATCHES 50
 
+#ifdef PROFILE_CODESEARCH
+#define log_profile(format, ...) fprintf(stderr, format, __VA_ARGS__)
+#else
+#define log_profile(...)
+#endif
+
 struct search_file {
     string path;
     const char *ref;
@@ -189,14 +195,12 @@ public:
     }
 
     ~searcher() {
-#ifdef PROFILE_CODESEARCH
-        printf("re2 time: %d.%06ds\n",
-               int(re2_time_.elapsed().tv_sec),
-               int(re2_time_.elapsed().tv_usec));
-        printf("our time: %d.%06ds\n",
-               int(our_time_.elapsed().tv_sec),
-               int(our_time_.elapsed().tv_usec));
-#endif
+        log_profile("re2 time: %d.%06ds\n",
+                    int(re2_time_.elapsed().tv_sec),
+                    int(re2_time_.elapsed().tv_usec));
+        log_profile("our time: %d.%06ds\n",
+                    int(our_time_.elapsed().tv_sec),
+                    int(our_time_.elapsed().tv_usec));
     }
 
     bool operator()(const chunk *chunk) {
@@ -258,9 +262,7 @@ protected:
                 }
             }
         }
-#ifdef PROFILE_CODESEARCH
-        printf("Searched %d files...\n", searched);
-#endif
+        log_profile("Searched %d files...\n", searched);
     }
 
     int try_match(const StringPiece &line, search_file *sf);
