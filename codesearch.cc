@@ -2,8 +2,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <google/dense_hash_set>
-
 #include <locale>
 #include <list>
 #include <iostream>
@@ -19,7 +17,6 @@
 
 #include "utf8.h"
 
-using google::dense_hash_set;
 using re2::RE2;
 using re2::StringPiece;
 using namespace std;
@@ -262,7 +259,9 @@ protected:
 code_searcher::code_searcher(git_repository *repo)
     : repo_(repo), stats_()
 {
+#ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
+#endif
     alloc_ = new chunk_allocator();
 }
 

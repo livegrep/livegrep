@@ -4,14 +4,16 @@
 #include <vector>
 #include <string>
 
+#ifdef USE_DENSE_HASH_SET
 #include <google/dense_hash_set>
+#else
+#include <google/sparse_hash_set>
+#endif
 #include <re2/re2.h>
 #include <locale>
 
 #include "smart_git.h"
 #include "mutex.h"
-
-using google::dense_hash_set;
 
 class searcher;
 class chunk_allocator;
@@ -41,7 +43,11 @@ struct hashstr {
 };
 
 
-typedef dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
+#ifdef USE_DENSE_HASH_SET
+typedef google::dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
+#else
+typedef google::sparse_hash_set<StringPiece, hashstr, eqstr> string_hash;
+#endif
 
 class code_searcher {
 public:
