@@ -243,9 +243,11 @@ protected:
         chunk *c = chunk::from_str(line.data());
         int off = line.data() - c->data;
         int lno;
+        int searched = 0;
         for(vector<chunk_file>::iterator it = c->files.begin();
             it != c->files.end(); it++) {
             if (off >= it->left && off < it->right) {
+                searched++;
                 if (matches_.load() >= MAX_MATCHES)
                     continue;
                 lno = try_match(line, it->file);
@@ -256,6 +258,9 @@ protected:
                 }
             }
         }
+#ifdef PROFILE_CODESEARCH
+        printf("Searched %d files...\n", searched);
+#endif
     }
 
     int try_match(const StringPiece &line, search_file *sf);
