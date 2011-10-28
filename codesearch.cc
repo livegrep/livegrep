@@ -114,7 +114,7 @@ struct chunk {
 
     static chunk* from_str(const char *p) {
         chunk *out = reinterpret_cast<chunk*>
-            (reinterpret_cast<uintptr_t>(p) & ~(CHUNK_SIZE - 1));
+            ((uintptr_t(p) - 1) & ~(CHUNK_SIZE - 1));
         assert(out->magic == CHUNK_MAGIC);
         return out;
     }
@@ -250,7 +250,7 @@ protected:
         int searched = 0;
         for(vector<chunk_file>::iterator it = c->files.begin();
             it != c->files.end(); it++) {
-            if (off >= it->left && off < it->right) {
+            if (off >= it->left && off <= it->right) {
                 searched++;
                 if (matches_.load() >= MAX_MATCHES)
                     continue;
@@ -270,8 +270,8 @@ protected:
     static StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
         const char *start, *end;
         assert(match.data() >= chunk.data());
-        assert(match.data() < chunk.data() + chunk.size());
-        assert(match.size() < (chunk.size() - (match.data() - chunk.data())));
+        assert(match.data() <= chunk.data() + chunk.size());
+        assert(match.size() <= (chunk.size() - (match.data() - chunk.data())));
         start = static_cast<const char*>
             (memrchr(chunk.data(), '\n', match.data() - chunk.data()));
         if (start == NULL)
