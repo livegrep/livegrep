@@ -1,9 +1,11 @@
-var Codesearch = require('./codesearch.js');
+var Codesearch = require('./codesearch.js'),
+    execFile   = require('child_process').execFile;
+
 
 var REPO = '/home/nelhage/code/linux-2.6/';
-var REF  = 'refs/tags/v3.0';
+var REF  = 'v3.0';
 
-var searcher = new Codesearch(REPO, [REF]);
+var searcher = null;
 
 var clients = {};
 
@@ -17,7 +19,7 @@ Client.prototype.new_search = function (str) {
   if (str === this.last_search)
     return;
   this.pending_search = str;
-  if (searcher.readyState == 'ready') {
+  if (searcher && searcher.readyState == 'ready') {
     this.dispatch_search();
   }
 }
@@ -45,7 +47,6 @@ Client.prototype.dispatch_search = function() {
   }
 }
 
-
 function Server(remote, conn) {
   clients[conn.id] = new Client(remote);
   this.new_search = function(str) {
@@ -56,12 +57,19 @@ function Server(remote, conn) {
           });
 }
 
-searcher.on('ready', function () {
-              Object.keys(clients).forEach(
-                function (id) {
-                  clients[id].dispatch_search();
-                });
-            });
-
+execFile('git', ['rev-parse', REF], {
+           cwd: REPO
+         }, function (err, stdout, stderr) {
+           if (err) throw err;
+           console.log("Searching commit %s (%s)",
+                       REF, stdout.trim());
+           searcher = new Codesearch(REPO, [stdout.trim()]);
+           searcher.on('ready', function () {
+                         Object.keys(clients).forEach(
+                           function (id) {
+                             clients[id].dispatch_search();
+                           });
+                       });
+         });
 
 module.exports = Server;
