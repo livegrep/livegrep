@@ -55,6 +55,7 @@ struct match_result {
     search_file *file;
     int lno;
     StringPiece line;
+    int matchleft, matchright;
 };
 
 #define CHUNK_MAGIC 0xC407FADE
@@ -228,7 +229,7 @@ public:
                 run_timer run(our_time);
                 assert(memchr(match.data(), '\n', match.size()) == NULL);
                 StringPiece line = find_line(str, match);
-                find_match(chunk, line);
+                find_match(chunk, match, line);
                 new_pos = line.size() + line.data() - str.data() + 1;
                 assert(new_pos > pos);
                 pos = new_pos;
@@ -249,7 +250,7 @@ public:
     }
 
 protected:
-    void find_match (const chunk *chunk, const StringPiece& line) {
+    void find_match (const chunk *chunk, const StringPiece &match, const StringPiece& line) {
         timer tm;
         int off = line.data() - chunk->data;
         int lno;
@@ -264,7 +265,10 @@ protected:
                 lno = try_match(line, it->file);
                 if (lno > 0) {
                     found = true;
-                    match_result *m = new match_result({it->file, lno, line});
+                    match_result *m = new match_result({
+                            it->file, lno, line,
+                                int(match.data() - line.data()),
+                                int(match.data() - line.data() + match.size())});
                     queue_.push(m);
                     ++matches_;
                 }
@@ -369,10 +373,11 @@ void code_searcher::print_match(const match_result *m) {
     if (!utf8::is_valid(m->line.data(),
                         m->line.data() + m->line.size()))
         return;
-    printf("%s:%s:%d: %.*s\n",
+    printf("%s:%s:%d:%d-%d: %.*s\n",
            m->file->ref,
            m->file->path.c_str(),
            m->lno,
+           m->matchleft, m->matchright,
            m->line.size(), m->line.data());
 }
 
