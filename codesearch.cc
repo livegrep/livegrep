@@ -226,7 +226,7 @@ public:
                 run_timer run(our_time);
                 assert(memchr(match.data(), '\n', match.size()) == NULL);
                 StringPiece line = find_line(str, match);
-                find_match(line);
+                find_match(chunk, line);
                 new_pos = line.size() + line.data() - str.data() + 1;
                 assert(new_pos > pos);
                 pos = new_pos;
@@ -247,13 +247,12 @@ public:
     }
 
 protected:
-    void find_match (const StringPiece& line) {
-        chunk *c = chunk::from_str(line.data());
-        int off = line.data() - c->data;
+    void find_match (const chunk *chunk, const StringPiece& line) {
+        int off = line.data() - chunk->data;
         int lno;
         int searched = 0;
-        for(vector<chunk_file>::iterator it = c->files.begin();
-            it != c->files.end(); it++) {
+        for(vector<chunk_file>::const_iterator it = chunk->files.begin();
+            it != chunk->files.end(); it++) {
             if (off >= it->left && off <= it->right) {
                 searched++;
                 if (matches_.load() >= MAX_MATCHES)
