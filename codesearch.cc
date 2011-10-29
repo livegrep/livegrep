@@ -250,6 +250,7 @@ public:
 
 protected:
     void find_match (const chunk *chunk, const StringPiece& line) {
+        timer tm;
         int off = line.data() - chunk->data;
         int lno;
         int searched = 0;
@@ -270,7 +271,9 @@ protected:
             }
         }
         assert(found);
-        log_profile("Searched %d files...\n", searched);
+        struct timeval elapsed = tm.elapsed();
+        log_profile("Searched %d files in %d.%06ds\n",
+                    searched, int(elapsed.tv_sec), int(elapsed.tv_usec));
     }
 
     int try_match(const StringPiece &line, search_file *sf);
