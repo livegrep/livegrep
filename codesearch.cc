@@ -135,7 +135,7 @@ chunk *alloc_chunk() {
 
 class chunk_allocator {
 public:
-    chunk_allocator() : current_() {
+    chunk_allocator() : current_(0) {
         new_chunk();
     }
 
@@ -162,6 +162,8 @@ public:
 
 protected:
     void new_chunk() {
+        if (current_)
+            current_->size--;
         current_ = alloc_chunk();
         chunks_.push_back(current_);
     }
@@ -251,6 +253,7 @@ protected:
         int off = line.data() - chunk->data;
         int lno;
         int searched = 0;
+        bool found = false;
         for(vector<chunk_file>::const_iterator it = chunk->files.begin();
             it != chunk->files.end(); it++) {
             if (off >= it->left && off <= it->right) {
@@ -259,12 +262,14 @@ protected:
                     continue;
                 lno = try_match(line, it->file);
                 if (lno > 0) {
+                    found = true;
                     match_result *m = new match_result({it->file, lno, line});
                     queue_.push(m);
                     ++matches_;
                 }
             }
         }
+        assert(found);
         log_profile("Searched %d files...\n", searched);
     }
 
@@ -273,7 +278,7 @@ protected:
     static StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
         const char *start, *end;
         assert(match.data() >= chunk.data());
-        assert(match.data() <= chunk.data() + chunk.size());
+        assert(match.data() < chunk.data() + chunk.size());
         assert(match.size() <= (chunk.size() - (match.data() - chunk.data())));
         start = static_cast<const char*>
             (memrchr(chunk.data(), '\n', match.data() - chunk.data()));
@@ -449,12 +454,11 @@ int searcher::try_match(const StringPiece &line, search_file *sf) {
     smart_object<git_blob> blob;
     mutex_locker locked(cc_->repo_lock_);
     git_blob_lookup(blob, cc_->repo_, &sf->oid);
-    int pos;
     StringPiece search(static_cast<const char*>(git_blob_rawcontent(blob)),
                        git_blob_rawsize(blob));
-    pos = search.find(line);
-    if (pos == StringPiece::npos) {
+    StringPiece match;
+    RE2 pat("^" + RE2::QuoteMeta(line) + "$", pat_.options());
+    if (!pat.Match(search, 0, search.size(), RE2::UNANCHORED, &match, 1))
         return 0;
-    }
-    return 1 + count(search.data(), search.data() + pos, '\n');
+    return 1 + count(search.data(), match.data(), '\n');
 }
