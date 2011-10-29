@@ -60,6 +60,9 @@ var Codesearch = function() {
                 Codesearch.remote = remote;
                 conn.on('end', Codesearch.disconnected);
                 Codesearch.reconnect_interval = 50;
+              },
+              {
+                transports: ["htmlfile", "xhr-polling", "jsonp-polling"]
               });
     },
     disconnected: function() {
