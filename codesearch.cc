@@ -227,7 +227,8 @@ public:
                 run_timer run(our_time);
                 assert(memchr(match.data(), '\n', match.size()) == NULL);
                 StringPiece line = find_line(str, match);
-                find_match(chunk, match, line);
+                if (utf8::is_valid(line.data(), line.data() + line.size()))
+                    find_match(chunk, match, line);
                 new_pos = line.size() + line.data() - str.data() + 1;
                 assert(new_pos > pos);
                 pos = new_pos;
@@ -368,9 +369,6 @@ int code_searcher::match(RE2& pat) {
 }
 
 void code_searcher::print_match(const match_result *m) {
-    if (!utf8::is_valid(m->line.data(),
-                        m->line.data() + m->line.size()))
-        return;
     printf("%s:%s:%d:%d-%d: %.*s\n",
            m->file->ref,
            m->file->path.c_str(),
