@@ -25,6 +25,7 @@ public:
         for (i = 0; i < nthreads_; i++) {
             pthread_join(threads_[i], NULL);
         }
+        delete threads_;
     }
 
 protected:
