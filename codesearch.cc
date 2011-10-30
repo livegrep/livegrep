@@ -273,7 +273,7 @@ protected:
                 }
             }
         }
-        assert(found);
+        assert(found || matches_.load() >= MAX_MATCHES);
         struct timeval elapsed = tm.elapsed();
         log_profile("Searched %d files in %d.%06ds\n",
                     searched, int(elapsed.tv_sec), int(elapsed.tv_usec));
