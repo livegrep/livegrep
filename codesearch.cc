@@ -260,7 +260,7 @@ protected:
             if (off >= it->left && off <= it->right) {
                 searched++;
                 if (matches_.load() >= MAX_MATCHES)
-                    continue;
+                    break;
                 lno = try_match(line, it->file);
                 if (lno > 0) {
                     found = true;
