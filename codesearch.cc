@@ -163,8 +163,6 @@ public:
 
 protected:
     void new_chunk() {
-        if (current_)
-            current_->size--;
         current_ = alloc_chunk();
         chunks_.push_back(current_);
     }
@@ -222,7 +220,7 @@ public:
         while (pos < str.size() && matches_.load() < MAX_MATCHES) {
             {
                 run_timer run(re2_time);
-                if (!pat_.Match(str, pos, str.size(), RE2::UNANCHORED, &match, 1))
+                if (!pat_.Match(str, pos, str.size() - 1, RE2::UNANCHORED, &match, 1))
                     break;
             }
             {
