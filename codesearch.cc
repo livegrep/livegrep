@@ -208,7 +208,25 @@ public:
                     int(our_time_.elapsed().tv_usec));
     }
 
-    bool operator()(const chunk *chunk) {
+    class thread_state {
+    public:
+        thread_state(const searcher& search) {
+            git_repository_open(&repo_,
+                                git_repository_path(search.cc_->repo_,
+                                                    GIT_REPO_PATH));
+            assert(repo_);
+        }
+        ~thread_state() {
+            git_repository_free(repo_);
+        }
+    protected:
+        thread_state(const thread_state&);
+        thread_state operator=(const thread_state&);
+        git_repository *repo_;
+        friend class searcher;
+    };
+
+    bool operator()(const thread_state &ts, const chunk *chunk) {
         if (chunk == NULL) {
             queue_.push(NULL);
             return true;
@@ -228,7 +246,7 @@ public:
                 assert(memchr(match.data(), '\n', match.size()) == NULL);
                 StringPiece line = find_line(str, match);
                 if (utf8::is_valid(line.data(), line.data() + line.size()))
-                    find_match(chunk, match, line);
+                    find_match(chunk, match, line, ts);
                 new_pos = line.size() + line.data() - str.data() + 1;
                 assert(new_pos > pos);
                 pos = new_pos;
@@ -249,7 +267,10 @@ public:
     }
 
 protected:
-    void find_match (const chunk *chunk, const StringPiece &match, const StringPiece& line) {
+    void find_match (const chunk *chunk,
+                     const StringPiece &match,
+                     const StringPiece& line,
+                     const thread_state &ts) {
         timer tm;
         int off = line.data() - chunk->data;
         int lno;
@@ -261,7 +282,7 @@ protected:
                 searched++;
                 if (matches_.load() >= MAX_MATCHES)
                     break;
-                lno = try_match(line, it->file);
+                lno = try_match(line, it->file, ts.repo_);
                 if (lno > 0) {
                     found = true;
                     match_result *m = new match_result({
@@ -279,7 +300,7 @@ protected:
                     searched, int(elapsed.tv_sec), int(elapsed.tv_usec));
     }
 
-    int try_match(const StringPiece &line, search_file *sf);
+    int try_match(const StringPiece&, search_file *, git_repository *);
 
     static StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
         const char *start, *end;
@@ -347,7 +368,7 @@ int code_searcher::match(RE2& pat) {
 
     thread_queue<match_result*> results;
     searcher search(this, results, pat);
-    thread_pool<chunk*, searcher&> pool(threads, search);
+    thread_pool<chunk*, searcher, searcher::thread_state> pool(threads, search);
 
     for (it = alloc_->begin(); it != alloc_->end(); it++) {
         pool.queue(*it);
@@ -454,10 +475,11 @@ void code_searcher::resolve_ref(smart_object<git_commit> &out, const char *refna
     }
 }
 
-int searcher::try_match(const StringPiece &line, search_file *sf) {
+int searcher::try_match(const StringPiece &line,
+                        search_file *sf,
+                        git_repository *repo) {
     smart_object<git_blob> blob;
-    mutex_locker locked(cc_->repo_lock_);
-    git_blob_lookup(blob, cc_->repo_, &sf->oid);
+    git_blob_lookup(blob, repo, &sf->oid);
     StringPiece search(static_cast<const char*>(git_blob_rawcontent(blob)),
                        git_blob_rawsize(blob));
     StringPiece match;

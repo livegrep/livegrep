@@ -62,7 +62,6 @@ protected:
     void update_stats(const char *ref, const string& path, git_blob *blob);
     void resolve_ref(smart_object<git_commit> &out, const char *refname);
 
-    mutex repo_lock_;
     git_repository *repo_;
     string_hash lines_;
     struct {
