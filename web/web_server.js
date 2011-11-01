@@ -4,8 +4,8 @@ var express = require('express'),
     path    = require('path'),
     Server  = require('./appserver.js');
 
-var REPO = '/home/nelhage/code/linux-2.6/';
-var REF  = 'v3.0';
+var REPO = process.argv[2] || '/home/nelhage/code/linux-2.6/';
+var REF  = process.argv[3] || 'v3.0';
 
 
 var app = express.createServer();
