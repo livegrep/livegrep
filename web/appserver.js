@@ -1,15 +1,8 @@
 var Codesearch = require('./codesearch.js'),
     execFile   = require('child_process').execFile;
 
-
-var REPO = '/home/nelhage/code/linux-2.6/';
-var REF  = 'v3.0';
-
-var searcher = null;
-
-var clients = {};
-
-function Client(remote) {
+function Client(parent, remote) {
+  this.parent = parent;
   this.remote = remote;
   this.pending_search = null;
   this.last_search = null;
@@ -19,7 +12,8 @@ Client.prototype.new_search = function (str) {
   if (str === this.last_search)
     return;
   this.pending_search = str;
-  if (searcher && searcher.readyState == 'ready') {
+  if (this.parent.codesearch &&
+      this.parent.codesearch.readyState == 'ready') {
     this.dispatch_search();
   }
 }
@@ -29,7 +23,7 @@ Client.prototype.dispatch_search = function() {
     var start = new Date();
     this.last_search = this.pending_search;
     console.log('dispatching: %s...', this.pending_search)
-    var search = searcher.search(this.pending_search);
+    var search = this.parent.codesearch.search(this.pending_search);
     var remote = this.remote;
     this.pending_search = null;
     search.on('error', function (err) {
@@ -47,29 +41,35 @@ Client.prototype.dispatch_search = function() {
   }
 }
 
-function Server(remote, conn) {
-  clients[conn.id] = new Client(remote);
-  this.new_search = function(str) {
-    clients[conn.id].new_search(str);
+function SearchServer(repo, ref) {
+  var parent = this;
+  this.searcher = null;
+  this.clients = {};
+
+  execFile('git', ['rev-parse', ref], {
+             cwd: repo
+           }, function (err, stdout, stderr) {
+             if (err) throw err;
+             console.log("Searching commit %s (%s)",
+                         ref, stdout.trim());
+             parent.codesearch = new Codesearch(repo, [stdout.trim()]);
+             parent.codesearch.on('ready', function () {
+                                    Object.keys(parent.clients).forEach(
+                                      function (id) {
+                                        parent.clients[id].dispatch_search();
+                                      });
+                                  });
+           });
+
+  this.Server = function (remote, conn) {
+    parent.clients[conn.id] = new Client(parent, remote);
+    this.new_search = function(str) {
+      parent.clients[conn.id].new_search(str);
+    }
+    conn.on('end', function() {
+              delete parent.clients[conn.id];
+            });
   }
-  conn.on('end', function() {
-            delete clients[conn.id];
-          });
 }
 
-execFile('git', ['rev-parse', REF], {
-           cwd: REPO
-         }, function (err, stdout, stderr) {
-           if (err) throw err;
-           console.log("Searching commit %s (%s)",
-                       REF, stdout.trim());
-           searcher = new Codesearch(REPO, [stdout.trim()]);
-           searcher.on('ready', function () {
-                         Object.keys(clients).forEach(
-                           function (id) {
-                             clients[id].dispatch_search();
-                           });
-                       });
-         });
-
-module.exports = Server;
+module.exports = SearchServer;
