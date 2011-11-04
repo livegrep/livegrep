@@ -21,9 +21,10 @@ using re2::RE2;
 using re2::StringPiece;
 using namespace std;
 
-#define CHUNK_SIZE (1 << 20)
-#define MAX_GAP    (1 << 10)
-#define MAX_MATCHES 50
+const size_t kChunkSize  = 1 << 20;
+const size_t kMaxGap     = 1 << 10;
+const int    kMaxMatches = 50;
+
 
 #ifdef PROFILE_CODESEARCH
 #define log_profile(format, ...) fprintf(stderr, format, __VA_ARGS__)
@@ -91,7 +92,7 @@ struct chunk {
                 f = &(*it);
             }
         }
-        if (f && min_dist < MAX_GAP) {
+        if (f && min_dist < kMaxGap) {
             f->expand(l, r);
             return;
         }
@@ -117,7 +118,7 @@ struct chunk {
 
     static chunk* from_str(const char *p) {
         chunk *out = reinterpret_cast<chunk*>
-            ((uintptr_t(p) - 1) & ~(CHUNK_SIZE - 1));
+            ((uintptr_t(p) - 1) & ~(kChunkSize - 1));
         assert(out->magic == CHUNK_MAGIC);
         return out;
     }
@@ -125,11 +126,11 @@ struct chunk {
 
 int chunk::chunk_files = 0;
 
-#define CHUNK_SPACE  (CHUNK_SIZE - (sizeof(chunk)))
+const size_t kChunkSpace = kChunkSize - sizeof(chunk);
 
 chunk *alloc_chunk() {
     void *p;
-    if (posix_memalign(&p, CHUNK_SIZE, CHUNK_SIZE) != 0)
+    if (posix_memalign(&p, kChunkSize, kChunkSize) != 0)
         return NULL;
     return new(p) chunk;
 };
@@ -141,8 +142,8 @@ public:
     }
 
     char *alloc(size_t len) {
-        assert(len < CHUNK_SPACE);
-        if ((current_->size + len) > CHUNK_SPACE)
+        assert(len < kChunkSpace);
+        if ((current_->size + len) > kChunkSpace)
             new_chunk();
         char *out = current_->data + current_->size;
         current_->size += len;
@@ -235,7 +236,7 @@ public:
         StringPiece match;
         int pos = 0, new_pos;
         timer re2_time(false), our_time(false);
-        while (pos < str.size() && matches_.load() < MAX_MATCHES) {
+        while (pos < str.size() && matches_.load() < kMaxMatches) {
             {
                 run_timer run(re2_time);
                 if (!pat_.Match(str, pos, str.size() - 1, RE2::UNANCHORED, &match, 1))
@@ -259,7 +260,7 @@ public:
             our_time_.add(our_time);
         }
 #endif
-        if (matches_.load() >= MAX_MATCHES) {
+        if (matches_.load() >= kMaxMatches) {
             queue_.push(NULL);
             return true;
         }
@@ -280,7 +281,7 @@ protected:
             it != chunk->files.end(); it++) {
             if (off >= it->left && off <= it->right) {
                 searched++;
-                if (matches_.load() >= MAX_MATCHES)
+                if (matches_.load() >= kMaxMatches)
                     break;
                 lno = try_match(line, it->file, ts.repo_);
                 if (lno > 0) {
@@ -294,7 +295,7 @@ protected:
                 }
             }
         }
-        assert(found || matches_.load() >= MAX_MATCHES);
+        assert(found || matches_.load() >= kMaxMatches);
         struct timeval elapsed = tm.elapsed();
         log_profile("Searched %d files in %d.%06ds\n",
                     searched, int(elapsed.tv_sec), int(elapsed.tv_usec));
