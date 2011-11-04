@@ -73,7 +73,7 @@ struct chunk {
         : size(0), magic(CHUNK_MAGIC), files() {
     }
 
-    void add_chunk_file(search_file *sf, const StringPiece &line) {
+    void add_chunk_file(search_file *sf, const StringPiece& line) {
         int l = line.data() - data;
         int r = l + line.size();
         chunk_file *f = NULL;
@@ -98,7 +98,7 @@ struct chunk {
         }
         chunk_files++;
         cur_file.push_back(chunk_file());
-        chunk_file &cf = cur_file.back();
+        chunk_file& cf = cur_file.back();
         cf.file = sf;
         cf.left = l;
         cf.right = r;
@@ -116,7 +116,7 @@ struct chunk {
         cur_file.clear();
     }
 
-    static chunk* from_str(const char *p) {
+    static chunk *from_str(const char *p) {
         chunk *out = reinterpret_cast<chunk*>
             ((uintptr_t(p) - 1) & ~(kChunkSize - 1));
         assert(out->magic == CHUNK_MAGIC);
@@ -172,7 +172,7 @@ protected:
     chunk *current_;
 };
 
-bool eqstr::operator()(const StringPiece &lhs, const StringPiece &rhs) const {
+bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
     if (lhs.data() == NULL && rhs.data() == NULL)
         return true;
     if (lhs.data() == NULL || rhs.data() == NULL)
@@ -180,8 +180,8 @@ bool eqstr::operator()(const StringPiece &lhs, const StringPiece &rhs) const {
     return lhs == rhs;
 }
 
-size_t hashstr::operator()(const StringPiece &str) const {
-    const std::collate<char> &coll = std::use_facet<std::collate<char> >(loc);
+size_t hashstr::operator()(const StringPiece& str) const {
+    const std::collate<char>& coll = std::use_facet<std::collate<char> >(loc);
     return coll.hash(str.data(), str.data() + str.size());
 }
 
@@ -191,7 +191,7 @@ class code_searcher;
 
 class searcher {
 public:
-    searcher(code_searcher *cc, thread_queue<match_result*> &queue, RE2& pat) :
+    searcher(code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
         matches_(0)
 #ifdef PROFILE_CODESEARCH
@@ -227,7 +227,7 @@ public:
         friend class searcher;
     };
 
-    bool operator()(const thread_state &ts, const chunk *chunk) {
+    bool operator()(const thread_state& ts, const chunk *chunk) {
         if (chunk == NULL) {
             queue_.push(NULL);
             return true;
@@ -269,9 +269,9 @@ public:
 
 protected:
     void find_match (const chunk *chunk,
-                     const StringPiece &match,
+                     const StringPiece& match,
                      const StringPiece& line,
-                     const thread_state &ts) {
+                     const thread_state& ts) {
         timer tm;
         int off = line.data() - chunk->data;
         int lno;
@@ -324,7 +324,7 @@ protected:
 
     code_searcher *cc_;
     RE2& pat_;
-    thread_queue<match_result*> &queue_;
+    thread_queue<match_result*>& queue_;
     atomic_int matches_;
 #ifdef PROFILE_CODESEARCH
     timer re2_time_;
@@ -456,7 +456,7 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     stats_.bytes += len;
 }
 
-void code_searcher::resolve_ref(smart_object<git_commit> &out, const char *refname) {
+void code_searcher::resolve_ref(smart_object<git_commit>& out, const char *refname) {
     git_reference *ref;
     const git_oid *oid;
     git_oid tmp;
@@ -476,7 +476,7 @@ void code_searcher::resolve_ref(smart_object<git_commit> &out, const char *refna
     }
 }
 
-int searcher::try_match(const StringPiece &line,
+int searcher::try_match(const StringPiece& line,
                         search_file *sf,
                         git_repository *repo) {
     smart_object<git_blob> blob;
