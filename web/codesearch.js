@@ -12,6 +12,9 @@ function Codesearch(dir, refs) {
                        customFds: [-1, -1, 2]
                      });
   this.child.stdout.setEncoding('utf8');
+  this.child.on('exit', function(code) {
+                  this.emit('error', 'Child exited with code ' + code);
+                });
   carrier.carry(this.child.stdout, this.got_line.bind(this));
   this.readyState = 'init';
   this.current_search = null;
