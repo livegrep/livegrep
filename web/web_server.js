@@ -15,6 +15,7 @@ app.get('/', function (req, res) {
         })
 
 app.listen(8910);
+app.use(express.logger({format: ':remote-addr [:date] :method :url'}))
 console.log("http://localhost:8910");
 
 var server = dnode(new Server(REPO, REF).Server);
