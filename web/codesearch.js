@@ -35,7 +35,6 @@ Codesearch.prototype.search = function(str) {
 }
 
 Codesearch.prototype.got_line = function(line) {
-  console.log("< " + line);
   this.handle_line[this.readyState].call(this, line);
 }
 
