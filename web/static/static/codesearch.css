@@ -50,6 +50,10 @@ body {
     padding-right: 1em;
 }
 
+.matchline .lno {
+    font-weight: bold;
+}
+
 .match .contents {
     white-space: pre;
     font-family: monospace;

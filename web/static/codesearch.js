@@ -2,20 +2,38 @@
 var Codesearch = function() {
   var MAX_RECONNECT_INTERVAL = 1000*60*1;
   function render_match(match) {
+    var h = new HTMLFactory();
     var pieces = [match.line.substring(0, match.bounds[0]),
                   match.line.substring(match.bounds[0], match.bounds[1]),
                   match.line.substring(match.bounds[1])];
-    var h = new HTMLFactory();
+    var i;
+    var ctx_before = [], ctx_after = [];
+    for (i = 0; i < match.context_before.length; i ++) {
+      ctx_before.push(h.div([
+                              h.span({cls: 'lno'}, [match.lno - i - 1, ":"]),
+                              match.context_before[i]
+                            ]));
+    }
+    for (i = 0; i < match.context_after.length; i ++) {
+      ctx_after.push(h.div([
+                             h.span({cls: 'lno'}, [match.lno + i + 1, ":"]),
+                             match.context_after[i]
+                           ]));
+    }
     return h.div({cls: 'match'},
                  [
                    h.div({cls: 'label'}, [match.file]),
                    h.div({cls: 'contents'},
                          [
-                           h.span({cls: 'lno'}, [match.lno + ":"]),
-                           pieces[0],
-                           h.span({cls: 'matchstr'}, [pieces[1]]),
-                           pieces[2]
-                         ])]);
+                           ctx_before,
+                           h.div({cls: 'matchline'},
+                                 [
+                                   h.span({cls: 'lno'}, [match.lno + ":"]),
+                                   pieces[0],
+                                   h.span({cls: 'matchstr'}, [pieces[1]]),
+                                   pieces[2]
+                                 ]),
+                           ctx_after])]);
   }
   function connectFailedMiddleware(cb) {
     return function (remote, client) {

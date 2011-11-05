@@ -1,5 +1,6 @@
 function HTMLFactory() {}
 (function() {
+"use strict";
 /***
  * A convenient way to create DOM elements. ('cls' will be
  * automatically expanded to 'class', since 'class' may not appear as
@@ -98,6 +99,8 @@ var event_names = {
              addChildren(c);
            else if (typeof(c) === "string")
              elt.appendChild(document.createTextNode(c));
+           else if (typeof(c) === "number")
+             elt.appendChild(document.createTextNode(c + ""));
            else if ('element' in c)
              addChildren([c.element]);
            else
