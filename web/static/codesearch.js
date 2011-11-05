@@ -1,30 +1,22 @@
 "use strict";
 var Codesearch = function() {
   var MAX_RECONNECT_INTERVAL = 1000*60*1;
-  function elt(name) {
-    return document.createElement(name);
-  }
-  function text(name) {
-    return document.createTextNode(name);
-  }
   function render_match(match) {
     var pieces = [match.line.substring(0, match.bounds[0]),
                   match.line.substring(match.bounds[0], match.bounds[1]),
                   match.line.substring(match.bounds[1])];
-    return $(elt('div')).addClass('match').append(
-      $(elt('div')).addClass('label').text(
-        match.file
-      )).append(
-        $(elt('div')).addClass('contents').append(
-          $(elt('span')).addClass('lno').text(match.lno + ":")
-        ).append(
-          text(pieces[0])
-        ).append(
-          $(elt('span')).addClass('matchstr').text(pieces[1])
-        ).append(
-          text(pieces[2])
-        ));
-      }
+    var h = new HTMLFactory();
+    return h.div({cls: 'match'},
+                 [
+                   h.div({cls: 'label'}, [match.file]),
+                   h.div({cls: 'contents'},
+                         [
+                           h.span({cls: 'lno'}, [match.lno + ":"]),
+                           pieces[0],
+                           h.span({cls: 'matchstr'}, [pieces[1]]),
+                           pieces[2]
+                         ])]);
+  }
   function connectFailedMiddleware(cb) {
     return function (remote, client) {
       var timer = setTimeout(function() {
