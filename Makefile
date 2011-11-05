@@ -10,7 +10,7 @@ LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
 CXXFLAGS+=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
 LDFLAGS+=-pthread
-LDLIBS=-lgit2 -lre2
+LDLIBS=-lgit2 -lre2 -ljson
 
 ifeq ($(noopt),)
 CXXFLAGS+=-O2

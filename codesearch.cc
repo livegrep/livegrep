@@ -10,6 +10,8 @@
 
 #include <re2/re2.h>
 
+#include <json/json.h>
+
 #include "timer.h"
 #include "thread_queue.h"
 #include "thread_pool.h"
@@ -332,7 +334,7 @@ protected:
 };
 
 code_searcher::code_searcher(git_repository *repo)
-    : repo_(repo), stats_()
+    : repo_(repo), stats_(), output_json_(false)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
@@ -389,12 +391,31 @@ int code_searcher::match(RE2& pat) {
 }
 
 void code_searcher::print_match(const match_result *m) {
-    printf("%s:%s:%d:%d-%d: %.*s\n",
-           m->file->ref,
-           m->file->path.c_str(),
-           m->lno,
-           m->matchleft, m->matchright,
-           m->line.size(), m->line.data());
+    if (output_json_)
+        print_match_json(m);
+    else
+        printf("%s:%s:%d:%d-%d: %.*s\n",
+               m->file->ref,
+               m->file->path.c_str(),
+               m->lno,
+               m->matchleft, m->matchright,
+               m->line.size(), m->line.data());
+}
+
+void code_searcher::print_match_json(const match_result *m) {
+    json_object *obj = json_object_new_object();
+    json_object_object_add(obj, "ref",  json_object_new_string(m->file->ref));
+    json_object_object_add(obj, "file", json_object_new_string(m->file->path.c_str()));
+    json_object_object_add(obj, "lno",  json_object_new_int(m->lno));
+    json_object *bounds = json_object_new_array();
+    json_object_array_add(bounds, json_object_new_int(m->matchleft));
+    json_object_array_add(bounds, json_object_new_int(m->matchright));
+    json_object_object_add(obj, "bounds", bounds);
+    json_object_object_add(obj, "line",
+                           json_object_new_string_len(m->line.data(),
+                                                      m->line.size()));
+    printf("%s\n", json_object_to_json_string(obj));
+    json_object_put(obj);
 }
 
 void code_searcher::walk_tree(const char *ref, const string& pfx, git_tree *tree) {

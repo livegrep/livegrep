@@ -56,8 +56,11 @@ public:
     void walk_ref(const char *ref);
     void dump_stats();
     int match(RE2& pat);
+
+    void set_output_json(bool j) { output_json_ = j; }
 protected:
     void print_match(const match_result *m);
+    void print_match_json(const match_result *m);
     void walk_tree(const char *ref, const string& pfx, git_tree *tree);
     void update_stats(const char *ref, const string& path, git_blob *blob);
     void resolve_ref(smart_object<git_commit> &out, const char *refname);
@@ -69,6 +72,7 @@ protected:
         unsigned long lines, dedup_lines;
     } stats_;
     chunk_allocator *alloc_;
+    bool output_json_;
 
     friend class searcher;
 };

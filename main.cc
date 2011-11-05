@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
     git_repository_open(&repo, ".git");
 
     code_searcher counter(repo);
+    counter.set_output_json(FLAG_machine_interface);
 
     for (int i = 1; i < argc; i++) {
         timer tm;
