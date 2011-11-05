@@ -49,6 +49,7 @@ var Codesearch = function() {
   return {
     remote: null,
     displaying: null,
+    results: 0,
     reconnect_interval: 50,
     onload: function() {
       Codesearch.input = $('#searchbox');
@@ -104,7 +105,10 @@ var Codesearch = function() {
     },
     match: function(search, match) {
       Codesearch.handle_result(search);
+      Codesearch.results++;
       $('#results').append(render_match(match));
+      $('#numresults').text(Codesearch.results);
+      $('#countarea').show();
     },
     search_done: function(search, time) {
       Codesearch.handle_result(search);
@@ -116,7 +120,9 @@ var Codesearch = function() {
       if (search != Codesearch.displaying) {
         $('#results').empty();
         $('#searchtimebox').hide();
+        $('#countarea').hide();
         Codesearch.displaying = search;
+        Codesearch.results = 0;
       }
     }
   };

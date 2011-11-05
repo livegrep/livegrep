@@ -66,3 +66,8 @@ body {
 .match .matchstr {
     font-weight: bold;
 }
+
+#countarea {
+    float: right;
+    display: none;
+}
