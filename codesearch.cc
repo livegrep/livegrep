@@ -402,6 +402,13 @@ void code_searcher::print_match(const match_result *m) {
                m->line.size(), m->line.data());
 }
 
+static json_object *to_json(vector<string> vec) {
+    json_object *out = json_object_new_array();
+    for (vector<string>::iterator it = vec.begin(); it != vec.end(); it++)
+        json_object_array_add(out, json_object_new_string(it->c_str()));
+    return out;
+}
+
 void code_searcher::print_match_json(const match_result *m) {
     json_object *obj = json_object_new_object();
     json_object_object_add(obj, "ref",  json_object_new_string(m->file->ref));
@@ -414,6 +421,10 @@ void code_searcher::print_match_json(const match_result *m) {
     json_object_object_add(obj, "line",
                            json_object_new_string_len(m->line.data(),
                                                       m->line.size()));
+    json_object_object_add(obj, "context_before",
+                           to_json(m->context_before));
+    json_object_object_add(obj, "context_after",
+                           to_json(m->context_after));
     printf("%s\n", json_object_to_json_string(obj));
     json_object_put(obj);
 }
