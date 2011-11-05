@@ -21,10 +21,10 @@ using re2::RE2;
 using re2::StringPiece;
 using namespace std;
 
-const size_t kChunkSize  = 1 << 20;
-const size_t kMaxGap     = 1 << 10;
-const int    kMaxMatches = 50;
-
+const size_t kChunkSize    = 1 << 20;
+const size_t kMaxGap       = 1 << 10;
+const int    kMaxMatches   = 50;
+const int    kContextLines = 3;
 
 #ifdef PROFILE_CODESEARCH
 #define log_profile(format, ...) fprintf(stderr, format, __VA_ARGS__)
@@ -55,6 +55,8 @@ struct chunk_file {
 struct match_result {
     search_file *file;
     int lno;
+    vector<string> context_before;
+    vector<string> context_after;
     StringPiece line;
     int matchleft, matchright;
 };
@@ -274,7 +276,6 @@ protected:
                      const thread_state& ts) {
         timer tm;
         int off = line.data() - chunk->data;
-        int lno;
         int searched = 0;
         bool found = false;
         for(vector<chunk_file>::const_iterator it = chunk->files.begin();
@@ -283,13 +284,9 @@ protected:
                 searched++;
                 if (matches_.load() >= kMaxMatches)
                     break;
-                lno = try_match(line, it->file, ts.repo_);
-                if (lno > 0) {
+                match_result *m = try_match(line, match, it->file, ts.repo_);
+                if (m) {
                     found = true;
-                    match_result *m = new match_result({
-                            it->file, lno, line,
-                                int(match.data() - line.data()),
-                                int(match.data() - line.data() + match.size())});
                     queue_.push(m);
                     ++matches_;
                 }
@@ -301,12 +298,13 @@ protected:
                     searched, int(elapsed.tv_sec), int(elapsed.tv_usec));
     }
 
-    int try_match(const StringPiece&, search_file *, git_repository *);
+    match_result *try_match(const StringPiece&, const StringPiece&,
+                            search_file *, git_repository *);
 
     static StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
         const char *start, *end;
         assert(match.data() >= chunk.data());
-        assert(match.data() < chunk.data() + chunk.size());
+        assert(match.data() <= chunk.data() + chunk.size());
         assert(match.size() <= (chunk.size() - (match.data() - chunk.data())));
         start = static_cast<const char*>
             (memrchr(chunk.data(), '\n', match.data() - chunk.data()));
@@ -476,16 +474,35 @@ void code_searcher::resolve_ref(smart_object<git_commit>& out, const char *refna
     }
 }
 
-int searcher::try_match(const StringPiece& line,
-                        search_file *sf,
-                        git_repository *repo) {
+match_result *searcher::try_match(const StringPiece& line,
+                                  const StringPiece& match,
+                                  search_file *sf,
+                                  git_repository *repo) {
     smart_object<git_blob> blob;
     git_blob_lookup(blob, repo, &sf->oid);
     StringPiece search(static_cast<const char*>(git_blob_rawcontent(blob)),
                        git_blob_rawsize(blob));
-    StringPiece match;
+    StringPiece matchline;
     RE2 pat("^" + RE2::QuoteMeta(line) + "$", pat_.options());
-    if (!pat.Match(search, 0, search.size(), RE2::UNANCHORED, &match, 1))
+    if (!pat.Match(search, 0, search.size(), RE2::UNANCHORED, &matchline, 1))
         return 0;
-    return 1 + count(search.data(), match.data(), '\n');
+    match_result *m = new match_result;
+    m->file = sf;
+    m->lno  = 1 + count(search.data(), matchline.data(), '\n');
+    m->line = line;
+    m->matchleft = int(match.data() - line.data());
+    m->matchright = m->matchleft + match.size();
+    StringPiece l = matchline;
+    int i;
+    for (i = 0; i < kContextLines && l.data() > search.data(); i++) {
+        l = find_line(search, StringPiece(l.data() - 1, 0));
+        m->context_before.push_back(l.as_string());
+    }
+    l = matchline;
+    for (i = 0; i < kContextLines &&
+                    (l.data() + l.size()) < (search.data() + search.size()); i++) {
+        l = find_line(search, StringPiece(l.data() + l.size() + 1, 0));
+        m->context_after.push_back(l.as_string());
+    }
+    return m;
 }
