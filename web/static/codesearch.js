@@ -40,7 +40,7 @@ var Codesearch = function() {
       var timer = setTimeout(function() {
                                client.socketio.disconnect();
                                cb();
-                             }, 500);
+                             }, 2000);
       client.on('remote', function() {
                   clearTimeout(timer);
                 });
