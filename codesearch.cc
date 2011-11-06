@@ -295,9 +295,11 @@ protected:
             }
         }
         assert(found || matches_.load() >= kMaxMatches);
-        struct timeval elapsed = tm.elapsed();
+        tm.pause();
         log_profile("Searched %d files in %d.%06ds\n",
-                    searched, int(elapsed.tv_sec), int(elapsed.tv_usec));
+                    searched,
+                    int(tm.elapsed().tv_sec),
+                    int(tm.elapsed().tv_usec));
     }
 
     match_result *try_match(const StringPiece&, const StringPiece&,
