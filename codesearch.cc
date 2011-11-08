@@ -71,10 +71,11 @@ struct chunk {
     unsigned magic;
     vector<chunk_file> files;
     vector<chunk_file> cur_file;
+    uint32_t *suffixes;
     char data[0];
 
     chunk()
-        : size(0), magic(CHUNK_MAGIC), files() {
+        : size(0), magic(CHUNK_MAGIC), files(), suffixes(0) {
     }
 
     void add_chunk_file(search_file *sf, const StringPiece& line) {
@@ -120,17 +121,46 @@ struct chunk {
         cur_file.clear();
     }
 
+    void finalize();
+
     static chunk *from_str(const char *p) {
         chunk *out = reinterpret_cast<chunk*>
             ((uintptr_t(p) - 1) & ~(kChunkSize - 1));
         assert(out->magic == CHUNK_MAGIC);
         return out;
     }
+
+    struct lt_suffix {
+        chunk *chunk_;
+        lt_suffix(chunk *chunk) : chunk_(chunk) { }
+        bool operator()(uint32_t lhs, uint32_t rhs) {
+            char *l = &chunk_->data[lhs];
+            char *r = &chunk_->data[rhs];
+            char *le = static_cast<char*>
+                (memchr(l, '\n', chunk_->size - lhs));
+            char *re = static_cast<char*>
+                (memchr(r, '\n', chunk_->size - rhs));
+            assert(le);
+            assert(re);
+            return strncmp(l, r, min(le - l, re - r)) < 0;
+        }
+    };
+
+private:
+    chunk(const chunk&);
+    chunk operator=(const chunk&);
 };
 
 int chunk::chunk_files = 0;
-
 const size_t kChunkSpace = kChunkSize - sizeof(chunk);
+
+void chunk::finalize() {
+    suffixes = new uint32_t[size];
+    for (int i = 0; i < size; i++)
+        suffixes[i] = i;
+    chunk::lt_suffix lt(this);
+    sort(suffixes, suffixes + size, lt);
+}
 
 chunk *alloc_chunk() {
     void *p;
@@ -168,6 +198,8 @@ public:
 
 protected:
     void new_chunk() {
+        if (current_)
+            current_->finalize();
         current_ = alloc_chunk();
         chunks_.push_back(current_);
     }
