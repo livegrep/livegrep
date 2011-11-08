@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
             printf(" done in %d.%06ds\n",
                    (int)elapsed.tv_sec, (int)elapsed.tv_usec);
     }
+    counter.finalize();
     if (!FLAGS_json)
         counter.dump_stats();
     RE2::Options opts;

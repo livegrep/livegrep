@@ -58,6 +58,7 @@ public:
     int match(RE2& pat);
 
     void set_output_json(bool j) { output_json_ = j; }
+    void finalize();
 protected:
     void print_match(const match_result *m);
     void print_match_json(const match_result *m);
@@ -73,6 +74,7 @@ protected:
     } stats_;
     chunk_allocator *alloc_;
     bool output_json_;
+    bool finalized_;
 
     friend class searcher;
 };

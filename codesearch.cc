@@ -151,15 +151,106 @@ private:
     chunk operator=(const chunk&);
 };
 
+class radix_sorter {
+public:
+    radix_sorter(chunk *chunk) : chunk_(chunk), cmp(*this) {
+        lengths = new uint32_t[chunk_->size];
+        for (int i = 0; i < chunk_->size; i ++)
+            lengths[i] = static_cast<char*>
+                (memchr(&chunk_->data[i], '\n', chunk_->size - i)) -
+                (chunk_->data + i);
+    }
+
+    ~radix_sorter() {
+        delete lengths;
+    }
+
+    void sort();
+
+    struct cmp_suffix {
+        radix_sorter &sort;
+        cmp_suffix(radix_sorter &s) : sort(s) {
+        }
+        bool operator()(uint32_t lhs, uint32_t rhs) {
+            char *l = &sort.chunk_->data[lhs];
+            char *r = &sort.chunk_->data[rhs];
+            unsigned ll = sort.lengths[lhs];
+            unsigned rl = sort.lengths[rhs];
+            int cmp = memcmp(l, r, min(ll, rl));
+            if (cmp < 0)
+                return true;
+            if (cmp > 0)
+                return false;
+            return ll < rl;
+        }
+    };
+private:
+    void radix_sort(uint32_t *, uint32_t *, int);
+
+    unsigned index(uint32_t off, int i) {
+        if (i >= lengths[off]) return 0;
+        return (unsigned)(unsigned char)chunk_->data[off + i];
+    }
+
+    chunk *chunk_;
+    unsigned *lengths;
+    cmp_suffix cmp;
+
+    radix_sorter(const radix_sorter&);
+    radix_sorter operator=(const radix_sorter&);
+};
+
 int chunk::chunk_files = 0;
 const size_t kChunkSpace = kChunkSize - sizeof(chunk);
+const size_t kRadixCutoff = 128;
+
+void radix_sorter::sort() {
+    radix_sort(chunk_->suffixes, chunk_->suffixes + chunk_->size, 0);
+    assert(is_sorted(chunk_->suffixes, chunk_->suffixes + chunk_->size, cmp));
+}
+
+void radix_sorter::radix_sort(uint32_t *left, uint32_t *right, int level) {
+    if (right - left < kRadixCutoff) {
+        std::sort(left, right, cmp);
+        return;
+    }
+    unsigned counts[256] = {};
+    unsigned dest[256];
+    uint32_t *p;
+    for (p = left; p != right; p++)
+        counts[index(*p, level)]++;
+    for (int i = 0, total = 0; i < 256; i++) {
+        int tmp = counts[i];
+        counts[i] = total;
+        total += tmp;
+    }
+    memcpy(dest, counts, sizeof counts);
+    int this_chunk;
+    for (p = left, this_chunk = 0; this_chunk < 255;) {
+        if (p - left == counts[this_chunk + 1]) {
+            this_chunk++;
+            continue;
+        }
+        int target = index(*p, level);
+        if (target == this_chunk) {
+            p++;
+            continue;
+        }
+        assert(dest[target] < (right - left));
+        swap(left[dest[target]++], *p);
+    }
+    for (int i = 1; i < 256; i++) {
+        uint32_t *r = (i == 255) ? right : left + counts[i+1];
+        radix_sort(left + counts[i], r, level + 1);
+    }
+}
 
 void chunk::finalize() {
     suffixes = new uint32_t[size];
     for (int i = 0; i < size; i++)
         suffixes[i] = i;
-    chunk::lt_suffix lt(this);
-    sort(suffixes, suffixes + size, lt);
+    radix_sorter sort(this);
+    sort.sort();
 }
 
 chunk *alloc_chunk() {
@@ -368,7 +459,7 @@ protected:
 };
 
 code_searcher::code_searcher(git_repository *repo)
-    : repo_(repo), stats_(), output_json_(false)
+    : repo_(repo), stats_(), output_json_(false), finalized_(false)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
@@ -381,6 +472,7 @@ code_searcher::~code_searcher() {
 }
 
 void code_searcher::walk_ref(const char *ref) {
+    assert(!finalized_);
     smart_object<git_commit> commit;
     smart_object<git_tree> tree;
     resolve_ref(commit, ref);
@@ -400,6 +492,8 @@ int code_searcher::match(RE2& pat) {
     match_result *m;
     int matches = 0;
     int threads = 4;
+
+    assert(finalized_);
 
     thread_queue<match_result*> results;
     searcher search(this, results, pat);
@@ -422,6 +516,14 @@ int code_searcher::match(RE2& pat) {
         delete m;
     }
     return matches;
+}
+
+void code_searcher::finalize() {
+    assert(!finalized_);
+    finalized_ = true;
+    list<chunk*>::iterator it = alloc_->end();
+    it--;
+    (*it)->finalize();
 }
 
 void code_searcher::print_match(const match_result *m) {
@@ -491,6 +593,9 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
     chunk *c;
     StringPiece line;
+
+    if (memchr(p, 0, len) != NULL)
+        return;
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
         string_hash::iterator it = lines_.find(StringPiece(p, f - p));
