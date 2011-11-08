@@ -9,6 +9,7 @@
 #include <atomic>
 
 #include <re2/re2.h>
+#include <re2/filtered_re2.h>
 
 #include <json/json.h>
 
@@ -131,18 +132,34 @@ struct chunk {
     }
 
     struct lt_suffix {
-        chunk *chunk_;
-        lt_suffix(chunk *chunk) : chunk_(chunk) { }
+        const chunk *chunk_;
+        lt_suffix(const chunk *chunk) : chunk_(chunk) { }
         bool operator()(uint32_t lhs, uint32_t rhs) {
-            char *l = &chunk_->data[lhs];
-            char *r = &chunk_->data[rhs];
-            char *le = static_cast<char*>
+            const char *l = &chunk_->data[lhs];
+            const char *r = &chunk_->data[rhs];
+            const char *le = static_cast<const char*>
                 (memchr(l, '\n', chunk_->size - lhs));
-            char *re = static_cast<char*>
+            const char *re = static_cast<const char*>
                 (memchr(r, '\n', chunk_->size - rhs));
             assert(le);
             assert(re);
             return strncmp(l, r, min(le - l, re - r)) < 0;
+        }
+
+        bool operator()(uint32_t lhs, const string& rhs) {
+            return cmp(lhs, rhs) < 0;
+        }
+
+        bool operator()(const string& lhs, uint32_t rhs) {
+            return cmp(rhs, lhs) > 0;
+        }
+
+    private:
+        int cmp(uint32_t lhs, const string& rhs) {
+            const char *l = &chunk_->data[lhs];
+            const char *le = static_cast<const char*>
+                (memchr(l, '\n', chunk_->size - lhs));
+            return strncmp(l, rhs.c_str(), min(le - l, long(rhs.size())));
         }
     };
 
@@ -325,6 +342,10 @@ public:
         , re2_time_(false), our_time_(false)
 #endif
     {
+        int id;
+        re2::FilteredRE2 fre2;
+        assert(!fre2.Add(pat.pattern(), pat.options(), &id));
+        fre2.Compile(&filter_);
     }
 
     ~searcher() {
@@ -354,47 +375,11 @@ public:
         friend class searcher;
     };
 
-    bool operator()(const thread_state& ts, const chunk *chunk) {
-        if (chunk == NULL) {
-            queue_.push(NULL);
-            return true;
-        }
-        StringPiece str(chunk->data, chunk->size);
-        StringPiece match;
-        int pos = 0, new_pos;
-        timer re2_time(false), our_time(false);
-        while (pos < str.size() && matches_.load() < kMaxMatches) {
-            {
-                run_timer run(re2_time);
-                if (!pat_.Match(str, pos, str.size() - 1, RE2::UNANCHORED, &match, 1))
-                    break;
-            }
-            {
-                run_timer run(our_time);
-                assert(memchr(match.data(), '\n', match.size()) == NULL);
-                StringPiece line = find_line(str, match);
-                if (utf8::is_valid(line.data(), line.data() + line.size()))
-                    find_match(chunk, match, line, ts);
-                new_pos = line.size() + line.data() - str.data() + 1;
-                assert(new_pos > pos);
-                pos = new_pos;
-            }
-        }
-#ifdef PROFILE_CODESEARCH
-        {
-            mutex_locker locked(timer_mtx_);
-            re2_time_.add(re2_time);
-            our_time_.add(our_time);
-        }
-#endif
-        if (matches_.load() >= kMaxMatches) {
-            queue_.push(NULL);
-            return true;
-        }
-        return false;
-    }
+    bool operator()(const thread_state& ts, const chunk *chunk);
 
 protected:
+    void full_search(const thread_state& ts, const chunk *chunk);
+    void filtered_search(const thread_state& ts, const chunk *chunk);
     void find_match (const chunk *chunk,
                      const StringPiece& match,
                      const StringPiece& line,
@@ -451,6 +436,7 @@ protected:
     RE2& pat_;
     thread_queue<match_result*>& queue_;
     atomic_int matches_;
+    vector<string> filter_;
 #ifdef PROFILE_CODESEARCH
     timer re2_time_;
     timer our_time_;
@@ -645,6 +631,84 @@ void code_searcher::resolve_ref(smart_object<git_commit>& out, const char *refna
     }
 }
 
+bool searcher::operator()(const thread_state& ts, const chunk *chunk)
+{
+    if (chunk == NULL) {
+        queue_.push(NULL);
+        return true;
+    }
+
+    if (filter_.size() > 0 && filter_.size() < 4)
+        filtered_search(ts, chunk);
+    else
+        full_search(ts, chunk);
+
+    if (matches_.load() >= kMaxMatches) {
+        queue_.push(NULL);
+        return true;
+    }
+    return false;
+}
+
+void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
+{
+    log_profile("Attempting filtered search with %d filters\n", int(filter_.size()));
+    chunk::lt_suffix lt(chunk);
+
+    for (vector<string>::iterator it = filter_.begin();
+         it != filter_.end(); it++) {
+        pair<uint32_t*,uint32_t*> range = equal_range
+            (chunk->suffixes, chunk->suffixes + chunk->size,
+             *it, lt);
+        uint32_t *l = range.first, *r = range.second;
+        log_profile("%s: found %d potential matches.\n",
+                    it->c_str(), int(r - l));
+        StringPiece search(chunk->data, chunk->size);
+        for (; l < r && matches_.load() < kMaxMatches; l++) {
+            StringPiece line = find_line(search, StringPiece(chunk->data + *l, 0));
+            StringPiece match;
+            if (!utf8::is_valid(line.data(), line.data() + line.size()))
+                continue;
+            if (!pat_.Match(line, 0, line.size(), RE2::UNANCHORED, &match, 1))
+                continue;
+            find_match(chunk, match, line, ts);
+        }
+    }
+}
+
+void searcher::full_search(const thread_state& ts, const chunk *chunk)
+{
+    StringPiece str(chunk->data, chunk->size);
+    StringPiece match;
+    int pos = 0, new_pos;
+    timer re2_time(false), our_time(false);
+    while (pos < str.size() && matches_.load() < kMaxMatches) {
+        {
+            run_timer run(re2_time);
+            if (!pat_.Match(str, pos, str.size() - 1, RE2::UNANCHORED, &match, 1))
+                break;
+        }
+        {
+            run_timer run(our_time);
+            assert(memchr(match.data(), '\n', match.size()) == NULL);
+            StringPiece line = find_line(str, match);
+            if (utf8::is_valid(line.data(), line.data() + line.size()))
+                find_match(chunk, match, line, ts);
+            new_pos = line.size() + line.data() - str.data() + 1;
+            assert(new_pos > pos);
+            pos = new_pos;
+        }
+    }
+#ifdef PROFILE_CODESEARCH
+    {
+        mutex_locker locked(timer_mtx_);
+        re2_time_.add(re2_time);
+        our_time_.add(our_time);
+    }
+#endif
+}
+
+
 match_result *searcher::try_match(const StringPiece& line,
                                   const StringPiece& match,
                                   search_file *sf,
@@ -655,6 +719,7 @@ match_result *searcher::try_match(const StringPiece& line,
                        git_blob_rawsize(blob));
     StringPiece matchline;
     RE2 pat("^" + RE2::QuoteMeta(line) + "$", pat_.options());
+    assert(pat.ok());
     if (!pat.Match(search, 0, search.size(), RE2::UNANCHORED, &matchline, 1))
         return 0;
     match_result *m = new match_result;
