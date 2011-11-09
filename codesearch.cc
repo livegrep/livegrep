@@ -345,7 +345,7 @@ public:
         int id;
         re2::FilteredRE2 fre2;
         assert(!fre2.Add(pat.pattern(), pat.options(), &id));
-        fre2.Compile(&filter_);
+        fre2.Compile(&filter_, false);
     }
 
     ~searcher() {
