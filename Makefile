@@ -28,8 +28,8 @@ ifneq ($(profile),)
 CXXFLAGS+=-DPROFILE_CODESEARCH
 endif
 
-HEADERS = smart_git.h timer.h thread_queue.h mutex.h thread_pool.h codesearch.h
-OBJECTS = codesearch.o main.o
+HEADERS = smart_git.h timer.h thread_queue.h mutex.h thread_pool.h codesearch.h chunk.h
+OBJECTS = codesearch.o main.o chunk.o
 
 all: codesearch $(OBJECTS:%.o=.%.d)
 
