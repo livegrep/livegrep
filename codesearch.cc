@@ -304,6 +304,10 @@ public:
         return current_;
     }
 
+    void finalize() {
+        current_->finalize();
+    }
+
 protected:
     void new_chunk() {
         if (current_)
@@ -507,9 +511,7 @@ int code_searcher::match(RE2& pat) {
 void code_searcher::finalize() {
     assert(!finalized_);
     finalized_ = true;
-    list<chunk*>::iterator it = alloc_->end();
-    it--;
-    (*it)->finalize();
+    alloc_->finalize();
 }
 
 void code_searcher::print_match(const match_result *m) {
