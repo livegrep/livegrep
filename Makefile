@@ -2,15 +2,17 @@
 
 comma:=,
 
-extradirs=$(sort $(libgit2) $(re2) $(gflags))
+libre2=$(CURDIR)/re2/obj/libre2.a
 
-CPPFLAGS = $(patsubst %,-I%/include, $(extradirs))
+extradirs=$(sort $(libgit2) $(gflags))
+
+CPPFLAGS = -I$(CURDIR)/re2/ $(patsubst %,-I%/include, $(extradirs))
 LDFLAGS  = $(patsubst %, -L%/lib, $(extradirs))
 LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
 CXXFLAGS+=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
 LDFLAGS+=-pthread
-LDLIBS=-lgit2 -lre2 -ljson -lgflags
+LDLIBS=-lgit2 -ljson -lgflags
 
 ifeq ($(noopt),)
 CXXFLAGS+=-O2
@@ -31,7 +33,10 @@ OBJECTS = codesearch.o main.o
 
 all: codesearch $(OBJECTS:%.o=.%.d)
 
-codesearch: $(OBJECTS)
+codesearch: $(OBJECTS) $(libre2)
+
+$(libre2):
+	( cd re2 && $(MAKE) )
 
 clean:
 	rm -f codesearch $(OBJECTS)
