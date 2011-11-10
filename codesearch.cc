@@ -18,6 +18,7 @@
 #include "thread_pool.h"
 #include "codesearch.h"
 #include "chunk.h"
+#include "chunk_allocator.h"
 
 #include "utf8.h"
 
@@ -47,56 +48,6 @@ struct match_result {
     vector<string> context_after;
     StringPiece line;
     int matchleft, matchright;
-};
-
-chunk *alloc_chunk() {
-    void *p;
-    if (posix_memalign(&p, kChunkSize, kChunkSize) != 0)
-        return NULL;
-    return new(p) chunk;
-};
-
-class chunk_allocator {
-public:
-    chunk_allocator() : current_(0) {
-        new_chunk();
-    }
-
-    char *alloc(size_t len) {
-        assert(len < kChunkSpace);
-        if ((current_->size + len) > kChunkSpace)
-            new_chunk();
-        char *out = current_->data + current_->size;
-        current_->size += len;
-        return out;
-    }
-
-    list<chunk*>::iterator begin () {
-        return chunks_.begin();
-    }
-
-    typename list<chunk*>::iterator end () {
-        return chunks_.end();
-    }
-
-    chunk *current_chunk() {
-        return current_;
-    }
-
-    void finalize() {
-        current_->finalize();
-    }
-
-protected:
-    void new_chunk() {
-        if (current_)
-            current_->finalize();
-        current_ = alloc_chunk();
-        chunks_.push_back(current_);
-    }
-
-    list<chunk*> chunks_;
-    chunk *current_;
 };
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
