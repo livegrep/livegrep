@@ -1,3 +1,6 @@
+#ifndef CODESEARCH_THREAD_QUEUE_H
+#define CODESEARCH_THREAD_QUEUE_H
+
 #include <list>
 
 #include "mutex.h"
@@ -38,3 +41,6 @@ public:
     cond_var cond_;
     std::list<T> queue_;
 };
+
+
+#endif /* CODESEARCH_THREAD_QUEUE_H */
