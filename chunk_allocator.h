@@ -1,14 +1,12 @@
 #include <list>
+#include "thread_pool.h"
 
 using namespace std;
 class chunk;
 
 class chunk_allocator {
 public:
-    chunk_allocator() : current_(0) {
-        new_chunk();
-    }
-
+    chunk_allocator();
     char *alloc(size_t len);
 
     list<chunk*>::iterator begin () {
@@ -26,8 +24,15 @@ public:
     void finalize();
 
 protected:
+
+    struct finalizer {
+        bool operator()(chunk *chunk);
+    };
+
     void new_chunk();
 
     list<chunk*> chunks_;
     chunk *current_;
+    finalizer finalizer_;
+    thread_pool<chunk*, finalizer> *finalize_pool_;
 };
