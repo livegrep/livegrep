@@ -21,19 +21,25 @@ int main(int argc, char **argv) {
     code_searcher counter(repo);
     counter.set_output_json(FLAGS_json);
 
-    for (int i = 1; i < argc; i++) {
+    {
         timer tm;
         struct timeval elapsed;
-        if (!FLAGS_json)
-            printf("Walking %s...", argv[i]);
-        fflush(stdout);
-        counter.walk_ref(argv[i]);
+
+        for (int i = 1; i < argc; i++) {
+            if (!FLAGS_json)
+                printf("Walking %s...", argv[i]);
+            fflush(stdout);
+            counter.walk_ref(argv[i]);
+            elapsed = tm.elapsed();
+            if (!FLAGS_json)
+                printf(" done.\n");
+        }
+        counter.finalize();
         elapsed = tm.elapsed();
         if (!FLAGS_json)
-            printf(" done in %d.%06ds\n",
+            printf("repository indexed in %d.%06ds\n",
                    (int)elapsed.tv_sec, (int)elapsed.tv_usec);
     }
-    counter.finalize();
     if (!FLAGS_json)
         counter.dump_stats();
     RE2::Options opts;
