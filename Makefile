@@ -2,7 +2,7 @@
 
 comma:=,
 
-extradirs=$(sort $(libgit2) $(re2))
+extradirs=$(sort $(libgit2) $(re2) $(gflags))
 
 CPPFLAGS = $(patsubst %,-I%/include, $(extradirs))
 LDFLAGS  = $(patsubst %, -L%/lib, $(extradirs))
@@ -10,7 +10,7 @@ LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
 CXXFLAGS+=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
 LDFLAGS+=-pthread
-LDLIBS=-lgit2 -lre2 -ljson
+LDLIBS=-lgit2 -lre2 -ljson -lgflags
 
 ifeq ($(noopt),)
 CXXFLAGS+=-O2

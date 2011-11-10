@@ -7,7 +7,7 @@ var spawn   = require('child_process').spawn,
 function Codesearch(dir, refs) {
   events.EventEmitter.call(this);
   this.child = spawn(path.join(__dirname, '..', 'codesearch'),
-                     (refs || ['HEAD']), {
+                     ['--json'].concat(refs || ['HEAD']), {
                        cwd: dir,
                        customFds: [-1, -1, 2]
                      });
