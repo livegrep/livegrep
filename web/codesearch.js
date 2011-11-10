@@ -48,6 +48,7 @@ Codesearch.prototype.handle_line = {
     if (match) {
       this.error(match[1]);
     } else if (line == 'DONE') {
+      this.current_search.emit('done');
       this.endSearch();
     } else {
       this.match(line);
