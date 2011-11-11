@@ -49,13 +49,18 @@ typedef google::dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
 typedef google::sparse_hash_set<StringPiece, hashstr, eqstr> string_hash;
 #endif
 
+struct match_stats {
+    timeval re2_time;
+    timeval git_time;
+};
+
 class code_searcher {
 public:
     code_searcher(git_repository *repo);
     ~code_searcher();
     void walk_ref(const char *ref);
     void dump_stats();
-    int match(RE2& pat);
+    int match(RE2& pat, match_stats *stats);
 
     void set_output_json(bool j) { output_json_ = j; }
     void finalize();

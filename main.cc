@@ -7,9 +7,25 @@
 
 #include <gflags/gflags.h>
 
+#include <json/json.h>
+
 DEFINE_bool(json, false, "Use JSON output.");
 
 using namespace std;
+
+long timeval_ms (struct timeval tv) {
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+void print_stats(const match_stats &stats) {
+    json_object *obj = json_object_new_object();
+    json_object_object_add(obj, "re2_time", json_object_new_int
+                           (timeval_ms(stats.re2_time)));
+    json_object_object_add(obj, "git_time", json_object_new_int
+                           (timeval_ms(stats.git_time)));
+    printf("DONE %s\n", json_object_to_json_string(obj));
+    json_object_put(obj);
+}
 
 int main(int argc, char **argv) {
     google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
@@ -67,10 +83,11 @@ int main(int argc, char **argv) {
         if (re.ok()) {
             timer tm;
             struct timeval elapsed;
-            counter.match(re);
+            match_stats stats;
+            counter.match(re, &stats);
             elapsed = tm.elapsed();
             if (FLAGS_json)
-                printf("DONE\n");
+                print_stats(stats);
             else
                 printf("Match completed in %d.%06ds.\n",
                        (int)elapsed.tv_sec, (int)elapsed.tv_usec);

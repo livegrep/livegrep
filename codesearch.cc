@@ -108,6 +108,11 @@ public:
 
     bool operator()(const thread_state& ts, const chunk *chunk);
 
+    void get_stats(match_stats *stats) {
+        stats->re2_time = re2_time_.elapsed();
+        stats->git_time = git_time_.elapsed();
+    }
+
 protected:
     void full_search(const thread_state& ts, const chunk *chunk);
     void filtered_search(const thread_state& ts, const chunk *chunk);
@@ -202,7 +207,7 @@ void code_searcher::dump_stats() {
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
 }
 
-int code_searcher::match(RE2& pat) {
+int code_searcher::match(RE2& pat, match_stats *stats) {
     list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
@@ -230,6 +235,8 @@ int code_searcher::match(RE2& pat) {
         print_match(m);
         delete m;
     }
+
+    search.get_stats(stats);
     return matches;
 }
 

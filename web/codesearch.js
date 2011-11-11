@@ -46,11 +46,12 @@ function expect_ready(line) {
 Codesearch.prototype.handle_line = {
   'init': expect_ready,
   'searching': function (line) {
-    var match = /^FATAL (.*)/.exec(line);
-    if (match) {
+    var match;
+    if (match = /^FATAL (.*)/.exec(line)) {
       this.error(match[1]);
-    } else if (line == 'DONE') {
-      this.current_search.emit('done');
+    } else if (match = /^DONE\s*(.*)/.exec(line)) {
+      var stats = JSON.parse(match[1]);
+      this.current_search.emit('done', stats);
       this.endSearch();
     } else {
       this.match(line);
