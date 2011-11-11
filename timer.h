@@ -1,6 +1,8 @@
 #include <sys/time.h>
 #include <assert.h>
 
+#include "mutex.h"
+
 class timer {
 public:
     timer(bool startnow = true)
@@ -10,12 +12,14 @@ public:
     }
 
     void start() {
+        mutex_locker locked(lock_);
         assert(!running_);
         running_ = true;
         gettimeofday(&start_, NULL);
     }
 
     void pause() {
+        mutex_locker locked(lock_);
         struct timeval now, delta;
         assert(running_);
         running_ = false;
@@ -25,17 +29,20 @@ public:
     }
 
     void reset() {
+        mutex_locker locked(lock_);
         running_ = false;
         elapsed_ = (struct timeval){0,0};
     }
 
     void add(timer &other) {
+        mutex_locker locked(lock_);
         assert(!running_);
         struct timeval elapsed = other.elapsed();
         timeval_add(&elapsed_, &elapsed_, &elapsed);
     }
 
     struct timeval elapsed() {
+        mutex_locker locked(lock_);
         if (running_) {
             struct timeval now, delta;
             gettimeofday(&now, NULL);
@@ -50,6 +57,7 @@ protected:
     bool running_;
     struct timeval start_;
     struct timeval elapsed_;
+    mutex lock_;
 
     timer(const timer& rhs);
     timer operator=(const timer& rhs);
@@ -98,12 +106,13 @@ protected:
 class run_timer {
 public:
     run_timer(timer& timer)
-        : timer_(timer) {
-        timer_.start();
+        : timer_(timer), local_() {
     }
     ~run_timer() {
-        timer_.pause();
+        local_.pause();
+        timer_.add(local_);
     }
 protected:
     timer &timer_;
+    timer local_;
 };

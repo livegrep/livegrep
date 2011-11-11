@@ -71,10 +71,7 @@ class searcher {
 public:
     searcher(code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
-        matches_(0)
-#ifdef PROFILE_CODESEARCH
-        , re2_time_(false), our_time_(false)
-#endif
+        matches_(0), re2_time_(false), our_time_(false)
     {
         int id;
         re2::FilteredRE2 fre2;
@@ -171,11 +168,8 @@ protected:
     thread_queue<match_result*>& queue_;
     atomic_int matches_;
     vector<string> filter_;
-#ifdef PROFILE_CODESEARCH
     timer re2_time_;
     timer our_time_;
-    mutex timer_mtx_;
-#endif
 };
 
 code_searcher::code_searcher(git_repository *repo)
@@ -413,15 +407,14 @@ void searcher::full_search(const thread_state& ts, const chunk *chunk)
     StringPiece str(chunk->data, chunk->size);
     StringPiece match;
     int pos = 0, new_pos;
-    timer re2_time(false), our_time(false);
     while (pos < str.size() && matches_.load() < kMaxMatches) {
         {
-            run_timer run(re2_time);
+            run_timer run(re2_time_);
             if (!pat_.Match(str, pos, str.size() - 1, RE2::UNANCHORED, &match, 1))
                 break;
         }
         {
-            run_timer run(our_time);
+            run_timer run(our_time_);
             assert(memchr(match.data(), '\n', match.size()) == NULL);
             StringPiece line = find_line(str, match);
             if (utf8::is_valid(line.data(), line.data() + line.size()))
@@ -431,13 +424,6 @@ void searcher::full_search(const thread_state& ts, const chunk *chunk)
             pos = new_pos;
         }
     }
-#ifdef PROFILE_CODESEARCH
-    {
-        mutex_locker locked(timer_mtx_);
-        re2_time_.add(re2_time);
-        our_time_.add(our_time);
-    }
-#endif
 }
 
 
