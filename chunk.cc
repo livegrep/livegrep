@@ -15,7 +15,7 @@ public:
     }
 
     ~radix_sorter() {
-        delete lengths;
+        delete[] lengths;
     }
 
     void sort();
