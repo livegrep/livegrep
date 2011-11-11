@@ -71,7 +71,7 @@ class searcher {
 public:
     searcher(code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
-        matches_(0), re2_time_(false), our_time_(false)
+        matches_(0), re2_time_(false), git_time_(false)
     {
         int id;
         re2::FilteredRE2 fre2;
@@ -83,9 +83,9 @@ public:
         log_profile("re2 time: %d.%06ds\n",
                     int(re2_time_.elapsed().tv_sec),
                     int(re2_time_.elapsed().tv_usec));
-        log_profile("our time: %d.%06ds\n",
-                    int(our_time_.elapsed().tv_sec),
-                    int(our_time_.elapsed().tv_usec));
+        log_profile("git time: %d.%06ds\n",
+                    int(git_time_.elapsed().tv_sec),
+                    int(git_time_.elapsed().tv_usec));
     }
 
     class thread_state {
@@ -115,6 +115,7 @@ protected:
                      const StringPiece& match,
                      const StringPiece& line,
                      const thread_state& ts) {
+        run_timer run(git_time_);
         timer tm;
         int off = line.data() - chunk->data;
         int searched = 0;
@@ -169,7 +170,7 @@ protected:
     atomic_int matches_;
     vector<string> filter_;
     timer re2_time_;
-    timer our_time_;
+    timer git_time_;
 };
 
 code_searcher::code_searcher(git_repository *repo)
@@ -413,16 +414,13 @@ void searcher::full_search(const thread_state& ts, const chunk *chunk)
             if (!pat_.Match(str, pos, str.size() - 1, RE2::UNANCHORED, &match, 1))
                 break;
         }
-        {
-            run_timer run(our_time_);
-            assert(memchr(match.data(), '\n', match.size()) == NULL);
-            StringPiece line = find_line(str, match);
-            if (utf8::is_valid(line.data(), line.data() + line.size()))
-                find_match(chunk, match, line, ts);
-            new_pos = line.size() + line.data() - str.data() + 1;
-            assert(new_pos > pos);
-            pos = new_pos;
-        }
+        assert(memchr(match.data(), '\n', match.size()) == NULL);
+        StringPiece line = find_line(str, match);
+        if (utf8::is_valid(line.data(), line.data() + line.size()))
+            find_match(chunk, match, line, ts);
+        new_pos = line.size() + line.data() - str.data() + 1;
+        assert(new_pos > pos);
+        pos = new_pos;
     }
 }
 
