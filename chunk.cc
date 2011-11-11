@@ -1,8 +1,10 @@
 #include "chunk.h"
 #include <re2/re2.h>
+#include <gflags/gflags.h>
 
 using re2::StringPiece;
 
+DECLARE_bool(index);
 
 class radix_sorter {
 public:
@@ -142,9 +144,11 @@ void radix_sorter::radix_sort(uint32_t *left, uint32_t *right, int level) {
 }
 
 void chunk::finalize() {
-    suffixes = new uint32_t[size];
-    for (int i = 0; i < size; i++)
-        suffixes[i] = i;
-    radix_sorter sort(this);
-    sort.sort();
+    if (FLAGS_index) {
+        suffixes = new uint32_t[size];
+        for (int i = 0; i < size; i++)
+            suffixes[i] = i;
+        radix_sorter sort(this);
+        sort.sort();
+    }
 }

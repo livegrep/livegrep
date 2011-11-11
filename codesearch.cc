@@ -13,6 +13,8 @@
 
 #include <json/json.h>
 
+#include <gflags/gflags.h>
+
 #include "timer.h"
 #include "thread_queue.h"
 #include "thread_pool.h"
@@ -34,6 +36,8 @@ const int    kContextLines = 3;
 #else
 #define log_profile(...)
 #endif
+
+DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 
 struct search_file {
     string path;
@@ -372,7 +376,7 @@ bool searcher::operator()(const thread_state& ts, const chunk *chunk)
         return true;
     }
 
-    if (filter_.size() > 0 && filter_.size() < 4)
+    if (FLAGS_index && filter_.size() > 0 && filter_.size() < 4)
         filtered_search(ts, chunk);
     else
         full_search(ts, chunk);
