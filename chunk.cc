@@ -1,4 +1,6 @@
 #include "chunk.h"
+#include "radix_sort.h"
+
 #include <re2/re2.h>
 #include <gflags/gflags.h>
 
@@ -8,7 +10,7 @@ DECLARE_bool(index);
 
 class radix_sorter {
 public:
-    radix_sorter(chunk *chunk) : chunk_(chunk), cmp(*this) {
+    radix_sorter(chunk *chunk) : chunk_(chunk) {
         lengths = new uint32_t[chunk_->size];
         for (int i = 0; i < chunk_->size; i ++)
             lengths[i] = static_cast<char*>
@@ -24,8 +26,7 @@ public:
 
     struct cmp_suffix {
         radix_sorter &sort;
-        cmp_suffix(radix_sorter &s) : sort(s) {
-        }
+        cmp_suffix(radix_sorter &s) : sort(s) {}
         bool operator()(uint32_t lhs, uint32_t rhs) {
             char *l = &sort.chunk_->data[lhs];
             char *r = &sort.chunk_->data[rhs];
@@ -39,9 +40,16 @@ public:
             return ll < rl;
         }
     };
-private:
-    void radix_sort(uint32_t *, uint32_t *, int);
 
+    struct indexer {
+        radix_sorter &sort;
+        indexer(radix_sorter &s) : sort(s) {}
+        unsigned operator()(uint32_t off, int i) {
+            return sort.index(off, i);
+        }
+    };
+
+private:
     unsigned index(uint32_t off, int i) {
         if (i >= lengths[off]) return 0;
         return (unsigned)(unsigned char)chunk_->data[off + i];
@@ -49,7 +57,6 @@ private:
 
     chunk *chunk_;
     unsigned *lengths;
-    cmp_suffix cmp;
 
     radix_sorter(const radix_sorter&);
     radix_sorter operator=(const radix_sorter&);
@@ -100,48 +107,15 @@ void chunk::finish_file() {
 }
 
 int chunk::chunk_files = 0;
-const size_t kRadixCutoff = 128;
 
 void radix_sorter::sort() {
-    radix_sort(chunk_->suffixes, chunk_->suffixes + chunk_->size, 0);
+    cmp_suffix cmp(*this);
+    indexer idx(*this);
+    radix_sort(chunk_->suffixes, chunk_->suffixes + chunk_->size, 0,
+               idx, cmp);
     assert(is_sorted(chunk_->suffixes, chunk_->suffixes + chunk_->size, cmp));
 }
 
-void radix_sorter::radix_sort(uint32_t *left, uint32_t *right, int level) {
-    if (right - left < kRadixCutoff) {
-        std::sort(left, right, cmp);
-        return;
-    }
-    unsigned counts[256] = {};
-    unsigned dest[256];
-    uint32_t *p;
-    for (p = left; p != right; p++)
-        counts[index(*p, level)]++;
-    for (int i = 0, total = 0; i < 256; i++) {
-        int tmp = counts[i];
-        counts[i] = total;
-        total += tmp;
-    }
-    memcpy(dest, counts, sizeof counts);
-    int this_chunk;
-    for (p = left, this_chunk = 0; this_chunk < 255;) {
-        if (p - left == counts[this_chunk + 1]) {
-            this_chunk++;
-            continue;
-        }
-        int target = index(*p, level);
-        if (target == this_chunk) {
-            p++;
-            continue;
-        }
-        assert(dest[target] < (right - left));
-        swap(left[dest[target]++], *p);
-    }
-    for (int i = 1; i < 256; i++) {
-        uint32_t *r = (i == 255) ? right : left + counts[i+1];
-        radix_sort(left + counts[i], r, level + 1);
-    }
-}
 
 void chunk::finalize() {
     if (FLAGS_index) {
