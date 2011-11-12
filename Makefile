@@ -26,8 +26,9 @@ endif
 
 HEADERS = smart_git.h timer.h thread_queue.h mutex.h thread_pool.h codesearch.h chunk.h chunk_allocator.h
 OBJECTS = codesearch.o main.o chunk.o chunk_allocator.o
+DEPFILES = $(OBJECTS:%.o=.%.d)
 
-all: codesearch $(OBJECTS:%.o=.%.d)
+all: codesearch $(DEPFILES)
 
 codesearch: $(OBJECTS) $(libre2)
 
@@ -35,7 +36,7 @@ $(libre2):
 	( cd re2 && $(MAKE) )
 
 clean:
-	rm -f codesearch $(OBJECTS)
+	rm -f codesearch $(OBJECTS) $(DEPFILES)
 
 .%.d: %.cc
 	@set -e; rm -f $@; \
@@ -43,4 +44,4 @@ clean:
 	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	 rm -f $@.$$$$
 
--include $(OBJECTS:%.o=.%.d)
+-include $(DEPFILES)
