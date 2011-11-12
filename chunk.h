@@ -85,7 +85,11 @@ struct chunk {
             const char *l = &chunk_->data[lhs];
             const char *le = static_cast<const char*>
                 (memchr(l, '\n', chunk_->size - lhs));
-            return strncmp(l, rhs.c_str(), min(le - l, long(rhs.size())));
+            size_t lhs_len = le - l;
+            int cmp = memcmp(l, rhs.c_str(), min(lhs_len, rhs.size()));
+            if (cmp == 0)
+                return lhs_len < rhs.size() ? -1 : 0;
+            return cmp;
         }
     };
 
