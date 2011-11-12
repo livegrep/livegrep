@@ -38,6 +38,7 @@ const int    kContextLines = 3;
 #endif
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
+DECLARE_int32(threads);
 
 struct search_file {
     string path;
@@ -215,7 +216,7 @@ int code_searcher::match(RE2& pat, match_stats *stats) {
     list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
-    int threads = 4;
+    int threads = FLAGS_threads;
 
     assert(finalized_);
 

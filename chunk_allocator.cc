@@ -1,6 +1,10 @@
 #include "chunk_allocator.h"
 #include "chunk.h"
 
+#include <gflags/gflags.h>
+
+DECLARE_int32(threads);
+
 bool chunk_allocator::finalizer::operator()(chunk *chunk) {
     if (!chunk)
         return true;
@@ -11,7 +15,7 @@ bool chunk_allocator::finalizer::operator()(chunk *chunk) {
 chunk_allocator::chunk_allocator()  :
     current_(0), finalizer_() {
     new_chunk();
-    finalize_pool_ = new thread_pool<chunk*, finalizer>(4, finalizer_);
+    finalize_pool_ = new thread_pool<chunk*, finalizer>(FLAGS_threads, finalizer_);
 }
 
 char *chunk_allocator::alloc(size_t len) {
@@ -39,7 +43,7 @@ void chunk_allocator::new_chunk()  {
 
 void chunk_allocator::finalize()  {
     finalize_pool_->queue(current_);
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < FLAGS_threads; i++)
         finalize_pool_->queue(NULL);
     delete finalize_pool_;
     finalize_pool_ = NULL;

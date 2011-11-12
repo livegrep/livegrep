@@ -10,6 +10,7 @@
 #include <json/json.h>
 
 DEFINE_bool(json, false, "Use JSON output.");
+DEFINE_int32(threads, 4, "Number of threads to use.");
 
 using namespace std;
 
