@@ -17,10 +17,6 @@ LDLIBS=-lgit2 -ljson -lgflags
 ifeq ($(noopt),)
 CXXFLAGS+=-O2
 endif
-ifneq ($(profile),)
-CXXFLAGS+=-pg
-LDFLAGS+=-pg
-endif
 ifneq ($(densehash),)
 CXXFLAGS+=-DUSE_DENSE_HASH_SET
 endif
