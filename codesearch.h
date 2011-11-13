@@ -54,6 +54,8 @@ struct match_stats {
     timeval git_time;
 };
 
+class search_file;
+
 class code_searcher {
 public:
     code_searcher(git_repository *repo);
@@ -80,6 +82,7 @@ protected:
     chunk_allocator *alloc_;
     bool output_json_;
     bool finalized_;
+    std::vector<search_file*> files_;
 
     friend class searcher;
 };

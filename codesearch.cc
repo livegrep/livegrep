@@ -313,15 +313,17 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
     const char *end = p + len;
     const char *f;
-    search_file *sf = new search_file;
-    sf->path = path;
-    sf->ref = ref;
-    git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
     chunk *c;
     StringPiece line;
 
     if (memchr(p, 0, len) != NULL)
         return;
+
+    search_file *sf = new search_file;
+    sf->path = path;
+    sf->ref = ref;
+    git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
+    files_.push_back(sf);
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
         string_hash::iterator it = lines_.find(StringPiece(p, f - p));
