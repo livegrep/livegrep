@@ -42,6 +42,12 @@ const int    kContextLines = 3;
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DECLARE_int32(threads);
 
+namespace re2 {
+    extern int32_t FLAGS_filtered_re2_min_atom_len;
+};
+
+const int kMaxFilters = 4;
+
 struct search_file {
     string path;
     const char *ref;
@@ -82,9 +88,15 @@ public:
         matches_(0), re2_time_(false), git_time_(false)
     {
         int id;
-        re2::FilteredRE2 fre2;
-        assert(!fre2.Add(pat.pattern(), pat.options(), &id));
-        fre2.Compile(&filter_, false);
+        re2::FLAGS_filtered_re2_min_atom_len = 5;
+        while(re2::FLAGS_filtered_re2_min_atom_len > 0) {
+            re2::FilteredRE2 fre2;
+            assert(!fre2.Add(pat.pattern(), pat.options(), &id));
+            fre2.Compile(&filter_, false);
+            if (filter_.size() > 0 && filter_.size() < kMaxFilters)
+                break;
+            re2::FLAGS_filtered_re2_min_atom_len--;
+        }
     }
 
     ~searcher() {
@@ -563,7 +575,7 @@ bool searcher::operator()(const thread_state& ts, const chunk *chunk)
         return true;
     }
 
-    if (FLAGS_index && filter_.size() > 0 && filter_.size() < 4)
+    if (FLAGS_index && filter_.size() > 0 && filter_.size() < kMaxFilters)
         filtered_search(ts, chunk);
     else
         full_search(ts, chunk);
