@@ -2,7 +2,7 @@ var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     path       = require('path');
 
-var ITERATIONS = 50;
+var ITERATIONS = 10;
 
 var REPO = process.argv[2] || '/home/nelhage/code/linux-2.6';
 var REF  = process.argv[3] || 'refs/tags/v3.0';
