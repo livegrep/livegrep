@@ -21,6 +21,7 @@
 #include "codesearch.h"
 #include "chunk.h"
 #include "chunk_allocator.h"
+#include "radix_sort.h"
 
 #include "utf8.h"
 
@@ -394,25 +395,41 @@ void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
     log_profile("Attempting filtered search with %d filters\n", int(filter_.size()));
     chunk::lt_suffix lt(chunk);
 
-    for (vector<string>::iterator it = filter_.begin();
-         it != filter_.end(); it++) {
-        pair<uint32_t*,uint32_t*> range = equal_range
-            (chunk->suffixes, chunk->suffixes + chunk->size,
-             *it, lt);
-        uint32_t *l = range.first, *r = range.second;
-        log_profile("%s: found %d potential matches.\n",
-                    it->c_str(), int(r - l));
-        StringPiece search(chunk->data, chunk->size);
-        for (; l < r && matches_.load() < kMaxMatches; l++) {
-            StringPiece line = find_line(search, StringPiece(chunk->data + *l, 0));
-            StringPiece match;
-            if (!utf8::is_valid(line.data(), line.data() + line.size()))
-                continue;
-            if (!pat_.Match(line, 0, line.size(), RE2::UNANCHORED, &match, 1))
-                continue;
-            find_match(chunk, match, line, ts);
-        }
+    pair<uint32_t*, uint32_t*> ranges[filter_.size()];
+    uint32_t *indexes;
+    int count = 0, off = 0;
+
+    for (int i = 0; i < filter_.size(); i++) {
+        ranges[i] = equal_range(chunk->suffixes,
+                                chunk->suffixes + chunk->size,
+                                filter_[i], lt);
+        count += ranges[i].second - ranges[i].first;
     }
+    indexes = new uint32_t[count];
+    for (int i = 0; i < filter_.size(); i++) {
+        int width = ranges[i].second - ranges[i].first;
+        memcpy(&indexes[off], ranges[i].first, width * sizeof(uint32_t));
+        off += width;
+    }
+
+    lsd_radix_sort(indexes, indexes + count);
+    assert(is_sorted(indexes, indexes + count));
+
+    StringPiece search(chunk->data, chunk->size);
+    uint32_t max = 0;
+    for (int i = 0; i < count; i++) {
+        if (indexes[i] < max) continue;
+        StringPiece line = find_line(search, StringPiece(chunk->data + indexes[i], 0));
+        StringPiece match;
+        max = line.data() + line.size() - chunk->data;
+        if (!utf8::is_valid(line.data(), line.data() + line.size()))
+            continue;
+        if (!pat_.Match(line, 0, line.size(), RE2::UNANCHORED, &match, 1))
+            continue;
+        find_match(chunk, match, line, ts);
+    }
+
+    delete[] indexes;
 }
 
 void searcher::full_search(const thread_state& ts, const chunk *chunk)

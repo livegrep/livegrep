@@ -6,8 +6,8 @@
 const size_t kRadixCutoff = 128;
 
 template <typename Index, typename Compare>
-void radix_sort(uint32_t *left, uint32_t *right, int level,
-                              Index index, Compare cmp) {
+void msd_radix_sort(uint32_t *left, uint32_t *right, int level,
+                    Index index, Compare cmp) {
     if (right - left < kRadixCutoff) {
         std::sort(left, right, cmp);
         return;
@@ -39,8 +39,10 @@ void radix_sort(uint32_t *left, uint32_t *right, int level,
     }
     for (int i = 1; i < 256; i++) {
         uint32_t *r = (i == 255) ? right : left + counts[i+1];
-        radix_sort(left + counts[i], r, level + 1, index, cmp);
+        msd_radix_sort(left + counts[i], r, level + 1, index, cmp);
     }
 }
+
+void lsd_radix_sort(uint32_t *left, uint32_t *right);
 
 #endif

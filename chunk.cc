@@ -111,8 +111,8 @@ int chunk::chunk_files = 0;
 void radix_sorter::sort() {
     cmp_suffix cmp(*this);
     indexer idx(*this);
-    radix_sort(chunk_->suffixes, chunk_->suffixes + chunk_->size, 0,
-               idx, cmp);
+    msd_radix_sort(chunk_->suffixes, chunk_->suffixes + chunk_->size, 0,
+                   idx, cmp);
     assert(is_sorted(chunk_->suffixes, chunk_->suffixes + chunk_->size, cmp));
 }
 
