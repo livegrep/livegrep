@@ -218,11 +218,12 @@ void code_searcher::dump_stats() {
 }
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 1;
+const uint32_t kIndexVersion = 2;
 
 struct index_header {
     uint32_t magic;
     uint32_t version;
+    uint32_t chunk_size;
     uint32_t nrefs;
     uint32_t nfiles;
     uint32_t nchunks;
@@ -274,6 +275,7 @@ void code_searcher::dump_index(const string& path) {
     index_header hdr;
     hdr.magic   = kIndexMagic;
     hdr.version = kIndexVersion;
+    hdr.chunk_size = kChunkSize;
     hdr.nrefs   = refs_.size();
     hdr.nfiles  = files_.size();
     hdr.nchunks = alloc_->size();
@@ -352,6 +354,7 @@ void code_searcher::load_index(const string& path) {
     assert(!stream.fail());
     assert(hdr.magic == kIndexMagic);
     assert(hdr.version == kIndexVersion);
+    assert(hdr.chunk_size == kChunkSize);
 
     for (int i = 0; i < hdr.nrefs; i++) {
         refs_.push_back(load_string(stream));

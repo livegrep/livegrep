@@ -29,7 +29,7 @@ struct chunk_file {
     }
 };
 
-const size_t kChunkSize    = 1 << 20;
+extern size_t kChunkSize;
 const size_t kMaxGap       = 1 << 10;
 #define CHUNK_MAGIC 0xC407FADE
 
@@ -98,4 +98,4 @@ private:
     chunk operator=(const chunk&);
 };
 
-const size_t kChunkSpace = kChunkSize - sizeof(chunk);
+extern size_t kChunkSpace;
