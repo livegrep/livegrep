@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <atomic>
+#include <fstream>
 
 #include <re2/re2.h>
 #include <re2/filtered_re2.h>
@@ -45,6 +46,7 @@ struct search_file {
     string path;
     const char *ref;
     git_oid oid;
+    int no;
 };
 
 struct match_result {
@@ -204,6 +206,8 @@ void code_searcher::walk_ref(const char *ref) {
     resolve_ref(commit, ref);
     git_commit_tree(tree, commit);
 
+    refs_.push_back(ref);
+
     walk_tree(ref, "", tree);
 }
 
@@ -211,6 +215,85 @@ void code_searcher::dump_stats() {
     log_profile("chunk_files: %d\n", chunk::chunk_files);
     printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
+}
+
+const uint32_t kIndexMagic   = 0xc0d35eac;
+const uint32_t kIndexVersion = 1;
+
+struct index_header {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t nrefs;
+    uint32_t nfiles;
+    uint32_t nchunks;
+} __attribute__((packed));
+
+
+struct chunk_header {
+    uint32_t size;
+    uint32_t nfiles;
+} __attribute__((packed));
+
+static void dump_int32(ostream& stream, uint32_t i) {
+    stream.write(reinterpret_cast<char*>(&i), sizeof i);
+}
+
+static void dump_string(ostream& stream, const char *str) {
+    uint32_t len = strlen(str);
+    dump_int32(stream, len);
+    stream.write(str, len);
+}
+
+void code_searcher::dump_file(ostream& stream, search_file *sf) {
+    /* (str path, int ref, oid id) */
+    dump_string(stream, sf->path.c_str());
+    dump_int32(stream, find(refs_.begin(), refs_.end(), sf->ref) - refs_.begin());
+    stream.write(reinterpret_cast<char*>(&sf->oid), sizeof sf->oid);
+}
+
+void dump_chunk_file(ostream& stream, chunk_file *cf) {
+    dump_int32(stream, cf->file->no);
+    dump_int32(stream, cf->left);
+    dump_int32(stream, cf->right);
+}
+
+void code_searcher::dump_chunk(ostream& stream, chunk *chunk) {
+    chunk_header hdr = { chunk->size, uint32_t(chunk->files.size()) };
+    stream.write(reinterpret_cast<char*>(&hdr), sizeof hdr);
+    for (vector<chunk_file>::iterator it = chunk->files.begin();
+         it != chunk->files.end(); it ++)
+        dump_chunk_file(stream, &(*it));
+    stream.write(chunk->data, chunk->size);
+    stream.write(reinterpret_cast<char*>(chunk->suffixes),
+                 sizeof(uint32_t) * chunk->size);
+}
+
+void code_searcher::dump_index(const string& path) {
+    assert(finalized_);
+    ofstream stream(path.c_str());
+    index_header hdr;
+    hdr.magic   = kIndexMagic;
+    hdr.version = kIndexVersion;
+    hdr.nrefs   = refs_.size();
+    hdr.nfiles  = files_.size();
+    hdr.nchunks = alloc_->size();
+
+    stream.write(reinterpret_cast<const char*>(&hdr), sizeof(hdr));
+
+    for (vector<const char*>::iterator it = refs_.begin();
+         it != refs_.end(); ++it) {
+        dump_string(stream, *it);
+    }
+
+    for (vector<search_file*>::iterator it = files_.begin();
+         it != files_.end(); ++it) {
+        dump_file(stream, *it);
+    }
+
+    for (list<chunk*>::iterator it = alloc_->begin();
+         it != alloc_->end(); ++it) {
+        dump_chunk(stream, *it);
+    }
 }
 
 int code_searcher::match(RE2& pat, match_stats *stats) {
@@ -323,6 +406,7 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     sf->path = path;
     sf->ref = ref;
     git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
+    sf->no  = files_.size();
     files_.push_back(sf);
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {

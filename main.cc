@@ -11,6 +11,7 @@
 
 DEFINE_bool(json, false, "Use JSON output.");
 DEFINE_int32(threads, 4, "Number of threads to use.");
+DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 
 using namespace std;
 
@@ -59,6 +60,8 @@ int main(int argc, char **argv) {
     }
     if (!FLAGS_json)
         counter.dump_stats();
+    if (FLAGS_dump_index.size())
+        counter.dump_index(FLAGS_dump_index);
     RE2::Options opts;
     opts.set_never_nl(true);
     opts.set_one_line(false);

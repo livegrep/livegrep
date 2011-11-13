@@ -17,6 +17,10 @@ public:
         return chunks_.end();
     }
 
+    size_t size () {
+        return chunks_.size();
+    }
+
     chunk *current_chunk() {
         return current_;
     }

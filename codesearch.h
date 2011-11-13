@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <fstream>
 
 #ifdef USE_DENSE_HASH_SET
 #include <google/dense_hash_set>
@@ -55,6 +56,7 @@ struct match_stats {
 };
 
 class search_file;
+class chunk;
 
 class code_searcher {
 public:
@@ -62,6 +64,7 @@ public:
     ~code_searcher();
     void walk_ref(const char *ref);
     void dump_stats();
+    void dump_index(const string& path);
     int match(RE2& pat, match_stats *stats);
 
     void set_output_json(bool j) { output_json_ = j; }
@@ -73,6 +76,9 @@ protected:
     void update_stats(const char *ref, const string& path, git_blob *blob);
     void resolve_ref(smart_object<git_commit> &out, const char *refname);
 
+    void dump_file(std::ostream& stream, search_file *sf);
+    void dump_chunk(std::ostream& stream, chunk *);
+
     git_repository *repo_;
     string_hash lines_;
     struct {
@@ -82,6 +88,7 @@ protected:
     chunk_allocator *alloc_;
     bool output_json_;
     bool finalized_;
+    std::vector<const char*>  refs_;
     std::vector<search_file*> files_;
 
     friend class searcher;
