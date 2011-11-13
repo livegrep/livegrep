@@ -9,7 +9,9 @@ var REF  = process.argv[3] || 'refs/tags/v3.0';
 
 var queries = fs.readFileSync(path.join(__dirname, 'testcases'), 'utf8').split(/\n/);
 
-var cs = new Codesearch(REPO, [REF]);
+var cs = new Codesearch(REPO, [REF], {
+                          args: process.argv.slice(4)
+                        });
 var times = { };
 
 function loop(i) {
