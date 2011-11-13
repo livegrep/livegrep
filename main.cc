@@ -12,6 +12,7 @@
 DEFINE_bool(json, false, "Use JSON output.");
 DEFINE_int32(threads, 4, "Number of threads to use.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
+DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 
 using namespace std;
 
@@ -39,7 +40,7 @@ int main(int argc, char **argv) {
     code_searcher counter(repo);
     counter.set_output_json(FLAGS_json);
 
-    {
+    if (FLAGS_load_index.size() == 0) {
         timer tm;
         struct timeval elapsed;
 
@@ -57,8 +58,10 @@ int main(int argc, char **argv) {
         if (!FLAGS_json)
             printf("repository indexed in %d.%06ds\n",
                    (int)elapsed.tv_sec, (int)elapsed.tv_usec);
+    } else {
+        counter.load_index(FLAGS_load_index);
     }
-    if (!FLAGS_json)
+    if (!FLAGS_json && !FLAGS_load_index.size())
         counter.dump_stats();
     if (FLAGS_dump_index.size())
         counter.dump_index(FLAGS_dump_index);

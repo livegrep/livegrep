@@ -296,6 +296,80 @@ void code_searcher::dump_index(const string& path) {
     }
 }
 
+uint32_t load_int32(istream& stream) {
+    uint32_t out;
+    stream.read(reinterpret_cast<char*>(&out), sizeof out);
+    return out;
+}
+
+char *load_string(istream& stream) {
+    uint32_t len = load_int32(stream);
+    char *buf = new char[len + 1];
+    stream.read(buf, len);
+    buf[len] = 0;
+    return buf;
+}
+
+search_file *code_searcher::load_file(istream& stream) {
+    search_file *sf = new search_file;
+    char *str = load_string(stream);
+    sf->path = str;
+    delete[] str;
+    sf->ref = refs_[load_int32(stream)];
+    stream.read(reinterpret_cast<char*>(&sf->oid), sizeof(sf->oid));
+    sf->no = files_.size();
+    return sf;
+}
+
+void code_searcher::load_chunk_file(istream& stream, chunk_file *cf) {
+    cf->file = files_[load_int32(stream)];
+    cf->left = load_int32(stream);
+    cf->right = load_int32(stream);
+}
+
+void code_searcher::load_chunk(istream& stream, chunk *chunk) {
+    chunk_header hdr;
+    stream.read(reinterpret_cast<char*>(&hdr), sizeof hdr);
+    assert(hdr.size <= kChunkSpace);
+    chunk->size = hdr.size;
+    for (int i = 0; i < hdr.nfiles; i++) {
+        chunk->files.push_back(chunk_file());
+        load_chunk_file(stream, &chunk->files.back());
+    }
+    stream.read(chunk->data, chunk->size);
+    chunk->suffixes = new uint32_t[chunk->size];
+    stream.read(reinterpret_cast<char*>(chunk->suffixes),
+                sizeof(uint32_t) * chunk->size);
+}
+
+void code_searcher::load_index(const string& path) {
+    assert(!finalized_);
+    assert(!refs_.size());
+
+    ifstream stream(path.c_str());
+    index_header hdr;
+    stream.read(reinterpret_cast<char*>(&hdr), sizeof hdr);
+    assert(!stream.fail());
+    assert(hdr.magic == kIndexMagic);
+    assert(hdr.version == kIndexVersion);
+
+    for (int i = 0; i < hdr.nrefs; i++) {
+        refs_.push_back(load_string(stream));
+    }
+
+    for (int i = 0; i < hdr.nfiles; i++) {
+        files_.push_back(load_file(stream));
+    }
+
+    for (int i = 0; i < hdr.nchunks; i++) {
+        load_chunk(stream, alloc_->current_chunk());
+        if (i != hdr.nchunks - 1)
+            alloc_->skip_chunk();
+    }
+
+    finalized_ = true;
+}
+
 int code_searcher::match(RE2& pat, match_stats *stats) {
     list<chunk*>::iterator it;
     match_result *m;

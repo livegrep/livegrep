@@ -57,6 +57,7 @@ struct match_stats {
 
 class search_file;
 class chunk;
+class chunk_file;
 
 class code_searcher {
 public:
@@ -65,6 +66,7 @@ public:
     void walk_ref(const char *ref);
     void dump_stats();
     void dump_index(const string& path);
+    void load_index(const string& path);
     int match(RE2& pat, match_stats *stats);
 
     void set_output_json(bool j) { output_json_ = j; }
@@ -78,6 +80,10 @@ protected:
 
     void dump_file(std::ostream& stream, search_file *sf);
     void dump_chunk(std::ostream& stream, chunk *);
+
+    search_file *load_file(std::istream& stream);
+    void load_chunk_file(std::istream& stream, chunk_file *);
+    void load_chunk(std::istream& stream, chunk *);
 
     git_repository *repo_;
     string_hash lines_;

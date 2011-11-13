@@ -48,3 +48,8 @@ void chunk_allocator::finalize()  {
     delete finalize_pool_;
     finalize_pool_ = NULL;
 }
+
+void chunk_allocator::skip_chunk() {
+    current_ = 0;
+    new_chunk();
+}

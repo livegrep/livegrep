@@ -25,6 +25,7 @@ public:
         return current_;
     }
 
+    void skip_chunk();
     void finalize();
 
 protected:
