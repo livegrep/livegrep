@@ -123,7 +123,13 @@ public:
 
 protected:
     void full_search(const thread_state& ts, const chunk *chunk);
+    void full_search(const thread_state& ts, const chunk *chunk,
+                     size_t minpos, size_t maxpos);
+
     void filtered_search(const thread_state& ts, const chunk *chunk);
+    void search_lines(uint32_t *left, int count,
+                      const thread_state& ts, const chunk *chunk);
+
     void find_match (const chunk *chunk,
                      const StringPiece& match,
                      const StringPiece& line,
@@ -157,6 +163,22 @@ protected:
 
     match_result *try_match(const StringPiece&, const StringPiece&,
                             search_file *, git_repository *);
+
+    static int line_start(const chunk *chunk, int pos) {
+        const char *start = static_cast<const char*>
+            (memrchr(chunk->data, '\n', pos));
+        if (start == NULL)
+            return 0;
+        return start - chunk->data;
+    }
+
+    static int line_end(const chunk *chunk, int pos) {
+        const char *end = static_cast<const char*>
+            (memchr(chunk->data + pos, '\n', chunk->size - pos));
+        if (end == NULL)
+            return chunk->size;
+        return end - chunk->data;
+    }
 
     static StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
         const char *start, *end;
@@ -575,35 +597,58 @@ void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
         off += width;
     }
 
+    search_lines(indexes, count, ts, chunk);
+    delete[] indexes;
+}
+
+const size_t kMinSkip = 250;
+
+void searcher::search_lines(uint32_t *indexes, int count,
+                            const thread_state& ts,
+                            const chunk *chunk)
+{
     lsd_radix_sort(indexes, indexes + count);
-    assert(is_sorted(indexes, indexes + count));
+
+    if (count == 0)
+        return;
 
     StringPiece search(chunk->data, chunk->size);
-    uint32_t max = 0;
-    for (int i = 0; i < count; i++) {
-        if (indexes[i] < max) continue;
-        StringPiece line = find_line(search, StringPiece(chunk->data + indexes[i], 0));
-        StringPiece match;
-        max = line.data() + line.size() - chunk->data;
-        if (!utf8::is_valid(line.data(), line.data() + line.size()))
-            continue;
-        if (!pat_.Match(line, 0, line.size(), RE2::UNANCHORED, &match, 1))
-            continue;
-        find_match(chunk, match, line, ts);
-    }
+    uint32_t max = indexes[0];
+    uint32_t min = line_start(chunk, indexes[0]);
+    for (int i = 0; i <= count; i++) {
+        if (i != count) {
+            if (indexes[i] < max) continue;
+            if (indexes[i] < max + kMinSkip) {
+                max = indexes[i];
+                continue;
+            }
+        }
 
-    delete[] indexes;
+        int end = line_end(chunk, max);
+        full_search(ts, chunk, min, end);
+
+        if (i != count) {
+            max = indexes[i];
+            min = line_start(chunk, max);
+        }
+    }
 }
 
 void searcher::full_search(const thread_state& ts, const chunk *chunk)
 {
+    full_search(ts, chunk, 0, chunk->size - 1);
+}
+
+void searcher::full_search(const thread_state& ts, const chunk *chunk,
+                           size_t minpos, size_t maxpos)
+{
     StringPiece str(chunk->data, chunk->size);
     StringPiece match;
-    int pos = 0, new_pos;
-    while (pos < str.size() && matches_.load() < kMaxMatches) {
+    int pos = minpos, new_pos;
+    while (pos < maxpos && matches_.load() < kMaxMatches) {
         {
             run_timer run(re2_time_);
-            if (!pat_.Match(str, pos, str.size() - 1, RE2::UNANCHORED, &match, 1))
+            if (!pat_.Match(str, pos, maxpos, RE2::UNANCHORED, &match, 1))
                 break;
         }
         assert(memchr(match.data(), '\n', match.size()) == NULL);
