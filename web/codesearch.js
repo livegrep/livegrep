@@ -4,13 +4,14 @@ var spawn   = require('child_process').spawn,
     util    = require('util'),
     events = require("events");
 
-function Codesearch(dir, refs, opts) {
+function Codesearch(repo, refs, opts) {
   if (opts === null)
     opts = {};
   events.EventEmitter.call(this);
   this.child = spawn(path.join(__dirname, '..', 'codesearch'),
-                     ['--json'].concat(opts.args||[]).concat(refs || ['HEAD']), {
-                       cwd: dir,
+                     ['--git_dir', path.join(repo, ".git"), '--json'].concat(
+                       opts.args||[]).concat(refs || ['HEAD']),
+                     {
                        customFds: [-1, -1, 2]
                      });
   this.child.stdout.setEncoding('utf8');

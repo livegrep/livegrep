@@ -9,10 +9,13 @@
 
 #include <json/json.h>
 
+#include <re2/regexp.h>
+
 DEFINE_bool(json, false, "Use JSON output.");
 DEFINE_int32(threads, 4, "Number of threads to use.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
+DEFINE_string(git_dir, ".git", "The git directory to read from");
 
 using namespace std;
 
@@ -35,7 +38,7 @@ int main(int argc, char **argv) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     git_repository *repo;
-    git_repository_open(&repo, ".git");
+    git_repository_open(&repo, FLAGS_git_dir.c_str());
 
     code_searcher counter(repo);
     counter.set_output_json(FLAGS_json);
