@@ -5,12 +5,11 @@ var Codesearch = require('../web/codesearch.js'),
 var ITERATIONS = 10;
 
 var REPO = process.argv[2] || '/home/nelhage/code/linux-2.6';
-var REF  = process.argv[3] || 'refs/tags/v3.0';
 
 var queries = fs.readFileSync(path.join(__dirname, 'testcases'), 'utf8').split(/\n/);
 
-var cs = new Codesearch(REPO, [REF], {
-                          args: process.argv.slice(4)
+var cs = new Codesearch(REPO, [], {
+                          args: process.argv.slice(3)
                         });
 var times = { };
 
