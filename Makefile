@@ -10,7 +10,7 @@ CPPFLAGS = -I$(CURDIR)/re2/ $(patsubst %,-I%/include, $(extradirs))
 LDFLAGS  = $(patsubst %, -L%/lib, $(extradirs))
 LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
-CXXFLAGS+=-ggdb3 -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
+CXXFLAGS+=-g -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
 LDFLAGS+=-pthread
 LDLIBS=-lgit2 -ljson -lgflags
 
