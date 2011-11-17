@@ -6,7 +6,6 @@
 #include <list>
 #include <iostream>
 #include <string>
-#include <atomic>
 #include <fstream>
 
 #include <re2/re2.h>
@@ -23,6 +22,7 @@
 #include "chunk.h"
 #include "chunk_allocator.h"
 #include "radix_sort.h"
+#include "atomic.h"
 
 #include "utf8.h"
 
