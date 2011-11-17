@@ -31,6 +31,7 @@ DEPFILES = $(OBJECTS:%.o=.%.d)
 all: codesearch $(DEPFILES)
 
 codesearch: $(OBJECTS) $(libre2)
+	$(CXX) -o $@ $(LDFLAGS) $^ $(LDLIBS)
 
 $(libre2):
 	( cd re2 && $(MAKE) )
