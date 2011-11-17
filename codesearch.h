@@ -55,9 +55,9 @@ struct match_stats {
     timeval git_time;
 };
 
-class search_file;
-class chunk;
-class chunk_file;
+struct search_file;
+struct chunk;
+struct chunk_file;
 
 class code_searcher {
 public:

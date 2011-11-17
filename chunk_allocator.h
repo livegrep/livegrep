@@ -2,7 +2,7 @@
 #include "thread_pool.h"
 
 using namespace std;
-class chunk;
+struct chunk;
 
 class chunk_allocator {
 public:

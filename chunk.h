@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-class search_file;
+struct search_file;
 namespace re2 {
     class StringPiece;
 }
