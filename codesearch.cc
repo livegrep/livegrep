@@ -293,7 +293,7 @@ void dump_chunk_file(ostream& stream, chunk_file *cf) {
 }
 
 void code_searcher::dump_chunk(ostream& stream, chunk *chunk) {
-    chunk_header hdr = { chunk->size, uint32_t(chunk->files.size()) };
+    chunk_header hdr = { uint32_t(chunk->size), uint32_t(chunk->files.size()) };
     stream.write(reinterpret_cast<char*>(&hdr), sizeof hdr);
     for (vector<chunk_file>::iterator it = chunk->files.begin();
          it != chunk->files.end(); it ++)
@@ -592,7 +592,7 @@ void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
     log_profile("Attempting filtered search with %d filters\n", int(filter_.size()));
     chunk::lt_suffix lt(chunk);
 
-    pair<uint32_t*, uint32_t*> ranges[filter_.size()];
+    pair<uint32_t*, uint32_t*> ranges[kMaxFilters];
     uint32_t *indexes;
     int count = 0, off = 0;
 
