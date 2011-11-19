@@ -6,6 +6,7 @@ var express = require('express'),
 
 var REPO = process.argv[2] || '/home/nelhage/code/linux-2.6/';
 var REF  = process.argv[3] || 'v3.0';
+var args = process.argv.slice(4);
 
 
 var app = express.createServer();
@@ -18,7 +19,7 @@ app.get('/', function (req, res) {
 app.listen(8910);
 console.log("http://localhost:8910");
 
-var server = dnode(new Server(REPO, REF).Server);
+var server = dnode(new Server(REPO, REF, args).Server);
 server.listen(app, {
                 io: {
                   transports: ["htmlfile", "xhr-polling", "jsonp-polling"]

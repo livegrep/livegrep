@@ -41,7 +41,7 @@ Client.prototype.dispatch_search = function() {
   }
 }
 
-function SearchServer(repo, ref) {
+function SearchServer(repo, ref, args) {
   var parent = this;
   this.searcher = null;
   this.clients = {};
@@ -52,7 +52,9 @@ function SearchServer(repo, ref) {
              if (err) throw err;
              console.log("Searching commit %s (%s)",
                          ref, stdout.trim());
-             parent.codesearch = new Codesearch(repo, [stdout.trim()]);
+             parent.codesearch = new Codesearch(repo, [stdout.trim()], {
+                                                  args: args
+                                                });
              parent.codesearch.on('ready', function () {
                                     Object.keys(parent.clients).forEach(
                                       function (id) {
