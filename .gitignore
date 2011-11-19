@@ -1,3 +1,4 @@
 /codesearch
 /Makefile.config
 *.o
+.*.d

@@ -6,16 +6,23 @@
 #include <list>
 #include <iostream>
 #include <string>
-#include <atomic>
+#include <fstream>
 
 #include <re2/re2.h>
+#include <re2/filtered_re2.h>
 
 #include <json/json.h>
+
+#include <gflags/gflags.h>
 
 #include "timer.h"
 #include "thread_queue.h"
 #include "thread_pool.h"
 #include "codesearch.h"
+#include "chunk.h"
+#include "chunk_allocator.h"
+#include "radix_sort.h"
+#include "atomic.h"
 
 #include "utf8.h"
 
@@ -23,8 +30,6 @@ using re2::RE2;
 using re2::StringPiece;
 using namespace std;
 
-const size_t kChunkSize    = 1 << 20;
-const size_t kMaxGap       = 1 << 10;
 const int    kMaxMatches   = 50;
 const int    kContextLines = 3;
 
@@ -34,24 +39,20 @@ const int    kContextLines = 3;
 #define log_profile(...)
 #endif
 
+DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
+DECLARE_int32(threads);
+
+namespace re2 {
+    extern int32_t FLAGS_filtered_re2_min_atom_len;
+};
+
+const int kMaxFilters = 4;
+
 struct search_file {
     string path;
     const char *ref;
     git_oid oid;
-};
-
-struct chunk_file {
-    search_file *file;
-    int left;
-    int right;
-    void expand(int l, int r) {
-        left  = min(left, l);
-        right = max(right, r);
-    }
-
-    bool operator<(const chunk_file& rhs) const {
-        return left < rhs.left;
-    }
+    int no;
 };
 
 struct match_result {
@@ -61,119 +62,6 @@ struct match_result {
     vector<string> context_after;
     StringPiece line;
     int matchleft, matchright;
-};
-
-#define CHUNK_MAGIC 0xC407FADE
-
-struct chunk {
-    static int chunk_files;
-    int size;
-    unsigned magic;
-    vector<chunk_file> files;
-    vector<chunk_file> cur_file;
-    char data[0];
-
-    chunk()
-        : size(0), magic(CHUNK_MAGIC), files() {
-    }
-
-    void add_chunk_file(search_file *sf, const StringPiece& line) {
-        int l = line.data() - data;
-        int r = l + line.size();
-        chunk_file *f = NULL;
-        int min_dist = numeric_limits<int>::max(), dist;
-        for (vector<chunk_file>::iterator it = cur_file.begin();
-             it != cur_file.end(); it ++) {
-            if (l <= it->left)
-                dist = max(0, it->left - r);
-            else if (r >= it->right)
-                dist = max(0, l - it->right);
-            else
-                dist = 0;
-            assert(dist == 0 || r < it->left || l > it->right);
-            if (dist < min_dist) {
-                min_dist = dist;
-                f = &(*it);
-            }
-        }
-        if (f && min_dist < kMaxGap) {
-            f->expand(l, r);
-            return;
-        }
-        chunk_files++;
-        cur_file.push_back(chunk_file());
-        chunk_file& cf = cur_file.back();
-        cf.file = sf;
-        cf.left = l;
-        cf.right = r;
-    }
-
-    void finish_file() {
-        int right = -1;
-        sort(cur_file.begin(), cur_file.end());
-        for (vector<chunk_file>::iterator it = cur_file.begin();
-             it != cur_file.end(); it ++) {
-            assert(right < it->left);
-            right = max(right, it->right);
-        }
-        files.insert(files.end(), cur_file.begin(), cur_file.end());
-        cur_file.clear();
-    }
-
-    static chunk *from_str(const char *p) {
-        chunk *out = reinterpret_cast<chunk*>
-            ((uintptr_t(p) - 1) & ~(kChunkSize - 1));
-        assert(out->magic == CHUNK_MAGIC);
-        return out;
-    }
-};
-
-int chunk::chunk_files = 0;
-
-const size_t kChunkSpace = kChunkSize - sizeof(chunk);
-
-chunk *alloc_chunk() {
-    void *p;
-    if (posix_memalign(&p, kChunkSize, kChunkSize) != 0)
-        return NULL;
-    return new(p) chunk;
-};
-
-class chunk_allocator {
-public:
-    chunk_allocator() : current_(0) {
-        new_chunk();
-    }
-
-    char *alloc(size_t len) {
-        assert(len < kChunkSpace);
-        if ((current_->size + len) > kChunkSpace)
-            new_chunk();
-        char *out = current_->data + current_->size;
-        current_->size += len;
-        return out;
-    }
-
-    list<chunk*>::iterator begin () {
-        return chunks_.begin();
-    }
-
-    typename list<chunk*>::iterator end () {
-        return chunks_.end();
-    }
-
-    chunk *current_chunk() {
-        return current_;
-    }
-
-protected:
-    void new_chunk() {
-        current_ = alloc_chunk();
-        chunks_.push_back(current_);
-    }
-
-    list<chunk*> chunks_;
-    chunk *current_;
 };
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
@@ -197,20 +85,27 @@ class searcher {
 public:
     searcher(code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
-        matches_(0)
-#ifdef PROFILE_CODESEARCH
-        , re2_time_(false), our_time_(false)
-#endif
+        matches_(0), re2_time_(false), git_time_(false)
     {
+        int id;
+        re2::FLAGS_filtered_re2_min_atom_len = 5;
+        while(re2::FLAGS_filtered_re2_min_atom_len > 0) {
+            re2::FilteredRE2 fre2;
+            assert(!fre2.Add(pat.pattern(), pat.options(), &id));
+            fre2.Compile(&filter_, false);
+            if (filter_.size() > 0 && filter_.size() < kMaxFilters)
+                break;
+            re2::FLAGS_filtered_re2_min_atom_len--;
+        }
     }
 
     ~searcher() {
         log_profile("re2 time: %d.%06ds\n",
                     int(re2_time_.elapsed().tv_sec),
                     int(re2_time_.elapsed().tv_usec));
-        log_profile("our time: %d.%06ds\n",
-                    int(our_time_.elapsed().tv_sec),
-                    int(our_time_.elapsed().tv_usec));
+        log_profile("git time: %d.%06ds\n",
+                    int(git_time_.elapsed().tv_sec),
+                    int(git_time_.elapsed().tv_usec));
     }
 
     class thread_state {
@@ -231,51 +126,27 @@ public:
         friend class searcher;
     };
 
-    bool operator()(const thread_state& ts, const chunk *chunk) {
-        if (chunk == NULL) {
-            queue_.push(NULL);
-            return true;
-        }
-        StringPiece str(chunk->data, chunk->size);
-        StringPiece match;
-        int pos = 0, new_pos;
-        timer re2_time(false), our_time(false);
-        while (pos < str.size() && matches_.load() < kMaxMatches) {
-            {
-                run_timer run(re2_time);
-                if (!pat_.Match(str, pos, str.size() - 1, RE2::UNANCHORED, &match, 1))
-                    break;
-            }
-            {
-                run_timer run(our_time);
-                assert(memchr(match.data(), '\n', match.size()) == NULL);
-                StringPiece line = find_line(str, match);
-                if (utf8::is_valid(line.data(), line.data() + line.size()))
-                    find_match(chunk, match, line, ts);
-                new_pos = line.size() + line.data() - str.data() + 1;
-                assert(new_pos > pos);
-                pos = new_pos;
-            }
-        }
-#ifdef PROFILE_CODESEARCH
-        {
-            mutex_locker locked(timer_mtx_);
-            re2_time_.add(re2_time);
-            our_time_.add(our_time);
-        }
-#endif
-        if (matches_.load() >= kMaxMatches) {
-            queue_.push(NULL);
-            return true;
-        }
-        return false;
+    bool operator()(const thread_state& ts, const chunk *chunk);
+
+    void get_stats(match_stats *stats) {
+        stats->re2_time = re2_time_.elapsed();
+        stats->git_time = git_time_.elapsed();
     }
 
 protected:
+    void full_search(const thread_state& ts, const chunk *chunk);
+    void full_search(const thread_state& ts, const chunk *chunk,
+                     size_t minpos, size_t maxpos);
+
+    void filtered_search(const thread_state& ts, const chunk *chunk);
+    void search_lines(uint32_t *left, int count,
+                      const thread_state& ts, const chunk *chunk);
+
     void find_match (const chunk *chunk,
                      const StringPiece& match,
                      const StringPiece& line,
                      const thread_state& ts) {
+        run_timer run(git_time_);
         timer tm;
         int off = line.data() - chunk->data;
         int searched = 0;
@@ -305,6 +176,22 @@ protected:
     match_result *try_match(const StringPiece&, const StringPiece&,
                             search_file *, git_repository *);
 
+    static int line_start(const chunk *chunk, int pos) {
+        const char *start = static_cast<const char*>
+            (memrchr(chunk->data, '\n', pos));
+        if (start == NULL)
+            return 0;
+        return start - chunk->data;
+    }
+
+    static int line_end(const chunk *chunk, int pos) {
+        const char *end = static_cast<const char*>
+            (memchr(chunk->data + pos, '\n', chunk->size - pos));
+        if (end == NULL)
+            return chunk->size;
+        return end - chunk->data;
+    }
+
     static StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
         const char *start, *end;
         assert(match.data() >= chunk.data());
@@ -328,15 +215,13 @@ protected:
     RE2& pat_;
     thread_queue<match_result*>& queue_;
     atomic_int matches_;
-#ifdef PROFILE_CODESEARCH
+    vector<string> filter_;
     timer re2_time_;
-    timer our_time_;
-    mutex timer_mtx_;
-#endif
+    timer git_time_;
 };
 
 code_searcher::code_searcher(git_repository *repo)
-    : repo_(repo), stats_(), output_json_(false)
+    : repo_(repo), stats_(), output_json_(false), finalized_(false)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
@@ -349,10 +234,13 @@ code_searcher::~code_searcher() {
 }
 
 void code_searcher::walk_ref(const char *ref) {
+    assert(!finalized_);
     smart_object<git_commit> commit;
     smart_object<git_tree> tree;
     resolve_ref(commit, ref);
     git_commit_tree(tree, commit);
+
+    refs_.push_back(ref);
 
     walk_tree(ref, "", tree);
 }
@@ -363,11 +251,169 @@ void code_searcher::dump_stats() {
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
 }
 
-int code_searcher::match(RE2& pat) {
+const uint32_t kIndexMagic   = 0xc0d35eac;
+const uint32_t kIndexVersion = 2;
+
+struct index_header {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t chunk_size;
+    uint32_t nrefs;
+    uint32_t nfiles;
+    uint32_t nchunks;
+} __attribute__((packed));
+
+
+struct chunk_header {
+    uint32_t size;
+    uint32_t nfiles;
+} __attribute__((packed));
+
+static void dump_int32(ostream& stream, uint32_t i) {
+    stream.write(reinterpret_cast<char*>(&i), sizeof i);
+}
+
+static void dump_string(ostream& stream, const char *str) {
+    uint32_t len = strlen(str);
+    dump_int32(stream, len);
+    stream.write(str, len);
+}
+
+void code_searcher::dump_file(ostream& stream, search_file *sf) {
+    /* (str path, int ref, oid id) */
+    dump_string(stream, sf->path.c_str());
+    dump_int32(stream, find(refs_.begin(), refs_.end(), sf->ref) - refs_.begin());
+    stream.write(reinterpret_cast<char*>(&sf->oid), sizeof sf->oid);
+}
+
+void dump_chunk_file(ostream& stream, chunk_file *cf) {
+    dump_int32(stream, cf->file->no);
+    dump_int32(stream, cf->left);
+    dump_int32(stream, cf->right);
+}
+
+void code_searcher::dump_chunk(ostream& stream, chunk *chunk) {
+    chunk_header hdr = { uint32_t(chunk->size), uint32_t(chunk->files.size()) };
+    stream.write(reinterpret_cast<char*>(&hdr), sizeof hdr);
+    for (vector<chunk_file>::iterator it = chunk->files.begin();
+         it != chunk->files.end(); it ++)
+        dump_chunk_file(stream, &(*it));
+    stream.write(chunk->data, chunk->size);
+    stream.write(reinterpret_cast<char*>(chunk->suffixes),
+                 sizeof(uint32_t) * chunk->size);
+}
+
+void code_searcher::dump_index(const string& path) {
+    assert(finalized_);
+    ofstream stream(path.c_str());
+    index_header hdr;
+    hdr.magic   = kIndexMagic;
+    hdr.version = kIndexVersion;
+    hdr.chunk_size = kChunkSize;
+    hdr.nrefs   = refs_.size();
+    hdr.nfiles  = files_.size();
+    hdr.nchunks = alloc_->size();
+
+    stream.write(reinterpret_cast<const char*>(&hdr), sizeof(hdr));
+
+    for (vector<const char*>::iterator it = refs_.begin();
+         it != refs_.end(); ++it) {
+        dump_string(stream, *it);
+    }
+
+    for (vector<search_file*>::iterator it = files_.begin();
+         it != files_.end(); ++it) {
+        dump_file(stream, *it);
+    }
+
+    for (list<chunk*>::iterator it = alloc_->begin();
+         it != alloc_->end(); ++it) {
+        dump_chunk(stream, *it);
+    }
+}
+
+uint32_t load_int32(istream& stream) {
+    uint32_t out;
+    stream.read(reinterpret_cast<char*>(&out), sizeof out);
+    return out;
+}
+
+char *load_string(istream& stream) {
+    uint32_t len = load_int32(stream);
+    char *buf = new char[len + 1];
+    stream.read(buf, len);
+    buf[len] = 0;
+    return buf;
+}
+
+search_file *code_searcher::load_file(istream& stream) {
+    search_file *sf = new search_file;
+    char *str = load_string(stream);
+    sf->path = str;
+    delete[] str;
+    sf->ref = refs_[load_int32(stream)];
+    stream.read(reinterpret_cast<char*>(&sf->oid), sizeof(sf->oid));
+    sf->no = files_.size();
+    return sf;
+}
+
+void code_searcher::load_chunk_file(istream& stream, chunk_file *cf) {
+    cf->file = files_[load_int32(stream)];
+    cf->left = load_int32(stream);
+    cf->right = load_int32(stream);
+}
+
+void code_searcher::load_chunk(istream& stream, chunk *chunk) {
+    chunk_header hdr;
+    stream.read(reinterpret_cast<char*>(&hdr), sizeof hdr);
+    assert(hdr.size <= kChunkSpace);
+    chunk->size = hdr.size;
+    for (int i = 0; i < hdr.nfiles; i++) {
+        chunk->files.push_back(chunk_file());
+        load_chunk_file(stream, &chunk->files.back());
+    }
+    stream.read(chunk->data, chunk->size);
+    chunk->suffixes = new uint32_t[chunk->size];
+    stream.read(reinterpret_cast<char*>(chunk->suffixes),
+                sizeof(uint32_t) * chunk->size);
+}
+
+void code_searcher::load_index(const string& path) {
+    assert(!finalized_);
+    assert(!refs_.size());
+
+    ifstream stream(path.c_str());
+    index_header hdr;
+    stream.read(reinterpret_cast<char*>(&hdr), sizeof hdr);
+    assert(!stream.fail());
+    assert(hdr.magic == kIndexMagic);
+    assert(hdr.version == kIndexVersion);
+    assert(hdr.chunk_size == kChunkSize);
+
+    for (int i = 0; i < hdr.nrefs; i++) {
+        refs_.push_back(load_string(stream));
+    }
+
+    for (int i = 0; i < hdr.nfiles; i++) {
+        files_.push_back(load_file(stream));
+    }
+
+    for (int i = 0; i < hdr.nchunks; i++) {
+        load_chunk(stream, alloc_->current_chunk());
+        if (i != hdr.nchunks - 1)
+            alloc_->skip_chunk();
+    }
+
+    finalized_ = true;
+}
+
+int code_searcher::match(RE2& pat, match_stats *stats) {
     list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
-    int threads = 4;
+    int threads = FLAGS_threads;
+
+    assert(finalized_);
 
     thread_queue<match_result*> results;
     searcher search(this, results, pat);
@@ -389,7 +435,15 @@ int code_searcher::match(RE2& pat) {
         print_match(m);
         delete m;
     }
+
+    search.get_stats(stats);
     return matches;
+}
+
+void code_searcher::finalize() {
+    assert(!finalized_);
+    finalized_ = true;
+    alloc_->finalize();
 }
 
 void code_searcher::print_match(const match_result *m) {
@@ -453,12 +507,18 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
     const char *end = p + len;
     const char *f;
+    chunk *c;
+    StringPiece line;
+
+    if (memchr(p, 0, len) != NULL)
+        return;
+
     search_file *sf = new search_file;
     sf->path = path;
     sf->ref = ref;
     git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
-    chunk *c;
-    StringPiece line;
+    sf->no  = files_.size();
+    files_.push_back(sf);
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
         string_hash::iterator it = lines_.find(StringPiece(p, f - p));
@@ -508,6 +568,112 @@ void code_searcher::resolve_ref(smart_object<git_commit>& out, const char *refna
     }
 }
 
+bool searcher::operator()(const thread_state& ts, const chunk *chunk)
+{
+    if (chunk == NULL) {
+        queue_.push(NULL);
+        return true;
+    }
+
+    if (FLAGS_index && filter_.size() > 0 && filter_.size() < kMaxFilters)
+        filtered_search(ts, chunk);
+    else
+        full_search(ts, chunk);
+
+    if (matches_.load() >= kMaxMatches) {
+        queue_.push(NULL);
+        return true;
+    }
+    return false;
+}
+
+void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
+{
+    log_profile("Attempting filtered search with %d filters\n", int(filter_.size()));
+    chunk::lt_suffix lt(chunk);
+
+    pair<uint32_t*, uint32_t*> ranges[kMaxFilters];
+    uint32_t *indexes;
+    int count = 0, off = 0;
+
+    for (int i = 0; i < filter_.size(); i++) {
+        ranges[i] = equal_range(chunk->suffixes,
+                                chunk->suffixes + chunk->size,
+                                filter_[i], lt);
+        count += ranges[i].second - ranges[i].first;
+    }
+    indexes = new uint32_t[count];
+    for (int i = 0; i < filter_.size(); i++) {
+        int width = ranges[i].second - ranges[i].first;
+        memcpy(&indexes[off], ranges[i].first, width * sizeof(uint32_t));
+        off += width;
+    }
+
+    search_lines(indexes, count, ts, chunk);
+    delete[] indexes;
+}
+
+const size_t kMinSkip = 250;
+
+void searcher::search_lines(uint32_t *indexes, int count,
+                            const thread_state& ts,
+                            const chunk *chunk)
+{
+    lsd_radix_sort(indexes, indexes + count);
+
+    if (count == 0)
+        return;
+
+    StringPiece search(chunk->data, chunk->size);
+    uint32_t max = indexes[0];
+    uint32_t min = line_start(chunk, indexes[0]);
+    for (int i = 0; i <= count; i++) {
+        if (i != count) {
+            if (indexes[i] < max) continue;
+            if (indexes[i] < max + kMinSkip) {
+                max = indexes[i];
+                continue;
+            }
+        }
+
+        int end = line_end(chunk, max);
+        full_search(ts, chunk, min, end);
+
+        if (i != count) {
+            max = indexes[i];
+            min = line_start(chunk, max);
+        }
+    }
+}
+
+void searcher::full_search(const thread_state& ts, const chunk *chunk)
+{
+    full_search(ts, chunk, 0, chunk->size - 1);
+}
+
+void searcher::full_search(const thread_state& ts, const chunk *chunk,
+                           size_t minpos, size_t maxpos)
+{
+    StringPiece str(chunk->data, chunk->size);
+    StringPiece match;
+    int pos = minpos, new_pos;
+    while (pos < maxpos && matches_.load() < kMaxMatches) {
+        {
+            run_timer run(re2_time_);
+            if (!pat_.Match(str, pos, maxpos, RE2::UNANCHORED, &match, 1))
+                break;
+        }
+        assert(memchr(match.data(), '\n', match.size()) == NULL);
+        StringPiece line = find_line(str, match);
+        if (utf8::is_valid(line.data(), line.data() + line.size()))
+            find_match(chunk, match, line, ts);
+        new_pos = line.size() + line.data() - str.data() + 1;
+        assert(new_pos > pos);
+        pos = new_pos;
+    }
+}
+
+
 match_result *searcher::try_match(const StringPiece& line,
                                   const StringPiece& match,
                                   search_file *sf,
@@ -518,6 +684,7 @@ match_result *searcher::try_match(const StringPiece& line,
                        git_blob_rawsize(blob));
     StringPiece matchline;
     RE2 pat("^" + RE2::QuoteMeta(line) + "$", pat_.options());
+    assert(pat.ok());
     if (!pat.Match(search, 0, search.size(), RE2::UNANCHORED, &matchline, 1))
         return 0;
     match_result *m = new match_result;

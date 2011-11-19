@@ -4,11 +4,14 @@ var spawn   = require('child_process').spawn,
     util    = require('util'),
     events = require("events");
 
-function Codesearch(dir, refs) {
+function Codesearch(repo, refs, opts) {
+  if (opts === null)
+    opts = {};
   events.EventEmitter.call(this);
   this.child = spawn(path.join(__dirname, '..', 'codesearch'),
-                     (refs || ['HEAD']), {
-                       cwd: dir,
+                     ['--git_dir', path.join(repo, ".git"), '--json'].concat(
+                       opts.args||[]).concat(refs || ['HEAD']),
+                     {
                        customFds: [-1, -1, 2]
                      });
   this.child.stdout.setEncoding('utf8');
@@ -46,11 +49,12 @@ function expect_ready(line) {
 Codesearch.prototype.handle_line = {
   'init': expect_ready,
   'searching': function (line) {
-    var match = /^FATAL (.*)/.exec(line);
-    if (match) {
+    var match;
+    if (match = /^FATAL (.*)/.exec(line)) {
       this.error(match[1]);
-    } else if (line == 'DONE') {
-      this.current_search.emit('done');
+    } else if (match = /^DONE\s*(.*)/.exec(line)) {
+      var stats = JSON.parse(match[1]);
+      this.current_search.emit('done', stats);
       this.endSearch();
     } else {
       this.match(line);
