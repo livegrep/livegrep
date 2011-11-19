@@ -33,6 +33,15 @@ void print_stats(const match_stats &stats) {
     json_object_put(obj);
 }
 
+void print_error(const string& err) {
+    if (!FLAGS_json)
+        printf("Error: %s\n", err.c_str());
+    else
+        printf("FATAL %s\n", err.c_str());
+}
+
+const int kMaxProgramSize = 4000;
+
 int main(int argc, char **argv) {
     google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
     google::ParseCommandLineFlags(&argc, &argv, true);
@@ -85,15 +94,19 @@ int main(int argc, char **argv) {
             break;
         RE2 re(line, opts);
         if (!re.ok()) {
-            if (!FLAGS_json)
-                printf("Error: %s\n", re.error().c_str());
-            else
-                printf("FATAL %s\n", re.error().c_str());
+            print_error(re.error());
+            continue;
         }
-        if (re.ok()) {
+        if (re.ProgramSize() > kMaxProgramSize) {
+            print_error("Parse error.");
+            continue;
+        }
+        {
             timer tm;
             struct timeval elapsed;
             match_stats stats;
+            if (!FLAGS_json)
+                printf("ProgramSize: %d\n", re.ProgramSize());
             counter.match(re, &stats);
             elapsed = tm.elapsed();
             if (FLAGS_json)
