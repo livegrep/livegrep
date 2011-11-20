@@ -18,11 +18,11 @@ chunk_allocator::chunk_allocator()  :
     finalize_pool_ = new thread_pool<chunk*, finalizer>(FLAGS_threads, finalizer_);
 }
 
-char *chunk_allocator::alloc(size_t len) {
+unsigned char *chunk_allocator::alloc(size_t len) {
     assert(len < kChunkSpace);
     if ((current_->size + len) > kChunkSpace)
         new_chunk();
-    char *out = current_->data + current_->size;
+    unsigned char *out = current_->data + current_->size;
     current_->size += len;
     return out;
 }

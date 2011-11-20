@@ -30,7 +30,7 @@ public:
     radix_sorter(chunk *chunk) : chunk_(chunk) {
         lengths = new uint32_t[chunk_->size];
         for (int i = 0; i < chunk_->size; i ++)
-            lengths[i] = static_cast<char*>
+            lengths[i] = static_cast<unsigned char*>
                 (memchr(&chunk_->data[i], '\n', chunk_->size - i)) -
                 (chunk_->data + i);
     }
@@ -45,8 +45,8 @@ public:
         radix_sorter &sort;
         cmp_suffix(radix_sorter &s) : sort(s) {}
         bool operator()(uint32_t lhs, uint32_t rhs) {
-            char *l = &sort.chunk_->data[lhs];
-            char *r = &sort.chunk_->data[rhs];
+            unsigned char *l = &sort.chunk_->data[lhs];
+            unsigned char *r = &sort.chunk_->data[rhs];
             unsigned ll = sort.lengths[lhs];
             unsigned rl = sort.lengths[rhs];
             int cmp = memcmp(l, r, min(ll, rl));
@@ -81,7 +81,7 @@ private:
 
 void chunk::add_chunk_file(search_file *sf, const StringPiece& line)
 {
-    int l = line.data() - data;
+    int l = (unsigned char*)line.data() - data;
     int r = l + line.size();
     chunk_file *f = NULL;
     int min_dist = numeric_limits<int>::max(), dist;

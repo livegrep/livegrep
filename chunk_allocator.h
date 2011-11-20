@@ -7,7 +7,7 @@ struct chunk;
 class chunk_allocator {
 public:
     chunk_allocator();
-    char *alloc(size_t len);
+    unsigned char *alloc(size_t len);
 
     list<chunk*>::iterator begin () {
         return chunks_.begin();

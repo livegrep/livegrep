@@ -40,7 +40,7 @@ struct chunk {
     vector<chunk_file> files;
     vector<chunk_file> cur_file;
     uint32_t *suffixes;
-    char data[0];
+    unsigned char data[0];
 
     chunk()
         : size(0), magic(CHUNK_MAGIC), files(), suffixes(0) {
@@ -61,15 +61,15 @@ struct chunk {
         const chunk *chunk_;
         lt_suffix(const chunk *chunk) : chunk_(chunk) { }
         bool operator()(uint32_t lhs, uint32_t rhs) {
-            const char *l = &chunk_->data[lhs];
-            const char *r = &chunk_->data[rhs];
-            const char *le = static_cast<const char*>
+            const unsigned char *l = &chunk_->data[lhs];
+            const unsigned char *r = &chunk_->data[rhs];
+            const unsigned char *le = static_cast<const unsigned char*>
                 (memchr(l, '\n', chunk_->size - lhs));
-            const char *re = static_cast<const char*>
+            const unsigned char *re = static_cast<const unsigned char*>
                 (memchr(r, '\n', chunk_->size - rhs));
             assert(le);
             assert(re);
-            return strncmp(l, r, min(le - l, re - r)) < 0;
+            return memcmp(l, r, min(le - l, re - r)) < 0;
         }
 
         bool operator()(uint32_t lhs, const string& rhs) {
@@ -82,8 +82,8 @@ struct chunk {
 
     private:
         int cmp(uint32_t lhs, const string& rhs) {
-            const char *l = &chunk_->data[lhs];
-            const char *le = static_cast<const char*>
+            const unsigned char *l = &chunk_->data[lhs];
+            const unsigned char *le = static_cast<const unsigned char*>
                 (memchr(l, '\n', chunk_->size - lhs));
             size_t lhs_len = le - l;
             int cmp = memcmp(l, rhs.c_str(), min(lhs_len, rhs.size()));

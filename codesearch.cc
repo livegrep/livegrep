@@ -148,7 +148,7 @@ protected:
                      const thread_state& ts) {
         run_timer run(git_time_);
         timer tm;
-        int off = line.data() - chunk->data;
+        int off = (unsigned char*)line.data() - chunk->data;
         int searched = 0;
         bool found = false;
         for(vector<chunk_file>::const_iterator it = chunk->files.begin();
@@ -177,7 +177,7 @@ protected:
                             search_file *, git_repository *);
 
     static int line_start(const chunk *chunk, int pos) {
-        const char *start = static_cast<const char*>
+        const unsigned char *start = static_cast<const unsigned char*>
             (memrchr(chunk->data, '\n', pos));
         if (start == NULL)
             return 0;
@@ -185,7 +185,7 @@ protected:
     }
 
     static int line_end(const chunk *chunk, int pos) {
-        const char *end = static_cast<const char*>
+        const unsigned char *end = static_cast<const unsigned char*>
             (memchr(chunk->data + pos, '\n', chunk->size - pos));
         if (end == NULL)
             return chunk->size;
@@ -298,7 +298,7 @@ void code_searcher::dump_chunk(ostream& stream, chunk *chunk) {
     for (vector<chunk_file>::iterator it = chunk->files.begin();
          it != chunk->files.end(); it ++)
         dump_chunk_file(stream, &(*it));
-    stream.write(chunk->data, chunk->size);
+    stream.write(reinterpret_cast<char*>(chunk->data), chunk->size);
     stream.write(reinterpret_cast<char*>(chunk->suffixes),
                  sizeof(uint32_t) * chunk->size);
 }
@@ -372,7 +372,7 @@ void code_searcher::load_chunk(istream& stream, chunk *chunk) {
         chunk->files.push_back(chunk_file());
         load_chunk_file(stream, &chunk->files.back());
     }
-    stream.read(chunk->data, chunk->size);
+    stream.read(reinterpret_cast<char*>(chunk->data), chunk->size);
     chunk->suffixes = new uint32_t[chunk->size];
     stream.read(reinterpret_cast<char*>(chunk->suffixes),
                 sizeof(uint32_t) * chunk->size);
@@ -527,9 +527,9 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
             stats_.dedup_lines ++;
 
             // Include the trailing '\n' in the chunk buffer
-            char *alloc = alloc_->alloc(f - p + 1);
+            unsigned char *alloc = alloc_->alloc(f - p + 1);
             memcpy(alloc, p, f - p + 1);
-            line = StringPiece(alloc, f - p);
+            line = StringPiece((char*)alloc, f - p);
             lines_.insert(line);
             c = alloc_->current_chunk();
         } else {
@@ -624,7 +624,7 @@ void searcher::search_lines(uint32_t *indexes, int count,
     if (count == 0)
         return;
 
-    StringPiece search(chunk->data, chunk->size);
+    StringPiece search((char*)chunk->data, chunk->size);
     uint32_t max = indexes[0];
     uint32_t min = line_start(chunk, indexes[0]);
     for (int i = 0; i <= count; i++) {
@@ -654,7 +654,7 @@ void searcher::full_search(const thread_state& ts, const chunk *chunk)
 void searcher::full_search(const thread_state& ts, const chunk *chunk,
                            size_t minpos, size_t maxpos)
 {
-    StringPiece str(chunk->data, chunk->size);
+    StringPiece str((char*)chunk->data, chunk->size);
     StringPiece match;
     int pos = minpos, new_pos;
     while (pos < maxpos && matches_.load() < kMaxMatches) {
