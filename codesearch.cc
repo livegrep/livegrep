@@ -626,6 +626,7 @@ void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
 }
 
 const size_t kMinSkip = 250;
+const int kMinFilterRatio = 50;
 
 void searcher::search_lines(uint32_t *indexes, int count,
                             const thread_state& ts,
@@ -635,6 +636,11 @@ void searcher::search_lines(uint32_t *indexes, int count,
 
     if (count == 0)
         return;
+
+    if (count * kMinFilterRatio > chunk->size) {
+        full_search(ts, chunk);
+        return;
+    }
 
     {
         run_timer run(sort_time_);
