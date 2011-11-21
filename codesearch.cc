@@ -85,7 +85,8 @@ class searcher {
 public:
     searcher(code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
-        matches_(0), re2_time_(false), git_time_(false)
+        matches_(0), re2_time_(false), git_time_(false),
+        index_time_(false), sort_time_(false)
     {
         int id;
         re2::FLAGS_filtered_re2_min_atom_len = 5;
@@ -106,6 +107,12 @@ public:
         log_profile("git time: %d.%06ds\n",
                     int(git_time_.elapsed().tv_sec),
                     int(git_time_.elapsed().tv_usec));
+        log_profile("index time: %d.%06ds\n",
+                    int(index_time_.elapsed().tv_sec),
+                    int(index_time_.elapsed().tv_usec));
+        log_profile("sort time: %d.%06ds\n",
+                    int(sort_time_.elapsed().tv_sec),
+                    int(sort_time_.elapsed().tv_usec));
     }
 
     class thread_state {
@@ -218,6 +225,8 @@ protected:
     vector<string> filter_;
     timer re2_time_;
     timer git_time_;
+    timer index_time_;
+    timer sort_time_;
 };
 
 code_searcher::code_searcher(git_repository *repo)
@@ -596,17 +605,20 @@ void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
     uint32_t *indexes;
     int count = 0, off = 0;
 
-    for (int i = 0; i < filter_.size(); i++) {
-        ranges[i] = equal_range(chunk->suffixes,
-                                chunk->suffixes + chunk->size,
-                                filter_[i], lt);
-        count += ranges[i].second - ranges[i].first;
-    }
-    indexes = new uint32_t[count];
-    for (int i = 0; i < filter_.size(); i++) {
-        int width = ranges[i].second - ranges[i].first;
-        memcpy(&indexes[off], ranges[i].first, width * sizeof(uint32_t));
-        off += width;
+    {
+        run_timer run(index_time_);
+        for (int i = 0; i < filter_.size(); i++) {
+            ranges[i] = equal_range(chunk->suffixes,
+                                    chunk->suffixes + chunk->size,
+                                    filter_[i], lt);
+            count += ranges[i].second - ranges[i].first;
+        }
+        indexes = new uint32_t[count];
+        for (int i = 0; i < filter_.size(); i++) {
+            int width = ranges[i].second - ranges[i].first;
+            memcpy(&indexes[off], ranges[i].first, width * sizeof(uint32_t));
+            off += width;
+        }
     }
 
     search_lines(indexes, count, ts, chunk);
@@ -619,10 +631,16 @@ void searcher::search_lines(uint32_t *indexes, int count,
                             const thread_state& ts,
                             const chunk *chunk)
 {
-    lsd_radix_sort(indexes, indexes + count);
+    log_profile("search_lines: Searching %d/%d indexes.\n", count, chunk->size);
 
     if (count == 0)
         return;
+
+    {
+        run_timer run(sort_time_);
+        lsd_radix_sort(indexes, indexes + count);
+    }
+
 
     StringPiece search((char*)chunk->data, chunk->size);
     uint32_t max = indexes[0];
