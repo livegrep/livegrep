@@ -39,10 +39,24 @@ $(libre2):
 clean:
 	rm -f codesearch $(OBJECTS) $(DEPFILES)
 
+codesearch.o: .config/profile
+$(OBJECTS): .config/densehash .config/noopt
+
 .%.d: %.cc
 	@set -e; rm -f $@; \
 	 $(CXX) -M $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
 	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	 rm -f $@.$$$$
+
+DUMMY:
+.config:
+	@mkdir -p $@
+
+.config/%.tmp: .config DUMMY
+	@echo $(call $(subst .tmp,,$(notdir $@))) > $@
+
+.config/%: .config/%.tmp
+	@cmp -s $< $@ || cp -f $< $@
+	@rm $<
 
 -include $(DEPFILES)
