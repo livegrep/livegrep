@@ -10,6 +10,7 @@
 #include <json/json.h>
 
 #include <re2/regexp.h>
+#include "re2/walker-inl.h"
 
 DEFINE_bool(json, false, "Use JSON output.");
 DEFINE_int32(threads, 4, "Number of threads to use.");
@@ -18,6 +19,7 @@ DEFINE_string(load_index, "", "Load the index from a file instead of walking the
 DEFINE_string(git_dir, ".git", "The git directory to read from");
 
 using namespace std;
+using namespace re2;
 
 long timeval_ms (struct timeval tv) {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
@@ -41,6 +43,81 @@ void print_error(const string& err) {
 }
 
 const int kMaxProgramSize = 4000;
+const int kMaxWidth       = 200;
+
+class WidthWalker : public Regexp::Walker<int> {
+public:
+  virtual int PostVisit(
+      Regexp* re, int parent_arg,
+      int pre_arg,
+      int *child_args, int nchild_args);
+
+  virtual int ShortVisit(
+      Regexp* re,
+      int parent_arg);
+};
+
+int WidthWalker::ShortVisit(Regexp *re, int parent_arg) {
+    return 0;
+}
+
+int WidthWalker::PostVisit(Regexp *re, int parent_arg,
+                           int pre_arg,
+                           int *child_args, int nchild_args) {
+    int width;
+    switch (re->op()) {
+    case kRegexpRepeat:
+        width = child_args[0] * re->max();
+        break;
+
+    case kRegexpNoMatch:
+    // These ops match the empty string:
+    case kRegexpEmptyMatch:      // anywhere
+    case kRegexpBeginLine:       // at beginning of line
+    case kRegexpEndLine:         // at end of line
+    case kRegexpBeginText:       // at beginning of text
+    case kRegexpEndText:         // at end of text
+    case kRegexpWordBoundary:    // at word boundary
+    case kRegexpNoWordBoundary:  // not at word boundary
+        width = 0;
+        break;
+
+    case kRegexpLiteral:
+    case kRegexpAnyChar:
+    case kRegexpAnyByte:
+    case kRegexpCharClass:
+        width = 1;
+        break;
+
+    case kRegexpLiteralString:
+        width = re->nrunes();
+        break;
+
+    case kRegexpConcat:
+        width = 0;
+        for (int i = 0; i < nchild_args; i++)
+            width += child_args[i];
+        break;
+
+    case kRegexpAlternate:
+        width = 0;
+        for (int i = 0; i < nchild_args; i++)
+            width = max(width, child_args[i]);
+        break;
+
+    case kRegexpStar:
+    case kRegexpPlus:
+    case kRegexpQuest:
+    case kRegexpCapture:
+        width = child_args[0];
+        break;
+
+    default:
+        assert(false);
+    }
+
+    return width;
+}
 
 int main(int argc, char **argv) {
     google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
@@ -51,6 +128,8 @@ int main(int argc, char **argv) {
 
     code_searcher counter(repo);
     counter.set_output_json(FLAGS_json);
+
+    WidthWalker width;
 
     if (FLAGS_load_index.size() == 0) {
         timer tm;
@@ -102,12 +181,18 @@ int main(int argc, char **argv) {
             print_error("Parse error.");
             continue;
         }
+        int w = width.Walk(re.Regexp(), 0);
+        if (w > kMaxWidth) {
+            print_error("Parse error.");
+            continue;
+        }
         {
             timer tm;
             struct timeval elapsed;
             match_stats stats;
             if (!FLAGS_json)
                 printf("ProgramSize: %d\n", re.ProgramSize());
+
             counter.match(re, &stats);
             elapsed = tm.elapsed();
             if (FLAGS_json)
