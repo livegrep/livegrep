@@ -91,6 +91,8 @@ public:
                 break;
             re2::FLAGS_filtered_re2_min_atom_len--;
         }
+        gettimeofday(&limit_, NULL);
+        limit_.tv_sec++;
     }
 
     ~searcher() {
@@ -211,6 +213,13 @@ protected:
         return StringPiece(start, end - start);
     }
 
+    bool timed_out() {
+        timeval now;
+        gettimeofday(&now, NULL);
+        return (now.tv_sec > limit_.tv_sec ||
+                (now.tv_sec == limit_.tv_sec && now.tv_usec > limit_.tv_usec));
+    }
+
     code_searcher *cc_;
     RE2& pat_;
     thread_queue<match_result*>& queue_;
@@ -220,6 +229,7 @@ protected:
     timer git_time_;
     timer index_time_;
     timer sort_time_;
+    timeval limit_;
 };
 
 code_searcher::code_searcher(git_repository *repo)
@@ -426,6 +436,10 @@ bool searcher::operator()(const thread_state& ts, const chunk *chunk)
     else
         full_search(ts, chunk);
 
+    if (timed_out()) {
+        queue_.push(NULL);
+        return true;
+    }
     if (matches_.load() >= kMaxMatches) {
         queue_.push(NULL);
         return true;
@@ -531,6 +545,8 @@ void searcher::full_search(const thread_state& ts, const chunk *chunk,
         new_pos = line.size() + line.data() - str.data() + 1;
         assert(new_pos > pos);
         pos = new_pos;
+        if (timed_out())
+            break;
     }
 }
 
