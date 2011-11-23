@@ -34,6 +34,14 @@ Client.prototype.ready = function() {
 }
 
 Client.prototype.search = function (re, cb) {
+  if (this.parent.codesearch.readyState !== 'ready') {
+    this.parent.queue.push({
+                             client: this,
+                             re: re,
+                             cb: cb
+                           });
+    return;
+  }
   var search = this.parent.codesearch.search(re);
   search.on('error', remote_call.bind(null, cb, 'error'));
   search.on('done',  remote_call.bind(null, cb, 'done'));
@@ -44,6 +52,7 @@ function Server(repo, ref, args) {
   var parent = this;
   this.codesearch = null
   this.clients = [];
+  this.queue   = [];
 
   git_util.rev_parse(
     repo, ref,
@@ -55,16 +64,27 @@ function Server(repo, ref, args) {
                                          });
 
       parent.codesearch.on('ready', function () {
-                             Object.keys(parent.clients).forEach(
-                               function (id) {
-                                 parent.clients[id].ready();
-                               });
+                             var q;
+                             if (parent.queue.length) {
+                               q = parent.queue.shift();
+                               q.client.search.call(q.client, q.re, q.cb);
+                             } else {
+                               Object.keys(parent.clients).forEach(
+                                 function (id) {
+                                   parent.clients[id].ready();
+                                 });
+                             }
                            });
     });
 
   this.Server = function (remote, conn) {
     parent.clients[conn.id] = new Client(parent, remote);
     conn.on('end', function() {
+              var client = parent.clients[conn.id];
+              parent.queue = parent.queue.filter(
+                function (q) {
+                  return q.client !== client
+                });
               delete parent.clients[conn.id];
             });
     this.try_search = function(re, cb) {
