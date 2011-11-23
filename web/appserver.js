@@ -63,6 +63,8 @@ function SearchServer(repo, ref, args) {
           'localhost', config.DNODE_PORT,
           function (remote) {
             parent.codesearch = remote;
+          }, {
+            reconnect: 200
           });
 
   this.Server = function (remote, conn) {
