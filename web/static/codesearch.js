@@ -112,12 +112,14 @@ var Codesearch = function() {
     },
     search_done: function(search, time) {
       Codesearch.handle_result(search);
+      $('#countarea').show();
       $('#searchtime').text((time/1000) + "s");
       $('#searchtimebox').show();
     },
     handle_result: function(search) {
       Codesearch.hide_error();
       if (search != Codesearch.displaying) {
+        $('#numresults').text('0');
         $('#results').empty();
         $('#searchtimebox').hide();
         $('#countarea').hide();
