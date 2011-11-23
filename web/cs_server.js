@@ -21,7 +21,9 @@ function remote_call(obj, fn) {
   var args = Array.prototype.slice.call(arguments, 2);
   try {
     obj[fn].apply(obj, args);
-  } catch (e) { }
+  } catch (e) {
+    console.log("fn: %s", e);
+  }
 }
 
 function Client(parent, remote) {
@@ -88,7 +90,7 @@ function Server(repo, ref, args) {
               delete parent.clients[conn.id];
             });
     this.try_search = function(re, cb) {
-      if (parent.readyState !== 'ready') {
+      if (parent.codesearch.readyState !== 'ready') {
         remote_call(cb, 'not_ready');
         return;
       }
