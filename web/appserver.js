@@ -1,5 +1,5 @@
 var Codesearch = require('./codesearch.js'),
-    execFile   = require('child_process').execFile;
+    git_util   = require('./git_util.js');
 
 function Client(parent, remote) {
   this.parent = parent;
@@ -46,22 +46,22 @@ function SearchServer(repo, ref, args) {
   this.searcher = null;
   this.clients = {};
 
-  execFile('git', ['rev-parse', ref], {
-             cwd: repo
-           }, function (err, stdout, stderr) {
-             if (err) throw err;
-             console.log("Searching commit %s (%s)",
-                         ref, stdout.trim());
-             parent.codesearch = new Codesearch(repo, [stdout.trim()], {
-                                                  args: args
-                                                });
-             parent.codesearch.on('ready', function () {
-                                    Object.keys(parent.clients).forEach(
-                                      function (id) {
-                                        parent.clients[id].dispatch_search();
-                                      });
-                                  });
-           });
+  git_util.rev_parse(
+    repo, ref,
+    function (err, sha1) {
+      if (err) throw err;
+      console.log("Searching commit %s (%s)",
+                  ref, sha1);
+      parent.codesearch = new Codesearch(repo, [sha1], {
+                                           args: args
+                                         });
+      parent.codesearch.on('ready', function () {
+                             Object.keys(parent.clients).forEach(
+                               function (id) {
+                                 parent.clients[id].dispatch_search();
+                               });
+                           });
+    });
 
   this.Server = function (remote, conn) {
     parent.clients[conn.id] = new Client(parent, remote);
