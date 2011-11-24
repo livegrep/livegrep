@@ -70,6 +70,7 @@ function SearchServer() {
         }).connect(
           'localhost', config.DNODE_PORT,
           function (remote, conn) {
+            console.log("Connected to codesearch daemon.");
             parent.codesearch = remote;
             conn.on('ready', ready);
             conn.on('reconnect', ready);
