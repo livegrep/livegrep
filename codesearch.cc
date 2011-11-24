@@ -138,6 +138,8 @@ public:
     void get_stats(match_stats *stats) {
         stats->re2_time = re2_time_.elapsed();
         stats->git_time = git_time_.elapsed();
+        stats->index_time = index_time_.elapsed();
+        stats->sort_time  = sort_time_.elapsed();
     }
 
 protected:

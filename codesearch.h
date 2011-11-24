@@ -53,6 +53,8 @@ typedef google::sparse_hash_set<StringPiece, hashstr, eqstr> string_hash;
 struct match_stats {
     timeval re2_time;
     timeval git_time;
+    timeval sort_time;
+    timeval index_time;
 };
 
 struct chunk;
