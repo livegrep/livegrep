@@ -49,7 +49,7 @@ Client.prototype.dispatch_search = function() {
   }
 }
 
-function SearchServer(repo, ref, args) {
+function SearchServer() {
   var parent = this;
   this.codesearch = null;
   this.clients = {};

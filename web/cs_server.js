@@ -5,10 +5,6 @@ var dnode   = require('dnode'),
     git_util   = require('./git_util.js'),
     Codesearch = require('./codesearch.js');
 
-var REPO = process.argv[2] || '/home/nelhage/code/linux-2.6/';
-var REF  = process.argv[3] || 'v3.0';
-var args = process.argv.slice(4);
-
 /*
  * Used to invoke callbacks on remote objects, where they may or may not provide
  * a method of the appropriate name, or may provide something that is not even a
@@ -50,19 +46,19 @@ Client.prototype.search = function (re, cb) {
   search.on('match', remote_call.bind(null, cb, 'match'));
 }
 
-function Server(repo, ref, args) {
+function Server(config) {
   var parent = this;
   this.codesearch = null
   this.clients = [];
   this.queue   = [];
 
   git_util.rev_parse(
-    repo, ref,
+    config.SEARCH_REPO, config.SEARCH_REF,
     function (err, sha1) {
       if (err) throw err;
-      console.log("Searching commit %s (%s)", ref, sha1);
-      parent.codesearch = new Codesearch(repo, [sha1], {
-                                           args: args
+      console.log("Searching commit %s (%s)", config.SEARCH_REF, sha1);
+      parent.codesearch = new Codesearch(config.SEARCH_REPO, [sha1], {
+                                           args: config.SEARCH_ARGS
                                          });
 
       parent.codesearch.on('ready', function () {
@@ -102,5 +98,5 @@ function Server(repo, ref, args) {
   }
 }
 
-var server = dnode(new Server(REPO, REF, args).Server);
+var server = dnode(new Server(config).Server);
 server.listen(config.DNODE_PORT);
