@@ -42,9 +42,12 @@ Client.prototype.dispatch_search = function() {
         if (remote.match)
           remote.match(search, match);
       },
-      done: function () {
+      done: function (stats) {
+        var time = (new Date()) - start;
         if (remote.search_done)
-          remote.search_done(search, (new Date()) - start);
+          remote.search_done(search, time);
+        self.parent.logger.info("Search done: %s: %s: %j",
+                                search, time, stats)
       }
     }
     this.parent.codesearch.try_search(search, cbs);
