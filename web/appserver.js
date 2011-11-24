@@ -1,4 +1,6 @@
 var dnode  = require('dnode'),
+    fs     = require('fs'),
+    log4js = require('log4js'),
     config = require('./config.js');
 
 function Client(parent, remote) {
@@ -21,7 +23,8 @@ Client.prototype.dispatch_search = function() {
       this.parent.ready) {
     var start = new Date();
     this.last_search = this.pending_search;
-    console.log('dispatching: %s...', this.pending_search)
+    this.parent.logger.debug('dispatching: %s...', this.pending_search);
+
     var search = this.pending_search;
     this.pending_search = null;
     var self   = this;
@@ -54,6 +57,7 @@ function SearchServer() {
   this.codesearch = null;
   this.clients = {};
   this.ready   = false;
+  this.logger  = log4js.getLogger();
 
   function ready() {
     parent.ready = true;
@@ -70,7 +74,7 @@ function SearchServer() {
         }).connect(
           'localhost', config.DNODE_PORT,
           function (remote, conn) {
-            console.log("Connected to codesearch daemon.");
+            parent.logger.info("Connected to codesearch daemon.");
             parent.codesearch = remote;
             conn.on('ready', ready);
             conn.on('reconnect', ready);
