@@ -37,6 +37,7 @@ function loop(i) {
                   if (!(q in times))
                       times[q] = [];
                   stats.time = time;
+                  stats.nmatch = results;
                   times[q].push(stats);
                   cs.once('ready', function() {
                               loop(i+1);
@@ -60,10 +61,14 @@ function done() {
                  });
     console.log("*** RESULTS ***")
     results.forEach(function (r) {
-        console.log("[%s]: %ss (re2: %s, git: %s)",
+        var matches = r[1].map(function (f) { return f.nmatch });
+        var min_match = Math.min.apply(Math, matches);
+        var max_match = Math.min.apply(Math, matches);
+        console.log("[%s]: %ss (re2: %s, git: %s) [%d, %d]",
                     r[0], Math.round(r[2])/1000,
                     Math.round(average(r[1], 're2_time'))/1000,
-                    Math.round(average(r[1], 'git_time'))/1000)
+                    Math.round(average(r[1], 'git_time'))/1000,
+                    min_match, max_match);
     });
     process.exit(0);
 }
