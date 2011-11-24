@@ -33,7 +33,7 @@ all: codesearch $(DEPFILES)
 codesearch: $(OBJECTS) $(libre2)
 	$(CXX) -o $@ $(LDFLAGS) $^ $(LDLIBS)
 
-$(libre2):
+$(libre2): DUMMY
 	( cd re2 && $(MAKE) )
 
 clean:
