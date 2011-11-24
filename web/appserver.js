@@ -57,7 +57,7 @@ function SearchServer() {
   this.codesearch = null;
   this.clients = {};
   this.ready   = false;
-  this.logger  = log4js.getLogger();
+  this.logger  = log4js.getLogger('appserver');
 
   function ready() {
     parent.ready = true;

@@ -3,6 +3,7 @@ var express = require('express'),
     dnode   = require('dnode'),
     path    = require('path'),
     parseopt= require('parseopt'),
+    log4js = require('log4js'),
     Server  = require('./appserver.js');
 
 var parser = new parseopt.OptionParser(
@@ -28,7 +29,12 @@ if (opts.options.autolaunch) {
 }
 
 var app = express.createServer();
-app.use(express.logger({format: ':remote-addr [:date] :method :url'}))
+var logger = log4js.getLogger('web');
+app.use(log4js.connectLogger(logger, {
+                               level: log4js.levels.INFO,
+                               format: ':remote-addr [:date] :method :url'
+                             }));
+
 app.use(express.static(path.join(__dirname, 'static')));
 app.get('/', function (req, res) {
           res.redirect('/index.html');
