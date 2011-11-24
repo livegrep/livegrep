@@ -162,7 +162,7 @@ protected:
             it != chunk->files.end(); it++) {
             if (off >= it->left && off <= it->right) {
                 searched++;
-                if (matches_.load() >= kMaxMatches)
+                if (exit_early())
                     break;
                 match_result *m = try_match(line, match, it->file, ts.repo_);
                 if (m) {
@@ -172,7 +172,7 @@ protected:
                 }
             }
         }
-        assert(found || matches_.load() >= kMaxMatches);
+        assert(found || exit_early());
         tm.pause();
         log_profile("Searched %d files in %d.%06ds\n",
                     searched,
@@ -218,7 +218,9 @@ protected:
         return StringPiece(start, end - start);
     }
 
-    bool timed_out() {
+    bool exit_early() {
+        if (matches_.load() >= kMaxMatches)
+            return true;
         timeval now;
         gettimeofday(&now, NULL);
         return (now.tv_sec > limit_.tv_sec ||
@@ -441,11 +443,7 @@ bool searcher::operator()(const thread_state& ts, const chunk *chunk)
     else
         full_search(ts, chunk);
 
-    if (timed_out()) {
-        queue_.push(NULL);
-        return true;
-    }
-    if (matches_.load() >= kMaxMatches) {
+    if (exit_early()) {
         queue_.push(NULL);
         return true;
     }
@@ -507,7 +505,7 @@ void searcher::search_lines(uint32_t *indexes, int count,
     StringPiece search((char*)chunk->data, chunk->size);
     uint32_t max = indexes[0];
     uint32_t min = line_start(chunk, indexes[0]);
-    for (int i = 0; i <= count; i++) {
+    for (int i = 0; i <= count && !exit_early(); i++) {
         if (i != count) {
             if (indexes[i] < max) continue;
             if (indexes[i] < max + kMinSkip) {
@@ -537,7 +535,7 @@ void searcher::full_search(const thread_state& ts, const chunk *chunk,
     StringPiece str((char*)chunk->data, chunk->size);
     StringPiece match;
     int pos = minpos, new_pos;
-    while (pos < maxpos && matches_.load() < kMaxMatches) {
+    while (pos < maxpos && !exit_early()) {
         {
             run_timer run(re2_time_);
             if (!pat_.Match(str, pos, maxpos, RE2::UNANCHORED, &match, 1))
@@ -550,8 +548,6 @@ void searcher::full_search(const thread_state& ts, const chunk *chunk,
         new_pos = line.size() + line.data() - str.data() + 1;
         assert(new_pos > pos);
         pos = new_pos;
-        if (timed_out())
-            break;
     }
 }
 
