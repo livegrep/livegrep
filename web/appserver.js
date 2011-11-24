@@ -16,7 +16,9 @@ Client.prototype.new_search = function (str) {
 }
 
 Client.prototype.dispatch_search = function() {
-  if (this.pending_search !== null && this.parent.codesearch) {
+  if (this.pending_search !== null &&
+      this.parent.codesearch &&
+      this.parent.ready) {
     var start = new Date();
     this.last_search = this.pending_search;
     console.log('dispatching: %s...', this.pending_search)
@@ -43,6 +45,7 @@ Client.prototype.dispatch_search = function() {
       }
     }
     this.parent.codesearch.try_search(search, cbs);
+    this.parent.ready = false;
   }
 }
 
@@ -50,19 +53,26 @@ function SearchServer(repo, ref, args) {
   var parent = this;
   this.codesearch = null;
   this.clients = {};
+  this.ready   = false;
+
+  function ready() {
+    parent.ready = true;
+    Object.keys(parent.clients).forEach(
+      function (id) {
+        parent.clients[id].dispatch_search();
+      })
+  }
 
   dnode({
           ready: function() {
-            console.log('ready')
-            Object.keys(parent.clients).forEach(
-              function (id) {
-                parent.clients[id].dispatch_search();
-              })
+            ready();
           }
         }).connect(
           'localhost', config.DNODE_PORT,
-          function (remote) {
+          function (remote, conn) {
             parent.codesearch = remote;
+            conn.on('ready', ready);
+            conn.on('reconnect', ready);
           }, {
             reconnect: 200
           });
