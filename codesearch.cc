@@ -87,7 +87,12 @@ public:
             re2::FilteredRE2 fre2;
             assert(!fre2.Add(pat.pattern(), pat.options(), &id));
             fre2.Compile(&filter_, false);
-            if (filter_.size() > 0 && filter_.size() < kMaxFilters)
+            log_profile("Filter size %d: %d hits.\n",
+                        re2::FLAGS_filtered_re2_min_atom_len,
+                        int(filter_.size()));
+            for (int i = 0; i < filter_.size(); i++)
+                log_profile(" -> %s\n", filter_[i].c_str());
+            if (filter_.size() > 0 && filter_.size() <= kMaxFilters)
                 break;
             re2::FLAGS_filtered_re2_min_atom_len--;
         }
@@ -431,7 +436,7 @@ bool searcher::operator()(const thread_state& ts, const chunk *chunk)
         return true;
     }
 
-    if (FLAGS_index && filter_.size() > 0 && filter_.size() < kMaxFilters)
+    if (FLAGS_index && filter_.size() > 0 && filter_.size() <= kMaxFilters)
         filtered_search(ts, chunk);
     else
         full_search(ts, chunk);
@@ -452,7 +457,7 @@ void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
     log_profile("Attempting filtered search with %d filters\n", int(filter_.size()));
     chunk::lt_suffix lt(chunk);
 
-    pair<uint32_t*, uint32_t*> ranges[kMaxFilters];
+    pair<uint32_t*, uint32_t*> ranges[kMaxFilters + 1];
     uint32_t *indexes;
     int count = 0, off = 0;
 
