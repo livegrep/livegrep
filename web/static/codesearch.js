@@ -9,10 +9,10 @@ var Codesearch = function() {
     var i;
     var ctx_before = [], ctx_after = [];
     for (i = 0; i < match.context_before.length; i ++) {
-      ctx_before.push(h.div([
-                              h.span({cls: 'lno'}, [match.lno - i - 1, ":"]),
-                              match.context_before[i]
-                            ]));
+      ctx_before.unshift(h.div([
+                                 h.span({cls: 'lno'}, [match.lno - i - 1, ":"]),
+                                 match.context_before[i]
+                               ]));
     }
     for (i = 0; i < match.context_after.length; i ++) {
       ctx_after.push(h.div([
