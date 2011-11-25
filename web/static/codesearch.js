@@ -35,22 +35,10 @@ var Codesearch = function() {
                                  ]),
                            ctx_after])]);
   }
-  function connectFailedMiddleware(cb) {
-    return function (remote, client) {
-      var timer = setTimeout(function() {
-                               client.socketio.disconnect();
-                               cb();
-                             }, 2000);
-      client.on('remote', function() {
-                  clearTimeout(timer);
-                });
-    }
-  };
   return {
     remote: null,
     displaying: null,
     results: 0,
-    reconnect_interval: 50,
     onload: function() {
       Codesearch.input = $('#searchbox');
       Codesearch.input.keydown(Codesearch.keypress);
@@ -64,25 +52,13 @@ var Codesearch = function() {
       DNode({ error: Codesearch.error,
               match: Codesearch.match,
               search_done: Codesearch.search_done,
-            }).use(
-              connectFailedMiddleware(Codesearch.disconnected)
-            ).connect(
+            }).connect(
               function (remote, conn) {
                 Codesearch.remote = remote;
-                conn.on('end', Codesearch.disconnected);
-                Codesearch.reconnect_interval = 50;
               },
               {
                 transports: ["htmlfile", "xhr-polling", "jsonp-polling"]
               });
-    },
-    disconnected: function() {
-      console.log("Reconnecting in " + Codesearch.reconnect_interval)
-      Codesearch.remote = null;
-      setTimeout(Codesearch.connect, Codesearch.reconnect_interval);
-      Codesearch.reconnect_interval *= 2;
-      if (Codesearch.reconnect_interval > MAX_RECONNECT_INTERVAL)
-        Codesearch.reconnect_interval = MAX_RECONNECT_INTERVAL;
     },
     keypress: function() {
       setTimeout(Codesearch.newsearch, 0);
