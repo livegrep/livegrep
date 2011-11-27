@@ -4,6 +4,8 @@
 #include <re2/re2.h>
 #include <gflags/gflags.h>
 
+#include <limits>
+
 using re2::StringPiece;
 
 DECLARE_bool(index);

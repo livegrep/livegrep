@@ -13,7 +13,7 @@ public:
         return chunks_.begin();
     }
 
-    typename list<chunk*>::iterator end () {
+    list<chunk*>::iterator end () {
         return chunks_.end();
     }
 
