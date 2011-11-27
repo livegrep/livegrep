@@ -19,8 +19,9 @@ Client.prototype.new_search = function (str) {
 
 Client.prototype.dispatch_search = function() {
   if (this.pending_search !== null &&
-      this.parent.codesearch &&
-      this.parent.ready) {
+      this.parent.remotes.length) {
+    var codesearch = this.parent.remotes.pop();
+    console.assert(codesearch.cs_ready);
     var start = new Date();
     this.last_search = this.pending_search;
     this.parent.logger.debug('dispatching: %s...', this.pending_search);
@@ -31,6 +32,7 @@ Client.prototype.dispatch_search = function() {
     var remote = this.remote;
     var cbs = {
       not_ready: function() {
+        self.parent.logger.info('Remote reports not ready for %s', search);
         if (self.pending_search === null)
           self.pending_search = search;
       },
@@ -47,43 +49,44 @@ Client.prototype.dispatch_search = function() {
         if (remote.search_done)
           remote.search_done(search, time);
         self.parent.logger.info("Search done: %s: %s: %j",
-                                search, time, stats)
+                                search, time, stats);
       }
     }
-    this.parent.codesearch.try_search(search, cbs);
-    this.parent.ready = false;
+    codesearch.try_search(search, cbs);
+    codesearch.cs_ready = false;
   }
 }
 
 function SearchServer() {
   var parent = this;
-  this.codesearch = null;
+  this.remotes = [];
   this.clients = {};
-  this.ready   = false;
   this.logger  = log4js.getLogger('appserver');
 
+  var remote = null;
   function ready() {
-    parent.ready = true;
-    Object.keys(parent.clients).forEach(
-      function (id) {
-        parent.clients[id].dispatch_search();
-      })
+    parent.logger.debug('Remote ready!');
+    if (remote.cs_ready) {
+      parent.logger.debug('(already queued)!');
+      return;
+    }
+    remote.cs_ready = true;
+    parent.remotes.push(remote);
+    parent.dispatch();
   }
 
-  dnode({
-          ready: function() {
-            ready();
-          }
-        }).connect(
-          'localhost', config.DNODE_PORT,
-          function (remote, conn) {
-            parent.logger.info("Connected to codesearch daemon.");
-            parent.codesearch = remote;
-            conn.on('ready', ready);
-            conn.on('reconnect', ready);
-          }, {
-            reconnect: 200
-          });
+  dnode({ ready: ready }).
+    connect(
+      'localhost', config.DNODE_PORT,
+      function (r, conn) {
+        r.cs_ready = false;
+        remote = r;
+        parent.logger.info("Connected to codesearch daemon.");
+        conn.on('ready', ready);
+        conn.on('reconnect', ready);
+      }, {
+        reconnect: 200
+      });
 
   this.Server = function (remote, conn) {
     parent.clients[conn.id] = new Client(parent, remote);
@@ -94,6 +97,14 @@ function SearchServer() {
               delete parent.clients[conn.id];
             });
   }
+}
+
+SearchServer.prototype.dispatch = function () {
+  var clients = this.clients;
+  Object.keys(this.clients).forEach(
+    function (id) {
+      clients[id].dispatch_search();
+    })
 }
 
 module.exports = SearchServer;
