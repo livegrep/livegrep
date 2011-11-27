@@ -30,6 +30,17 @@ Client.prototype.dispatch_search = function() {
     this.pending_search = null;
     var self   = this;
     var remote = this.remote;
+    var matches = [];
+    var last_flush = new Date();
+    function flush(force) {
+      if (force || (new Date() - last_flush) > 10) {
+        matches.forEach(function (m) {
+                          remote.match(search, m)
+                        });
+        last_flush = new Date();
+        matches = [];
+      }
+    }
     var cbs = {
       not_ready: function() {
         self.parent.logger.info('Remote reports not ready for %s', search);
@@ -41,11 +52,14 @@ Client.prototype.dispatch_search = function() {
           remote.error(search, err)
       },
       match: function (match) {
-        if (remote.match)
-          remote.match(search, match);
+        self.parent.logger.trace("Reporting match %j for %s.",
+                                 match, search);
+        matches.push(match);
+        flush();
       },
       done: function (stats) {
         var time = (new Date()) - start;
+        flush(true);
         if (remote.search_done)
           remote.search_done(search, time);
         self.parent.logger.info("Search done: %s: %s: %j",
