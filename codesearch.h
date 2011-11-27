@@ -25,7 +25,7 @@ using re2::StringPiece;
 
 using std::string;
 using std::locale;
-
+using std::vector;
 
 /*
  * We special-case data() == NULL to provide an "empty" element for
@@ -64,6 +64,7 @@ struct search_file {
     string path;
     const char *ref;
     git_oid oid;
+    vector<StringPiece> content;
     int no;
 };
 

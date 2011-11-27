@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <locale>
@@ -166,7 +166,7 @@ protected:
                 searched++;
                 if (exit_early())
                     break;
-                match_result *m = try_match(line, match, it->file, ts.repo_);
+                match_result *m = try_match(line, match, it->file);
                 if (m) {
                     found = true;
                     queue_.push(m);
@@ -183,7 +183,7 @@ protected:
     }
 
     match_result *try_match(const StringPiece&, const StringPiece&,
-                            search_file *, git_repository *);
+                            search_file *);
 
     static int line_start(const chunk *chunk, int pos) {
         const unsigned char *start = static_cast<const unsigned char*>
@@ -402,6 +402,16 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
             c = chunk::from_str(line.data());
         }
         c->add_chunk_file(sf, line);
+        if (sf->content.size() &&
+            sf->content.back().data() +
+            sf->content.back().size() == line.data()) {
+            StringPiece &back = sf->content.back();
+            assert(back.data()[back.size()] == '\n');
+            back = StringPiece(back.data(),
+                               (line.data() - back.data() + line.size()));
+        } else {
+            sf->content.push_back(StringPiece(line.data(), line.size()));
+        }
         p = f + 1;
         stats_.lines++;
     }
@@ -556,34 +566,57 @@ void searcher::full_search(const thread_state& ts, const chunk *chunk,
 
 match_result *searcher::try_match(const StringPiece& line,
                                   const StringPiece& match,
-                                  search_file *sf,
-                                  git_repository *repo) {
-    smart_object<git_blob> blob;
-    git_blob_lookup(blob, repo, &sf->oid);
-    StringPiece search(static_cast<const char*>(git_blob_rawcontent(blob)),
-                       git_blob_rawsize(blob));
-    StringPiece matchline;
-    RE2 pat("^" + RE2::QuoteMeta(line) + "$", pat_.options());
-    assert(pat.ok());
-    if (!pat.Match(search, 0, search.size(), RE2::UNANCHORED, &matchline, 1))
+                                  search_file *sf) {
+
+    int lno = 1;
+    vector<StringPiece>::iterator it;
+    for (it = sf->content.begin();
+         it != sf->content.end(); ++it) {
+        if (line.data() >= it->data() &&
+            line.data() <= it->data() + it->size()) {
+            lno += count(it->data(), line.data(), '\n');
+            break;
+        } else {
+            lno += count(it->data(), it->data() + it->size(), '\n') + 1;
+        }
+    }
+
+    if (it == sf->content.end())
         return 0;
+
     match_result *m = new match_result;
     m->file = sf;
-    m->lno  = 1 + count(search.data(), matchline.data(), '\n');
+    m->lno  = lno;
     m->line = line;
     m->matchleft = int(match.data() - line.data());
     m->matchright = m->matchleft + match.size();
-    StringPiece l = matchline;
-    int i;
-    for (i = 0; i < kContextLines && l.data() > search.data(); i++) {
-        l = find_line(search, StringPiece(l.data() - 1, 0));
+
+    vector<StringPiece>::iterator mit = it;
+    StringPiece l = line;
+    int i = 0;
+
+    for (i = 0; i < kContextLines; i++) {
+        if (l.data() == it->data()) {
+            if (it == sf->content.begin())
+                break;
+            --it;
+            l = StringPiece(it->data() + it->size() + 1, 0);
+        }
+        l = find_line(*it, StringPiece(l.data() - 1, 0));
         m->context_before.push_back(l.as_string());
     }
-    l = matchline;
-    for (i = 0; i < kContextLines &&
-                    (l.data() + l.size()) < (search.data() + search.size()); i++) {
-        l = find_line(search, StringPiece(l.data() + l.size() + 1, 0));
+
+    l = line;
+    it = mit;
+    for (i = 0; i < kContextLines; i++) {
+        if (l.data() + l.size() == it->data() + it->size()) {
+            if (++it == sf->content.end())
+                break;
+            l = StringPiece(it->data() - 1, 0);
+        }
+        l = find_line(*it, StringPiece(l.data() + l.size() + 1, 0));
         m->context_after.push_back(l.as_string());
     }
+
     return m;
 }
