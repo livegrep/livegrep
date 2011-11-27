@@ -2,8 +2,10 @@
 #include "chunk.h"
 #include "chunk_allocator.h"
 
+#include <map>
+
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 2;
+const uint32_t kIndexVersion = 3;
 
 struct index_header {
     uint32_t magic;
@@ -54,6 +56,21 @@ void code_searcher::dump_chunk(ostream& stream, chunk *chunk) {
                  sizeof(uint32_t) * chunk->size);
 }
 
+void code_searcher::dump_file_contents(ostream& stream,
+                                       map<chunk*, int>& chunks,
+                                       search_file *sf) {
+    /* (int num, [chunkid, offset, len]) */
+    dump_int32(stream, sf->content.size());
+    for (vector<StringPiece>::iterator it = sf->content.begin();
+             it != sf->content.end(); ++it) {
+        chunk *chunk = chunk::from_str(it->data());
+        dump_int32(stream, chunks[chunk]);
+        dump_int32(stream, reinterpret_cast<const unsigned char*>(it->data()) - chunk->data);
+        dump_int32(stream, it->size());
+    }
+}
+
+
 void code_searcher::dump_index(const string& path) {
     assert(finalized_);
     ofstream stream(path.c_str());
@@ -77,10 +94,20 @@ void code_searcher::dump_index(const string& path) {
         dump_file(stream, *it);
     }
 
+    map<chunk*, int> chunks;
+    int i = 0;
+
     for (list<chunk*>::iterator it = alloc_->begin();
          it != alloc_->end(); ++it) {
         dump_chunk(stream, *it);
+        chunks[*it] = i++;
     }
+
+    for (vector<search_file*>::iterator it = files_.begin();
+         it != files_.end(); ++it) {
+        dump_file_contents(stream, chunks, *it);
+    }
+
 }
 
 uint32_t load_int32(istream& stream) {
@@ -129,6 +156,18 @@ void code_searcher::load_chunk(istream& stream, chunk *chunk) {
                 sizeof(uint32_t) * chunk->size);
 }
 
+void code_searcher::load_file_contents(std::istream& stream,
+                                       vector<chunk*>& chunks,
+                                       search_file *sf) {
+    int npieces = load_int32(stream);
+    for (int i = 0; i < npieces; i++) {
+        chunk *chunk = chunks[load_int32(stream)];
+        char *p = reinterpret_cast<char*>(chunk->data) + load_int32(stream);
+        int len = load_int32(stream);
+        sf->content.push_back(StringPiece(p, len));
+    }
+}
+
 void code_searcher::load_index(const string& path) {
     assert(!finalized_);
     assert(!refs_.size());
@@ -149,10 +188,16 @@ void code_searcher::load_index(const string& path) {
         files_.push_back(load_file(stream));
     }
 
+    vector<chunk*> chunks;
     for (int i = 0; i < hdr.nchunks; i++) {
         load_chunk(stream, alloc_->current_chunk());
+        chunks.push_back(alloc_->current_chunk());
         if (i != hdr.nchunks - 1)
             alloc_->skip_chunk();
+    }
+
+    for (int i = 0; i < hdr.nfiles; i++) {
+        load_file_contents(stream, chunks, files_[i]);
     }
 
     finalized_ = true;

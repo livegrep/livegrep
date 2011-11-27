@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <map>
 #include <fstream>
 
 #ifdef USE_DENSE_HASH_SET
@@ -26,6 +27,7 @@ using re2::StringPiece;
 using std::string;
 using std::locale;
 using std::vector;
+using std::map;
 
 /*
  * We special-case data() == NULL to provide an "empty" element for
@@ -88,9 +90,11 @@ protected:
     void resolve_ref(smart_object<git_commit> &out, const char *refname);
 
     void dump_file(std::ostream& stream, search_file *sf);
+    void dump_file_contents(std::ostream& stream, map<chunk*, int>&, search_file *sf);
     void dump_chunk(std::ostream& stream, chunk *);
 
     search_file *load_file(std::istream& stream);
+    void load_file_contents(std::istream& stream, vector<chunk*>&, search_file *sf);
     void load_chunk_file(std::istream& stream, chunk_file *);
     void load_chunk(std::istream& stream, chunk *);
 
