@@ -115,25 +115,7 @@ public:
                     int(sort_time_.elapsed().tv_usec));
     }
 
-    class thread_state {
-    public:
-        thread_state(const searcher& search) {
-            git_repository_open(&repo_,
-                                git_repository_path(search.cc_->repo_,
-                                                    GIT_REPO_PATH));
-            assert(repo_);
-        }
-        ~thread_state() {
-            git_repository_free(repo_);
-        }
-    protected:
-        thread_state(const thread_state&);
-        thread_state operator=(const thread_state&);
-        git_repository *repo_;
-        friend class searcher;
-    };
-
-    bool operator()(const thread_state& ts, const chunk *chunk);
+    bool operator()(const chunk *chunk);
 
     void get_stats(match_stats *stats) {
         stats->re2_time = re2_time_.elapsed();
@@ -143,18 +125,15 @@ public:
     }
 
 protected:
-    void full_search(const thread_state& ts, const chunk *chunk);
-    void full_search(const thread_state& ts, const chunk *chunk,
-                     size_t minpos, size_t maxpos);
+    void full_search(const chunk *chunk);
+    void full_search(const chunk *chunk, size_t minpos, size_t maxpos);
 
-    void filtered_search(const thread_state& ts, const chunk *chunk);
-    void search_lines(uint32_t *left, int count,
-                      const thread_state& ts, const chunk *chunk);
+    void filtered_search(const chunk *chunk);
+    void search_lines(uint32_t *left, int count, const chunk *chunk);
 
     void find_match (const chunk *chunk,
                      const StringPiece& match,
-                     const StringPiece& line,
-                     const thread_state& ts) {
+                     const StringPiece& line) {
         run_timer run(git_time_);
         timer tm;
         int off = (unsigned char*)line.data() - chunk->data;
@@ -282,7 +261,7 @@ int code_searcher::match(RE2& pat, match_stats *stats) {
 
     thread_queue<match_result*> results;
     searcher search(this, results, pat);
-    thread_pool<chunk*, searcher, searcher::thread_state> pool(threads, search);
+    thread_pool<chunk*, searcher> pool(threads, search);
 
     for (it = alloc_->begin(); it != alloc_->end(); it++) {
         pool.queue(*it);
@@ -443,7 +422,7 @@ void code_searcher::resolve_ref(smart_object<git_commit>& out, const char *refna
     }
 }
 
-bool searcher::operator()(const thread_state& ts, const chunk *chunk)
+bool searcher::operator()(const chunk *chunk)
 {
     if (chunk == NULL) {
         queue_.push(NULL);
@@ -451,9 +430,9 @@ bool searcher::operator()(const thread_state& ts, const chunk *chunk)
     }
 
     if (FLAGS_index && filter_.size() > 0 && filter_.size() <= kMaxFilters)
-        filtered_search(ts, chunk);
+        filtered_search(chunk);
     else
-        full_search(ts, chunk);
+        full_search(chunk);
 
     if (exit_early()) {
         queue_.push(NULL);
@@ -462,7 +441,7 @@ bool searcher::operator()(const thread_state& ts, const chunk *chunk)
     return false;
 }
 
-void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
+void searcher::filtered_search(const chunk *chunk)
 {
     log_profile("Attempting filtered search with %d filters\n", int(filter_.size()));
     chunk::lt_suffix lt(chunk);
@@ -487,7 +466,7 @@ void searcher::filtered_search(const thread_state& ts, const chunk *chunk)
         }
     }
 
-    search_lines(indexes, count, ts, chunk);
+    search_lines(indexes, count, chunk);
     delete[] indexes;
 }
 
@@ -495,7 +474,6 @@ const size_t kMinSkip = 250;
 const int kMinFilterRatio = 50;
 
 void searcher::search_lines(uint32_t *indexes, int count,
-                            const thread_state& ts,
                             const chunk *chunk)
 {
     log_profile("search_lines: Searching %d/%d indexes.\n", count, chunk->size);
@@ -504,7 +482,7 @@ void searcher::search_lines(uint32_t *indexes, int count,
         return;
 
     if (count * kMinFilterRatio > chunk->size) {
-        full_search(ts, chunk);
+        full_search(chunk);
         return;
     }
 
@@ -527,7 +505,7 @@ void searcher::search_lines(uint32_t *indexes, int count,
         }
 
         int end = line_end(chunk, max);
-        full_search(ts, chunk, min, end);
+        full_search(chunk, min, end);
 
         if (i != count) {
             max = indexes[i];
@@ -536,13 +514,12 @@ void searcher::search_lines(uint32_t *indexes, int count,
     }
 }
 
-void searcher::full_search(const thread_state& ts, const chunk *chunk)
+void searcher::full_search(const chunk *chunk)
 {
-    full_search(ts, chunk, 0, chunk->size - 1);
+    full_search(chunk, 0, chunk->size - 1);
 }
 
-void searcher::full_search(const thread_state& ts, const chunk *chunk,
-                           size_t minpos, size_t maxpos)
+void searcher::full_search(const chunk *chunk, size_t minpos, size_t maxpos)
 {
     StringPiece str((char*)chunk->data, chunk->size);
     StringPiece match;
@@ -556,7 +533,7 @@ void searcher::full_search(const thread_state& ts, const chunk *chunk,
         assert(memchr(match.data(), '\n', match.size()) == NULL);
         StringPiece line = find_line(str, match);
         if (utf8::is_valid(line.data(), line.data() + line.size()))
-            find_match(chunk, match, line, ts);
+            find_match(chunk, match, line);
         new_pos = line.size() + line.data() - str.data() + 1;
         assert(new_pos > pos);
         pos = new_pos;
