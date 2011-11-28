@@ -1,6 +1,13 @@
 var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
+    log4js     = require('log4js'),
     path       = require('path');
+
+log4js.configure({
+                   levels: {
+                     'codesearch': 'FATAL'
+                   }
+                 });
 
 var ITERATIONS = 10;
 
