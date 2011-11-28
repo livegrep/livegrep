@@ -7,21 +7,21 @@ libre2=$(CURDIR)/re2/obj/libre2.a
 extradirs=$(sort $(libgit2) $(gflags))
 
 CPPFLAGS = -I$(CURDIR)/re2/ $(patsubst %,-I%/include, $(extradirs))
-LDFLAGS  = $(patsubst %, -L%/lib, $(extradirs))
-LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
+override LDFLAGS += $(patsubst %, -L%/lib, $(extradirs))
+override LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
-CXXFLAGS+=-g -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
-LDFLAGS+=-pthread
+override CXXFLAGS+=-g -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
+override LDFLAGS+=-pthread
 LDLIBS=-lgit2 -ljson -lgflags
 
 ifeq ($(noopt),)
-CXXFLAGS+=-O2
+override CXXFLAGS+=-O2
 endif
 ifneq ($(densehash),)
-CXXFLAGS+=-DUSE_DENSE_HASH_SET
+override CXXFLAGS+=-DUSE_DENSE_HASH_SET
 endif
 ifneq ($(profile),)
-CXXFLAGS+=-DPROFILE_CODESEARCH
+override CXXFLAGS+=-DPROFILE_CODESEARCH
 endif
 
 HEADERS = smart_git.h timer.h thread_queue.h mutex.h thread_pool.h codesearch.h chunk.h chunk_allocator.h
@@ -30,8 +30,8 @@ DEPFILES = $(OBJECTS:%.o=.%.d)
 
 all: codesearch $(DEPFILES)
 
-codesearch: $(OBJECTS) $(libre2)
-	$(CXX) -o $@ $(LDFLAGS) $^ $(LDLIBS)
+codesearch: $(OBJECTS) $(libre2) .config/LDFLAGS
+	$(CXX) -o $@ $(LDFLAGS) $(filter-out .config/%,$^) $(LDLIBS)
 
 $(libre2): DUMMY
 	( cd re2 && $(MAKE) )
@@ -40,7 +40,7 @@ clean:
 	rm -f codesearch $(OBJECTS) $(DEPFILES)
 
 codesearch.o: .config/profile
-$(OBJECTS): .config/densehash .config/noopt
+$(OBJECTS): .config/densehash .config/noopt .config/CXX .config/CXXFLAGS
 
 .%.d: %.cc
 	@set -e; rm -f $@; \
