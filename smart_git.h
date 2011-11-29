@@ -18,7 +18,7 @@ public:
 
     ~smart_object_base() {
         if (obj_)
-            git_object_close(obj_);
+            git_object_free(obj_);
     }
 
     git_object *release() {
