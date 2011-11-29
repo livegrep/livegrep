@@ -1,6 +1,7 @@
 var dnode  = require('dnode'),
     fs     = require('fs'),
     log4js = require('log4js'),
+    util   = require('./util.js'),
     config = require('./config.js');
 
 function Client(parent, remote) {
@@ -35,7 +36,7 @@ Client.prototype.dispatch_search = function() {
     function flush(force) {
       if (force || (new Date() - last_flush) > 10) {
         matches.forEach(function (m) {
-                          remote.match(search, m)
+                          util.remote_call(remote, 'match', search, m);
                         });
         last_flush = new Date();
         matches = [];
@@ -48,8 +49,7 @@ Client.prototype.dispatch_search = function() {
           self.pending_search = search;
       },
       error: function (err) {
-        if (remote.error)
-          remote.error(search, err)
+        util.remote_call(remote, 'error', search, err);
       },
       match: function (match) {
         self.parent.logger.trace("Reporting match %j for %s.",
@@ -60,8 +60,7 @@ Client.prototype.dispatch_search = function() {
       done: function (stats) {
         var time = (new Date()) - start;
         flush(true);
-        if (remote.search_done)
-          remote.search_done(search, time);
+        util.remote_call(remote, 'search_done', search, time);
         self.parent.logger.info("Search done: %s: %s: %j",
                                 search, time, stats);
       }
