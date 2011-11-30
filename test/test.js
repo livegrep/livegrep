@@ -8,12 +8,12 @@ var REPO = process.argv[2] || '/home/nelhage/code/linux-2.6';
 var extra_args = process.argv.slice(3);
 
 var cs_index = new Codesearch(REPO, [], {
-                                args: ['--threads=1'].concat(extra_args)
+                                args: ['--threads=1', '--timeout=0'].concat(extra_args)
                               });
 
 var cs_noindex = new Codesearch(REPO, [], {
-                                  args: ['--threads=1', '--noindex'].concat(
-                                    extra_args)
+                                  args: ['--threads=1', '--noindex', '--timeout=0'].
+                                    concat(extra_args)
                                 });
 
 var queries = fs.readFileSync(path.join(__dirname, 'testcases'), 'utf8').split(/\n/);

@@ -40,6 +40,7 @@ const int    kContextLines = 3;
 #endif
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
+DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
 DECLARE_int32(threads);
 
 namespace re2 {
@@ -96,8 +97,12 @@ public:
                 break;
             re2::FLAGS_filtered_re2_min_atom_len--;
         }
-        gettimeofday(&limit_, NULL);
-        limit_.tv_sec++;
+        if (FLAGS_timeout <= 0) {
+            limit_.tv_sec = numeric_limits<time_t>::max();
+        } else {
+            gettimeofday(&limit_, NULL);
+            limit_.tv_sec += FLAGS_timeout;
+        }
     }
 
     ~searcher() {
