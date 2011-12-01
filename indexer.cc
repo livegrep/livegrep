@@ -29,7 +29,7 @@ double IndexKey::selectivity() {
     double s = 0.0;
     for (vector<string>::const_iterator it = keys.begin();
          it != keys.end(); ++it)
-        s += pow(1./64, min(it->size(), size_t(4)));
+        s += pow(1./(it->size() + 1), 8);
 
     return s;
 }
