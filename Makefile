@@ -24,8 +24,9 @@ ifneq ($(profile),)
 override CXXFLAGS+=-DPROFILE_CODESEARCH
 endif
 
-HEADERS = smart_git.h timer.h thread_queue.h mutex.h thread_pool.h codesearch.h chunk.h chunk_allocator.h
-OBJECTS = codesearch.o main.o chunk.o chunk_allocator.o radix_sort.o dump_load.o
+OBJECTS = codesearch.o main.o chunk.o \
+          chunk_allocator.o radix_sort.o \
+          dump_load.o indexer.o
 DEPFILES = $(OBJECTS:%.o=.%.d)
 
 all: codesearch $(DEPFILES)

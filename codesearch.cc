@@ -9,7 +9,6 @@
 #include <fstream>
 
 #include <re2/re2.h>
-#include <re2/filtered_re2.h>
 
 #include <json/json.h>
 
@@ -23,6 +22,7 @@
 #include "chunk_allocator.h"
 #include "radix_sort.h"
 #include "atomic.h"
+#include "indexer.h"
 
 #include "utf8.h"
 
@@ -42,12 +42,6 @@ const int    kContextLines = 3;
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
 DECLARE_int32(threads);
-
-namespace re2 {
-    extern int32_t FLAGS_filtered_re2_min_atom_len;
-};
-
-const int kMaxFilters = 4;
 
 struct match_result {
     search_file *file;
@@ -82,21 +76,13 @@ public:
         matches_(0), re2_time_(false), git_time_(false),
         index_time_(false), sort_time_(false)
     {
-        int id;
-        re2::FLAGS_filtered_re2_min_atom_len = 5;
-        while(re2::FLAGS_filtered_re2_min_atom_len > 0) {
-            re2::FilteredRE2 fre2;
-            assert(!fre2.Add(pat.pattern(), pat.options(), &id));
-            fre2.Compile(&filter_, false);
-            log_profile("Filter size %d: %d hits.\n",
-                        re2::FLAGS_filtered_re2_min_atom_len,
-                        int(filter_.size()));
-            for (int i = 0; i < filter_.size(); i++)
-                log_profile(" -> %s\n", filter_[i].c_str());
-            if (filter_.size() > 0 && filter_.size() <= kMaxFilters)
-                break;
-            re2::FLAGS_filtered_re2_min_atom_len--;
+        index_ = indexRE(pat);
+        log_profile("Index(%d): \n", int(index_->keys.size()));
+        for (vector<string>::const_iterator it = index_->keys.begin();
+             it != index_->keys.end(); it++) {
+            log_profile("  %s\n", it->c_str());
         }
+
         if (FLAGS_timeout <= 0) {
             limit_.tv_sec = numeric_limits<time_t>::max();
         } else {
@@ -217,7 +203,7 @@ protected:
     RE2& pat_;
     thread_queue<match_result*>& queue_;
     atomic_int matches_;
-    vector<string> filter_;
+    unique_ptr<IndexKey> index_;
     timer re2_time_;
     timer git_time_;
     timer index_time_;
@@ -434,7 +420,7 @@ bool searcher::operator()(const chunk *chunk)
         return true;
     }
 
-    if (FLAGS_index && filter_.size() > 0 && filter_.size() <= kMaxFilters)
+    if (FLAGS_index && index_->keys.size())
         filtered_search(chunk);
     else
         full_search(chunk);
@@ -448,23 +434,26 @@ bool searcher::operator()(const chunk *chunk)
 
 void searcher::filtered_search(const chunk *chunk)
 {
-    log_profile("Attempting filtered search with %d filters\n", int(filter_.size()));
+    log_profile("Attempting filtered search with %d filters\n",
+                int(index_->keys.size()));
     chunk::lt_suffix lt(chunk);
 
-    pair<uint32_t*, uint32_t*> ranges[kMaxFilters + 1];
+    vector<pair<uint32_t*, uint32_t*> > ranges;
+    ranges.reserve(index_->keys.size());
     uint32_t *indexes;
     int count = 0, off = 0;
 
     {
         run_timer run(index_time_);
-        for (int i = 0; i < filter_.size(); i++) {
-            ranges[i] = equal_range(chunk->suffixes,
-                                    chunk->suffixes + chunk->size,
-                                    filter_[i], lt);
-            count += ranges[i].second - ranges[i].first;
+        for (vector<string>::iterator it = index_->keys.begin();
+             it != index_->keys.end(); ++it) {
+            ranges.push_back(equal_range(chunk->suffixes,
+                                         chunk->suffixes + chunk->size,
+                                         *it, lt));
+            count += ranges.back().second - ranges.back().first;
         }
         indexes = new uint32_t[count];
-        for (int i = 0; i < filter_.size(); i++) {
+        for (int i = 0; i < index_->keys.size(); i++) {
             int width = ranges[i].second - ranges[i].first;
             memcpy(&indexes[off], ranges[i].first, width * sizeof(uint32_t));
             off += width;
