@@ -40,6 +40,7 @@ const int    kContextLines = 3;
 #endif
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
+DEFINE_bool(search, true, "Actually do the search.");
 DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
 DECLARE_int32(threads);
 
@@ -252,6 +253,10 @@ int code_searcher::match(RE2& pat, match_stats *stats) {
 
     thread_queue<match_result*> results;
     searcher search(this, results, pat);
+
+    if (!FLAGS_search)
+        return 0;
+
     thread_pool<chunk*, searcher> pool(threads, search);
 
     for (it = alloc_->begin(); it != alloc_->end(); it++) {
