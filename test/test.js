@@ -4,7 +4,7 @@ var Codesearch = require('../web/codesearch.js'),
     path       = require('path'),
     common     = require('./common.js');
 
-common.parseopts(process.argv);
+common.parseopts();
 
 var cs_index = common.get_codesearch(['--threads=1', '--timeout=0']);
 var cs_noindex = common.get_codesearch(['--threads=1', '--noindex', '--timeout=0']);

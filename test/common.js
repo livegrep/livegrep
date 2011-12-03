@@ -1,13 +1,28 @@
 var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
-    path       = require('path');
+    path       = require('path'),
+    parseopt   = require('parseopt');
 
 var REPO;
 var extra_args;
+var parser = new parseopt.OptionParser(
+  {
+    options: [
+      {
+        name: "--querylist",
+        default: path.join(__dirname, 'testcases'),
+        type: 'string',
+        help: 'Load an alternate list of query terms'
+      }
+    ]
+  });
+var opts;
+
 
 function parseopts(argv) {
-   REPO = argv[2] || '/home/nelhage/code/linux-2.6';
-   extra_args = argv.slice(3);
+  opts = parser.parse(argv);
+  REPO = opts.arguments[0];
+  extra_args = opts.arguments.slice(1);
 }
 module.exports.parseopts = parseopts;
 
@@ -22,7 +37,7 @@ function get_codesearch(args) {
 module.exports.get_codesearch = get_codesearch;
 
 function load_queries() {
-  return fs.readFileSync(path.join(__dirname, 'testcases'), 'utf8').split(/\n/);
+  return fs.readFileSync(opts.options.querylist, 'utf8').split(/\n/);
 }
 module.exports.load_queries = load_queries;
 

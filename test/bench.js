@@ -5,7 +5,7 @@ var Codesearch = require('../web/codesearch.js'),
 
 var ITERATIONS = 10;
 
-common.parseopts(process.argv);
+common.parseopts();
 var queries = common.load_queries();
 var cs = common.get_codesearch();
 
