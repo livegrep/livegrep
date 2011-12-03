@@ -247,6 +247,8 @@ IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
         break;
 
     case kRegexpRepeat:
+        if (re->min() == 0)
+            return Any();
     case kRegexpPlus:
         key = child_args[0];
         if ((key->anchor & kAnchorBoth) == kAnchorBoth)
