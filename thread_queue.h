@@ -37,7 +37,7 @@ public:
  protected:
     thread_queue(const thread_queue&);
     thread_queue operator=(const thread_queue &);
-    mutex mutex_;
+    cs_mutex mutex_;
     cond_var cond_;
     std::list<T> queue_;
 };

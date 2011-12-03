@@ -5,13 +5,13 @@
 
 class cond_var;
 
-class mutex {
+class cs_mutex {
 public:
-    mutex () {
+    cs_mutex () {
         pthread_mutex_init(&mutex_, NULL);
     }
 
-    ~mutex () {
+    ~cs_mutex () {
         pthread_mutex_destroy(&mutex_);
     }
 
@@ -23,8 +23,8 @@ public:
         pthread_mutex_unlock(&mutex_);
     }
 protected:
-    mutex(const mutex&);
-    mutex operator=(const mutex&);
+    cs_mutex(const cs_mutex&);
+    cs_mutex operator=(const cs_mutex&);
     pthread_mutex_t mutex_;
 
     friend class cond_var;
@@ -40,7 +40,7 @@ public:
         pthread_cond_destroy(&cond_);
     }
 
-    void wait(mutex *mutex) {
+    void wait(cs_mutex *mutex) {
         pthread_cond_wait(&cond_, &mutex->mutex_);
     }
 
@@ -57,7 +57,7 @@ protected:
 
 class mutex_locker {
 public:
-    mutex_locker(mutex& mutex)
+    mutex_locker(cs_mutex& mutex)
         : mutex_(mutex) {
         mutex_.lock();
     }
@@ -70,7 +70,7 @@ public:
     mutex_locker(const mutex_locker& rhs);
     mutex_locker operator=(const mutex_locker &rhs);
 
-    mutex &mutex_;
+    cs_mutex &mutex_;
 };
 
 

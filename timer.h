@@ -57,7 +57,7 @@ protected:
     bool running_;
     struct timeval start_;
     struct timeval elapsed_;
-    mutex lock_;
+    cs_mutex lock_;
 
     timer(const timer& rhs);
     timer operator=(const timer& rhs);
