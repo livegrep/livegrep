@@ -13,10 +13,11 @@ using std::vector;
 using std::shared_ptr;
 
 enum {
-    kAnchorNone  = 0x00,
-    kAnchorLeft  = 0x01,
-    kAnchorRight = 0x02,
-    kAnchorBoth  = 0x03
+    kAnchorNone   = 0x00,
+    kAnchorLeft   = 0x01,
+    kAnchorRight  = 0x02,
+    kAnchorBoth   = 0x03,
+    kAnchorRepeat = 0x04
 };
 
 struct IndexKey {

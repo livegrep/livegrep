@@ -48,6 +48,8 @@ string IndexKey::ToString() {
     out += "|";
     if (anchor & kAnchorLeft)
         out += "<";
+    if (anchor & kAnchorRepeat)
+        out += "*";
     if (anchor & kAnchorRight)
         out += ">";
     return out;
@@ -141,7 +143,10 @@ namespace {
                 for (vector<string>::iterator rit = rhs->keys.begin();
                      rit != rhs->keys.end(); ++rit)
                     out->keys.push_back(*lit + *rit);
-            out->anchor = (lhs->anchor & kAnchorLeft) | (rhs->anchor & kAnchorRight);
+            if ((lhs->anchor & (kAnchorRepeat|kAnchorLeft)) == kAnchorLeft)
+                out->anchor |= kAnchorLeft;
+            if ((rhs->anchor & (kAnchorRepeat|kAnchorRight)) == kAnchorRight)
+                out->anchor |= kAnchorRight;
         }
 
         if (!out || lhs->weight() > out->weight()) {
@@ -163,7 +168,8 @@ namespace {
         if (lhs->keys.size() && rhs->keys.size() &&
             lhs->keys.size() + rhs->keys.size() < kMaxFilters) {
             lhs->keys.insert(lhs->keys.end(), rhs->keys.begin(), rhs->keys.end());
-            lhs->anchor &= rhs->anchor;
+            lhs->anchor = (lhs->anchor & rhs->anchor) |
+                ((lhs->anchor | lhs->anchor) & kAnchorRepeat);
 
             return lhs;
         }
@@ -243,8 +249,8 @@ IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
     case kRegexpRepeat:
     case kRegexpPlus:
         key = child_args[0];
-        if (key->anchor == kAnchorBoth)
-            key->anchor &= ~kAnchorRight;
+        if ((key->anchor & kAnchorBoth) == kAnchorBoth)
+            key->anchor |= kAnchorRepeat;
         break;
 
     default:
