@@ -1,16 +1,14 @@
 var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
-    path       = require('path');
+    path       = require('path'),
+    common     = require('./common.js');
 
 var ITERATIONS = 10;
 
-var REPO = process.argv[2] || '/home/nelhage/code/linux-2.6';
+common.parseopts(process.argv);
+var queries = common.load_queries();
+var cs = common.get_codesearch();
 
-var queries = fs.readFileSync(path.join(__dirname, 'testcases'), 'utf8').split(/\n/);
-
-var cs = new Codesearch(REPO, [], {
-                          args: process.argv.slice(3)
-                        });
 var times = { };
 
 function loop(i) {

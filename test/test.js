@@ -1,33 +1,14 @@
 var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     assert     = require('assert'),
-    path       = require('path');
+    path       = require('path'),
+    common     = require('./common.js');
 
-var REPO = process.argv[2] || '/home/nelhage/code/linux-2.6';
+common.parseopts(process.argv);
 
-var extra_args = process.argv.slice(3);
-
-var cs_index = new Codesearch(REPO, [], {
-                                args: ['--threads=1', '--timeout=0'].concat(extra_args)
-                              });
-
-var cs_noindex = new Codesearch(REPO, [], {
-                                  args: ['--threads=1', '--noindex', '--timeout=0'].
-                                    concat(extra_args)
-                                });
-
-var queries = fs.readFileSync(path.join(__dirname, 'testcases'), 'utf8').split(/\n/);
-
-function queryAll(cs, q, cb) {
-  var search = cs.search(q);
-  var matches = [];
-  search.on('match', function (m) {
-              matches.push(m);
-            })
-  search.on('done', function () {
-              cb(matches)
-            });
-}
+var cs_index = common.get_codesearch(['--threads=1', '--timeout=0']);
+var cs_noindex = common.get_codesearch(['--threads=1', '--noindex', '--timeout=0']);
+var queries = common.load_queries();
 
 var failures = 0;
 
@@ -84,8 +65,8 @@ function loop(i) {
   cs_index.once('ready', one_ready);
   cs_noindex.once('ready', one_ready);
 
-  queryAll(cs_index, queries[i], got_matches('index'));
-  queryAll(cs_noindex, queries[i], got_matches('noindex'));
+  common.query_all(cs_index, queries[i], got_matches('index'));
+  common.query_all(cs_noindex, queries[i], got_matches('noindex'));
 }
 
 var ready = 2;
