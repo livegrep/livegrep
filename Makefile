@@ -6,7 +6,7 @@ libre2=$(CURDIR)/re2/obj/libre2.a
 
 extradirs=$(sort $(libgit2) $(gflags))
 
-CPPFLAGS = -I$(CURDIR)/re2/ $(patsubst %,-I%/include, $(extradirs))
+override CPPFLAGS += -I$(CURDIR)/re2/ $(patsubst %,-I%/include, $(extradirs))
 override LDFLAGS += $(patsubst %, -L%/lib, $(extradirs))
 override LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
