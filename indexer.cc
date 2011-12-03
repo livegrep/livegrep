@@ -160,7 +160,8 @@ namespace {
     }
 
     shared_ptr<IndexKey> Alternate(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
-        if (lhs->keys.size() + rhs->keys.size() < kMaxFilters) {
+        if (lhs->keys.size() && rhs->keys.size() &&
+            lhs->keys.size() + rhs->keys.size() < kMaxFilters) {
             lhs->keys.insert(lhs->keys.end(), rhs->keys.begin(), rhs->keys.end());
             lhs->anchor &= rhs->anchor;
 
