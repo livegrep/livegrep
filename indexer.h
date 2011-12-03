@@ -10,7 +10,7 @@
 
 using std::string;
 using std::vector;
-using std::unique_ptr;
+using std::shared_ptr;
 
 enum {
     kAnchorNone  = 0x00,
@@ -52,6 +52,6 @@ struct IndexKey {
     string ToString();
 };
 
-unique_ptr<IndexKey> indexRE(const re2::RE2 &pat);
+shared_ptr<IndexKey> indexRE(const re2::RE2 &pat);
 
 #endif /* CODESEARCH_INDEXER_H */

@@ -53,17 +53,17 @@ string IndexKey::ToString() {
     return out;
 }
 
-class IndexWalker : public Regexp::Walker<IndexKey*> {
+class IndexWalker : public Regexp::Walker<shared_ptr<IndexKey> > {
 public:
     IndexWalker() { }
-    virtual IndexKey *
-    PostVisit(Regexp* re, IndexKey *parent_arg,
-              IndexKey *pre_arg,
-              IndexKey **child_args, int nchild_args);
+    virtual shared_ptr<IndexKey>
+    PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
+              shared_ptr<IndexKey> pre_arg,
+              shared_ptr<IndexKey> *child_args, int nchild_args);
 
-    virtual IndexKey *
+    virtual shared_ptr<IndexKey>
     ShortVisit(Regexp* re,
-               IndexKey *parent_arg);
+               shared_ptr<IndexKey> parent_arg);
 
 private:
     IndexWalker(const IndexWalker&);
@@ -77,24 +77,24 @@ namespace {
         return string(buf, n);
     }
 
-    IndexKey *Any() {
-        return new IndexKey(kAnchorNone);
+    shared_ptr<IndexKey> Any() {
+        return shared_ptr<IndexKey>(new IndexKey(kAnchorNone));
     }
 
-    IndexKey *Empty() {
-        return new IndexKey(kAnchorBoth);
+    shared_ptr<IndexKey> Empty() {
+        return shared_ptr<IndexKey>(new IndexKey(kAnchorBoth));
     }
 
 
-    IndexKey *Literal(Rune r) {
-        IndexKey *k = new IndexKey;
+    shared_ptr<IndexKey> Literal(Rune r) {
+        shared_ptr<IndexKey> k(new IndexKey);
         k->keys.push_back(RuneToString(r));
         k->anchor = kAnchorBoth;
         return k;
     }
 
-    IndexKey *Literal(Rune *runes, int nrunes) {
-        IndexKey *k = new IndexKey;
+    shared_ptr<IndexKey> Literal(Rune *runes, int nrunes) {
+        shared_ptr<IndexKey> k(new IndexKey);
         string lit;
 
         for (int i = 0; i < nrunes; i++) {
@@ -107,11 +107,11 @@ namespace {
         return k;
     }
 
-    IndexKey *CClass(CharClass *cc) {
+    shared_ptr<IndexKey> CClass(CharClass *cc) {
         if (cc->size() > kMaxFilters)
             return Any();
 
-        IndexKey *k = new IndexKey();
+        shared_ptr<IndexKey> k(new IndexKey());
 
         for (CharClass::iterator i = cc->begin(); i != cc->end(); ++i)
             for (Rune r = i->lo; r <= i->hi; r++)
@@ -122,8 +122,8 @@ namespace {
         return k;
     }
 
-    IndexKey *Concat(IndexKey *lhs, IndexKey *rhs) {
-        IndexKey *out = 0;
+    shared_ptr<IndexKey> Concat(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
+        shared_ptr<IndexKey> out = 0;
 
         debug("Concat([%s](%d), [%s](%d)) = ",
                lhs->ToString().c_str(),
@@ -135,7 +135,7 @@ namespace {
             (rhs->anchor & kAnchorLeft) &&
             lhs->keys.size() && rhs->keys.size() &&
             lhs->keys.size() * rhs->keys.size() <= kMaxFilters) {
-            out = new IndexKey;
+            out = shared_ptr<IndexKey>(new IndexKey);
             for (vector<string>::iterator lit = lhs->keys.begin();
                  lit != lhs->keys.end(); ++lit)
                 for (vector<string>::iterator rit = rhs->keys.begin();
@@ -145,19 +145,13 @@ namespace {
         }
 
         if (!out || lhs->weight() > out->weight()) {
-            delete out;
             out = lhs;
             out->anchor &= ~kAnchorRight;
-        } else {
-            delete lhs;
         }
 
         if (rhs->weight() > out->weight()) {
-            delete out;
             out = rhs;
             out->anchor &= ~kAnchorLeft;
-        } else {
-            delete rhs;
         }
 
         debug("[%s]\n", out->ToString().c_str());
@@ -165,36 +159,35 @@ namespace {
         return out;
     }
 
-    IndexKey *Alternate(IndexKey *lhs, IndexKey *rhs) {
+    shared_ptr<IndexKey> Alternate(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
         if (lhs->keys.size() + rhs->keys.size() < kMaxFilters) {
             lhs->keys.insert(lhs->keys.end(), rhs->keys.begin(), rhs->keys.end());
             lhs->anchor &= rhs->anchor;
 
-            delete rhs;
             return lhs;
         }
-        delete lhs;
-        delete rhs;
 
         return Any();
     }
 
 };
 
-unique_ptr<IndexKey> indexRE(const re2::RE2 &re) {
+shared_ptr<IndexKey> indexRE(const re2::RE2 &re) {
     IndexWalker walk;
 
-    unique_ptr<IndexKey> key(walk.Walk(re.Regexp(), 0));
+    shared_ptr<IndexKey> key = walk.Walk(re.Regexp(), 0);
 
     if (key->weight() < kMinWeight)
         key->keys.clear();
     return key;
 }
 
-IndexKey *IndexWalker::PostVisit(Regexp* re, IndexKey *parent_arg,
-                                 IndexKey *pre_arg,
-                                 IndexKey **child_args, int nchild_args) {
-    IndexKey *key;
+shared_ptr<IndexKey>
+IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
+                       shared_ptr<IndexKey> pre_arg,
+                       shared_ptr<IndexKey> *child_args,
+                       int nchild_args) {
+    shared_ptr<IndexKey> key;
 
     switch (re->op()) {
     case kRegexpNoMatch:
@@ -239,7 +232,6 @@ IndexKey *IndexWalker::PostVisit(Regexp* re, IndexKey *parent_arg,
 
     case kRegexpStar:
     case kRegexpQuest:
-        delete child_args[0];
         key = Any();
         break;
 
@@ -266,6 +258,7 @@ IndexKey *IndexWalker::PostVisit(Regexp* re, IndexKey *parent_arg,
     return key;
 }
 
-IndexKey *IndexWalker::ShortVisit(Regexp* re, IndexKey *parent_arg) {
+shared_ptr<IndexKey>
+IndexWalker::ShortVisit(Regexp* re, shared_ptr<IndexKey> parent_arg) {
     return Any();
 }

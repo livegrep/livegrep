@@ -203,7 +203,7 @@ protected:
     RE2& pat_;
     thread_queue<match_result*>& queue_;
     atomic_int matches_;
-    unique_ptr<IndexKey> index_;
+    shared_ptr<IndexKey> index_;
     timer re2_time_;
     timer git_time_;
     timer index_time_;
