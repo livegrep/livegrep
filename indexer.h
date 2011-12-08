@@ -8,6 +8,8 @@
 #include "re2/re2.h"
 #include "re2/walker-inl.h"
 
+#include "common.h"
+
 using std::string;
 using std::vector;
 using std::shared_ptr;
@@ -21,10 +23,28 @@ enum {
 };
 
 struct IndexKey {
-    vector<string> keys;
+    map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges;
     int anchor;
 
+    typedef map<pair<uchar, uchar>, shared_ptr<IndexKey> >::iterator iterator;
+    typedef map<pair<uchar, uchar>, shared_ptr<IndexKey> >::const_iterator const_iterator;
+    typedef pair<pair<uchar, uchar>, shared_ptr<IndexKey> > value_type;
+
+    iterator begin() {
+        return edges.begin();
+    }
+
+    iterator end() {
+        return edges.end();
+    }
+
     IndexKey(int anchor = kAnchorNone) : anchor(anchor) { }
+
+    IndexKey(pair<uchar, uchar> p,
+             shared_ptr<IndexKey> next,
+             int anchor = kAnchorNone) : anchor(anchor) {
+        edges.insert(value_type(p, next));
+    }
 
     /*
      * Returns an approximation of the fraction of the input corpus
@@ -51,6 +71,10 @@ struct IndexKey {
     unsigned weight();
 
     string ToString();
+
+private:
+    IndexKey(const IndexKey&);
+    void operator=(const IndexKey&);
 };
 
 shared_ptr<IndexKey> indexRE(const re2::RE2 &pat);

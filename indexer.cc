@@ -2,9 +2,13 @@
 
 #include <gflags/gflags.h>
 
+#include <list>
+
 #include <stdarg.h>
 
 DEFINE_bool(debug_index, false, "Debug the index query generator.");
+static void debug(const char *format, ...)
+    __attribute__((format (printf, 1, 2)));
 
 static void debug(const char *format, ...) {
     if (!FLAGS_debug_index)
@@ -20,31 +24,62 @@ using namespace re2;
 using namespace std;
 
 const unsigned kMinWeight = 16;
-const int kMaxFilters     = 32;
+const int kMaxWidth       = 32;
 
 double IndexKey::selectivity() {
-    if (keys.size() == 0)
+    if (this == 0)
+        return 1.0;
+
+    if (edges.size() == 0)
         return 1.0;
 
     double s = 0.0;
-    for (vector<string>::const_iterator it = keys.begin();
-         it != keys.end(); ++it)
-        s += pow(1./(it->size() + 1), 8);
+    for (IndexKey::iterator it = begin();
+         it != end(); ++it)
+        s += double(it->first.second - it->first.first + 1)/128 *
+            it->second->selectivity();
 
     return s;
 }
 
 unsigned IndexKey::weight() {
+    if (1/selectivity() > double(numeric_limits<unsigned>::max()))
+        return numeric_limits<unsigned>::max() / 2;
     return 1/selectivity();
+}
+static string strprintf(const char *fmt, ...)
+    __attribute__((format (printf, 1, 2)));
+
+static string strprintf(const char *fmt, ...) {
+    char buf[4096];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof buf, fmt, ap);
+    va_end(ap);
+
+    return string(buf);
+}
+
+static string ToString(IndexKey *k, int indent = 0) {
+    string out;
+    if (k == 0)
+        return strprintf("%*.s[]\n", indent, "");
+
+    for (IndexKey::iterator it = k->begin(); it != k->end(); ++it) {
+        out += strprintf("%*.s[%c-%c] -> \n",
+                         indent, "",
+                         it->first.first,
+                         it->first.second);
+        out += ToString(it->second.get(), indent + 1);
+    }
+    return out;
 }
 
 string IndexKey::ToString() {
-    string out;
-    for (vector<string>::const_iterator it = keys.begin();
-         it != keys.end(); ++it) {
-        out += *it;
-        out += ",";
-    }
+    string out = ::ToString(this, 0);
+    if (this == 0)
+        return out;
+
     out += "|";
     if (anchor & kAnchorLeft)
         out += "<";
@@ -80,81 +115,99 @@ namespace {
     }
 
     shared_ptr<IndexKey> Any() {
-        return shared_ptr<IndexKey>(new IndexKey(kAnchorNone));
+        return shared_ptr<IndexKey>(0);
     }
 
     shared_ptr<IndexKey> Empty() {
         return shared_ptr<IndexKey>(new IndexKey(kAnchorBoth));
     }
 
-
-    shared_ptr<IndexKey> Literal(Rune r) {
-        shared_ptr<IndexKey> k(new IndexKey);
-        k->keys.push_back(RuneToString(r));
+    shared_ptr<IndexKey> Literal(string s) {
+        shared_ptr<IndexKey> k = 0;
+        for (string::reverse_iterator it = s.rbegin();
+             it != s.rend(); ++it) {
+            k = shared_ptr<IndexKey>(new IndexKey(pair<uchar, uchar>(*it, *it), k));
+        }
         k->anchor = kAnchorBoth;
         return k;
     }
 
+    shared_ptr<IndexKey> Literal(Rune r) {
+        return Literal(RuneToString(r));
+    }
+
     shared_ptr<IndexKey> Literal(Rune *runes, int nrunes) {
-        shared_ptr<IndexKey> k(new IndexKey);
         string lit;
 
         for (int i = 0; i < nrunes; i++) {
             lit.append(RuneToString(runes[i]));
         }
 
-        k->keys.push_back(lit);
-        k->anchor = kAnchorBoth;
-
-        return k;
+        return Literal(lit);
     }
 
     shared_ptr<IndexKey> CClass(CharClass *cc) {
-        if (cc->size() > kMaxFilters)
+        if (cc->size() > kMaxWidth)
             return Any();
 
-        shared_ptr<IndexKey> k(new IndexKey());
+        shared_ptr<IndexKey> k(new IndexKey(kAnchorBoth));
 
-        for (CharClass::iterator i = cc->begin(); i != cc->end(); ++i)
-            for (Rune r = i->lo; r <= i->hi; r++)
-                k->keys.push_back(RuneToString(r));
-
-        k->anchor = kAnchorBoth;
+        for (CharClass::iterator i = cc->begin(); i != cc->end(); ++i) {
+            /* TODO: Handle arbitrary unicode ranges. Probably have to
+               convert to UTF-8 ranges ourselves.*/
+            assert (i->lo < Runeself);
+            assert (i->hi < Runeself);
+            k->edges.insert(IndexKey::value_type
+                            (pair<uchar, uchar>(i->lo, i->hi),
+                             0));
+        }
 
         return k;
     }
 
+    void CollectTails(list<IndexKey::iterator>& tails, shared_ptr<IndexKey> key) {
+        if (key == 0)
+            return;
+
+        for (IndexKey::iterator it = key->begin();
+             it != key->end(); ++it) {
+            if (!it->second)
+                tails.push_back(it);
+            else
+                CollectTails(tails, it->second);
+        }
+    }
+
     shared_ptr<IndexKey> Concat(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
-        shared_ptr<IndexKey> out = 0;
+        shared_ptr<IndexKey> out = lhs;
 
         debug("Concat([%s](%d), [%s](%d)) = ",
-               lhs->ToString().c_str(),
-               lhs->weight(),
-               rhs->ToString().c_str(),
-               rhs->weight());
+              lhs->ToString().c_str(),
+              lhs->weight(),
+              rhs->ToString().c_str(),
+              rhs->weight());
 
-        if ((lhs->anchor & kAnchorRight) &&
+        if (lhs && rhs &&
+            (lhs->anchor & kAnchorRight) &&
             (rhs->anchor & kAnchorLeft) &&
-            lhs->keys.size() && rhs->keys.size() &&
-            lhs->keys.size() * rhs->keys.size() <= kMaxFilters) {
-            out = shared_ptr<IndexKey>(new IndexKey);
-            for (vector<string>::iterator lit = lhs->keys.begin();
-                 lit != lhs->keys.end(); ++lit)
-                for (vector<string>::iterator rit = rhs->keys.begin();
-                     rit != rhs->keys.end(); ++rit)
-                    out->keys.push_back(*lit + *rit);
-            if ((lhs->anchor & (kAnchorRepeat|kAnchorLeft)) == kAnchorLeft)
-                out->anchor |= kAnchorLeft;
-            if ((rhs->anchor & (kAnchorRepeat|kAnchorRight)) == kAnchorRight)
-                out->anchor |= kAnchorRight;
-        }
+            lhs->edges.size() && rhs->edges.size()) {
+            list<IndexKey::iterator> tails;
+            CollectTails(tails, lhs);
+            for (auto it = tails.begin(); it != tails.end(); ++it) {
+                if (!(*it)->second)
+                    (*it)->second = rhs;
+            }
+            if (lhs->anchor & kAnchorRepeat)
+                lhs->anchor &= ~kAnchorLeft;
+            if ((rhs->anchor & (kAnchorRepeat|kAnchorRight)) != kAnchorRight)
+                lhs->anchor &= ~kAnchorRight;
 
-        if (!out || lhs->weight() > out->weight()) {
             out = lhs;
-            out->anchor &= ~kAnchorRight;
+        } else if (lhs) {
+            lhs->anchor &= ~kAnchorRight;
         }
 
-        if (rhs->weight() > out->weight()) {
+        if (rhs && rhs->weight() > out->weight()) {
             out = rhs;
             out->anchor &= ~kAnchorLeft;
         }
@@ -164,17 +217,89 @@ namespace {
         return out;
     }
 
+    bool intersects(const pair<uchar, uchar>& left,
+                    const pair<uchar, uchar>& right) {
+        if (left.first <= right.first)
+            return left.second >= right.first;
+        else
+            return right.second >= left.first;
+    }
+
     shared_ptr<IndexKey> Alternate(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
-        if (lhs->keys.size() && rhs->keys.size() &&
-            lhs->keys.size() + rhs->keys.size() < kMaxFilters) {
-            lhs->keys.insert(lhs->keys.end(), rhs->keys.begin(), rhs->keys.end());
-            lhs->anchor = (lhs->anchor & rhs->anchor) |
-                ((lhs->anchor | lhs->anchor) & kAnchorRepeat);
-
+        if (lhs == rhs)
             return lhs;
-        }
+        if (lhs == 0 || rhs == 0 ||
+            lhs->edges.size() + rhs->edges.size() >= kMaxWidth)
+            return Any();
 
-        return Any();
+        shared_ptr<IndexKey> out(new IndexKey
+                                 ((lhs->anchor & rhs->anchor) |
+                                  ((lhs->anchor | lhs->anchor) & kAnchorRepeat)));
+        IndexKey::const_iterator lit, rit;
+        for (lit = lhs->begin(), rit = rhs->begin();
+             lit != lhs->end() && rit != rhs->end();) {
+            pair<uchar, uchar> left = lit->first;
+            pair<uchar, uchar> right = rit->first;
+
+            while (intersects(left, right)) {
+                debug("Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
+                      left.first, left.second, right.first, right.second);
+                if (left.first < right.first) {
+                    out->edges.insert
+                        (make_pair(make_pair(left.first,
+                                             right.first - 1),
+                                   lit->second));
+                    left.first = right.first;
+                } else if (rit->first.first < lit->first.first) {
+                    out->edges.insert
+                        (make_pair(make_pair(right.first,
+                                             left.first - 1),
+                                   rit->second));
+                    right.first = left.first;
+                }
+                /* left and right now start at the same location */
+                assert(left.first == right.first);
+
+                uchar end = min(left.second, right.second);
+                out->edges.insert
+                    (make_pair(make_pair(left.first, end),
+                               Alternate(lit->second, rit->second)));
+                if (left.second > end) {
+                    left.first = end+1;
+                    if (++rit == rhs->edges.end()) {
+                        out->edges.insert(make_pair(left, (lit++)->second));
+                        break;
+                    }
+                    right = rit->first;
+                } else if (right.second > end) {
+                    right.first = end+1;
+                    if (++lit == lhs->edges.end()) {
+                        out->edges.insert(make_pair(right, (rit++)->second));
+                        break;
+                    }
+                    left = lit->first;
+                } else {
+                    left  = (++lit)->first;
+                    right = (++rit)->first;
+                    break;
+                }
+            }
+
+            if (lit == lhs->edges.end() || rit == rhs->edges.end())
+                break;
+
+            if (left.first < right.first)
+                out->edges.insert(make_pair(left, (lit++)->second));
+            else if (right.first < left.first)
+                out->edges.insert(make_pair(right, (rit++)->second));
+            continue;
+        }
+        for (; lit != lhs->edges.end(); ++lit)
+            out->edges.insert(*lit);
+        for (; rit != rhs->edges.end(); ++rit)
+            out->edges.insert(*rit);
+
+        return out;
     }
 
 };
@@ -184,8 +309,8 @@ shared_ptr<IndexKey> indexRE(const re2::RE2 &re) {
 
     shared_ptr<IndexKey> key = walk.Walk(re.Regexp(), 0);
 
-    if (key->weight() < kMinWeight)
-        key->keys.clear();
+    if (key && key->weight() < kMinWeight)
+        key->edges.clear();
     return key;
 }
 
@@ -259,7 +384,7 @@ IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
         assert(false);
     }
 
-    debug(" %s -> [%s](%d)\n",
+    debug("* INDEX %s ==> [%s](%d)\n",
           re->ToString().c_str(),
           key->ToString().c_str(),
           key->weight());

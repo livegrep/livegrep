@@ -81,11 +81,7 @@ public:
         {
             run_timer run(analyze_time_);
             index_ = indexRE(pat);
-            log_profile("Index(%d): \n", int(index_->keys.size()));
-            for (vector<string>::const_iterator it = index_->keys.begin();
-                 it != index_->keys.end(); it++) {
-                log_profile("  %s\n", it->c_str());
-            }
+            log_profile("Index: %s\n", index_->ToString().c_str());
         }
 
         if (FLAGS_timeout <= 0) {
@@ -442,7 +438,7 @@ bool searcher::operator()(const chunk *chunk)
         return true;
     }
 
-    if (FLAGS_index && index_->keys.size())
+    if (FLAGS_index && index_ && index_->edges.size())
         filtered_search(chunk);
     else
         full_search(chunk);
@@ -454,35 +450,89 @@ bool searcher::operator()(const chunk *chunk)
     return false;
 }
 
+struct walk_state {
+    uint32_t *left, *right;
+    shared_ptr<IndexKey> key;
+    int depth;
+};
+
+struct lt_index {
+    const chunk *chunk_;
+    int idx_;
+
+    bool operator()(uint32_t lhs, unsigned char rhs) {
+        return cmp(lhs, rhs) < 0;
+    }
+
+    bool operator()(unsigned char lhs, uint32_t rhs) {
+        return cmp(rhs, lhs) > 0;
+    }
+
+    int cmp(uint32_t lhs, unsigned char rhs) {
+        unsigned char lc = chunk_->data[lhs + idx_];
+        if (lc == '\n')
+            return -1;
+        return (int)lc - (int)rhs;
+    }
+};
+
+
 void searcher::filtered_search(const chunk *chunk)
 {
-    log_profile("Attempting filtered search with %d filters\n",
-                int(index_->keys.size()));
-    chunk::lt_suffix lt(chunk);
-
-    vector<pair<uint32_t*, uint32_t*> > ranges;
-    ranges.reserve(index_->keys.size());
-    uint32_t *indexes;
-    int count = 0, off = 0;
-
+    uint32_t *indexes = new uint32_t[kChunkSpace];
+    int count = 0;
     {
         run_timer run(index_time_);
-        for (vector<string>::iterator it = index_->keys.begin();
-             it != index_->keys.end(); ++it) {
-            ranges.push_back(equal_range(chunk->suffixes,
-                                         chunk->suffixes + chunk->size,
-                                         *it, lt));
-            count += ranges.back().second - ranges.back().first;
+        vector<walk_state> stack;
+        stack.push_back((walk_state){
+                chunk->suffixes, chunk->suffixes + chunk->size, index_, 0});
+
+        while (!stack.empty()) {
+            walk_state st = stack.back();
+            stack.pop_back();
+            if (!st.key) {
+                memcpy(indexes + count, st.left,
+                       (st.right - st.left) * sizeof(uint32_t));
+                count += (st.right - st.left);
+                continue;
+            }
+            lt_index lt = {chunk, st.depth};
+            for (IndexKey::iterator it = st.key->begin();
+                 it != st.key->end(); ++it) {
+                uint32_t *l, *r;
+                l = lower_bound(st.left, st.right, it->first.first, lt);
+                uint32_t *right = lower_bound(l, st.right,
+                                              (unsigned char)(it->first.second + 1),
+                                              lt);
+                if (l == right)
+                    continue;
+
+                if (st.depth)
+                    assert(chunk->data[*l + st.depth - 1] ==
+                           chunk->data[*(right - 1) + st.depth - 1]);
+
+                assert(l == st.left ||
+                       chunk->data[*(l-1) + st.depth] == '\n' ||
+                       chunk->data[*(l-1) + st.depth] < it->first.first);
+                assert(chunk->data[*l + st.depth] >= it->first.first);
+                assert(right == st.right ||
+                       chunk->data[*right + st.depth] > it->first.second);
+
+                for (unsigned char ch = it->first.first; ch <= it->first.second;
+                     ch++, l = r) {
+                    r = lower_bound(l, right, (unsigned char)(ch + 1), lt);
+
+                    if (r != l) {
+                        stack.push_back((walk_state){l, r, it->second, st.depth + 1});
+                    }
+                }
+            }
         }
-        indexes = new uint32_t[count];
-        for (int i = 0; i < index_->keys.size(); i++) {
-            int width = ranges[i].second - ranges[i].first;
-            memcpy(&indexes[off], ranges[i].first, width * sizeof(uint32_t));
-            off += width;
-        }
+
     }
 
     search_lines(indexes, count, chunk);
+
     delete[] indexes;
 }
 
