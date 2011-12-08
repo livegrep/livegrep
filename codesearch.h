@@ -95,7 +95,6 @@ protected:
 
     search_file *load_file(std::istream& stream);
     void load_file_contents(std::istream& stream, vector<chunk*>&, search_file *sf);
-    void load_chunk_file(std::istream& stream, chunk_file *);
     void load_chunk(std::istream& stream, chunk *);
 
     git_repository *repo_;

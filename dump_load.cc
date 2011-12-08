@@ -135,20 +135,20 @@ search_file *code_searcher::load_file(istream& stream) {
     return sf;
 }
 
-void code_searcher::load_chunk_file(istream& stream, chunk_file *cf) {
-    cf->file = files_[load_int32(stream)];
-    cf->left = load_int32(stream);
-    cf->right = load_int32(stream);
-}
-
 void code_searcher::load_chunk(istream& stream, chunk *chunk) {
     chunk_header hdr;
     stream.read(reinterpret_cast<char*>(&hdr), sizeof hdr);
     assert(hdr.size <= kChunkSpace);
     chunk->size = hdr.size;
+
+    uint32_t buf[3*hdr.nfiles];
+    stream.read(reinterpret_cast<char*>(buf), sizeof buf);
     for (int i = 0; i < hdr.nfiles; i++) {
         chunk->files.push_back(chunk_file());
-        load_chunk_file(stream, &chunk->files.back());
+        chunk_file &cf = chunk->files.back();
+        cf.file  = files_[buf[3*i]];
+        cf.left  = buf[3*i + 1];
+        cf.right = buf[3*i + 2];
     }
     stream.read(reinterpret_cast<char*>(chunk->data), chunk->size);
     chunk->suffixes = new uint32_t[chunk->size];
@@ -160,11 +160,16 @@ void code_searcher::load_file_contents(std::istream& stream,
                                        vector<chunk*>& chunks,
                                        search_file *sf) {
     int npieces = load_int32(stream);
+    uint32_t buf[3*npieces];
+
+    stream.read(reinterpret_cast<char*>(buf), sizeof buf);
+    sf->content.resize(npieces);
+
     for (int i = 0; i < npieces; i++) {
-        chunk *chunk = chunks[load_int32(stream)];
-        char *p = reinterpret_cast<char*>(chunk->data) + load_int32(stream);
-        int len = load_int32(stream);
-        sf->content.push_back(StringPiece(p, len));
+        chunk *chunk = chunks[buf[3*i]];
+        char *p = reinterpret_cast<char*>(chunk->data) + buf[3*i + 1];
+        int len = buf[3*i + 2];
+        sf->content[i] = StringPiece(p, len);
     }
 }
 
