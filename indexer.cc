@@ -7,10 +7,15 @@
 #include <stdarg.h>
 
 DEFINE_bool(debug_index, false, "Debug the index query generator.");
-static void debug(const char *format, ...)
+static void __index_debug(const char *format, ...)
     __attribute__((format (printf, 1, 2)));
 
-static void debug(const char *format, ...) {
+#define debug(fmt, ...) do {                    \
+    if (FLAGS_debug_index)                      \
+        __index_debug(fmt, ## __VA_ARGS__);     \
+    } while(0)
+
+static void __index_debug(const char *format, ...) {
     if (!FLAGS_debug_index)
         return;
     va_list ap;
