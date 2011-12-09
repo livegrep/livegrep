@@ -22,20 +22,18 @@ enum {
     kAnchorRepeat = 0x04
 };
 
-struct IndexKey {
-    map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges;
-    int anchor;
-
+class IndexKey {
+public:
     typedef map<pair<uchar, uchar>, shared_ptr<IndexKey> >::iterator iterator;
     typedef map<pair<uchar, uchar>, shared_ptr<IndexKey> >::const_iterator const_iterator;
     typedef pair<pair<uchar, uchar>, shared_ptr<IndexKey> > value_type;
 
     iterator begin() {
-        return edges.begin();
+        return edges_.begin();
     }
 
     iterator end() {
-        return edges.end();
+        return edges_.end();
     }
 
     IndexKey(int anchor = kAnchorNone) : anchor(anchor) { }
@@ -43,7 +41,19 @@ struct IndexKey {
     IndexKey(pair<uchar, uchar> p,
              shared_ptr<IndexKey> next,
              int anchor = kAnchorNone) : anchor(anchor) {
-        edges.insert(value_type(p, next));
+        edges_.insert(value_type(p, next));
+    }
+
+    void insert(const value_type& v) {
+        edges_.insert(v);
+    }
+
+    bool empty() {
+        return edges_.empty();
+    }
+
+    size_t size() {
+        return edges_.size();
     }
 
     /*
@@ -71,6 +81,10 @@ struct IndexKey {
     unsigned weight();
 
     string ToString();
+
+    int anchor;
+protected:
+    map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges_;
 
 private:
     IndexKey(const IndexKey&);

@@ -30,7 +30,7 @@ double IndexKey::selectivity() {
     if (this == 0)
         return 1.0;
 
-    if (edges.size() == 0)
+    if (empty())
         return 1.0;
 
     double s = 0.0;
@@ -157,9 +157,9 @@ namespace {
                convert to UTF-8 ranges ourselves.*/
             assert (i->lo < Runeself);
             assert (i->hi < Runeself);
-            k->edges.insert(IndexKey::value_type
-                            (pair<uchar, uchar>(i->lo, i->hi),
-                             0));
+            k->insert(IndexKey::value_type
+                      (pair<uchar, uchar>(i->lo, i->hi),
+                       0));
         }
 
         return k;
@@ -190,7 +190,7 @@ namespace {
         if (lhs && rhs &&
             (lhs->anchor & kAnchorRight) &&
             (rhs->anchor & kAnchorLeft) &&
-            lhs->edges.size() && rhs->edges.size()) {
+            !lhs->empty() && !rhs->empty()) {
             list<IndexKey::iterator> tails;
             CollectTails(tails, lhs);
             for (auto it = tails.begin(); it != tails.end(); ++it) {
@@ -229,7 +229,7 @@ namespace {
         if (lhs == rhs)
             return lhs;
         if (lhs == 0 || rhs == 0 ||
-            lhs->edges.size() + rhs->edges.size() >= kMaxWidth)
+            lhs->size() + rhs->size() >= kMaxWidth)
             return Any();
 
         shared_ptr<IndexKey> out(new IndexKey
@@ -245,13 +245,13 @@ namespace {
                 debug("Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
                       left.first, left.second, right.first, right.second);
                 if (left.first < right.first) {
-                    out->edges.insert
+                    out->insert
                         (make_pair(make_pair(left.first,
                                              right.first - 1),
                                    lit->second));
                     left.first = right.first;
                 } else if (rit->first.first < lit->first.first) {
-                    out->edges.insert
+                    out->insert
                         (make_pair(make_pair(right.first,
                                              left.first - 1),
                                    rit->second));
@@ -261,20 +261,20 @@ namespace {
                 assert(left.first == right.first);
 
                 uchar end = min(left.second, right.second);
-                out->edges.insert
+                out->insert
                     (make_pair(make_pair(left.first, end),
                                Alternate(lit->second, rit->second)));
                 if (left.second > end) {
                     left.first = end+1;
-                    if (++rit == rhs->edges.end()) {
-                        out->edges.insert(make_pair(left, (lit++)->second));
+                    if (++rit == rhs->end()) {
+                        out->insert(make_pair(left, (lit++)->second));
                         break;
                     }
                     right = rit->first;
                 } else if (right.second > end) {
                     right.first = end+1;
-                    if (++lit == lhs->edges.end()) {
-                        out->edges.insert(make_pair(right, (rit++)->second));
+                    if (++lit == lhs->end()) {
+                        out->insert(make_pair(right, (rit++)->second));
                         break;
                     }
                     left = lit->first;
@@ -285,19 +285,19 @@ namespace {
                 }
             }
 
-            if (lit == lhs->edges.end() || rit == rhs->edges.end())
+            if (lit == lhs->end() || rit == rhs->end())
                 break;
 
             if (left.first < right.first)
-                out->edges.insert(make_pair(left, (lit++)->second));
+                out->insert(make_pair(left, (lit++)->second));
             else if (right.first < left.first)
-                out->edges.insert(make_pair(right, (rit++)->second));
+                out->insert(make_pair(right, (rit++)->second));
             continue;
         }
-        for (; lit != lhs->edges.end(); ++lit)
-            out->edges.insert(*lit);
-        for (; rit != rhs->edges.end(); ++rit)
-            out->edges.insert(*rit);
+        for (; lit != lhs->end(); ++lit)
+            out->insert(*lit);
+        for (; rit != rhs->end(); ++rit)
+            out->insert(*rit);
 
         return out;
     }
@@ -310,7 +310,7 @@ shared_ptr<IndexKey> indexRE(const re2::RE2 &re) {
     shared_ptr<IndexKey> key = walk.Walk(re.Regexp(), 0);
 
     if (key && key->weight() < kMinWeight)
-        key->edges.clear();
+        key = 0;
     return key;
 }
 

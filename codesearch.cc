@@ -438,7 +438,7 @@ bool searcher::operator()(const chunk *chunk)
         return true;
     }
 
-    if (FLAGS_index && index_ && index_->edges.size())
+    if (FLAGS_index && index_ && !index_->empty())
         filtered_search(chunk);
     else
         full_search(chunk);
