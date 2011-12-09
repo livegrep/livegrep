@@ -34,7 +34,7 @@ all: codesearch $(DEPFILES)
 codesearch: $(OBJECTS) $(libre2) .config/LDFLAGS
 	$(CXX) -o $@ $(LDFLAGS) $(filter-out .config/%,$^) $(LDLIBS)
 
-$(libre2): DUMMY
+$(libre2): FORCE
 	( cd re2 && $(MAKE) )
 
 clean:
@@ -49,12 +49,12 @@ $(OBJECTS): .config/densehash .config/noopt .config/CXX .config/CXXFLAGS
 	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	 rm -f $@.$$$$
 
-DUMMY:
+FORCE:
 .config:
 	@mkdir -p $@
 
-.config/%.tmp: .config DUMMY
-	@echo $(call $(subst .tmp,,$(notdir $@))) > $@
+.config/%.tmp: .config FORCE
+	@echo $(call $*) > $@
 
 .config/%: .config/%.tmp
 	@cmp -s $< $@ || cp -f $< $@
