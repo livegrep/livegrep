@@ -230,6 +230,61 @@ namespace {
             return right.second >= left.first;
     }
 
+    enum {
+        kTakeLeft  = 0x01,
+        kTakeRight = 0x02,
+        kTakeBoth  = 0x03
+    };
+
+    shared_ptr<IndexKey> Alternate(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs);
+
+    int Merge(shared_ptr<IndexKey> out,
+              pair<uchar, uchar>& left,
+              shared_ptr<IndexKey> lnext,
+              pair<uchar, uchar>& right,
+              shared_ptr<IndexKey> rnext) {
+        if (intersects(left, right)) {
+            debug("Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
+                  left.first, left.second, right.first, right.second);
+            if (left.first < right.first) {
+                out->insert
+                    (make_pair(make_pair(left.first,
+                                         right.first - 1),
+                               lnext));
+                left.first = right.first;
+            } else if (right.first < left.first) {
+                out->insert
+                    (make_pair(make_pair(right.first,
+                                         left.first - 1),
+                               rnext));
+                right.first = left.first;
+            }
+            /* left and right now start at the same location */
+            assert(left.first == right.first);
+
+            uchar end = min(left.second, right.second);
+            out->insert
+                (make_pair(make_pair(left.first, end),
+                           Alternate(lnext, rnext)));
+            if (left.second > end) {
+                left.first = end+1;
+                return kTakeRight;
+            } else if (right.second > end) {
+                right.first = end+1;
+                return kTakeLeft;
+            }
+            return kTakeBoth;
+        }
+        /* Non-intersecting */
+        if (left.first < right.first) {
+            out->insert(make_pair(left, lnext));
+            return kTakeLeft;
+        }
+        assert(right.first < left.first);
+        out->insert(make_pair(right, rnext));
+        return kTakeRight;
+    }
+
     shared_ptr<IndexKey> Alternate(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
         if (lhs == rhs)
             return lhs;
@@ -241,64 +296,33 @@ namespace {
                                  ((lhs->anchor & rhs->anchor) |
                                   ((lhs->anchor | lhs->anchor) & kAnchorRepeat)));
         IndexKey::const_iterator lit, rit;
-        for (lit = lhs->begin(), rit = rhs->begin();
-             lit != lhs->end() && rit != rhs->end();) {
-            pair<uchar, uchar> left = lit->first;
-            pair<uchar, uchar> right = rit->first;
-
-            while (intersects(left, right)) {
-                debug("Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
-                      left.first, left.second, right.first, right.second);
-                if (left.first < right.first) {
-                    out->insert
-                        (make_pair(make_pair(left.first,
-                                             right.first - 1),
-                                   lit->second));
-                    left.first = right.first;
-                } else if (rit->first.first < lit->first.first) {
-                    out->insert
-                        (make_pair(make_pair(right.first,
-                                             left.first - 1),
-                                   rit->second));
-                    right.first = left.first;
-                }
-                /* left and right now start at the same location */
-                assert(left.first == right.first);
-
-                uchar end = min(left.second, right.second);
-                out->insert
-                    (make_pair(make_pair(left.first, end),
-                               Alternate(lit->second, rit->second)));
-                if (left.second > end) {
-                    left.first = end+1;
-                    if (++rit == rhs->end()) {
-                        out->insert(make_pair(left, (lit++)->second));
-                        break;
-                    }
-                    right = rit->first;
-                } else if (right.second > end) {
-                    right.first = end+1;
-                    if (++lit == lhs->end()) {
-                        out->insert(make_pair(right, (rit++)->second));
-                        break;
-                    }
+        lit = lhs->begin();
+        rit = rhs->begin();
+        pair<uchar, uchar> left;
+        if (lit != lhs->end())
+            left = lit->first;
+        pair<uchar, uchar> right = rit->first;
+        if (rit != rhs->end())
+            right = rit->first;
+        while (lit != lhs->end() && rit != rhs->end()) {
+            int action = Merge(out, left, lit->second, right, rit->second);
+            if (action & kTakeLeft)
+                if (++lit != lhs->end())
                     left = lit->first;
-                } else {
-                    left  = (++lit)->first;
-                    right = (++rit)->first;
-                    break;
-                }
-            }
-
-            if (lit == lhs->end() || rit == rhs->end())
-                break;
-
-            if (left.first < right.first)
-                out->insert(make_pair(left, (lit++)->second));
-            else if (right.first < left.first)
-                out->insert(make_pair(right, (rit++)->second));
-            continue;
+            if (action & kTakeRight)
+                if (++rit != rhs->end())
+                    right = rit->first;
         }
+
+        if (lit != lhs->end()) {
+            out->insert(make_pair(left, lit->second));
+            ++lit;
+        }
+        if (rit != rhs->end()) {
+            out->insert(make_pair(right, rit->second));
+            ++rit;
+        }
+
         for (; lit != lhs->end(); ++lit)
             out->insert(*lit);
         for (; rit != rhs->end(); ++rit)
@@ -394,10 +418,21 @@ IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
           key->ToString().c_str(),
           key->weight());
 
+    if (FLAGS_debug_index && key)
+        key->check_rep();
+
     return key;
 }
 
 shared_ptr<IndexKey>
 IndexWalker::ShortVisit(Regexp* re, shared_ptr<IndexKey> parent_arg) {
     return Any();
+}
+
+void IndexKey::check_rep() {
+    pair<uchar, uchar> last = make_pair('\0', '\0');
+    for (iterator it = begin(); it != end(); ++it) {
+        assert(!intersects(last, it->first));
+        last = it->first;
+    }
 }

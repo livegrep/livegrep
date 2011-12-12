@@ -82,6 +82,8 @@ public:
 
     string ToString();
 
+    void check_rep();
+
     int anchor;
 protected:
     map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges_;
