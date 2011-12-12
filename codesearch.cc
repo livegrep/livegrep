@@ -41,6 +41,7 @@ const int    kContextLines = 3;
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(search, true, "Actually do the search.");
+DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
 DECLARE_int32(threads);
 
@@ -287,7 +288,9 @@ void code_searcher::finalize() {
 }
 
 void code_searcher::print_match(const match_result *m) {
-    if (output_json_)
+    if (FLAGS_quiet)
+        return;
+    else if (output_json_)
         print_match_json(m);
     else
         printf("%s:%s:%d:%d-%d: %.*s\n",
