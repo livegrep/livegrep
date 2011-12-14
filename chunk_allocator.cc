@@ -13,9 +13,8 @@ bool chunk_allocator::finalizer::operator()(chunk *chunk) {
 }
 
 chunk_allocator::chunk_allocator()  :
-    current_(0), finalizer_() {
+    current_(0), finalizer_(), finalize_pool_(0) {
     new_chunk();
-    finalize_pool_ = new thread_pool<chunk*, finalizer>(FLAGS_threads, finalizer_);
 }
 
 unsigned char *chunk_allocator::alloc(size_t len) {
@@ -35,13 +34,19 @@ static chunk *alloc_chunk() {
 };
 
 void chunk_allocator::new_chunk()  {
-    if (current_)
+    if (current_) {
+        if (!finalize_pool_) {
+            finalize_pool_ = new thread_pool<chunk*, finalizer>(FLAGS_threads, finalizer_);
+        }
         finalize_pool_->queue(current_);
+    }
     current_ = alloc_chunk();
     chunks_.push_back(current_);
 }
 
 void chunk_allocator::finalize()  {
+    if (!finalize_pool_)
+        return;
     finalize_pool_->queue(current_);
     for (int i = 0; i < FLAGS_threads; i++)
         finalize_pool_->queue(NULL);
