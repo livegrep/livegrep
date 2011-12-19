@@ -2,6 +2,7 @@
 #define CODESEARCH_INDEXER_H
 
 #include <vector>
+#include <list>
 #include <string>
 #include <memory>
 
@@ -12,6 +13,7 @@
 
 using std::string;
 using std::vector;
+using std::list;
 using std::shared_ptr;
 
 enum {
@@ -84,9 +86,13 @@ public:
 
     void check_rep();
 
+    void concat(shared_ptr<IndexKey> rhs);
+
     int anchor;
 protected:
     map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges_;
+
+    void collect_tails(list<IndexKey::iterator>& tails);
 
 private:
     IndexKey(const IndexKey&);

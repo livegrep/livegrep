@@ -52,6 +52,36 @@ unsigned IndexKey::weight() {
         return numeric_limits<unsigned>::max() / 2;
     return 1/selectivity();
 }
+
+void IndexKey::collect_tails(list<IndexKey::iterator>& tails) {
+    if (this == 0)
+        return;
+
+    for (IndexKey::iterator it = begin(); it != end(); ++it) {
+        if (!it->second)
+            tails.push_back(it);
+        else
+            it->second->collect_tails(tails);
+    }
+}
+
+void IndexKey::concat(shared_ptr<IndexKey> rhs) {
+    assert(anchor & kAnchorRight);
+    assert(rhs->anchor & kAnchorLeft);
+    assert(!empty());
+
+    list<IndexKey::iterator> tails;
+    collect_tails(tails);
+    for (auto it = tails.begin(); it != tails.end(); ++it) {
+        if (!(*it)->second)
+            (*it)->second = rhs;
+    }
+    if (anchor & kAnchorRepeat)
+        anchor &= ~kAnchorLeft;
+    if ((rhs->anchor & (kAnchorRepeat|kAnchorRight)) != kAnchorRight)
+        anchor &= ~kAnchorRight;
+}
+
 static string strprintf(const char *fmt, ...)
     __attribute__((format (printf, 1, 2)));
 
@@ -170,19 +200,6 @@ namespace {
         return k;
     }
 
-    void CollectTails(list<IndexKey::iterator>& tails, shared_ptr<IndexKey> key) {
-        if (key == 0)
-            return;
-
-        for (IndexKey::iterator it = key->begin();
-             it != key->end(); ++it) {
-            if (!it->second)
-                tails.push_back(it);
-            else
-                CollectTails(tails, it->second);
-        }
-    }
-
     shared_ptr<IndexKey> Concat(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
         shared_ptr<IndexKey> out = lhs;
 
@@ -196,17 +213,7 @@ namespace {
             (lhs->anchor & kAnchorRight) &&
             (rhs->anchor & kAnchorLeft) &&
             !lhs->empty() && !rhs->empty()) {
-            list<IndexKey::iterator> tails;
-            CollectTails(tails, lhs);
-            for (auto it = tails.begin(); it != tails.end(); ++it) {
-                if (!(*it)->second)
-                    (*it)->second = rhs;
-            }
-            if (lhs->anchor & kAnchorRepeat)
-                lhs->anchor &= ~kAnchorLeft;
-            if ((rhs->anchor & (kAnchorRepeat|kAnchorRight)) != kAnchorRight)
-                lhs->anchor &= ~kAnchorRight;
-
+            lhs->concat(rhs);
             out = lhs;
         } else if (lhs) {
             lhs->anchor &= ~kAnchorRight;
