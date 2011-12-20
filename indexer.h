@@ -38,17 +38,17 @@ public:
         return edges_.end();
     }
 
-    IndexKey(int anchor = kAnchorNone) : anchor(anchor) { }
+    IndexKey(int anchor = kAnchorNone)
+        : anchor(anchor), selectivity_(0.0) { }
 
     IndexKey(pair<uchar, uchar> p,
              shared_ptr<IndexKey> next,
-             int anchor = kAnchorNone) : anchor(anchor) {
-        edges_.insert(value_type(p, next));
+             int anchor = kAnchorNone)
+        : anchor(anchor), selectivity_(0.0) {
+        insert(value_type(p, next));
     }
 
-    void insert(const value_type& v) {
-        edges_.insert(v);
-    }
+    void insert(const value_type& v);
 
     bool empty() {
         return edges_.empty();
@@ -91,6 +91,7 @@ public:
     int anchor;
 protected:
     map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges_;
+    double selectivity_;
 
     void collect_tails(list<IndexKey::iterator>& tails);
 

@@ -31,6 +31,11 @@ using namespace std;
 const unsigned kMinWeight = 16;
 const int kMaxWidth       = 32;
 
+void IndexKey::insert(const value_type& val) {
+    selectivity_ += (val.first.second - val.first.first + 1)/128. * val.second->selectivity();
+    edges_.insert(val);
+}
+
 double IndexKey::selectivity() {
     if (this == 0)
         return 1.0;
@@ -38,13 +43,7 @@ double IndexKey::selectivity() {
     if (empty())
         return 1.0;
 
-    double s = 0.0;
-    for (IndexKey::iterator it = begin();
-         it != end(); ++it)
-        s += double(it->first.second - it->first.first + 1)/128 *
-            it->second->selectivity();
-
-    return s;
+    return selectivity_;
 }
 
 unsigned IndexKey::weight() {
@@ -80,6 +79,8 @@ void IndexKey::concat(shared_ptr<IndexKey> rhs) {
         anchor &= ~kAnchorLeft;
     if ((rhs->anchor & (kAnchorRepeat|kAnchorRight)) != kAnchorRight)
         anchor &= ~kAnchorRight;
+
+    selectivity_ *= rhs->selectivity();
 }
 
 static string strprintf(const char *fmt, ...)
