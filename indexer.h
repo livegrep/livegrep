@@ -92,6 +92,7 @@ public:
 protected:
     map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges_;
     double selectivity_;
+    list<iterator> tails_;
 
     void collect_tails(list<IndexKey::iterator>& tails);
 

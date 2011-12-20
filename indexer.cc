@@ -33,7 +33,11 @@ const int kMaxWidth       = 32;
 
 void IndexKey::insert(const value_type& val) {
     selectivity_ += (val.first.second - val.first.first + 1)/128. * val.second->selectivity();
-    edges_.insert(val);
+    iterator it = edges_.insert(val).first;
+    if (val.second)
+        tails_.splice(tails_.end(), val.second->tails_);
+    else
+        tails_.push_back(it);
 }
 
 double IndexKey::selectivity() {
@@ -56,12 +60,9 @@ void IndexKey::collect_tails(list<IndexKey::iterator>& tails) {
     if (this == 0)
         return;
 
-    for (IndexKey::iterator it = begin(); it != end(); ++it) {
-        if (!it->second)
-            tails.push_back(it);
-        else
-            it->second->collect_tails(tails);
-    }
+    // assert(empty() || !tails_.empty());
+
+    tails.splice(tails.end(), tails_);
 }
 
 void IndexKey::concat(shared_ptr<IndexKey> rhs) {
@@ -81,6 +82,7 @@ void IndexKey::concat(shared_ptr<IndexKey> rhs) {
         anchor &= ~kAnchorRight;
 
     selectivity_ *= rhs->selectivity();
+    rhs->collect_tails(tails_);
 }
 
 static string strprintf(const char *fmt, ...)
