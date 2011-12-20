@@ -1,4 +1,5 @@
 #include "indexer.h"
+#include "recursion.h"
 
 #include <gflags/gflags.h>
 
@@ -30,6 +31,7 @@ using namespace std;
 
 const unsigned kMinWeight = 16;
 const int kMaxWidth       = 32;
+const int kMaxRecursion   = 10;
 
 void IndexKey::insert(const value_type& val) {
     selectivity_ += (val.first.second - val.first.first + 1)/128. * val.second->selectivity();
@@ -300,6 +302,11 @@ namespace {
             return lhs;
         if (lhs == 0 || rhs == 0 ||
             lhs->size() + rhs->size() >= kMaxWidth)
+            return Any();
+
+        static int recursion_depth = 0;
+        RecursionCounter guard(recursion_depth);
+        if (recursion_depth > kMaxRecursion)
             return Any();
 
         shared_ptr<IndexKey> out(new IndexKey
