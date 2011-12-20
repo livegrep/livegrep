@@ -201,6 +201,7 @@ namespace {
     }
 
     shared_ptr<IndexKey> Concat(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
+        assert(lhs);
         shared_ptr<IndexKey> out = lhs;
 
         debug("Concat([%s](%d), [%s](%d)) = ",
@@ -213,10 +214,9 @@ namespace {
             (lhs->anchor & kAnchorRight) &&
             (rhs->anchor & kAnchorLeft) &&
             !lhs->empty() && !rhs->empty()) {
-            lhs->concat(rhs);
-            out = lhs;
-        } else if (lhs) {
-            lhs->anchor &= ~kAnchorRight;
+            out->concat(rhs);
+        } else  {
+            out->anchor &= ~kAnchorRight;
         }
 
         if (rhs && rhs->weight() > out->weight()) {
