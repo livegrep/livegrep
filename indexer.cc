@@ -372,7 +372,9 @@ namespace {
 shared_ptr<IndexKey> indexRE(const re2::RE2 &re) {
     IndexWalker walk;
 
-    shared_ptr<IndexKey> key = walk.Walk(re.Regexp(), 0);
+    Regexp *sre = re.Regexp()->Simplify();
+    shared_ptr<IndexKey> key = walk.WalkExponential(sre, 0, 10000);
+    sre->Decref();
 
     if (key && key->weight() < kMinWeight)
         key = 0;

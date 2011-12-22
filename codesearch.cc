@@ -490,7 +490,7 @@ void searcher::filtered_search(const chunk *chunk)
         while (!stack.empty()) {
             walk_state st = stack.back();
             stack.pop_back();
-            if (!st.key) {
+            if (!st.key || (st.right - st.left) <= 100) {
                 memcpy(indexes + count, st.left,
                        (st.right - st.left) * sizeof(uint32_t));
                 count += (st.right - st.left);
