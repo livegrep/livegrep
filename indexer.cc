@@ -248,9 +248,15 @@ namespace {
         kTakeBoth  = 0x03
     };
 
-    shared_ptr<IndexKey> Alternate(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs);
+    typedef map<pair<shared_ptr<IndexKey>, shared_ptr<IndexKey> >,
+                shared_ptr<IndexKey> > alternate_cache;
 
-    int Merge(shared_ptr<IndexKey> out,
+    shared_ptr<IndexKey> Alternate(alternate_cache&,
+                                   shared_ptr<IndexKey>,
+                                   shared_ptr<IndexKey>);
+
+    int Merge(alternate_cache& cache,
+              shared_ptr<IndexKey> out,
               pair<uchar, uchar>& left,
               shared_ptr<IndexKey> lnext,
               pair<uchar, uchar>& right,
@@ -277,7 +283,7 @@ namespace {
             uchar end = min(left.second, right.second);
             out->insert
                 (make_pair(make_pair(left.first, end),
-                           Alternate(lnext, rnext)));
+                           Alternate(cache, lnext, rnext)));
             if (left.second > end) {
                 left.first = end+1;
                 return kTakeRight;
@@ -297,7 +303,9 @@ namespace {
         return kTakeRight;
     }
 
-    shared_ptr<IndexKey> Alternate(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
+    shared_ptr<IndexKey> AlternateInternal(alternate_cache& cache,
+                                           shared_ptr<IndexKey> lhs,
+                                           shared_ptr<IndexKey> rhs) {
         if (lhs == rhs)
             return lhs;
         if (lhs == 0 || rhs == 0 ||
@@ -322,7 +330,7 @@ namespace {
         if (rit != rhs->end())
             right = rit->first;
         while (lit != lhs->end() && rit != rhs->end()) {
-            int action = Merge(out, left, lit->second, right, rit->second);
+            int action = Merge(cache, out, left, lit->second, right, rit->second);
             if (action & kTakeLeft)
                 if (++lit != lhs->end())
                     left = lit->first;
@@ -345,6 +353,17 @@ namespace {
         for (; rit != rhs->end(); ++rit)
             out->insert(*rit);
 
+        return out;
+    }
+
+    shared_ptr<IndexKey> Alternate(alternate_cache& cache,
+                                   shared_ptr<IndexKey> lhs,
+                                   shared_ptr<IndexKey> rhs) {
+        auto it = cache.find(make_pair(lhs, rhs));
+        if (it != cache.end())
+            return it->second;
+        shared_ptr<IndexKey> out = AlternateInternal(cache, lhs, rhs);
+        cache[make_pair(lhs, rhs)] = out;
         return out;
     }
 
@@ -403,9 +422,12 @@ IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
         break;
 
     case kRegexpAlternate:
-        key = child_args[0];
-        for (int i = 1; i < nchild_args; i++)
-            key = Alternate(key, child_args[i]);
+        {
+            alternate_cache cache;
+            key = child_args[0];
+            for (int i = 1; i < nchild_args; i++)
+                key = Alternate(cache, key, child_args[i]);
+        }
         break;
 
     case kRegexpStar:
