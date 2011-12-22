@@ -18,11 +18,13 @@ var parser = new parseopt.OptionParser(
   });
 var opts;
 
+module.exports.parser = parser;
 
 function parseopts(argv) {
   opts = parser.parse(argv);
   REPO = opts.arguments[0];
   extra_args = opts.arguments.slice(1);
+  return opts.options;
 }
 module.exports.parseopts = parseopts;
 

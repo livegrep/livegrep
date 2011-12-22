@@ -5,7 +5,8 @@ var Codesearch = require('../web/codesearch.js'),
 
 var ITERATIONS = 10;
 
-common.parseopts();
+common.parser.add('--dump-stats', {type: 'string', target: 'dump_stats'});
+var options = common.parseopts();
 var queries = common.load_queries();
 var cs = common.get_codesearch();
 
@@ -51,6 +52,9 @@ function average(l, field) {
 
 function done() {
     var results = [];
+    if (options.dump_stats)
+        fs.writeFileSync(options.dump_stats,
+                         JSON.stringify(times))
     for (q in times) {
         results.push([q, times[q], average(times[q], 'time')]);
     }
