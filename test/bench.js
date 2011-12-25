@@ -3,14 +3,15 @@ var Codesearch = require('../web/codesearch.js'),
     path       = require('path'),
     common     = require('./common.js');
 
-var ITERATIONS = 10;
-
 common.parser.add('--dump-stats', {type: 'string', target: 'dump_stats'});
+common.parser.add('--iterations', {type: 'int', default: 10});
 var options = common.parseopts();
 var queries = common.load_queries();
 var cs = common.get_codesearch();
 
 var times = { };
+
+var ITERATIONS = options.iterations;
 
 function loop(i) {
     if (i == queries.length) {
