@@ -7,7 +7,7 @@ common.parser.add('--dump-stats', {type: 'string', target: 'dump_stats'});
 common.parser.add('--iterations', {type: 'int', default: 10});
 var options = common.parseopts();
 var queries = common.load_queries();
-var cs = common.get_codesearch();
+var cs = common.get_codesearch(['--timeout=0']);
 
 var times = { };
 
