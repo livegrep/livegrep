@@ -53,6 +53,7 @@ function average(l, field) {
 function rpad(str, len, chr) {
   if (chr === undefined)
     chr = ' '
+  str = '' + str;
   while (str.length < len)
     str += chr;
   return str;
@@ -82,23 +83,29 @@ function done() {
     }
     return re;
   }
+  function num(n) {
+    n = Math.round(n);
+    var str;
+    if (n === 0.0)
+      str = '0.0'
+    else
+      str = ''+(n/1000);
+    return rpad(str, 6, '0')
+  }
   results.forEach(function (r) {
-                    var matches = r[1].map(function (f) { return f.nmatch });
-                    var min_match = Math.min.apply(Math, matches);
-                    var max_match = Math.min.apply(Math, matches);
+                    var min_time = Math.min.apply(
+                      Math, r[1].map(function(r) {return r.time}));
+                    var max_time = Math.max.apply(
+                      Math, r[1].map(function(r) {return r.time}));
                     function time(name) {
                       var tm = Math.round(average(r[1], name + '_time'));
-                      var str;
-                      if (tm === 0.0)
-                        str = '0.0'
-                      else
-                        str = ''+(tm/1000);
-                      return rpad(str, 6, '0')
+                      return num(tm);
                     }
 
-                    console.log("[%s]: %ss (re2: %s, index: %s)",
+                    console.log("[%s]: %s<%ss (re2: %s, index: %s)",
                                 fmt(r[0]),
-                                rpad(''+Math.round(r[2])/1000, 6, '0'),
+                                num(min_time),
+                                num(r[2]),
                                 time('re2'), time('index'));
                   });
   process.exit(0);
