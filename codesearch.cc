@@ -202,6 +202,12 @@ protected:
     bool exit_early() {
         if (matches_.load() >= kMaxMatches)
             return true;
+#ifdef CODESEARCH_SLOWGTOD
+        static int counter = 1000;
+        if (--counter)
+            return false;
+        counter = 1000;
+#endif
         timeval now;
         gettimeofday(&now, NULL);
         return (now.tv_sec > limit_.tv_sec ||

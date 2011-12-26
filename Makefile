@@ -23,6 +23,9 @@ endif
 ifneq ($(profile),)
 override CXXFLAGS+=-DPROFILE_CODESEARCH
 endif
+ifneq ($(slowgtod),)
+override CXXFLAGS+=-DCODESEARCH_SLOWGTOD
+endif
 
 OBJECTS = codesearch.o main.o chunk.o \
           chunk_allocator.o radix_sort.o \

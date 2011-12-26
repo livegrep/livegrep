@@ -106,13 +106,20 @@ protected:
 class run_timer {
 public:
     run_timer(timer& timer)
-        : timer_(timer), local_() {
+#ifndef CODESEARCH_SLOWGTOD
+        : timer_(timer), local_()
+#endif
+    {
     }
     ~run_timer() {
+#ifndef CODESEARCH_SLOWGTOD
         local_.pause();
         timer_.add(local_);
+#endif
     }
 protected:
+#ifndef CODESEARCH_SLOWGTOD
     timer &timer_;
     timer local_;
+#endif
 };
