@@ -51,6 +51,14 @@ function average(l, field) {
   return sum / l.length;
 }
 
+function rpad(str, len, chr) {
+  if (chr === undefined)
+    chr = ' '
+  while (str.length < len)
+    str += chr;
+  return str;
+}
+
 function done() {
   var results = [];
   if (options.dump_stats)
@@ -63,15 +71,10 @@ function done() {
                  return b[2] - a[2]
                });
   console.log("*** RESULTS ***")
-  function pad(str, len) {
-    while (str.length < len)
-      str += ' ';
-    return str;
-  }
   function fmt(re) {
     var WIDTH = 20;
     if (re.length < WIDTH) {
-      re = pad(re, WIDTH);
+      re = rpad(re, WIDTH);
     }
     if (re.length > WIDTH) {
       var start = re.substr(0, WIDTH / 2);
@@ -84,12 +87,20 @@ function done() {
                     var matches = r[1].map(function (f) { return f.nmatch });
                     var min_match = Math.min.apply(Math, matches);
                     var max_match = Math.min.apply(Math, matches);
-                    console.log("[%s]: %ss (re2: %s, index: %s) [%d, %d]",
+                    function time(name) {
+                      var tm = Math.round(average(r[1], name + '_time'));
+                      var str;
+                      if (tm === 0.0)
+                        str = '0.0'
+                      else
+                        str = ''+(tm/1000);
+                      return rpad(str, 6, '0')
+                    }
+
+                    console.log("[%s]: %ss (re2: %s, index: %s)",
                                 fmt(r[0]),
-                                pad(''+Math.round(r[2])/1000, 6),
-                                Math.round(average(r[1], 're2_time'))/1000,
-                                Math.round(average(r[1], 'index_time'))/1000,
-                                min_match, max_match);
+                                rpad(''+Math.round(r[2])/1000, 6, '0'),
+                                time('re2'), time('index'));
                   });
   process.exit(0);
 }
