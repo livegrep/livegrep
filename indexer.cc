@@ -7,13 +7,13 @@
 
 #include <stdarg.h>
 
-DEFINE_bool(debug_index, false, "Debug the index query generator.");
+DEFINE_int32(debug_index, 0, "Debug the index query generator.");
 static void __index_debug(const char *format, ...)
     __attribute__((format (printf, 1, 2)));
 
-#define debug(fmt, ...) do {                    \
-    if (FLAGS_debug_index)                      \
-        __index_debug(fmt, ## __VA_ARGS__);     \
+#define debug(lvl, fmt, ...) do {                \
+        if (FLAGS_debug_index >= lvl)            \
+            __index_debug(fmt, ## __VA_ARGS__);  \
     } while(0)
 
 static void __index_debug(const char *format, ...) {
@@ -229,11 +229,11 @@ namespace {
         assert(lhs);
         shared_ptr<IndexKey> out = lhs;
 
-        debug("Concat([%s](%d), [%s](%d)) = ",
+        debug(2, "Concat([%s](%ld), [%s](%ld)) = ",
               lhs->ToString().c_str(),
-              lhs->weight(),
+              lhs->nodes(),
               rhs->ToString().c_str(),
-              rhs->weight());
+              rhs->nodes());
 
         if (lhs && rhs &&
             (lhs->anchor & kAnchorRight) &&
@@ -249,7 +249,7 @@ namespace {
             out->anchor &= ~kAnchorLeft;
         }
 
-        debug("[%s]\n", out->ToString().c_str());
+        debug(2, "[%s]\n", out->ToString().c_str());
 
         return out;
     }
@@ -282,7 +282,7 @@ namespace {
               pair<uchar, uchar>& right,
               shared_ptr<IndexKey> rnext) {
         if (intersects(left, right)) {
-            debug("Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
+            debug(3, "Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
                   left.first, left.second, right.first, right.second);
             if (left.first < right.first) {
                 out->insert
@@ -474,10 +474,11 @@ IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
         assert(false);
     }
 
-    debug("* INDEX %s ==> [%s](%d)\n",
+    debug(1, "* INDEX %s ==> [weight %d, nodes %ld, depth %d]\n",
           re->ToString().c_str(),
-          key->ToString().c_str(),
-          key->weight());
+          key->weight(), key->nodes(), key->depth());
+    debug(2, "           ==> [%s]\n",
+          key->ToString().c_str());
 
     if (FLAGS_debug_index && key)
         key->check_rep();
