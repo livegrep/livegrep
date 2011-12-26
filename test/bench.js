@@ -60,38 +60,55 @@ function rpad(str, len, chr) {
 }
 
 function done() {
-  var results = [];
+  var results;
   if (options.dump_stats)
     fs.writeFileSync(options.dump_stats,
                      JSON.stringify(times))
+
+  results = collate(times);
+  print_one(results);
+
+  process.exit(0);
+}
+
+function collate(times) {
+  var out = [];
   for (q in times) {
-    results.push([q, times[q], average(times[q], 'time')]);
+    out.push([q, times[q], average(times[q], 'time')]);
   }
+  return out;
+}
+
+function fmt(re) {
+  var WIDTH = 20;
+  if (re.length < WIDTH) {
+    re = rpad(re, WIDTH);
+  }
+  if (re.length > WIDTH) {
+    var start = re.substr(0, WIDTH / 2);
+    var end   = re.substring(re.length - (WIDTH - start.length - 3));
+    re = start + '...' + end;
+  }
+  return re;
+}
+
+function num(n) {
+  n = Math.round(n);
+  var str;
+  if (n === 0.0)
+    str = '0.0'
+  else
+    str = ''+(n/1000);
+  return rpad(str, 6, '0')
+}
+
+function print_one(results) {
+  console.log("*** RESULTS ***")
+
   results.sort(function (a,b) {
                  return b[2] - a[2]
                });
-  console.log("*** RESULTS ***")
-  function fmt(re) {
-    var WIDTH = 20;
-    if (re.length < WIDTH) {
-      re = rpad(re, WIDTH);
-    }
-    if (re.length > WIDTH) {
-      var start = re.substr(0, WIDTH / 2);
-      var end   = re.substring(re.length - (WIDTH - start.length - 3));
-      re = start + '...' + end;
-    }
-    return re;
-  }
-  function num(n) {
-    n = Math.round(n);
-    var str;
-    if (n === 0.0)
-      str = '0.0'
-    else
-      str = ''+(n/1000);
-    return rpad(str, 6, '0')
-  }
+
   results.forEach(function (r) {
                     var min_time = Math.min.apply(
                       Math, r[1].map(function(r) {return r.time}));
@@ -108,7 +125,6 @@ function done() {
                                 num(r[2]),
                                 time('re2'), time('index'));
                   });
-  process.exit(0);
 }
 
 cs.once('ready', function() {
