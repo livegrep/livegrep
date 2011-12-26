@@ -15,10 +15,9 @@ var ITERATIONS = options.iterations;
 
 function loop(i) {
   if (i == queries.length) {
-    if (ITERATIONS == 0) {
+    if (--ITERATIONS == 0) {
       done();
     } else {
-      ITERATIONS--;
       loop(0);
     }
     return;
