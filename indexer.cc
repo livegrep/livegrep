@@ -35,11 +35,16 @@ const int kMaxRecursion   = 10;
 
 void IndexKey::insert(const value_type& val) {
     selectivity_ += (val.first.second - val.first.first + 1)/128. * val.second->selectivity();
+    depth_ = max(depth_, val.second->depth() + 1);
+    nodes_ += (val.first.second - val.first.first + 1) * val.second->nodes();
+
     iterator it = edges_.insert(val).first;
-    if (val.second)
+    if (val.second) {
         tails_.splice(tails_.end(), val.second->tails_);
-    else
+    } else {
         tails_.push_back(it);
+        tail_paths_ += (val.first.second - val.first.first + 1);
+    }
 }
 
 double IndexKey::selectivity() {
@@ -56,6 +61,18 @@ unsigned IndexKey::weight() {
     if (1/selectivity() > double(numeric_limits<unsigned>::max()))
         return numeric_limits<unsigned>::max() / 2;
     return 1/selectivity();
+}
+
+long IndexKey::nodes() {
+    if (this == 0)
+        return 1;
+    return nodes_;
+}
+
+int IndexKey::depth() {
+    if (this == 0)
+        return 0;
+    return depth_;
 }
 
 void IndexKey::collect_tails(list<IndexKey::iterator>& tails) {
@@ -75,8 +92,8 @@ void IndexKey::concat(shared_ptr<IndexKey> rhs) {
     list<IndexKey::iterator> tails;
     collect_tails(tails);
     for (auto it = tails.begin(); it != tails.end(); ++it) {
-        if (!(*it)->second)
-            (*it)->second = rhs;
+        assert(!(*it)->second);
+        (*it)->second = rhs;
     }
     if (anchor & kAnchorRepeat)
         anchor &= ~kAnchorLeft;
@@ -84,6 +101,9 @@ void IndexKey::concat(shared_ptr<IndexKey> rhs) {
         anchor &= ~kAnchorRight;
 
     selectivity_ *= rhs->selectivity();
+    depth_ += rhs->depth();
+    nodes_ += tail_paths_ * rhs->nodes();
+    tail_paths_ *= rhs->tail_paths_;
     rhs->collect_tails(tails_);
 }
 

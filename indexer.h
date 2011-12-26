@@ -39,12 +39,14 @@ public:
     }
 
     IndexKey(int anchor = kAnchorNone)
-        : anchor(anchor), selectivity_(0.0) { }
+        : anchor(anchor), selectivity_(0.0), depth_(0), nodes_(0),
+          tail_paths_(0) { }
 
     IndexKey(pair<uchar, uchar> p,
              shared_ptr<IndexKey> next,
              int anchor = kAnchorNone)
-        : anchor(anchor), selectivity_(0.0) {
+        : anchor(anchor), selectivity_(0.0), depth_(0), nodes_(0),
+          tail_paths_(0) {
         insert(value_type(p, next));
     }
 
@@ -81,6 +83,8 @@ public:
      * key.
      */
     unsigned weight();
+    int depth();
+    long nodes();
 
     string ToString();
 
@@ -92,6 +96,9 @@ public:
 protected:
     map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges_;
     double selectivity_;
+    int depth_;
+    long nodes_;
+    long tail_paths_;
     list<iterator> tails_;
 
     void collect_tails(list<IndexKey::iterator>& tails);
