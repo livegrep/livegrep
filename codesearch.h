@@ -57,6 +57,7 @@ struct match_stats {
     timeval git_time;
     timeval sort_time;
     timeval index_time;
+    timeval analyze_time;
 };
 
 struct chunk;

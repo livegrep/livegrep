@@ -35,6 +35,8 @@ void print_stats(const match_stats &stats) {
                            (timeval_ms(stats.sort_time)));
     json_object_object_add(obj, "index_time", json_object_new_int
                            (timeval_ms(stats.index_time)));
+    json_object_object_add(obj, "analyze_time", json_object_new_int
+                           (timeval_ms(stats.analyze_time)));
     printf("DONE %s\n", json_object_to_json_string(obj));
     json_object_put(obj);
 }

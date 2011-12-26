@@ -76,13 +76,16 @@ public:
     searcher(code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
         matches_(0), re2_time_(false), git_time_(false),
-        index_time_(false), sort_time_(false)
+        index_time_(false), sort_time_(false), analyze_time_(false)
     {
-        index_ = indexRE(pat);
-        log_profile("Index(%d): \n", int(index_->keys.size()));
-        for (vector<string>::const_iterator it = index_->keys.begin();
-             it != index_->keys.end(); it++) {
-            log_profile("  %s\n", it->c_str());
+        {
+            run_timer run(analyze_time_);
+            index_ = indexRE(pat);
+            log_profile("Index(%d): \n", int(index_->keys.size()));
+            for (vector<string>::const_iterator it = index_->keys.begin();
+                 it != index_->keys.end(); it++) {
+                log_profile("  %s\n", it->c_str());
+            }
         }
 
         if (FLAGS_timeout <= 0) {
@@ -106,6 +109,9 @@ public:
         log_profile("sort time: %d.%06ds\n",
                     int(sort_time_.elapsed().tv_sec),
                     int(sort_time_.elapsed().tv_usec));
+        log_profile("analyze time: %d.%06ds\n",
+                    int(analyze_time_.elapsed().tv_sec),
+                    int(analyze_time_.elapsed().tv_usec));
     }
 
     bool operator()(const chunk *chunk);
@@ -115,6 +121,7 @@ public:
         stats->git_time = git_time_.elapsed();
         stats->index_time = index_time_.elapsed();
         stats->sort_time  = sort_time_.elapsed();
+        stats->analyze_time  = analyze_time_.elapsed();
     }
 
 protected:
@@ -210,6 +217,7 @@ protected:
     timer git_time_;
     timer index_time_;
     timer sort_time_;
+    timer analyze_time_;
     timeval limit_;
 };
 
