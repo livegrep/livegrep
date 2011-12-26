@@ -85,6 +85,7 @@ public:
     unsigned weight();
     int depth();
     long nodes();
+    long concat_nodes(shared_ptr<IndexKey> rhs);
 
     string ToString();
 

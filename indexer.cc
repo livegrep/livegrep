@@ -32,6 +32,7 @@ using namespace std;
 const unsigned kMinWeight = 16;
 const int kMaxWidth       = 32;
 const int kMaxRecursion   = 10;
+const int kMaxNodes       = (1 << 24);
 
 void IndexKey::insert(const value_type& val) {
     selectivity_ += (val.first.second - val.first.first + 1)/128. * val.second->selectivity();
@@ -73,6 +74,10 @@ int IndexKey::depth() {
     if (this == 0)
         return 0;
     return depth_;
+}
+
+long IndexKey::concat_nodes(shared_ptr<IndexKey> rhs) {
+    return nodes_ + tail_paths_ * rhs->nodes();
 }
 
 void IndexKey::collect_tails(list<IndexKey::iterator>& tails) {
@@ -225,6 +230,19 @@ namespace {
         return k;
     }
 
+    bool ShouldConcat(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
+        if (!lhs || !rhs)
+            return false;
+        if (!(lhs->anchor & kAnchorRight) ||
+            !(rhs->anchor & kAnchorLeft))
+            return false;
+        if (lhs->empty() || rhs->empty())
+            return false;
+        if (lhs->concat_nodes(rhs) >= kMaxNodes)
+            return false;
+        return true;
+    }
+
     shared_ptr<IndexKey> Concat(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
         assert(lhs);
         shared_ptr<IndexKey> out = lhs;
@@ -235,10 +253,7 @@ namespace {
               rhs->ToString().c_str(),
               rhs->nodes());
 
-        if (lhs && rhs &&
-            (lhs->anchor & kAnchorRight) &&
-            (rhs->anchor & kAnchorLeft) &&
-            !lhs->empty() && !rhs->empty()) {
+        if (ShouldConcat(lhs, rhs)) {
             out->concat(rhs);
         } else  {
             out->anchor &= ~kAnchorRight;
