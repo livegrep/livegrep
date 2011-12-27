@@ -4,12 +4,15 @@ var Codesearch = require('../web/codesearch.js'),
     common     = require('./common.js');
 
 common.parser.add('--dump-stats', {type: 'string', target: 'dump_stats'});
+common.parser.add('--load-stats', {type: 'string', target: 'load_stats'});
+common.parser.add('--compare',    {type: 'string'});
 common.parser.add('--iterations', {type: 'int', default: 10});
 var options = common.parseopts();
 var queries = common.load_queries();
 var cs = common.get_codesearch(['--timeout=0']);
 
 var times = { };
+var cmp_times = null;
 
 var ITERATIONS = options.iterations;
 
@@ -59,14 +62,26 @@ function rpad(str, len, chr) {
   return str;
 }
 
+function lpad(str, len, chr) {
+  if (chr === undefined)
+    chr = ' '
+  str = '' + str;
+  while (str.length < len)
+    str = chr + str;
+  return str;
+}
+
 function done() {
   var results;
   if (options.dump_stats)
     fs.writeFileSync(options.dump_stats,
                      JSON.stringify(times))
-
-  results = collate(times);
-  print_one(results);
+  if (options.compare) {
+    compare(cmp_times, times);
+  } else {
+    results = collate(times);
+    print_one(results);
+  }
 
   process.exit(0);
 }
@@ -102,6 +117,49 @@ function num(n) {
   return rpad(str, 6, '0')
 }
 
+function pct(n) {
+  n = Math.round(100*n);
+  if (n >= 0)
+    n = '+' + n;
+  else
+    n = '' + n;
+  return lpad(n, 4, ' ') + '%';
+}
+
+function compare(prev, cur) {
+  var cmp = [];
+  Object.keys(cur).forEach(
+    function (re) {
+      if (!prev.hasOwnProperty(re))
+        return;
+      var prev_mean = average(prev[re], 'time');
+      var cur_mean  = average(cur[re], 'time');
+      cmp.push({
+                 re: re,
+                 prev: prev[re],
+                 prev_mean: prev_mean,
+                 cur: cur[re],
+                 cur_mean: cur_mean,
+                 delta: (prev_mean === 0.0) ? 0 : (cur_mean - prev_mean)/prev_mean,
+               });
+    })
+  cmp.sort(function (a,b) {return a.delta - b.delta;});
+
+  print_compare(cmp);
+}
+
+function print_compare(cmp) {
+  console.log("Results VERSUS %s", options.compare);
+  cmp.forEach(
+    function (r) {
+      console.log("[%s]: %s/%s (%s)",
+                  fmt(r.re),
+                  num(r.prev_mean),
+                  num(r.cur_mean),
+                  pct(r.delta));
+    });
+}
+
 function print_one(results) {
   console.log("*** RESULTS ***")
 
@@ -127,7 +185,29 @@ function print_one(results) {
                   });
 }
 
-cs.once('ready', function() {
-          console.log("Begin searching...");
-          loop(0);
-        });
+
+if (options.compare) {
+  try {
+    cmp_times = JSON.parse(fs.readFileSync(options.compare));
+  } catch(e) {
+    console.error("Unable to load data for comparison:");
+    console.error(" %s", e);
+    process.exit(1);
+  }
+}
+
+if (options.load_stats) {
+  try {
+    times = JSON.parse(fs.readFileSync(options.load_stats));
+  } catch(e) {
+    console.error("Unable to load data:");
+    console.error(" %s", e);
+    process.exit(1);
+  }
+  done();
+} else {
+  cs.once('ready', function() {
+            console.log("Begin searching...");
+            loop(0);
+          });
+}
