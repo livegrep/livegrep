@@ -34,17 +34,42 @@ const int kMaxWidth       = 32;
 const int kMaxRecursion   = 10;
 const int kMaxNodes       = (1 << 24);
 
+IndexKey::Stats::Stats ()
+    : selectivity_(0.0), depth_(0), nodes_(1), tail_paths_(0) {
+
+}
+
+IndexKey::Stats IndexKey::Stats::insert(const value_type& val) const {
+    Stats out(*this);
+    out.selectivity_ += (val.first.second - val.first.first + 1)/128. * val.second->selectivity();
+    out.depth_ = max(depth_, val.second->depth() + 1);
+    out.nodes_ += (val.first.second - val.first.first + 1) * val.second->nodes();
+    if (!val.second)
+        out.tail_paths_ += (val.first.second - val.first.first + 1);
+
+    return out;
+}
+
+IndexKey::Stats IndexKey::Stats::concat(const IndexKey::Stats& rhs) const {
+    Stats out(*this);
+    out.selectivity_ *= rhs.selectivity_;
+    out.depth_ += rhs.depth_;
+    out.nodes_ += tail_paths_ * rhs.nodes_;
+    out.tail_paths_ *= rhs.tail_paths_;
+
+    return out;
+}
+
+IndexKey::Stats IndexKey::null_stats_;
+
 void IndexKey::insert(const value_type& val) {
-    selectivity_ += (val.first.second - val.first.first + 1)/128. * val.second->selectivity();
-    depth_ = max(depth_, val.second->depth() + 1);
-    nodes_ += (val.first.second - val.first.first + 1) * val.second->nodes();
+    stats_ = stats_.insert(val);
 
     iterator it = edges_.insert(val).first;
     if (val.second) {
         tails_.splice(tails_.end(), val.second->tails_);
     } else {
         tails_.push_back(it);
-        tail_paths_ += (val.first.second - val.first.first + 1);
     }
 }
 
@@ -55,7 +80,7 @@ double IndexKey::selectivity() {
     if (empty())
         return 1.0;
 
-    return selectivity_;
+    return stats_.selectivity_;
 }
 
 unsigned IndexKey::weight() {
@@ -67,17 +92,13 @@ unsigned IndexKey::weight() {
 long IndexKey::nodes() {
     if (this == 0)
         return 1;
-    return nodes_;
+    return stats_.nodes_;
 }
 
 int IndexKey::depth() {
     if (this == 0)
         return 0;
-    return depth_;
-}
-
-long IndexKey::concat_nodes(shared_ptr<IndexKey> rhs) {
-    return nodes_ + tail_paths_ * rhs->nodes();
+    return stats_.depth_;
 }
 
 void IndexKey::collect_tails(list<IndexKey::iterator>& tails) {
@@ -105,10 +126,7 @@ void IndexKey::concat(shared_ptr<IndexKey> rhs) {
     if ((rhs->anchor & (kAnchorRepeat|kAnchorRight)) != kAnchorRight)
         anchor &= ~kAnchorRight;
 
-    selectivity_ *= rhs->selectivity();
-    depth_ += rhs->depth();
-    nodes_ += tail_paths_ * rhs->nodes();
-    tail_paths_ *= rhs->tail_paths_;
+    stats_ = stats_.concat(rhs->stats());
     rhs->collect_tails(tails_);
 }
 
@@ -238,7 +256,8 @@ namespace {
             return false;
         if (lhs->empty() || rhs->empty())
             return false;
-        if (lhs->concat_nodes(rhs) >= kMaxNodes)
+        IndexKey::Stats concat = lhs->stats().concat(rhs->stats());
+        if (concat.nodes_ >= kMaxNodes)
             return false;
         return true;
     }

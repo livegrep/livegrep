@@ -39,18 +39,17 @@ public:
     }
 
     IndexKey(int anchor = kAnchorNone)
-        : anchor(anchor), selectivity_(0.0), depth_(0), nodes_(0),
-          tail_paths_(0) { }
+        : anchor(anchor) { }
 
     IndexKey(pair<uchar, uchar> p,
              shared_ptr<IndexKey> next,
              int anchor = kAnchorNone)
-        : anchor(anchor), selectivity_(0.0), depth_(0), nodes_(0),
-          tail_paths_(0) {
+        : anchor(anchor) {
         insert(value_type(p, next));
     }
 
     void insert(const value_type& v);
+    void concat(shared_ptr<IndexKey> rhs);
 
     bool empty() {
         return edges_.empty();
@@ -58,6 +57,22 @@ public:
 
     size_t size() {
         return edges_.size();
+    }
+
+    class Stats {
+    public:
+        double selectivity_;
+        int depth_;
+        long nodes_;
+        long tail_paths_;
+
+        Stats();
+        Stats insert(const value_type& v) const;
+        Stats concat(const Stats& rhs) const;
+    };
+
+    const Stats& stats() {
+        return this ? stats_ : null_stats_;
     }
 
     /*
@@ -85,24 +100,20 @@ public:
     unsigned weight();
     int depth();
     long nodes();
-    long concat_nodes(shared_ptr<IndexKey> rhs);
 
     string ToString();
 
     void check_rep();
 
-    void concat(shared_ptr<IndexKey> rhs);
-
     int anchor;
 protected:
     map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges_;
-    double selectivity_;
-    int depth_;
-    long nodes_;
-    long tail_paths_;
+    Stats stats_;
     list<iterator> tails_;
 
     void collect_tails(list<IndexKey::iterator>& tails);
+
+    static Stats null_stats_;
 
 private:
     IndexKey(const IndexKey&);
