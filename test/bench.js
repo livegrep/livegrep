@@ -177,11 +177,13 @@ function print_one(results) {
                       return num(tm);
                     }
 
-                    console.log("[%s]: %s<%ss (re2: %s, index: %s)",
+                    console.log("[%s]: %s<%ss (re2: %s, index: %s, analyze: %s)",
                                 fmt(r[0]),
                                 num(min_time),
                                 num(r[2]),
-                                time('re2'), time('index'));
+                                time('re2'),
+                                time('index'),
+                                time('analyze'));
                   });
 }
 
