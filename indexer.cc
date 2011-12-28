@@ -35,12 +35,16 @@ const int kMaxRecursion   = 10;
 const int kMaxNodes       = (1 << 24);
 
 IndexKey::Stats::Stats ()
-    : selectivity_(0.0), depth_(0), nodes_(1), tail_paths_(0) {
-
+    : selectivity_(1.0), depth_(0), nodes_(1), tail_paths_(1) {
 }
 
 IndexKey::Stats IndexKey::Stats::insert(const value_type& val) const {
     Stats out(*this);
+    if (out.selectivity_ == 1.0) {
+        out.selectivity_ = 0.0;
+        out.tail_paths_  = 0;
+    }
+
     out.selectivity_ += (val.first.second - val.first.first + 1)/128. * val.second->selectivity();
     out.depth_ = max(depth_, val.second->depth() + 1);
     out.nodes_ += (val.first.second - val.first.first + 1) * val.second->nodes();
@@ -78,7 +82,7 @@ double IndexKey::selectivity() {
         return 1.0;
 
     if (empty())
-        return 1.0;
+        assert(stats_.selectivity_ == 1.0);
 
     return stats_.selectivity_;
 }
@@ -114,6 +118,9 @@ void IndexKey::concat(shared_ptr<IndexKey> rhs) {
     assert(anchor & kAnchorRight);
     assert(rhs->anchor & kAnchorLeft);
     assert(!empty());
+
+    if (rhs->empty())
+        return;
 
     list<IndexKey::iterator> tails;
     collect_tails(tails);
@@ -254,7 +261,7 @@ namespace {
         if (!(lhs->anchor & kAnchorRight) ||
             !(rhs->anchor & kAnchorLeft))
             return false;
-        if (lhs->empty() || rhs->empty())
+        if (lhs->empty())
             return false;
         IndexKey::Stats concat = lhs->stats().concat(rhs->stats());
         if (concat.nodes_ >= kMaxNodes)
@@ -278,13 +285,70 @@ namespace {
             out->anchor &= ~kAnchorRight;
         }
 
-        if (rhs && rhs->weight() > out->weight()) {
-            out = rhs;
-            out->anchor &= ~kAnchorLeft;
-        }
-
         debug(2, "[%s]\n", out->ToString().c_str());
 
+        return out;
+    }
+
+    IndexKey::Stats TryConcat(shared_ptr<IndexKey> *start,
+                              shared_ptr<IndexKey> *end) {
+        IndexKey::Stats st = (*start)->stats();
+        debug(4, "TryConcat: Searching suffix of length %ld\n",
+              end - start);
+        if (!*start || !((*start)->anchor & kAnchorRight) || (*start)->empty()) {
+            debug(4, "!ConcatRight, returning early.\n");
+            return st;
+        }
+        for (shared_ptr<IndexKey> *ptr = start + 1; ptr != end; ptr++) {
+            if (!*(ptr) || !((*ptr)->anchor & kAnchorLeft))
+                break;
+
+            st = st.concat((*ptr)->stats());
+
+            if (st.nodes_ >= kMaxNodes)
+                break;
+            if (((*ptr)->anchor & (kAnchorRepeat|kAnchorRight)) != kAnchorRight)
+                break;
+        }
+        debug(4, "TryConcat: nodes=%ld, selectivity=%f\n",
+              st.nodes_, st.selectivity_);
+        return st;
+    }
+
+    bool Prefer(const IndexKey::Stats& lhs,
+                const IndexKey::Stats& rhs) {
+        return (lhs.selectivity_ < rhs.selectivity_);
+        /*
+        return (kRECost * lhs.selectivity_ + kNodeCost * lhs.nodes_ <
+                kRECost * rhs.selectivity_ + kNodeCost * rhs.nodes_);
+        */
+    }
+
+    shared_ptr<IndexKey> Concat(shared_ptr<IndexKey> *children,
+                                int nchildren) {
+        shared_ptr<IndexKey> *end = children + nchildren, *best_start = 0, *ptr;
+        IndexKey::Stats best_stats;
+
+        debug(3, "Concat: Searching %d positions\n", nchildren);
+        for (ptr = children; ptr != end; ptr++) {
+            IndexKey::Stats st = TryConcat(ptr, end);
+            if (st.nodes_ > 1 && Prefer(st, best_stats)) {
+                debug(3, "Concat: Found new best: %ld: %f\n",
+                      ptr - children, st.selectivity_);
+                best_start = ptr;
+                best_stats = st;
+            }
+        }
+
+        if (best_start == 0) {
+            debug(3, "Concat: No good results found.\n");
+            return Any();
+        }
+
+        shared_ptr<IndexKey> out = *best_start;
+        for (ptr = best_start + 1; ptr != end; ptr++) {
+            out = Concat(out, *ptr);
+        }
         return out;
     }
 
@@ -472,9 +536,7 @@ IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
         break;
 
     case kRegexpConcat:
-        key = Empty();
-        for (int i = 0; i < nchild_args; i++)
-            key = Concat(key, child_args[i]);
+        key = Concat(child_args, nchild_args);
         break;
 
     case kRegexpAlternate:
