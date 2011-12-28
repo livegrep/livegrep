@@ -198,6 +198,13 @@ private:
 };
 
 namespace {
+    typedef map<pair<shared_ptr<IndexKey>, shared_ptr<IndexKey> >,
+                shared_ptr<IndexKey> > alternate_cache;
+
+    shared_ptr<IndexKey> Alternate(alternate_cache&,
+                                   shared_ptr<IndexKey>,
+                                   shared_ptr<IndexKey>);
+
     string RuneToString(Rune r) {
         char buf[UTFmax];
         int n = runetochar(buf, &r);
@@ -236,6 +243,23 @@ namespace {
         return Literal(lit);
     }
 
+    shared_ptr<IndexKey> LexRange(const string &lo, const string& hi) {
+        shared_ptr<IndexKey> out(new IndexKey(kAnchorBoth));
+
+        if (lo.size() == 0 && hi.size() == 0)
+            return out;
+        if (lo.size() == 0)
+            return Literal(hi);
+        assert(hi.size() != 0);
+        if (lo[0] < hi[0])
+            out->insert(IndexKey::value_type
+                        (pair<uchar, uchar>(lo[0], hi[0] - 1), 0));
+        out->insert(IndexKey::value_type
+                    (pair<uchar, uchar>(hi[0], hi[0]),
+                     LexRange(lo.substr(1), hi.substr(1))));
+        return out;
+    }
+
     shared_ptr<IndexKey> CClass(CharClass *cc) {
         if (cc->size() > kMaxWidth)
             return Any();
@@ -243,13 +267,15 @@ namespace {
         shared_ptr<IndexKey> k(new IndexKey(kAnchorBoth));
 
         for (CharClass::iterator i = cc->begin(); i != cc->end(); ++i) {
-            /* TODO: Handle arbitrary unicode ranges. Probably have to
-               convert to UTF-8 ranges ourselves.*/
-            assert (i->lo < Runeself);
-            assert (i->hi < Runeself);
-            k->insert(IndexKey::value_type
-                      (pair<uchar, uchar>(i->lo, i->hi),
-                       0));
+            if (i->lo < Runeself && i->lo < Runeself)
+                k->insert(IndexKey::value_type
+                          (pair<uchar, uchar>(i->lo, i->hi),
+                           0));
+            else {
+                alternate_cache cache;
+                k = Alternate(cache, k, LexRange(RuneToString(i->lo),
+                                                 RuneToString(i->hi)));
+            }
         }
 
         return k;
@@ -365,13 +391,6 @@ namespace {
         kTakeRight = 0x02,
         kTakeBoth  = 0x03
     };
-
-    typedef map<pair<shared_ptr<IndexKey>, shared_ptr<IndexKey> >,
-                shared_ptr<IndexKey> > alternate_cache;
-
-    shared_ptr<IndexKey> Alternate(alternate_cache&,
-                                   shared_ptr<IndexKey>,
-                                   shared_ptr<IndexKey>);
 
     int Merge(alternate_cache& cache,
               shared_ptr<IndexKey> out,
