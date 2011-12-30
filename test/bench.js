@@ -1,6 +1,7 @@
 var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     path       = require('path'),
+    printf     = require('printf'),
     common     = require('./common.js');
 
 common.parser.add('--dump-stats', {type: 'string', target: 'dump_stats'});
@@ -48,9 +49,24 @@ function loop(i) {
 }
 
 function average(l, field) {
+  return mean(l.map(function (r) {return r[field];}));
+}
+
+function sum(lst) {
   var sum = 0;
-  l.forEach(function (e) {sum += e[field];});
-  return sum / l.length;
+  lst.forEach(function (e) {sum += e;});
+  return sum;
+}
+
+function mean(lst) {
+  return sum(lst) / lst.length;
+}
+
+function stdev(lst) {
+  var m = mean(lst);
+  return Math.sqrt(
+    sum(lst.map(function (e) {return (e - m) * (e - m);}))
+      / (lst.length - 1));
 }
 
 function rpad(str, len, chr) {
@@ -107,16 +123,6 @@ function fmt(re) {
   return re;
 }
 
-function num(n) {
-  n = Math.round(n);
-  var str;
-  if (n === 0.0)
-    str = '0.0'
-  else
-    str = ''+(n/1000);
-  return rpad(str, 6, '0')
-}
-
 function pct(n) {
   n = Math.round(100*n);
   if (n >= 0)
@@ -138,8 +144,10 @@ function compare(prev, cur) {
                  re: re,
                  prev: prev[re],
                  prev_mean: prev_mean,
+                 prev_stdev: stdev(prev[re].map(function (e) {return e.time;})),
                  cur: cur[re],
                  cur_mean: cur_mean,
+                 cur_stdev: stdev(cur[re].map(function (e) {return e.time;})),
                  delta: (prev_mean === 0.0) ? 0 : (cur_mean - prev_mean)/prev_mean,
                });
     })
@@ -152,11 +160,12 @@ function print_compare(cmp) {
   console.log("Results VERSUS %s", options.compare);
   cmp.forEach(
     function (r) {
-      console.log("[%s]: %s/%s (%s)",
-                  fmt(r.re),
-                  num(r.prev_mean),
-                  num(r.cur_mean),
-                  pct(r.delta));
+      printf(process.stdout,
+             "[%s]: %4.3f/%4.3f (%+3d%% / %+4.3fσ)\n",
+             fmt(r.re),
+             r.prev_mean/1000, r.cur_mean/1000,
+             100*r.delta,
+             (r.cur_mean - r.prev_mean) / r.prev_stdev);
     });
 }
 
@@ -173,17 +182,13 @@ function print_one(results) {
                     var max_time = Math.max.apply(
                       Math, r[1].map(function(r) {return r.time}));
                     function time(name) {
-                      var tm = Math.round(average(r[1], name + '_time'));
-                      return num(tm);
+                      return average(r[1], name + '_time')/1000;
                     }
 
-                    console.log("[%s]: %s<%ss (re2: %s, index: %s, analyze: %s)",
-                                fmt(r[0]),
-                                num(min_time),
-                                num(r[2]),
-                                time('re2'),
-                                time('index'),
-                                time('analyze'));
+                    printf(process.stdout,
+                           "[%s]: %4.3f<%4.3fs (re2: %4.3f, index: %4.3f, analyze: %4.3f)\n",
+                           fmt(r[0]), min_time/1000, r[2]/1000,
+                           time('re2'), time('index'), time('analyze'));
                   });
 }
 
