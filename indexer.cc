@@ -106,7 +106,7 @@ void IndexKey::collect_tails(list<IndexKey::iterator>& tails) {
     tails.splice(tails.end(), tails_);
 }
 
-void IndexKey::concat(shared_ptr<IndexKey> rhs) {
+void IndexKey::concat(intrusive_ptr<IndexKey> rhs) {
     assert(anchor & kAnchorRight);
     assert(rhs->anchor & kAnchorLeft);
     assert(!empty());
@@ -176,17 +176,17 @@ string IndexKey::ToString() {
     return out;
 }
 
-class IndexWalker : public Regexp::Walker<shared_ptr<IndexKey> > {
+class IndexWalker : public Regexp::Walker<intrusive_ptr<IndexKey> > {
 public:
     IndexWalker() { }
-    virtual shared_ptr<IndexKey>
-    PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
-              shared_ptr<IndexKey> pre_arg,
-              shared_ptr<IndexKey> *child_args, int nchild_args);
+    virtual intrusive_ptr<IndexKey>
+    PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
+              intrusive_ptr<IndexKey> pre_arg,
+              intrusive_ptr<IndexKey> *child_args, int nchild_args);
 
-    virtual shared_ptr<IndexKey>
+    virtual intrusive_ptr<IndexKey>
     ShortVisit(Regexp* re,
-               shared_ptr<IndexKey> parent_arg);
+               intrusive_ptr<IndexKey> parent_arg);
 
 private:
     IndexWalker(const IndexWalker&);
@@ -194,12 +194,12 @@ private:
 };
 
 namespace {
-    typedef map<pair<shared_ptr<IndexKey>, shared_ptr<IndexKey> >,
-                shared_ptr<IndexKey> > alternate_cache;
+    typedef map<pair<intrusive_ptr<IndexKey>, intrusive_ptr<IndexKey> >,
+                intrusive_ptr<IndexKey> > alternate_cache;
 
-    shared_ptr<IndexKey> Alternate(alternate_cache&,
-                                   shared_ptr<IndexKey>,
-                                   shared_ptr<IndexKey>);
+    intrusive_ptr<IndexKey> Alternate(alternate_cache&,
+                                   intrusive_ptr<IndexKey>,
+                                   intrusive_ptr<IndexKey>);
 
     string RuneToString(Rune r) {
         char buf[UTFmax];
@@ -207,29 +207,29 @@ namespace {
         return string(buf, n);
     }
 
-    shared_ptr<IndexKey> Any() {
-        return shared_ptr<IndexKey>(new IndexKey());
+    intrusive_ptr<IndexKey> Any() {
+        return intrusive_ptr<IndexKey>(new IndexKey());
     }
 
-    shared_ptr<IndexKey> Empty() {
-        return shared_ptr<IndexKey>(new IndexKey(kAnchorBoth));
+    intrusive_ptr<IndexKey> Empty() {
+        return intrusive_ptr<IndexKey>(new IndexKey(kAnchorBoth));
     }
 
-    shared_ptr<IndexKey> Literal(string s) {
-        shared_ptr<IndexKey> k = 0;
+    intrusive_ptr<IndexKey> Literal(string s) {
+        intrusive_ptr<IndexKey> k = 0;
         for (string::reverse_iterator it = s.rbegin();
              it != s.rend(); ++it) {
-            k = shared_ptr<IndexKey>(new IndexKey(pair<uchar, uchar>(*it, *it), k));
+            k = intrusive_ptr<IndexKey>(new IndexKey(pair<uchar, uchar>(*it, *it), k));
         }
         k->anchor = kAnchorBoth;
         return k;
     }
 
-    shared_ptr<IndexKey> Literal(Rune r) {
+    intrusive_ptr<IndexKey> Literal(Rune r) {
         return Literal(RuneToString(r));
     }
 
-    shared_ptr<IndexKey> Literal(Rune *runes, int nrunes) {
+    intrusive_ptr<IndexKey> Literal(Rune *runes, int nrunes) {
         string lit;
 
         for (int i = 0; i < nrunes; i++) {
@@ -239,8 +239,8 @@ namespace {
         return Literal(lit);
     }
 
-    shared_ptr<IndexKey> LexRange(const string &lo, const string& hi) {
-        shared_ptr<IndexKey> out(new IndexKey(kAnchorBoth));
+    intrusive_ptr<IndexKey> LexRange(const string &lo, const string& hi) {
+        intrusive_ptr<IndexKey> out(new IndexKey(kAnchorBoth));
 
         if (lo.size() == 0 && hi.size() == 0)
             return out;
@@ -256,11 +256,11 @@ namespace {
         return out;
     }
 
-    shared_ptr<IndexKey> CClass(CharClass *cc) {
+    intrusive_ptr<IndexKey> CClass(CharClass *cc) {
         if (cc->size() > kMaxWidth)
             return Any();
 
-        shared_ptr<IndexKey> k(new IndexKey(kAnchorBoth));
+        intrusive_ptr<IndexKey> k(new IndexKey(kAnchorBoth));
 
         for (CharClass::iterator i = cc->begin(); i != cc->end(); ++i) {
             if (i->lo < Runeself && i->lo < Runeself)
@@ -277,7 +277,7 @@ namespace {
         return k;
     }
 
-    bool ShouldConcat(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
+    bool ShouldConcat(intrusive_ptr<IndexKey> lhs, intrusive_ptr<IndexKey> rhs) {
         assert(lhs && rhs);
         if (!(lhs->anchor & kAnchorRight) ||
             !(rhs->anchor & kAnchorLeft))
@@ -290,9 +290,9 @@ namespace {
         return true;
     }
 
-    shared_ptr<IndexKey> Concat(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
+    intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> lhs, intrusive_ptr<IndexKey> rhs) {
         assert(lhs);
-        shared_ptr<IndexKey> out = lhs;
+        intrusive_ptr<IndexKey> out = lhs;
 
         debug(2, "Concat([%s](%ld), [%s](%ld)) = ",
               lhs ? lhs->ToString().c_str() : "",
@@ -311,8 +311,8 @@ namespace {
         return out;
     }
 
-    IndexKey::Stats TryConcat(shared_ptr<IndexKey> *start,
-                              shared_ptr<IndexKey> *end) {
+    IndexKey::Stats TryConcat(intrusive_ptr<IndexKey> *start,
+                              intrusive_ptr<IndexKey> *end) {
         IndexKey::Stats st = (*start)->stats();
         debug(4, "TryConcat: Searching suffix of length %ld\n",
               end - start);
@@ -320,7 +320,7 @@ namespace {
             debug(4, "!ConcatRight, returning early.\n");
             return st;
         }
-        for (shared_ptr<IndexKey> *ptr = start + 1; ptr != end; ptr++) {
+        for (intrusive_ptr<IndexKey> *ptr = start + 1; ptr != end; ptr++) {
             if (!*(ptr) || !((*ptr)->anchor & kAnchorLeft))
                 break;
 
@@ -345,9 +345,9 @@ namespace {
         */
     }
 
-    shared_ptr<IndexKey> Concat(shared_ptr<IndexKey> *children,
+    intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> *children,
                                 int nchildren) {
-        shared_ptr<IndexKey> *end = children + nchildren, *best_start = 0, *ptr;
+        intrusive_ptr<IndexKey> *end = children + nchildren, *best_start = 0, *ptr;
         IndexKey::Stats best_stats;
 
         debug(3, "Concat: Searching %d positions\n", nchildren);
@@ -366,7 +366,7 @@ namespace {
             return Any();
         }
 
-        shared_ptr<IndexKey> out = *best_start;
+        intrusive_ptr<IndexKey> out = *best_start;
         for (ptr = best_start + 1; ptr != end; ptr++) {
             out = Concat(out, *ptr);
         }
@@ -388,11 +388,11 @@ namespace {
     };
 
     int Merge(alternate_cache& cache,
-              shared_ptr<IndexKey> out,
+              intrusive_ptr<IndexKey> out,
               pair<uchar, uchar>& left,
-              shared_ptr<IndexKey> lnext,
+              intrusive_ptr<IndexKey> lnext,
               pair<uchar, uchar>& right,
-              shared_ptr<IndexKey> rnext) {
+              intrusive_ptr<IndexKey> rnext) {
         if (intersects(left, right)) {
             debug(3, "Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
                   left.first, left.second, right.first, right.second);
@@ -435,9 +435,9 @@ namespace {
         return kTakeRight;
     }
 
-    shared_ptr<IndexKey> AlternateInternal(alternate_cache& cache,
-                                           shared_ptr<IndexKey> lhs,
-                                           shared_ptr<IndexKey> rhs) {
+    intrusive_ptr<IndexKey> AlternateInternal(alternate_cache& cache,
+                                           intrusive_ptr<IndexKey> lhs,
+                                           intrusive_ptr<IndexKey> rhs) {
         if (lhs == rhs)
             return lhs;
         if (lhs->empty() || rhs->empty() ||
@@ -449,7 +449,7 @@ namespace {
         if (recursion_depth > kMaxRecursion)
             return Any();
 
-        shared_ptr<IndexKey> out(new IndexKey
+        intrusive_ptr<IndexKey> out(new IndexKey
                                  ((lhs->anchor & rhs->anchor) |
                                   ((lhs->anchor | lhs->anchor) & kAnchorRepeat)));
         IndexKey::const_iterator lit, rit;
@@ -488,24 +488,24 @@ namespace {
         return out;
     }
 
-    shared_ptr<IndexKey> Alternate(alternate_cache& cache,
-                                   shared_ptr<IndexKey> lhs,
-                                   shared_ptr<IndexKey> rhs) {
+    intrusive_ptr<IndexKey> Alternate(alternate_cache& cache,
+                                   intrusive_ptr<IndexKey> lhs,
+                                   intrusive_ptr<IndexKey> rhs) {
         auto it = cache.find(make_pair(lhs, rhs));
         if (it != cache.end())
             return it->second;
-        shared_ptr<IndexKey> out = AlternateInternal(cache, lhs, rhs);
+        intrusive_ptr<IndexKey> out = AlternateInternal(cache, lhs, rhs);
         cache[make_pair(lhs, rhs)] = out;
         return out;
     }
 
 };
 
-shared_ptr<IndexKey> indexRE(const re2::RE2 &re) {
+intrusive_ptr<IndexKey> indexRE(const re2::RE2 &re) {
     IndexWalker walk;
 
     Regexp *sre = re.Regexp()->Simplify();
-    shared_ptr<IndexKey> key = walk.WalkExponential(sre, 0, 10000);
+    intrusive_ptr<IndexKey> key = walk.WalkExponential(sre, 0, 10000);
     sre->Decref();
 
     if (key && key->weight() < kMinWeight)
@@ -513,12 +513,12 @@ shared_ptr<IndexKey> indexRE(const re2::RE2 &re) {
     return key;
 }
 
-shared_ptr<IndexKey>
-IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
-                       shared_ptr<IndexKey> pre_arg,
-                       shared_ptr<IndexKey> *child_args,
+intrusive_ptr<IndexKey>
+IndexWalker::PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
+                       intrusive_ptr<IndexKey> pre_arg,
+                       intrusive_ptr<IndexKey> *child_args,
                        int nchild_args) {
-    shared_ptr<IndexKey> key;
+    intrusive_ptr<IndexKey> key;
 
     switch (re->op()) {
     case kRegexpNoMatch:
@@ -602,8 +602,8 @@ IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
     return key;
 }
 
-shared_ptr<IndexKey>
-IndexWalker::ShortVisit(Regexp* re, shared_ptr<IndexKey> parent_arg) {
+intrusive_ptr<IndexKey>
+IndexWalker::ShortVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg) {
     return Any();
 }
 
@@ -613,4 +613,13 @@ void IndexKey::check_rep() {
         assert(!intersects(last, it->first));
         last = it->first;
     }
+}
+
+void intrusive_ptr_add_ref(IndexKey *key) {
+    ++key->refs_;
+}
+
+void intrusive_ptr_release(IndexKey *key) {
+    if (--key->refs_ == 0)
+        delete key;
 }

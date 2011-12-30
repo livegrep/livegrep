@@ -214,7 +214,7 @@ protected:
     RE2& pat_;
     thread_queue<match_result*>& queue_;
     atomic_int matches_;
-    shared_ptr<IndexKey> index_;
+    intrusive_ptr<IndexKey> index_;
     timer re2_time_;
     timer git_time_;
     timer index_time_;
@@ -452,7 +452,7 @@ bool searcher::operator()(const chunk *chunk)
 
 struct walk_state {
     uint32_t *left, *right;
-    shared_ptr<IndexKey> key;
+    intrusive_ptr<IndexKey> key;
     int depth;
 };
 

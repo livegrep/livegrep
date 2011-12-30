@@ -4,17 +4,18 @@
 #include <vector>
 #include <list>
 #include <string>
-#include <memory>
+#include <boost/intrusive_ptr.hpp>
 
 #include "re2/re2.h"
 #include "re2/walker-inl.h"
 
+#include "atomic.h"
 #include "common.h"
 
 using std::string;
 using std::vector;
 using std::list;
-using std::shared_ptr;
+using boost::intrusive_ptr;
 
 enum {
     kAnchorNone   = 0x00,
@@ -26,9 +27,9 @@ enum {
 
 class IndexKey {
 public:
-    typedef map<pair<uchar, uchar>, shared_ptr<IndexKey> >::iterator iterator;
-    typedef map<pair<uchar, uchar>, shared_ptr<IndexKey> >::const_iterator const_iterator;
-    typedef pair<pair<uchar, uchar>, shared_ptr<IndexKey> > value_type;
+    typedef map<pair<uchar, uchar>, intrusive_ptr<IndexKey> >::iterator iterator;
+    typedef map<pair<uchar, uchar>, intrusive_ptr<IndexKey> >::const_iterator const_iterator;
+    typedef pair<pair<uchar, uchar>, intrusive_ptr<IndexKey> > value_type;
 
     iterator begin() {
         return edges_.begin();
@@ -39,17 +40,17 @@ public:
     }
 
     IndexKey(int anchor = kAnchorNone)
-        : anchor(anchor) { }
+        : anchor(anchor), refs_(0) { }
 
     IndexKey(pair<uchar, uchar> p,
-             shared_ptr<IndexKey> next,
+             intrusive_ptr<IndexKey> next,
              int anchor = kAnchorNone)
-        : anchor(anchor) {
+        : anchor(anchor), refs_(0) {
         insert(value_type(p, next));
     }
 
     void insert(const value_type& v);
-    void concat(shared_ptr<IndexKey> rhs);
+    void concat(intrusive_ptr<IndexKey> rhs);
 
     bool empty() {
         return edges_.empty();
@@ -107,17 +108,21 @@ public:
 
     int anchor;
 protected:
-    map<pair<uchar, uchar>, shared_ptr<IndexKey> > edges_;
+    map<pair<uchar, uchar>, intrusive_ptr<IndexKey> > edges_;
     Stats stats_;
     list<iterator> tails_;
+    atomic_int refs_;
 
     void collect_tails(list<IndexKey::iterator>& tails);
 
 private:
     IndexKey(const IndexKey&);
     void operator=(const IndexKey&);
+
+    friend void intrusive_ptr_add_ref(IndexKey *key);
+    friend void intrusive_ptr_release(IndexKey *key);
 };
 
-shared_ptr<IndexKey> indexRE(const re2::RE2 &pat);
+intrusive_ptr<IndexKey> indexRE(const re2::RE2 &pat);
 
 #endif /* CODESEARCH_INDEXER_H */

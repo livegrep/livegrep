@@ -14,6 +14,11 @@ public:
     int operator++() {
         return __sync_fetch_and_add(&val_, 1);
     }
+
+    int operator--() {
+        return __sync_fetch_and_add(&val_, -1);
+    }
+
 private:
     int val_;
 };
