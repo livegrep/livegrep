@@ -1,6 +1,16 @@
 "use strict";
 var Codesearch = function() {
   var MAX_RECONNECT_INTERVAL = 1000*60*1;
+  function shorten(ref) {
+    var match = /^refs\/(tags|branches)\/(.*)/.exec(ref);
+    if (match)
+      return match[2];
+    return ref;
+  }
+  function url_for(match) {
+    return "https://github.com/torvalds/linux/blob/" + shorten(match.ref) +
+      "/" + match.file + "#L" + match.lno;
+  }
   function render_match(match) {
     var h = new HTMLFactory();
     var pieces = [match.line.substring(0, match.bounds[0]),
@@ -22,7 +32,12 @@ var Codesearch = function() {
     }
     return h.div({cls: 'match'},
                  [
-                   h.div({cls: 'label'}, [match.file]),
+                   h.div({cls: 'label'},
+                         [
+                           h.a({
+                                 href: url_for(match)
+                               }, [match.file])
+                         ]),
                    h.div({cls: 'contents'},
                          [
                            ctx_before,
