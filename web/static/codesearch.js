@@ -86,8 +86,10 @@ var Codesearch = function() {
       $('#numresults').text(Codesearch.results);
       $('#countarea').show();
     },
-    search_done: function(search, time) {
+    search_done: function(search, time, why) {
       Codesearch.handle_result(search);
+      if (why === 'limit')
+        $('#numresults').append('+');
       $('#countarea').show();
       $('#searchtime').text((time/1000) + "s");
       $('#searchtimebox').show();
