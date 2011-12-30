@@ -72,7 +72,7 @@ public:
     };
 
     const Stats& stats() {
-        return this ? stats_ : null_stats_;
+        return stats_;
     }
 
     /*
@@ -112,8 +112,6 @@ protected:
     list<iterator> tails_;
 
     void collect_tails(list<IndexKey::iterator>& tails);
-
-    static Stats null_stats_;
 
 private:
     IndexKey(const IndexKey&);

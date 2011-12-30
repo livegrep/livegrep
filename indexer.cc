@@ -34,6 +34,10 @@ const int kMaxWidth       = 32;
 const int kMaxRecursion   = 10;
 const int kMaxNodes       = (1 << 24);
 
+namespace {
+    static IndexKey::Stats null_stats;
+};
+
 IndexKey::Stats::Stats ()
     : selectivity_(1.0), depth_(0), nodes_(1), tail_paths_(1) {
 }
@@ -45,9 +49,11 @@ IndexKey::Stats IndexKey::Stats::insert(const value_type& val) const {
         out.tail_paths_  = 0;
     }
 
-    out.selectivity_ += (val.first.second - val.first.first + 1)/128. * val.second->selectivity();
-    out.depth_ = max(depth_, val.second->depth() + 1);
-    out.nodes_ += (val.first.second - val.first.first + 1) * val.second->nodes();
+    const Stats& rstats = val.second ? val.second->stats() : null_stats;
+
+    out.selectivity_ += (val.first.second - val.first.first + 1)/128. * rstats.selectivity_;
+    out.depth_ = max(depth_, rstats.depth_ + 1);
+    out.nodes_ += (val.first.second - val.first.first + 1) * rstats.nodes_;
     if (!val.second)
         out.tail_paths_ += (val.first.second - val.first.first + 1);
 
@@ -64,8 +70,6 @@ IndexKey::Stats IndexKey::Stats::concat(const IndexKey::Stats& rhs) const {
     return out;
 }
 
-IndexKey::Stats IndexKey::null_stats_;
-
 void IndexKey::insert(const value_type& val) {
     stats_ = stats_.insert(val);
 
@@ -78,9 +82,6 @@ void IndexKey::insert(const value_type& val) {
 }
 
 double IndexKey::selectivity() {
-    if (this == 0)
-        return 1.0;
-
     if (empty())
         assert(stats_.selectivity_ == 1.0);
 
@@ -94,23 +95,14 @@ unsigned IndexKey::weight() {
 }
 
 long IndexKey::nodes() {
-    if (this == 0)
-        return 1;
     return stats_.nodes_;
 }
 
 int IndexKey::depth() {
-    if (this == 0)
-        return 0;
     return stats_.depth_;
 }
 
 void IndexKey::collect_tails(list<IndexKey::iterator>& tails) {
-    if (this == 0)
-        return;
-
-    // assert(empty() || !tails_.empty());
-
     tails.splice(tails.end(), tails_);
 }
 
@@ -150,16 +142,22 @@ static string strprintf(const char *fmt, ...) {
     return string(buf);
 }
 
+static string StrChar(uchar c) {
+    if (c > ' ' && c <= '~')
+        return strprintf("%c", c);
+    return strprintf("\\x%02x", c);
+}
+
 static string ToString(IndexKey *k, int indent = 0) {
     string out;
     if (k == 0)
         return strprintf("%*.s[]\n", indent, "");
 
     for (IndexKey::iterator it = k->begin(); it != k->end(); ++it) {
-        out += strprintf("%*.s[%c-%c] -> \n",
+        out += strprintf("%*.s[%s-%s] -> \n",
                          indent, "",
-                         it->first.first,
-                         it->first.second);
+                         StrChar(it->first.first).c_str(),
+                         StrChar(it->first.second).c_str());
         out += ToString(it->second.get(), indent + 1);
     }
     return out;
@@ -167,8 +165,6 @@ static string ToString(IndexKey *k, int indent = 0) {
 
 string IndexKey::ToString() {
     string out = ::ToString(this, 0);
-    if (this == 0)
-        return out;
 
     out += "|";
     if (anchor & kAnchorLeft)
@@ -212,7 +208,7 @@ namespace {
     }
 
     shared_ptr<IndexKey> Any() {
-        return shared_ptr<IndexKey>(0);
+        return shared_ptr<IndexKey>(new IndexKey());
     }
 
     shared_ptr<IndexKey> Empty() {
@@ -282,8 +278,7 @@ namespace {
     }
 
     bool ShouldConcat(shared_ptr<IndexKey> lhs, shared_ptr<IndexKey> rhs) {
-        if (!lhs || !rhs)
-            return false;
+        assert(lhs && rhs);
         if (!(lhs->anchor & kAnchorRight) ||
             !(rhs->anchor & kAnchorLeft))
             return false;
@@ -300,9 +295,9 @@ namespace {
         shared_ptr<IndexKey> out = lhs;
 
         debug(2, "Concat([%s](%ld), [%s](%ld)) = ",
-              lhs->ToString().c_str(),
+              lhs ? lhs->ToString().c_str() : "",
               lhs->nodes(),
-              rhs->ToString().c_str(),
+              rhs ? rhs->ToString().c_str() : "",
               rhs->nodes());
 
         if (ShouldConcat(lhs, rhs)) {
@@ -445,7 +440,7 @@ namespace {
                                            shared_ptr<IndexKey> rhs) {
         if (lhs == rhs)
             return lhs;
-        if (lhs == 0 || rhs == 0 ||
+        if (lhs->empty() || rhs->empty() ||
             lhs->size() + rhs->size() >= kMaxWidth)
             return Any();
 
@@ -589,11 +584,17 @@ IndexWalker::PostVisit(Regexp* re, shared_ptr<IndexKey> parent_arg,
         assert(false);
     }
 
-    debug(1, "* INDEX %s ==> [weight %d, nodes %ld, depth %d]\n",
-          re->ToString().c_str(),
-          key->weight(), key->nodes(), key->depth());
+    assert(key);
+
+    debug(1, "* INDEX %s ==> ", re->ToString().c_str());
+    if (key)
+        debug(1, "[weight %d, nodes %ld, depth %d]\n",
+              key->weight(), key->nodes(), key->depth());
+    else
+        debug(1, "nul\n");
+
     debug(2, "           ==> [%s]\n",
-          key->ToString().c_str());
+          key ? key->ToString().c_str() : "nul");
 
     if (FLAGS_debug_index && key)
         key->check_rep();
