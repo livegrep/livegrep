@@ -1,7 +1,14 @@
 var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     path       = require('path'),
-    parseopt   = require('parseopt');
+    parseopt   = require('parseopt'),
+    log4js     = require('log4js');
+
+log4js.configure({
+                   levels: {
+                     'codesearch': 'FATAL'
+                   }
+                 });
 
 var REPO;
 var extra_args;

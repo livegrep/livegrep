@@ -1,0 +1,73 @@
+body {
+    margin: 1em 3em;
+}
+
+#searcharea {
+    width: 30em;
+    margin: auto;
+    margin-bottom: 1em;
+    padding: 5px;
+    border: 1px solid black;
+}
+
+#regex-error {
+    float: right;
+    display: none;
+}
+
+#errortext {
+    color: red;
+}
+
+#searchtimebox {
+    display: none
+}
+
+#resultarea {
+    width: 100%;
+    border: 1px solid black;
+    padding: 5px;
+}
+
+.label {
+    font-weight: bold;
+}
+
+.clear {
+    clear: both;
+}
+
+.match {
+    margin: 1em 2em;
+}
+
+.match .label {
+    font-family: monospace;
+}
+
+.match .lno {
+    width: 4em;
+    padding-right: 1em;
+}
+
+.matchline .lno {
+    font-weight: bold;
+}
+
+.match .contents {
+    white-space: pre;
+    font-family: monospace;
+    background: #eee;
+    border: 1px solid black;
+    margin-left: 1em;
+    padding: 3px;
+}
+
+.match .matchstr {
+    font-weight: bold;
+}
+
+#countarea {
+    float: right;
+    display: none;
+}

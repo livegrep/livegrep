@@ -1,0 +1,15 @@
+{
+  "appenders": [
+    {
+      "type": "console",
+      "layout": {
+        "type": "colored"
+      },
+      "level": "INFO"
+    }
+  ],
+  "levels": {
+    "appserver":  "INFO",
+    "codesearch": "INFO"
+  }
+}

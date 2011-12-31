@@ -1,0 +1,39 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>code search</title>
+    <script language="javascript" type="text/javascript" src="js/jquery.js"></script>
+    <script language="javascript" type="text/javascript" src="/dnode.js"></script>
+    <script language="javascript" type="text/javascript" src="js/html.js"></script>
+    <script language="javascript" type="text/javascript" src="codesearch.js"></script>
+    <link rel="stylesheet" href='static/codesearch.css' />
+  </head>
+  <body>
+    <div id='searcharea'>
+      <span class='label'>regex:</span>
+      <input type="text" id='searchbox'></input>
+      <div id='regex-error'>
+        <span class='label'> Error: </span>
+        <span id='errortext'>
+        </span>
+      </div>
+      <div class='clear'> </div>
+    </div>
+    <div id='resultarea'>
+      <div id='countarea'>
+        <span id='numresults'>0</span> matches found
+        <span id='searchtimebox'>
+          <span class='label'>
+            /
+          </span>
+          <span id='searchtime'>
+          </span>
+        </span>
+      </div>
+      <div id='results'>
+      </div>
+      <span>
+        &nbsp;
+      </span>
+    </div>
+  </body>
+</html>
