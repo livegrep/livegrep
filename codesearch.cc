@@ -76,7 +76,8 @@ public:
     searcher(code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
         matches_(0), re2_time_(false), git_time_(false),
-        index_time_(false), sort_time_(false), analyze_time_(false)
+        index_time_(false), sort_time_(false), analyze_time_(false),
+        exit_reason_(kExitNone)
     {
         {
             run_timer run(analyze_time_);
@@ -124,6 +125,10 @@ public:
         stats->analyze_time  = analyze_time_.elapsed();
     }
 
+    exit_reason why() {
+        return exit_reason_;
+    }
+
 protected:
     void full_search(const chunk *chunk);
     void full_search(const chunk *chunk, size_t minpos, size_t maxpos);
@@ -153,7 +158,7 @@ protected:
                 }
             }
         }
-        assert(found || exit_early());
+        assert(found || exit_reason_);
         tm.pause();
         log_profile("Searched %d files in %d.%06ds\n",
                     searched,
@@ -200,8 +205,13 @@ protected:
     }
 
     bool exit_early() {
-        if (matches_.load() >= kMaxMatches)
+        if (exit_reason_)
             return true;
+
+        if (matches_.load() >= kMaxMatches) {
+            exit_reason_ = kExitMatchLimit;
+            return true;
+        }
 #ifdef CODESEARCH_SLOWGTOD
         static int counter = 1000;
         if (--counter)
@@ -210,8 +220,12 @@ protected:
 #endif
         timeval now;
         gettimeofday(&now, NULL);
-        return (now.tv_sec > limit_.tv_sec ||
-                (now.tv_sec == limit_.tv_sec && now.tv_usec > limit_.tv_usec));
+        if (now.tv_sec > limit_.tv_sec ||
+            (now.tv_sec == limit_.tv_sec && now.tv_usec > limit_.tv_usec)) {
+            exit_reason_ = kExitTimeout;
+            return true;
+        }
+        return false;
     }
 
     code_searcher *cc_;
@@ -225,6 +239,7 @@ protected:
     timer sort_time_;
     timer analyze_time_;
     timeval limit_;
+    exit_reason exit_reason_;
 };
 
 code_searcher::code_searcher(git_repository *repo)
@@ -258,7 +273,7 @@ void code_searcher::dump_stats() {
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
 }
 
-int code_searcher::match(RE2& pat, match_stats *stats) {
+int code_searcher::match(RE2& pat, match_stats *stats, exit_reason *why) {
     list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
@@ -268,6 +283,8 @@ int code_searcher::match(RE2& pat, match_stats *stats) {
 
     thread_queue<match_result*> results;
     searcher search(this, results, pat);
+
+    *why = kExitNone;
 
     if (!FLAGS_search)
         return 0;
@@ -292,6 +309,7 @@ int code_searcher::match(RE2& pat, match_stats *stats) {
     }
 
     search.get_stats(stats);
+    *why = search.why();
     return matches;
 }
 
@@ -447,7 +465,7 @@ bool searcher::operator()(const chunk *chunk)
     else
         full_search(chunk);
 
-    if (exit_early()) {
+    if (exit_reason_) {
         queue_.push(NULL);
         return true;
     }

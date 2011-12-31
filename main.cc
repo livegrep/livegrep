@@ -25,7 +25,7 @@ long timeval_ms (struct timeval tv) {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-void print_stats(const match_stats &stats) {
+void print_stats(const match_stats &stats, exit_reason why) {
     json_object *obj = json_object_new_object();
     json_object_object_add(obj, "re2_time", json_object_new_int
                            (timeval_ms(stats.re2_time)));
@@ -37,6 +37,15 @@ void print_stats(const match_stats &stats) {
                            (timeval_ms(stats.index_time)));
     json_object_object_add(obj, "analyze_time", json_object_new_int
                            (timeval_ms(stats.analyze_time)));
+    switch(why) {
+    case kExitNone: break;
+    case kExitMatchLimit:
+        json_object_object_add(obj, "why", json_object_new_string("limit"));
+        break;
+    case kExitTimeout:
+        json_object_object_add(obj, "why", json_object_new_string("timeout"));
+        break;
+    }
     printf("DONE %s\n", json_object_to_json_string(obj));
     json_object_put(obj);
 }
@@ -197,16 +206,30 @@ int main(int argc, char **argv) {
             timer tm;
             struct timeval elapsed;
             match_stats stats;
+            exit_reason why;
+
             if (!FLAGS_json)
                 printf("ProgramSize: %d\n", re.ProgramSize());
 
-            counter.match(re, &stats);
+            counter.match(re, &stats, &why);
             elapsed = tm.elapsed();
             if (FLAGS_json)
-                print_stats(stats);
-            else
-                printf("Match completed in %d.%06ds.\n",
+                print_stats(stats, why);
+            else {
+                printf("Match completed in %d.%06ds.",
                        (int)elapsed.tv_sec, (int)elapsed.tv_usec);
+                switch (why) {
+                case kExitNone:
+                    printf("\n");
+                    break;
+                case kExitMatchLimit:
+                    printf(" (match limit)\n");
+                    break;
+                case kExitTimeout:
+                    printf(" (timeout)\n");
+                    break;
+                }
+            }
         }
     }
 

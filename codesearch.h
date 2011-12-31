@@ -60,6 +60,12 @@ struct match_stats {
     timeval analyze_time;
 };
 
+enum exit_reason {
+    kExitNone = 0,
+    kExitTimeout,
+    kExitMatchLimit,
+};
+
 struct chunk;
 struct chunk_file;
 
@@ -79,7 +85,7 @@ public:
     void dump_stats();
     void dump_index(const string& path);
     void load_index(const string& path);
-    int match(RE2& pat, match_stats *stats);
+    int match(RE2& pat, match_stats *stats, exit_reason *why);
 
     void set_output_json(bool j) { output_json_ = j; }
     void finalize();
