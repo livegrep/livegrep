@@ -16,6 +16,7 @@
 
 #include "smart_git.h"
 #include "mutex.h"
+#include "thread_pool.h"
 
 class searcher;
 class chunk_allocator;
@@ -28,6 +29,7 @@ using std::string;
 using std::locale;
 using std::vector;
 using std::map;
+using std::pair;
 
 /*
  * We special-case data() == NULL to provide an "empty" element for
@@ -68,6 +70,7 @@ enum exit_reason {
 
 struct chunk;
 struct chunk_file;
+struct search_functor;
 
 struct search_file {
     string path;
@@ -115,6 +118,8 @@ protected:
     bool finalized_;
     std::vector<const char*>  refs_;
     std::vector<search_file*> files_;
+
+    thread_pool<pair<searcher*, chunk*>, search_functor> *pool_;
 
     friend class searcher;
 };

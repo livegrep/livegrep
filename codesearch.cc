@@ -115,7 +115,7 @@ public:
                     int(analyze_time_.elapsed().tv_usec));
     }
 
-    bool operator()(const chunk *chunk);
+    void operator()(const chunk *chunk);
 
     void get_stats(match_stats *stats) {
         stats->re2_time = re2_time_.elapsed();
@@ -240,10 +240,13 @@ protected:
     timer analyze_time_;
     timeval limit_;
     exit_reason exit_reason_;
+
+    friend class search_functor;
 };
 
 code_searcher::code_searcher(git_repository *repo)
-    : repo_(repo), stats_(), output_json_(false), finalized_(false)
+    : repo_(repo), stats_(), output_json_(false),
+      finalized_(false), pool_(0)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
@@ -253,6 +256,11 @@ code_searcher::code_searcher(git_repository *repo)
 
 code_searcher::~code_searcher() {
     delete alloc_;
+    if (pool_) {
+        for (int i = 0; i < FLAGS_threads; i++)
+            pool_->queue(pair<searcher*, chunk*>(0, 0));
+        delete pool_;
+    }
 }
 
 void code_searcher::walk_ref(const char *ref) {
@@ -273,13 +281,27 @@ void code_searcher::dump_stats() {
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
 }
 
+struct search_functor {
+    bool operator()(const pair<searcher*, chunk*>& pair) {
+        if (!pair.first)
+            return true;
+        (*pair.first)(pair.second);
+        pair.first->queue_.push(NULL);
+        return false;
+    }
+};
+
 int code_searcher::match(RE2& pat, match_stats *stats, exit_reason *why) {
     list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
-    int threads = FLAGS_threads;
+    int pending = alloc_->size();
+    static search_functor apply;
 
     assert(finalized_);
+    if (!pool_)
+        pool_ = new thread_pool<pair<searcher*, chunk*>, search_functor >
+            (FLAGS_threads, apply);
 
     thread_queue<match_result*> results;
     searcher search(this, results, pat);
@@ -289,18 +311,14 @@ int code_searcher::match(RE2& pat, match_stats *stats, exit_reason *why) {
     if (!FLAGS_search)
         return 0;
 
-    thread_pool<chunk*, searcher> pool(threads, search);
-
     for (it = alloc_->begin(); it != alloc_->end(); it++) {
-        pool.queue(*it);
+        pool_->queue(pair<searcher*, chunk*>(&search, *it));
     }
-    for (int i = 0; i < threads; i++)
-        pool.queue(NULL);
 
-    while (threads) {
+    while (pending) {
         m = results.pop();
         if (!m) {
-            threads--;
+            pending--;
             continue;
         }
         matches++;
@@ -453,23 +471,15 @@ void code_searcher::resolve_ref(smart_object<git_commit>& out, const char *refna
     }
 }
 
-bool searcher::operator()(const chunk *chunk)
+void searcher::operator()(const chunk *chunk)
 {
-    if (chunk == NULL) {
-        queue_.push(NULL);
-        return true;
-    }
+    if (exit_reason_)
+        return;
 
     if (FLAGS_index && index_->keys.size())
         filtered_search(chunk);
     else
         full_search(chunk);
-
-    if (exit_reason_) {
-        queue_.push(NULL);
-        return true;
-    }
-    return false;
 }
 
 void searcher::filtered_search(const chunk *chunk)
