@@ -240,8 +240,8 @@ protected:
     friend class search_functor;
 };
 
-code_searcher::code_searcher(git_repository *repo)
-    : repo_(repo), stats_(), output_json_(false),
+code_searcher::code_searcher()
+    : stats_(), output_json_(false),
       finalized_(false), pool_(0)
 {
 #ifdef USE_DENSE_HASH_SET
@@ -259,16 +259,40 @@ code_searcher::~code_searcher() {
     }
 }
 
-void code_searcher::walk_ref(const char *ref) {
+namespace {
+    void resolve_ref(git_repository *repo,
+                     smart_object<git_commit>& out,
+                     const char *refname) {
+        git_reference *ref;
+        const git_oid *oid;
+        git_oid tmp;
+        smart_object<git_object> obj;
+        if (git_oid_fromstr(&tmp, refname) == GIT_SUCCESS) {
+            git_object_lookup(obj, repo, &tmp, GIT_OBJ_ANY);
+        } else {
+            git_reference_lookup(&ref, repo, refname);
+            git_reference_resolve(&ref, ref);
+            oid = git_reference_oid(ref);
+            git_object_lookup(obj, repo, oid, GIT_OBJ_ANY);
+        }
+        if (git_object_type(obj) == GIT_OBJ_TAG) {
+            git_tag_target(out, obj);
+        } else {
+            out = obj.release();
+        }
+    }
+};
+
+void code_searcher::walk_ref(git_repository *repo, const char *ref) {
     assert(!finalized_);
     smart_object<git_commit> commit;
     smart_object<git_tree> tree;
-    resolve_ref(commit, ref);
+    resolve_ref(repo, commit, ref);
     git_commit_tree(tree, commit);
 
     refs_.push_back(ref);
 
-    walk_tree(ref, "", tree);
+    walk_tree(repo, ref, "", tree);
 }
 
 void code_searcher::dump_stats() {
@@ -374,7 +398,10 @@ void code_searcher::print_match_json(const match_result *m) {
     json_object_put(obj);
 }
 
-void code_searcher::walk_tree(const char *ref, const string& pfx, git_tree *tree) {
+void code_searcher::walk_tree(git_repository *repo,
+                              const char *ref,
+                              const string& pfx,
+                              git_tree *tree) {
     string path;
     int entries = git_tree_entrycount(tree);
     int i;
@@ -382,9 +409,9 @@ void code_searcher::walk_tree(const char *ref, const string& pfx, git_tree *tree
         const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
         path = pfx + git_tree_entry_name(ent);
         smart_object<git_object> obj;
-        git_tree_entry_2object(obj, repo_, ent);
+        git_tree_entry_2object(obj, repo, ent);
         if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
-            walk_tree(ref, path + "/", obj);
+            walk_tree(repo, ref, path + "/", obj);
         } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
             update_stats(ref, path, obj);
         }
@@ -445,26 +472,6 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
         (*it)->finish_file();
 
     stats_.bytes += len;
-}
-
-void code_searcher::resolve_ref(smart_object<git_commit>& out, const char *refname) {
-    git_reference *ref;
-    const git_oid *oid;
-    git_oid tmp;
-    smart_object<git_object> obj;
-    if (git_oid_fromstr(&tmp, refname) == GIT_SUCCESS) {
-        git_object_lookup(obj, repo_, &tmp, GIT_OBJ_ANY);
-    } else {
-        git_reference_lookup(&ref, repo_, refname);
-        git_reference_resolve(&ref, ref);
-        oid = git_reference_oid(ref);
-        git_object_lookup(obj, repo_, oid, GIT_OBJ_ANY);
-    }
-    if (git_object_type(obj) == GIT_OBJ_TAG) {
-        git_tag_target(out, obj);
-    } else {
-        out = obj.release();
-    }
 }
 
 void searcher::operator()(const chunk *chunk)

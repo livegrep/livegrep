@@ -82,9 +82,9 @@ struct search_file {
 
 class code_searcher {
 public:
-    code_searcher(git_repository *repo);
+    code_searcher();
     ~code_searcher();
-    void walk_ref(const char *ref);
+    void walk_ref(git_repository *repo, const char *ref);
     void dump_stats();
     void dump_index(const string& path);
     void load_index(const string& path);
@@ -95,9 +95,8 @@ public:
 protected:
     void print_match(const match_result *m);
     void print_match_json(const match_result *m);
-    void walk_tree(const char *ref, const string& pfx, git_tree *tree);
+    void walk_tree(git_repository *repo, const char *ref, const string& pfx, git_tree *tree);
     void update_stats(const char *ref, const string& path, git_blob *blob);
-    void resolve_ref(smart_object<git_commit> &out, const char *refname);
 
     void dump_file(std::ostream& stream, search_file *sf);
     void dump_file_contents(std::ostream& stream, map<chunk*, int>&, search_file *sf);
@@ -107,7 +106,6 @@ protected:
     void load_file_contents(std::istream& stream, vector<chunk*>&, search_file *sf);
     void load_chunk(std::istream& stream, chunk *);
 
-    git_repository *repo_;
     string_hash lines_;
     struct {
         unsigned long bytes, dedup_bytes;

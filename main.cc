@@ -138,15 +138,15 @@ int main(int argc, char **argv) {
     google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    git_repository *repo;
-    git_repository_open(&repo, FLAGS_git_dir.c_str());
-
-    code_searcher counter(repo);
+    code_searcher counter;
     counter.set_output_json(FLAGS_json);
 
     WidthWalker width;
 
     if (FLAGS_load_index.size() == 0) {
+        git_repository *repo;
+        git_repository_open(&repo, FLAGS_git_dir.c_str());
+
         timer tm;
         struct timeval elapsed;
 
@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
             if (!FLAGS_json)
                 printf("Walking %s...", argv[i]);
             fflush(stdout);
-            counter.walk_ref(argv[i]);
+            counter.walk_ref(repo, argv[i]);
             elapsed = tm.elapsed();
             if (!FLAGS_json)
                 printf(" done.\n");
