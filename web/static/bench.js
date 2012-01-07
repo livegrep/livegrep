@@ -46,7 +46,7 @@ var Benchmark = function() {
     start_time: 0,
     searches: 0,
     errors: 0,
-    timer: null,
+    timer: undefined,
     onload: function() {
       Codesearch.connect(Benchmark);
     },
@@ -59,7 +59,8 @@ var Benchmark = function() {
       done(false);
     },
     on_connect: function() {
-      start();
+      if (Benchmark.timer === undefined)
+        start();
     },
     playpause: function() {
       var btn = $('#playpause');
