@@ -2,7 +2,8 @@ var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     path       = require('path'),
     printf     = require('printf'),
-    common     = require('./common.js');
+    common     = require('./common.js'),
+    stats      = require('../lib/stats.js');
 
 common.parser.add('--dump-stats', {type: 'string', target: 'dump_stats'});
 common.parser.add('--load-stats', {type: 'string', target: 'load_stats'});
@@ -49,24 +50,7 @@ function loop(i) {
 }
 
 function average(l, field) {
-  return mean(l.map(function (r) {return r[field];}));
-}
-
-function sum(lst) {
-  var sum = 0;
-  lst.forEach(function (e) {sum += e;});
-  return sum;
-}
-
-function mean(lst) {
-  return sum(lst) / lst.length;
-}
-
-function stdev(lst) {
-  var m = mean(lst);
-  return Math.sqrt(
-    sum(lst.map(function (e) {return (e - m) * (e - m);}))
-      / (lst.length - 1));
+  return stats.mean(l.map(function (r) {return r[field];}));
 }
 
 function rpad(str, len, chr) {
@@ -144,10 +128,10 @@ function compare(prev, cur) {
                  re: re,
                  prev: prev[re],
                  prev_mean: prev_mean,
-                 prev_stdev: stdev(prev[re].map(function (e) {return e.time;})),
+                 prev_stdev: stats.stdev(prev[re].map(function (e) {return e.time;})),
                  cur: cur[re],
                  cur_mean: cur_mean,
-                 cur_stdev: stdev(cur[re].map(function (e) {return e.time;})),
+                 cur_stdev: stats.stdev(cur[re].map(function (e) {return e.time;})),
                  delta: (prev_mean === 0.0) ? 0 : (cur_mean - prev_mean)/prev_mean,
                });
     })
