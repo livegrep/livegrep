@@ -15,6 +15,8 @@ var Codesearch = function() {
             }).connect(
               function (remote, conn) {
                 Codesearch.remote = remote;
+                if (Codesearch.delegate.on_connect)
+                  Codesearch.delegate.on_connect();
               },
               {
                 transports: ["htmlfile", "xhr-polling", "jsonp-polling"]
