@@ -29,7 +29,7 @@ endif
 
 OBJECTS = codesearch.o main.o chunk.o \
           chunk_allocator.o radix_sort.o \
-          dump_load.o indexer.o
+          dump_load.o indexer.o re_width.o
 DEPFILES = $(OBJECTS:%.o=.%.d)
 
 all: codesearch $(DEPFILES)
