@@ -102,7 +102,7 @@ public:
 
         const code_searcher *cs_;
         thread_pool<pair<searcher*, chunk*>,
-                    bool(*)(const pair<searcher*, chunk*>&)> *pool_;
+                    bool(*)(const pair<searcher*, chunk*>&)> pool_;
 
         static bool search_one(const pair<searcher*, chunk*>& pair);
     };

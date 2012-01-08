@@ -604,7 +604,7 @@ match_result *searcher::try_match(const StringPiece& line,
 }
 
 code_searcher::search_thread::search_thread(code_searcher *cs)
-    : cs_(cs), pool_(0) {
+    : cs_(cs), pool_(FLAGS_threads, &search_one) {
 }
 
 int code_searcher::search_thread::match(RE2& pat, match_stats *stats, exit_reason *why) {
@@ -614,10 +614,6 @@ int code_searcher::search_thread::match(RE2& pat, match_stats *stats, exit_reaso
     int pending = cs_->alloc_->size();
 
     assert(cs_->finalized_);
-    if (!pool_)
-        pool_ = new thread_pool<pair<searcher*, chunk*>,
-                                bool(*)(const pair<searcher*, chunk*>&)>
-        (FLAGS_threads, &search_one);
 
     thread_queue<match_result*> results;
     searcher search(cs_, results, pat);
@@ -628,7 +624,7 @@ int code_searcher::search_thread::match(RE2& pat, match_stats *stats, exit_reaso
         return 0;
 
     for (it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
-        pool_->queue(pair<searcher*, chunk*>(&search, *it));
+        pool_.queue(pair<searcher*, chunk*>(&search, *it));
     }
 
     while (pending) {
@@ -690,11 +686,8 @@ void code_searcher::search_thread::print_match_json(const match_result *m) {
 }
 
 code_searcher::search_thread::~search_thread() {
-    if (pool_) {
-        for (int i = 0; i < FLAGS_threads; i++)
-            pool_->queue(pair<searcher*, chunk*>(0, 0));
-        delete pool_;
-    }
+    for (int i = 0; i < FLAGS_threads; i++)
+        pool_.queue(pair<searcher*, chunk*>(0, 0));
 }
 
 bool code_searcher::search_thread::search_one(const pair<searcher*, chunk*>& pair) {
