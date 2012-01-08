@@ -105,6 +105,9 @@ public:
                     bool(*)(const pair<searcher*, chunk*>&)> pool_;
 
         static bool search_one(const pair<searcher*, chunk*>& pair);
+    private:
+        search_thread(const search_thread&);
+        void operator=(const search_thread&);
     };
     friend class search_thread;
 protected:
