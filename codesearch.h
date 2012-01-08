@@ -88,13 +88,24 @@ public:
     void dump_stats();
     void dump_index(const string& path);
     void load_index(const string& path);
-    int match(RE2& pat, match_stats *stats, exit_reason *why);
 
     void set_output_json(bool j) { output_json_ = j; }
     void finalize();
+
+    class search_thread {
+    public:
+        search_thread(code_searcher *cs);
+        ~search_thread();
+        int match(RE2& pat, match_stats *stats, exit_reason *why);
+    protected:
+        void print_match(const match_result *m);
+        void print_match_json(const match_result *m);
+
+        const code_searcher *cs_;
+        thread_pool<pair<searcher*, chunk*>, search_functor> *pool_;
+    };
+    friend class search_thread;
 protected:
-    void print_match(const match_result *m);
-    void print_match_json(const match_result *m);
     void walk_tree(git_repository *repo, const char *ref, const string& pfx, git_tree *tree);
     void update_stats(const char *ref, const string& path, git_blob *blob);
 
@@ -116,8 +127,6 @@ protected:
     bool finalized_;
     std::vector<const char*>  refs_;
     std::vector<search_file*> files_;
-
-    thread_pool<pair<searcher*, chunk*>, search_functor> *pool_;
 
     friend class searcher;
 };

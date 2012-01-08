@@ -73,7 +73,7 @@ class code_searcher;
 
 class searcher {
 public:
-    searcher(code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
+    searcher(const code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
         cc_(cc), pat_(pat), queue_(queue),
         matches_(0), re2_time_(false), git_time_(false),
         index_time_(false), sort_time_(false), analyze_time_(false),
@@ -224,7 +224,7 @@ protected:
         return false;
     }
 
-    code_searcher *cc_;
+    const code_searcher *cc_;
     RE2& pat_;
     thread_queue<match_result*>& queue_;
     atomic_int matches_;
@@ -242,7 +242,7 @@ protected:
 
 code_searcher::code_searcher()
     : stats_(), output_json_(false),
-      finalized_(false), pool_(0)
+      finalized_(false)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
@@ -252,11 +252,6 @@ code_searcher::code_searcher()
 
 code_searcher::~code_searcher() {
     delete alloc_;
-    if (pool_) {
-        for (int i = 0; i < FLAGS_threads; i++)
-            pool_->queue(pair<searcher*, chunk*>(0, 0));
-        delete pool_;
-    }
 }
 
 namespace {
@@ -311,91 +306,10 @@ struct search_functor {
     }
 };
 
-int code_searcher::match(RE2& pat, match_stats *stats, exit_reason *why) {
-    list<chunk*>::iterator it;
-    match_result *m;
-    int matches = 0;
-    int pending = alloc_->size();
-    static search_functor apply;
-
-    assert(finalized_);
-    if (!pool_)
-        pool_ = new thread_pool<pair<searcher*, chunk*>, search_functor >
-            (FLAGS_threads, apply);
-
-    thread_queue<match_result*> results;
-    searcher search(this, results, pat);
-
-    *why = kExitNone;
-
-    if (!FLAGS_search)
-        return 0;
-
-    for (it = alloc_->begin(); it != alloc_->end(); it++) {
-        pool_->queue(pair<searcher*, chunk*>(&search, *it));
-    }
-
-    while (pending) {
-        m = results.pop();
-        if (!m) {
-            pending--;
-            continue;
-        }
-        matches++;
-        print_match(m);
-        delete m;
-    }
-
-    search.get_stats(stats);
-    *why = search.why();
-    return matches;
-}
-
 void code_searcher::finalize() {
     assert(!finalized_);
     finalized_ = true;
     alloc_->finalize();
-}
-
-void code_searcher::print_match(const match_result *m) {
-    if (FLAGS_quiet)
-        return;
-    else if (output_json_)
-        print_match_json(m);
-    else
-        printf("%s:%s:%d:%d-%d: %.*s\n",
-               m->file->ref,
-               m->file->path.c_str(),
-               m->lno,
-               m->matchleft, m->matchright,
-               m->line.size(), m->line.data());
-}
-
-static json_object *to_json(vector<string> vec) {
-    json_object *out = json_object_new_array();
-    for (vector<string>::iterator it = vec.begin(); it != vec.end(); it++)
-        json_object_array_add(out, json_object_new_string(it->c_str()));
-    return out;
-}
-
-void code_searcher::print_match_json(const match_result *m) {
-    json_object *obj = json_object_new_object();
-    json_object_object_add(obj, "ref",  json_object_new_string(m->file->ref));
-    json_object_object_add(obj, "file", json_object_new_string(m->file->path.c_str()));
-    json_object_object_add(obj, "lno",  json_object_new_int(m->lno));
-    json_object *bounds = json_object_new_array();
-    json_object_array_add(bounds, json_object_new_int(m->matchleft));
-    json_object_array_add(bounds, json_object_new_int(m->matchright));
-    json_object_object_add(obj, "bounds", bounds);
-    json_object_object_add(obj, "line",
-                           json_object_new_string_len(m->line.data(),
-                                                      m->line.size()));
-    json_object_object_add(obj, "context_before",
-                           to_json(m->context_before));
-    json_object_object_add(obj, "context_after",
-                           to_json(m->context_after));
-    printf("%s\n", json_object_to_json_string(obj));
-    json_object_put(obj);
 }
 
 void code_searcher::walk_tree(git_repository *repo,
@@ -697,4 +611,98 @@ match_result *searcher::try_match(const StringPiece& line,
     }
 
     return m;
+}
+
+code_searcher::search_thread::search_thread(code_searcher *cs)
+    : cs_(cs), pool_(0) {
+}
+
+int code_searcher::search_thread::match(RE2& pat, match_stats *stats, exit_reason *why) {
+    list<chunk*>::iterator it;
+    match_result *m;
+    int matches = 0;
+    int pending = cs_->alloc_->size();
+    static search_functor apply;
+
+    assert(cs_->finalized_);
+    if (!pool_)
+        pool_ = new thread_pool<pair<searcher*, chunk*>, search_functor >
+            (FLAGS_threads, apply);
+
+    thread_queue<match_result*> results;
+    searcher search(cs_, results, pat);
+
+    *why = kExitNone;
+
+    if (!FLAGS_search)
+        return 0;
+
+    for (it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
+        pool_->queue(pair<searcher*, chunk*>(&search, *it));
+    }
+
+    while (pending) {
+        m = results.pop();
+        if (!m) {
+            pending--;
+            continue;
+        }
+        matches++;
+        print_match(m);
+        delete m;
+    }
+
+    search.get_stats(stats);
+    *why = search.why();
+    return matches;
+}
+
+
+void code_searcher::search_thread::print_match(const match_result *m) {
+    if (FLAGS_quiet)
+        return;
+    else if (cs_->output_json_)
+        print_match_json(m);
+    else
+        printf("%s:%s:%d:%d-%d: %.*s\n",
+               m->file->ref,
+               m->file->path.c_str(),
+               m->lno,
+               m->matchleft, m->matchright,
+               m->line.size(), m->line.data());
+}
+
+static json_object *to_json(vector<string> vec) {
+    json_object *out = json_object_new_array();
+    for (vector<string>::iterator it = vec.begin(); it != vec.end(); it++)
+        json_object_array_add(out, json_object_new_string(it->c_str()));
+    return out;
+}
+
+void code_searcher::search_thread::print_match_json(const match_result *m) {
+    json_object *obj = json_object_new_object();
+    json_object_object_add(obj, "ref",  json_object_new_string(m->file->ref));
+    json_object_object_add(obj, "file", json_object_new_string(m->file->path.c_str()));
+    json_object_object_add(obj, "lno",  json_object_new_int(m->lno));
+    json_object *bounds = json_object_new_array();
+    json_object_array_add(bounds, json_object_new_int(m->matchleft));
+    json_object_array_add(bounds, json_object_new_int(m->matchright));
+    json_object_object_add(obj, "bounds", bounds);
+    json_object_object_add(obj, "line",
+                           json_object_new_string_len(m->line.data(),
+                                                      m->line.size()));
+    json_object_object_add(obj, "context_before",
+                           to_json(m->context_before));
+    json_object_object_add(obj, "context_after",
+                           to_json(m->context_after));
+    printf("%s\n", json_object_to_json_string(obj));
+    json_object_put(obj);
+}
+
+code_searcher::search_thread::~search_thread() {
+    if (pool_) {
+        for (int i = 0; i < FLAGS_threads; i++)
+            pool_->queue(pair<searcher*, chunk*>(0, 0));
+        delete pool_;
+    }
 }

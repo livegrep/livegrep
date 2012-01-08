@@ -171,6 +171,9 @@ int main(int argc, char **argv) {
         counter.dump_stats();
     if (FLAGS_dump_index.size())
         counter.dump_index(FLAGS_dump_index);
+
+    code_searcher::search_thread search(&counter);
+
     RE2::Options opts;
     opts.set_never_nl(true);
     opts.set_one_line(false);
@@ -211,7 +214,7 @@ int main(int argc, char **argv) {
             if (!FLAGS_json)
                 printf("ProgramSize: %d\n", re.ProgramSize());
 
-            counter.match(re, &stats, &why);
+            search.match(re, &stats, &why);
             elapsed = tm.elapsed();
             if (FLAGS_json)
                 print_stats(stats, why);
