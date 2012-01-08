@@ -4,6 +4,9 @@
 #include "re_width.h"
 
 #include <stdio.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/wait.h>
 #include <iostream>
 
 #include <gflags/gflags.h>
@@ -19,9 +22,15 @@ DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 DEFINE_string(git_dir, ".git", "The git directory to read from");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
+DEFINE_string(listen, "", "Listen on a UNIX socket for connections");
 
 using namespace std;
 using namespace re2;
+
+void die_errno(const char *str) {
+    perror(str);
+    exit(1);
+}
 
 long timeval_ms (struct timeval tv) {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
@@ -198,12 +207,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
     }
 }
 
-int main(int argc, char **argv) {
-    google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
-    google::ParseCommandLineFlags(&argc, &argv, true);
-
-    code_searcher counter;
-
+void initialize_search(code_searcher *search, int argc, char **argv) {
     if (FLAGS_load_index.size() == 0) {
         git_repository *repo;
         git_repository_open(&repo, FLAGS_git_dir.c_str());
@@ -215,25 +219,82 @@ int main(int argc, char **argv) {
             if (!FLAGS_json)
                 printf("Walking %s...", argv[i]);
             fflush(stdout);
-            counter.walk_ref(repo, argv[i]);
+            search->walk_ref(repo, argv[i]);
             elapsed = tm.elapsed();
             if (!FLAGS_json)
                 printf(" done.\n");
         }
-        counter.finalize();
+        search->finalize();
         elapsed = tm.elapsed();
         if (!FLAGS_json)
             printf("repository indexed in %d.%06ds\n",
                    (int)elapsed.tv_sec, (int)elapsed.tv_usec);
     } else {
-        counter.load_index(FLAGS_load_index);
+        search->load_index(FLAGS_load_index);
     }
     if (!FLAGS_json && !FLAGS_load_index.size())
-        counter.dump_stats();
+        search->dump_stats();
     if (FLAGS_dump_index.size())
-        counter.dump_index(FLAGS_dump_index);
+        search->dump_index(FLAGS_dump_index);
+}
 
-    interact(&counter, stdin, stdout);
+struct child_state {
+    int fd;
+    code_searcher *search;
+};
+
+void *handle_client(void *data) {
+    child_state *child = static_cast<child_state*>(data);
+    FILE *client = fdopen(child->fd, "w+");
+    interact(child->search, client, client);
+    close(child->fd);
+    delete child;
+    return 0;
+}
+
+void listen(code_searcher *search, string path) {
+    int server = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (server < 0)
+        die_errno("socket(AF_UNIX)");
+
+    struct sockaddr_un addr;
+
+    memset(&addr, 0, sizeof addr);
+    addr.sun_family = AF_UNIX;
+    memcpy(addr.sun_path, path.c_str(), path.size());
+
+    if (::bind(server, reinterpret_cast<sockaddr*>(&addr), sizeof addr) < 0)
+        die_errno("Unable to bind socket");
+
+    if (listen(server, 4) < 0)
+        die_errno("listen()");
+
+    while(1) {
+        int fd = accept(server, NULL, NULL);
+        if (fd < 0)
+            die_errno("accept");
+
+        child_state *state = new child_state;
+        state->fd = fd;
+        state->search = search;
+
+        pthread_t thread;
+        pthread_create(&thread, NULL, handle_client, state);
+    }
+}
+
+int main(int argc, char **argv) {
+    google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
+    google::ParseCommandLineFlags(&argc, &argv, true);
+
+    code_searcher counter;
+
+    initialize_search(&counter, argc, argv);
+
+    if (FLAGS_listen.size())
+        listen(&counter, FLAGS_listen);
+    else
+        interact(&counter, stdin, stdout);
 
     return 0;
 }
