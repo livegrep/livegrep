@@ -27,21 +27,6 @@ long timeval_ms (struct timeval tv) {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-void print_match_json(const match_result *m);
-void print_match(const match_result *m) {
-    if (FLAGS_quiet)
-        return;
-    else if (FLAGS_json)
-        print_match_json(m);
-    else
-        printf("%s:%s:%d:%d-%d: %.*s\n",
-               m->file->ref,
-               m->file->path.c_str(),
-               m->lno,
-               m->matchleft, m->matchright,
-               m->line.size(), m->line.data());
-}
-
 static json_object *to_json(vector<string> vec) {
     json_object *out = json_object_new_array();
     for (vector<string>::iterator it = vec.begin(); it != vec.end(); it++)
@@ -49,25 +34,50 @@ static json_object *to_json(vector<string> vec) {
     return out;
 }
 
-void print_match_json(const match_result *m) {
-    json_object *obj = json_object_new_object();
-    json_object_object_add(obj, "ref",  json_object_new_string(m->file->ref));
-    json_object_object_add(obj, "file", json_object_new_string(m->file->path.c_str()));
-    json_object_object_add(obj, "lno",  json_object_new_int(m->lno));
-    json_object *bounds = json_object_new_array();
-    json_object_array_add(bounds, json_object_new_int(m->matchleft));
-    json_object_array_add(bounds, json_object_new_int(m->matchright));
-    json_object_object_add(obj, "bounds", bounds);
-    json_object_object_add(obj, "line",
-                           json_object_new_string_len(m->line.data(),
-                                                      m->line.size()));
-    json_object_object_add(obj, "context_before",
-                           to_json(m->context_before));
-    json_object_object_add(obj, "context_after",
-                           to_json(m->context_after));
-    printf("%s\n", json_object_to_json_string(obj));
-    json_object_put(obj);
-}
+struct print_match {
+    print_match(FILE *out) : out_(out) {}
+
+    void print(const match_result *m) const {
+        fprintf(out_,
+                "%s:%s:%d:%d-%d: %.*s\n",
+                m->file->ref,
+                m->file->path.c_str(),
+                m->lno,
+                m->matchleft, m->matchright,
+                m->line.size(), m->line.data());
+    }
+
+    void print_json(const match_result *m) const {
+        json_object *obj = json_object_new_object();
+        json_object_object_add(obj, "ref",  json_object_new_string(m->file->ref));
+        json_object_object_add(obj, "file", json_object_new_string(m->file->path.c_str()));
+        json_object_object_add(obj, "lno",  json_object_new_int(m->lno));
+        json_object *bounds = json_object_new_array();
+        json_object_array_add(bounds, json_object_new_int(m->matchleft));
+        json_object_array_add(bounds, json_object_new_int(m->matchright));
+        json_object_object_add(obj, "bounds", bounds);
+        json_object_object_add(obj, "line",
+                               json_object_new_string_len(m->line.data(),
+                                                          m->line.size()));
+        json_object_object_add(obj, "context_before",
+                               to_json(m->context_before));
+        json_object_object_add(obj, "context_after",
+                               to_json(m->context_after));
+        fprintf(out_, "%s\n", json_object_to_json_string(obj));
+        json_object_put(obj);
+    }
+
+    void operator()(const match_result *m) const {
+        if (FLAGS_quiet)
+            return;
+        if (FLAGS_json)
+            print_json(m);
+        else
+            print(m);
+    }
+protected:
+    FILE *out_;
+};
 
 void print_stats(FILE *out, const match_stats &stats, exit_reason why) {
     json_object *obj = json_object_new_object();
@@ -164,7 +174,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             if (!FLAGS_json)
                 fprintf(out, "ProgramSize: %d\n", re.ProgramSize());
 
-            search.match(re, print_match, &stats, &why);
+            search.match(re, print_match(out), &stats, &why);
             elapsed = tm.elapsed();
             if (FLAGS_json)
                 print_stats(out, stats, why);
