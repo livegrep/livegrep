@@ -79,6 +79,15 @@ struct search_file {
     int no;
 };
 
+struct match_result {
+    search_file *file;
+    int lno;
+    vector<string> context_before;
+    vector<string> context_after;
+    StringPiece line;
+    int matchleft, matchright;
+};
+
 class code_searcher {
 public:
     code_searcher();
@@ -88,18 +97,33 @@ public:
     void dump_index(const string& path);
     void load_index(const string& path);
 
-    void set_output_json(bool j) { output_json_ = j; }
     void finalize();
 
     class search_thread {
+    protected:
+        struct base_cb {
+            virtual void operator()(const struct match_result *m) const = 0;
+        };
+        template <class T>
+        struct match_cb : public base_cb {
+            match_cb(T cb) : cb_(cb) {}
+            virtual void operator()(const struct match_result *m) const {
+                cb_(m);
+            }
+        private:
+            T cb_;
+        };
+
+        int match_internal(RE2& pat, const base_cb& cb, match_stats *stats, exit_reason *why);
     public:
         search_thread(code_searcher *cs);
         ~search_thread();
-        int match(RE2& pat, match_stats *stats, exit_reason *why);
-    protected:
-        void print_match(const match_result *m);
-        void print_match_json(const match_result *m);
 
+        template <class T>
+        int match(RE2& pat, T cb, match_stats *stats, exit_reason *why) {
+            return match_internal(pat, match_cb<T>(cb), stats, why);
+        }
+    protected:
         const code_searcher *cs_;
         thread_pool<pair<searcher*, chunk*>,
                     bool(*)(const pair<searcher*, chunk*>&)> pool_;
@@ -128,7 +152,6 @@ protected:
         unsigned long lines, dedup_lines;
     } stats_;
     chunk_allocator *alloc_;
-    bool output_json_;
     bool finalized_;
     std::vector<const char*>  refs_;
     std::vector<search_file*> files_;

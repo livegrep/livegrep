@@ -10,8 +10,6 @@
 
 #include <re2/re2.h>
 
-#include <json/json.h>
-
 #include <gflags/gflags.h>
 
 #include "timer.h"
@@ -41,18 +39,8 @@ const int    kContextLines = 3;
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(search, true, "Actually do the search.");
-DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
 DECLARE_int32(threads);
-
-struct match_result {
-    search_file *file;
-    int lno;
-    vector<string> context_before;
-    vector<string> context_after;
-    StringPiece line;
-    int matchleft, matchright;
-};
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
     if (lhs.data() == NULL && rhs.data() == NULL)
@@ -241,8 +229,7 @@ protected:
 };
 
 code_searcher::code_searcher()
-    : stats_(), output_json_(false),
-      finalized_(false)
+    : stats_(), finalized_(false)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
@@ -607,7 +594,9 @@ code_searcher::search_thread::search_thread(code_searcher *cs)
     : cs_(cs), pool_(FLAGS_threads, &search_one) {
 }
 
-int code_searcher::search_thread::match(RE2& pat, match_stats *stats, exit_reason *why) {
+int code_searcher::search_thread::match_internal(RE2& pat,
+                                                 const code_searcher::search_thread::base_cb& cb,
+                                                 match_stats *stats, exit_reason *why) {
     list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
@@ -634,7 +623,7 @@ int code_searcher::search_thread::match(RE2& pat, match_stats *stats, exit_reaso
             continue;
         }
         matches++;
-        print_match(m);
+        cb(m);
         delete m;
     }
 
@@ -643,47 +632,6 @@ int code_searcher::search_thread::match(RE2& pat, match_stats *stats, exit_reaso
     return matches;
 }
 
-
-void code_searcher::search_thread::print_match(const match_result *m) {
-    if (FLAGS_quiet)
-        return;
-    else if (cs_->output_json_)
-        print_match_json(m);
-    else
-        printf("%s:%s:%d:%d-%d: %.*s\n",
-               m->file->ref,
-               m->file->path.c_str(),
-               m->lno,
-               m->matchleft, m->matchright,
-               m->line.size(), m->line.data());
-}
-
-static json_object *to_json(vector<string> vec) {
-    json_object *out = json_object_new_array();
-    for (vector<string>::iterator it = vec.begin(); it != vec.end(); it++)
-        json_object_array_add(out, json_object_new_string(it->c_str()));
-    return out;
-}
-
-void code_searcher::search_thread::print_match_json(const match_result *m) {
-    json_object *obj = json_object_new_object();
-    json_object_object_add(obj, "ref",  json_object_new_string(m->file->ref));
-    json_object_object_add(obj, "file", json_object_new_string(m->file->path.c_str()));
-    json_object_object_add(obj, "lno",  json_object_new_int(m->lno));
-    json_object *bounds = json_object_new_array();
-    json_object_array_add(bounds, json_object_new_int(m->matchleft));
-    json_object_array_add(bounds, json_object_new_int(m->matchright));
-    json_object_object_add(obj, "bounds", bounds);
-    json_object_object_add(obj, "line",
-                           json_object_new_string_len(m->line.data(),
-                                                      m->line.size()));
-    json_object_object_add(obj, "context_before",
-                           to_json(m->context_before));
-    json_object_object_add(obj, "context_after",
-                           to_json(m->context_after));
-    printf("%s\n", json_object_to_json_string(obj));
-    json_object_put(obj);
-}
 
 code_searcher::search_thread::~search_thread() {
     for (int i = 0; i < FLAGS_threads; i++)

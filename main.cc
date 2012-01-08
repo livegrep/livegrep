@@ -18,12 +18,55 @@ DEFINE_int32(threads, 4, "Number of threads to use.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 DEFINE_string(git_dir, ".git", "The git directory to read from");
+DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 
 using namespace std;
 using namespace re2;
 
 long timeval_ms (struct timeval tv) {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+void print_match_json(const match_result *m);
+void print_match(const match_result *m) {
+    if (FLAGS_quiet)
+        return;
+    else if (FLAGS_json)
+        print_match_json(m);
+    else
+        printf("%s:%s:%d:%d-%d: %.*s\n",
+               m->file->ref,
+               m->file->path.c_str(),
+               m->lno,
+               m->matchleft, m->matchright,
+               m->line.size(), m->line.data());
+}
+
+static json_object *to_json(vector<string> vec) {
+    json_object *out = json_object_new_array();
+    for (vector<string>::iterator it = vec.begin(); it != vec.end(); it++)
+        json_object_array_add(out, json_object_new_string(it->c_str()));
+    return out;
+}
+
+void print_match_json(const match_result *m) {
+    json_object *obj = json_object_new_object();
+    json_object_object_add(obj, "ref",  json_object_new_string(m->file->ref));
+    json_object_object_add(obj, "file", json_object_new_string(m->file->path.c_str()));
+    json_object_object_add(obj, "lno",  json_object_new_int(m->lno));
+    json_object *bounds = json_object_new_array();
+    json_object_array_add(bounds, json_object_new_int(m->matchleft));
+    json_object_array_add(bounds, json_object_new_int(m->matchright));
+    json_object_object_add(obj, "bounds", bounds);
+    json_object_object_add(obj, "line",
+                           json_object_new_string_len(m->line.data(),
+                                                      m->line.size()));
+    json_object_object_add(obj, "context_before",
+                           to_json(m->context_before));
+    json_object_object_add(obj, "context_after",
+                           to_json(m->context_after));
+    printf("%s\n", json_object_to_json_string(obj));
+    json_object_put(obj);
 }
 
 void print_stats(FILE *out, const match_stats &stats, exit_reason why) {
@@ -121,7 +164,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             if (!FLAGS_json)
                 fprintf(out, "ProgramSize: %d\n", re.ProgramSize());
 
-            search.match(re, &stats, &why);
+            search.match(re, print_match, &stats, &why);
             elapsed = tm.elapsed();
             if (FLAGS_json)
                 print_stats(out, stats, why);
@@ -150,7 +193,6 @@ int main(int argc, char **argv) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     code_searcher counter;
-    counter.set_output_json(FLAGS_json);
 
     if (FLAGS_load_index.size() == 0) {
         git_repository *repo;
