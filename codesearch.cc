@@ -237,7 +237,7 @@ protected:
     timeval limit_;
     exit_reason exit_reason_;
 
-    friend class search_functor;
+    friend class code_searcher::search_thread;
 };
 
 code_searcher::code_searcher()
@@ -295,16 +295,6 @@ void code_searcher::dump_stats() {
     printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
 }
-
-struct search_functor {
-    bool operator()(const pair<searcher*, chunk*>& pair) {
-        if (!pair.first)
-            return true;
-        (*pair.first)(pair.second);
-        pair.first->queue_.push(NULL);
-        return false;
-    }
-};
 
 void code_searcher::finalize() {
     assert(!finalized_);
@@ -622,12 +612,12 @@ int code_searcher::search_thread::match(RE2& pat, match_stats *stats, exit_reaso
     match_result *m;
     int matches = 0;
     int pending = cs_->alloc_->size();
-    static search_functor apply;
 
     assert(cs_->finalized_);
     if (!pool_)
-        pool_ = new thread_pool<pair<searcher*, chunk*>, search_functor >
-            (FLAGS_threads, apply);
+        pool_ = new thread_pool<pair<searcher*, chunk*>,
+                                bool(*)(const pair<searcher*, chunk*>&)>
+        (FLAGS_threads, &search_one);
 
     thread_queue<match_result*> results;
     searcher search(cs_, results, pat);
@@ -705,4 +695,12 @@ code_searcher::search_thread::~search_thread() {
             pool_->queue(pair<searcher*, chunk*>(0, 0));
         delete pool_;
     }
+}
+
+bool code_searcher::search_thread::search_one(const pair<searcher*, chunk*>& pair) {
+    if (!pair.first)
+        return true;
+    (*pair.first)(pair.second);
+    pair.first->queue_.push(NULL);
+    return false;
 }

@@ -8,7 +8,7 @@
 template <class J, class DoIt>
 class thread_pool {
 public:
-    thread_pool (int nthreads, DoIt& fn)
+    thread_pool (int nthreads, DoIt fn)
         : nthreads_(nthreads), fn_(fn) {
         threads_ = new pthread_t[nthreads_];
         for (int i = 0; i < nthreads_; i++) {
@@ -32,7 +32,7 @@ protected:
     int nthreads_;
     pthread_t *threads_;
     thread_queue<J> queue_;
-    DoIt& fn_;
+    DoIt fn_;
 
     static void *worker(void *arg) {
         thread_pool *pool = static_cast<thread_pool*>(arg);

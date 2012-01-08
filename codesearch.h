@@ -70,7 +70,6 @@ enum exit_reason {
 
 struct chunk;
 struct chunk_file;
-struct search_functor;
 
 struct search_file {
     string path;
@@ -102,7 +101,10 @@ public:
         void print_match_json(const match_result *m);
 
         const code_searcher *cs_;
-        thread_pool<pair<searcher*, chunk*>, search_functor> *pool_;
+        thread_pool<pair<searcher*, chunk*>,
+                    bool(*)(const pair<searcher*, chunk*>&)> *pool_;
+
+        static bool search_one(const pair<searcher*, chunk*>& pair);
     };
     friend class search_thread;
 protected:
