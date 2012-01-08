@@ -26,7 +26,7 @@ long timeval_ms (struct timeval tv) {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-void print_stats(const match_stats &stats, exit_reason why) {
+void print_stats(FILE *out, const match_stats &stats, exit_reason why) {
     json_object *obj = json_object_new_object();
     json_object_object_add(obj, "re2_time", json_object_new_int
                            (timeval_ms(stats.re2_time)));
@@ -47,19 +47,103 @@ void print_stats(const match_stats &stats, exit_reason why) {
         json_object_object_add(obj, "why", json_object_new_string("timeout"));
         break;
     }
-    printf("DONE %s\n", json_object_to_json_string(obj));
+    fprintf(out, "DONE %s\n", json_object_to_json_string(obj));
     json_object_put(obj);
 }
 
-void print_error(const string& err) {
+void print_error(FILE *out, const string& err) {
     if (!FLAGS_json)
-        printf("Error: %s\n", err.c_str());
+        fprintf(out, "Error: %s\n", err.c_str());
     else
-        printf("FATAL %s\n", err.c_str());
+        fprintf(out, "FATAL %s\n", err.c_str());
 }
 
 const int kMaxProgramSize = 4000;
 const int kMaxWidth       = 200;
+
+void getline(FILE *stream, string &out) {
+    char *line = 0;
+    size_t n = 0;
+    n = getline(&line, &n, stream);
+    if (n == 0 || n == (size_t)-1)
+        out.clear();
+    else
+        out.assign(line, n - 1);
+}
+
+void interact(code_searcher *cs, FILE *in, FILE *out) {
+    code_searcher::search_thread search(cs);
+    WidthWalker width;
+
+    setvbuf(in, NULL, _IOLBF, 0);
+    setvbuf(out, NULL, _IOLBF, 0);
+
+    RE2::Options opts;
+    opts.set_never_nl(true);
+    opts.set_one_line(false);
+    opts.set_perl_classes(true);
+    opts.set_word_boundary(true);
+    opts.set_posix_syntax(true);
+    opts.set_word_boundary(true);
+    opts.set_log_errors(false);
+
+    while (true) {
+        if (FLAGS_json)
+            fprintf(out, "READY\n");
+        else {
+            fprintf(out, "regex> ");
+            fflush(out);
+        }
+        string line;
+        getline(in, line);
+        if (feof(in))
+            break;
+        RE2 re(line, opts);
+        if (!re.ok()) {
+            print_error(out, re.error());
+            continue;
+        }
+        if (re.ProgramSize() > kMaxProgramSize) {
+            print_error(out, "Parse error.");
+            continue;
+        }
+        int w = width.Walk(re.Regexp(), 0);
+        if (w > kMaxWidth) {
+            print_error(out, "Parse error.");
+            continue;
+        }
+        {
+            timer tm;
+            struct timeval elapsed;
+            match_stats stats;
+            exit_reason why;
+
+            if (!FLAGS_json)
+                fprintf(out, "ProgramSize: %d\n", re.ProgramSize());
+
+            search.match(re, &stats, &why);
+            elapsed = tm.elapsed();
+            if (FLAGS_json)
+                print_stats(out, stats, why);
+            else {
+                fprintf(out,
+                        "Match completed in %d.%06ds.",
+                        (int)elapsed.tv_sec, (int)elapsed.tv_usec);
+                switch (why) {
+                case kExitNone:
+                    fprintf(out, "\n");
+                    break;
+                case kExitMatchLimit:
+                    fprintf(out, " (match limit)\n");
+                    break;
+                case kExitTimeout:
+                    fprintf(out, " (timeout)\n");
+                    break;
+                }
+            }
+        }
+    }
+}
 
 int main(int argc, char **argv) {
     google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
@@ -67,8 +151,6 @@ int main(int argc, char **argv) {
 
     code_searcher counter;
     counter.set_output_json(FLAGS_json);
-
-    WidthWalker width;
 
     if (FLAGS_load_index.size() == 0) {
         git_repository *repo;
@@ -99,69 +181,7 @@ int main(int argc, char **argv) {
     if (FLAGS_dump_index.size())
         counter.dump_index(FLAGS_dump_index);
 
-    code_searcher::search_thread search(&counter);
-
-    RE2::Options opts;
-    opts.set_never_nl(true);
-    opts.set_one_line(false);
-    opts.set_perl_classes(true);
-    opts.set_word_boundary(true);
-    opts.set_posix_syntax(true);
-    opts.set_word_boundary(true);
-    opts.set_log_errors(false);
-    while (true) {
-        if (FLAGS_json)
-            printf("READY\n");
-        else
-            printf("regex> ");
-        string line;
-        getline(cin, line);
-        if (cin.eof())
-            break;
-        RE2 re(line, opts);
-        if (!re.ok()) {
-            print_error(re.error());
-            continue;
-        }
-        if (re.ProgramSize() > kMaxProgramSize) {
-            print_error("Parse error.");
-            continue;
-        }
-        int w = width.Walk(re.Regexp(), 0);
-        if (w > kMaxWidth) {
-            print_error("Parse error.");
-            continue;
-        }
-        {
-            timer tm;
-            struct timeval elapsed;
-            match_stats stats;
-            exit_reason why;
-
-            if (!FLAGS_json)
-                printf("ProgramSize: %d\n", re.ProgramSize());
-
-            search.match(re, &stats, &why);
-            elapsed = tm.elapsed();
-            if (FLAGS_json)
-                print_stats(stats, why);
-            else {
-                printf("Match completed in %d.%06ds.",
-                       (int)elapsed.tv_sec, (int)elapsed.tv_usec);
-                switch (why) {
-                case kExitNone:
-                    printf("\n");
-                    break;
-                case kExitMatchLimit:
-                    printf(" (match limit)\n");
-                    break;
-                case kExitTimeout:
-                    printf(" (timeout)\n");
-                    break;
-                }
-            }
-        }
-    }
+    interact(&counter, stdin, stdout);
 
     return 0;
 }
