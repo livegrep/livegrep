@@ -442,7 +442,8 @@ namespace {
                                            intrusive_ptr<IndexKey> rhs) {
         if (lhs == rhs)
             return lhs;
-        if (lhs->empty() || rhs->empty() ||
+        if (!lhs || !rhs ||
+            lhs->empty() || rhs->empty() ||
             lhs->size() + rhs->size() >= kMaxWidth)
             return Any();
 
