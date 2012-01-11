@@ -151,6 +151,8 @@ static string StrChar(uchar c) {
 static string ToString(IndexKey *k, int indent = 0) {
     string out;
     if (k == 0)
+        return strprintf("%*.s[null]\n", indent, "");
+    if (k->empty())
         return strprintf("%*.s[]\n", indent, "");
 
     for (IndexKey::iterator it = k->begin(); it != k->end(); ++it) {
