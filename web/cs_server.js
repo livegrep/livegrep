@@ -43,7 +43,7 @@ function Server(config) {
       console.log("Searching commit %s (%s)", config.SEARCH_REF, sha1);
       parent.codesearch = new Codesearch(config.SEARCH_REPO, [sha1], {
                                            args: config.SEARCH_ARGS
-                                         });
+                                         }).connect();
 
       parent.codesearch.on('ready', function () {
                              var q;

@@ -9,6 +9,7 @@ common.parseopts();
 var cs_index = common.get_codesearch(['--threads=1', '--timeout=0']);
 var cs_noindex = common.get_codesearch(['--threads=1', '--noindex', '--timeout=0']);
 var queries = common.load_queries();
+var conn_index, conn_noindex;
 
 var failures = 0;
 
@@ -62,11 +63,11 @@ function loop(i) {
       loop(i + 1)
   }
 
-  cs_index.once('ready', one_ready);
-  cs_noindex.once('ready', one_ready);
+  conn_index.once('ready', one_ready);
+  conn_noindex.once('ready', one_ready);
 
-  common.query_all(cs_index, queries[i], got_matches('index'));
-  common.query_all(cs_noindex, queries[i], got_matches('noindex'));
+  common.query_all(conn_index, queries[i], got_matches('index'));
+  common.query_all(conn_noindex, queries[i], got_matches('noindex'));
 }
 
 var ready = 2;
@@ -76,5 +77,8 @@ function one_ready() {
     loop(0)
 }
 
-cs_noindex.once('ready', one_ready);
-cs_index.once('ready', one_ready);
+conn_index = cs_index.connect()
+conn_index.once('ready', one_ready);
+
+conn_noindex = cs_noindex.connect()
+conn_noindex.once('ready', one_ready);

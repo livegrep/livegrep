@@ -11,7 +11,7 @@ common.parser.add('--compare',    {type: 'string'});
 common.parser.add('--iterations', {type: 'int', default: 10});
 var options = common.parseopts();
 var queries = common.load_queries();
-var cs = common.get_codesearch(['--timeout=0']);
+var cs = common.get_codesearch(['--timeout=0']).connect();
 
 var times = { };
 var cmp_times = null;

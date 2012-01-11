@@ -3,6 +3,9 @@ var spawn   = require('child_process').spawn,
     carrier = require('carrier'),
     util    = require('util'),
     events  = require("events"),
+    fs      = require('fs'),
+    net     = require('net'),
+    temp    = require('temp'),
     log4js  = require('log4js');
 
 var logger = log4js.getLogger('codesearch');
@@ -11,27 +14,65 @@ function Codesearch(repo, refs, opts) {
   if (opts === null)
     opts = {};
   events.EventEmitter.call(this);
+  var socket = path.join(temp.mkdirSync('codesearch'), 'socket');
+
+  this.socket = socket;
   this.child = spawn(path.join(__dirname, '..', 'codesearch'),
-                     ['--git_dir', path.join(repo, ".git"), '--json'].concat(
+                     ['--git_dir', path.join(repo, ".git"), '--json',
+                      '--listen', socket].concat(
                        opts.args||[]).concat(refs || ['HEAD']),
                      {
-                       customFds: [-1, -1, 2]
+                       customFds: [-1, 1, 2]
                      });
-  this.child.stdout.setEncoding('utf8');
   this.child.on('exit', function(code) {
                   this.emit('error', 'Child exited with code ' + code);
                 });
-  carrier.carry(this.child.stdout, this.got_line.bind(this));
-  this.readyState = 'init';
-  this.current_search = null;
+  var child = this.child;
+  process.on('exit', function() {
+               child.kill();
+               fs.unlinkSync(socket);
+               fs.rmdirSync(path.dirname(socket));
+             });
 }
-
 util.inherits(Codesearch, events.EventEmitter);
 
-Codesearch.prototype.search = function(str) {
+Codesearch.prototype.connect = function(cb) {
+  var conn = new Connection(this);
+  if (cb !== undefined)
+    conn.on('connected', cb.bind(null, conn));
+  return conn;
+}
+
+function Connection(parent) {
+  var self = this;
+  self.parent = parent;
+  function connect() {
+    if (!path.existsSync(parent.socket)) {
+      logger.debug("Waiting for daemon startup...");
+      setTimeout(connect, 100);
+      return;
+    }
+    self.socket = net.connect(
+      parent.socket,
+      function() {
+        self.emit('connected');
+        self.socket.setEncoding('utf8');
+        carrier.carry(self.socket,
+                      self.got_line.bind(self));
+        self.readyState = 'init';
+      });
+  }
+  connect();
+
+  self.readyState = 'connecting';
+  self.current_search = null;
+}
+util.inherits(Connection, events.EventEmitter);
+
+Connection.prototype.search = function(str) {
   var evt;
   console.assert(this.readyState == 'ready');
-  this.child.stdin.write(str + "\n");
+  this.socket.write(str + "\n");
   this.setState('searching');
 
   evt = new events.EventEmitter();
@@ -40,7 +81,7 @@ Codesearch.prototype.search = function(str) {
   return evt;
 }
 
-Codesearch.prototype.got_line = function(line) {
+Connection.prototype.got_line = function(line) {
   logger.trace("< %s", line);
   this.handle_line[this.readyState].call(this, line);
 }
@@ -50,7 +91,7 @@ function expect_ready(line) {
   this.ready();
 }
 
-Codesearch.prototype.handle_line = {
+Connection.prototype.handle_line = {
   'init': expect_ready,
   'searching': function (line) {
     var match;
@@ -70,27 +111,27 @@ Codesearch.prototype.handle_line = {
   }
 }
 
-Codesearch.prototype.ready = function() {
+Connection.prototype.ready = function() {
   this.setState('ready');
   this.emit('ready');
 }
 
-Codesearch.prototype.error = function(err) {
+Connection.prototype.error = function(err) {
   this.current_search.emit('error', err);
   this.endSearch();
 }
 
-Codesearch.prototype.endSearch = function() {
+Connection.prototype.endSearch = function() {
   this.setState('search_done');
   this.current_search = null;
 }
 
-Codesearch.prototype.match = function(match) {
+Connection.prototype.match = function(match) {
   var evt = JSON.parse(match);
   this.current_search.emit('match', evt);
 }
 
-Codesearch.prototype.setState = function(state) {
+Connection.prototype.setState = function(state) {
   this.readyState = state;
 }
 
