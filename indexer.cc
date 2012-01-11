@@ -452,9 +452,7 @@ namespace {
         if (recursion_depth > kMaxRecursion)
             return Any();
 
-        intrusive_ptr<IndexKey> out(new IndexKey
-                                 ((lhs->anchor & rhs->anchor) |
-                                  ((lhs->anchor | lhs->anchor) & kAnchorRepeat)));
+        intrusive_ptr<IndexKey> out(new IndexKey(lhs->anchor & kAnchorLeft));
         IndexKey::const_iterator lit, rit;
         lit = lhs->begin();
         rit = rhs->begin();
