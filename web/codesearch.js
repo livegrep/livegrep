@@ -5,6 +5,8 @@ var spawn   = require('child_process').spawn,
     events  = require("events"),
     log4js  = require('log4js');
 
+var logger = log4js.getLogger('codesearch');
+
 function Codesearch(repo, refs, opts) {
   if (opts === null)
     opts = {};
@@ -22,7 +24,6 @@ function Codesearch(repo, refs, opts) {
   carrier.carry(this.child.stdout, this.got_line.bind(this));
   this.readyState = 'init';
   this.current_search = null;
-  this.logger = log4js.getLogger('codesearch');
 }
 
 util.inherits(Codesearch, events.EventEmitter);
@@ -40,7 +41,7 @@ Codesearch.prototype.search = function(str) {
 }
 
 Codesearch.prototype.got_line = function(line) {
-  this.logger.trace("< %s", line);
+  logger.trace("< %s", line);
   this.handle_line[this.readyState].call(this, line);
 }
 
