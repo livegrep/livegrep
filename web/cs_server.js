@@ -7,8 +7,20 @@ var dnode   = require('dnode'),
     Codesearch = require('./codesearch.js');
 
 function Client(parent, remote) {
+  var self = this;
   this.parent = parent;
   this.remote = remote;
+  this.queue  = [];
+  this.conn   = parent.codesearch.connect();
+  this.conn.on('ready', function() {
+                 var q;
+                 if (self.queue.length) {
+                   q = self.queue.shift();
+                   self.search(q.re, q.cb);
+                 } else {
+                   self.ready();
+                 }
+               });
 }
 
 Client.prototype.ready = function() {
@@ -16,15 +28,14 @@ Client.prototype.ready = function() {
 }
 
 Client.prototype.search = function (re, cb) {
-  if (this.parent.codesearch.readyState !== 'ready') {
-    this.parent.queue.push({
-                             client: this,
-                             re: re,
-                             cb: cb
-                           });
+  if (this.conn.readyState !== 'ready') {
+    this.queue.push({
+                      re: re,
+                      cb: cb
+                    });
     return;
   }
-  var search = this.parent.codesearch.search(re);
+  var search = this.conn.search(re);
   search.on('error', util.remote_call.bind(null, cb, 'error'));
   search.on('done',  util.remote_call.bind(null, cb, 'done'));
   search.on('match', util.remote_call.bind(null, cb, 'match'));
@@ -32,45 +43,19 @@ Client.prototype.search = function (re, cb) {
 
 function Server(config) {
   var parent = this;
-  this.codesearch = null
   this.clients = [];
-  this.queue   = [];
 
-  git_util.rev_parse(
-    config.SEARCH_REPO, config.SEARCH_REF,
-    function (err, sha1) {
-      if (err) throw err;
-      console.log("Searching commit %s (%s)", config.SEARCH_REF, sha1);
-      parent.codesearch = new Codesearch(config.SEARCH_REPO, [sha1], {
-                                           args: config.SEARCH_ARGS
-                                         }).connect();
-
-      parent.codesearch.on('ready', function () {
-                             var q;
-                             if (parent.queue.length) {
-                               q = parent.queue.shift();
-                               q.client.search.call(q.client, q.re, q.cb);
-                             } else {
-                               Object.keys(parent.clients).forEach(
-                                 function (id) {
-                                   parent.clients[id].ready();
-                                 });
-                             }
-                           });
-    });
-
+  this.codesearch = new Codesearch(config.SEARCH_REPO, [config.sha1], {
+                                     args: config.SEARCH_ARGS
+                                   });
   this.Server = function (remote, conn) {
     parent.clients[conn.id] = new Client(parent, remote);
     conn.on('end', function() {
               var client = parent.clients[conn.id];
-              parent.queue = parent.queue.filter(
-                function (q) {
-                  return q.client !== client
-                });
               delete parent.clients[conn.id];
             });
     this.try_search = function(re, cb) {
-      if (parent.codesearch.readyState !== 'ready') {
+      if (parent.clients[conn.id].conn.readyState !== 'ready') {
         util.remote_call(cb, 'not_ready');
         return;
       }
@@ -82,5 +67,14 @@ function Server(config) {
   }
 }
 
-var server = dnode(new Server(config).Server);
-server.listen(config.DNODE_PORT);
+var server = null;
+
+git_util.rev_parse(
+  config.SEARCH_REPO, config.SEARCH_REF,
+  function (err, sha1) {
+    if (err) throw err;
+    console.log("Searching commit %s (%s)", config.SEARCH_REF, sha1);
+    config.sha1 = sha1;
+    server = dnode(new Server(config).Server);
+    server.listen(config.DNODE_PORT);
+  });
