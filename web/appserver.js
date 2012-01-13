@@ -73,33 +73,40 @@ Client.prototype.dispatch_search = function() {
 function SearchServer() {
   var parent = this;
   this.remotes = [];
+  this.connections = [];
   this.clients = {};
   this.logger  = log4js.getLogger('appserver');
 
-  var remote = null;
-  function ready() {
-    parent.logger.debug('Remote ready!');
-    if (remote.cs_ready) {
-      parent.logger.debug('(already queued)!');
-      return;
-    }
-    remote.cs_ready = true;
-    parent.remotes.push(remote);
-    parent.dispatch();
-  }
+  for (var i = 0; i < 4; i++) {
+    (function() {
+       var remote = null;
 
-  dnode({ ready: ready }).
-    connect(
-      'localhost', config.DNODE_PORT,
-      function (r, conn) {
-        r.cs_ready = false;
-        remote = r;
-        parent.logger.info("Connected to codesearch daemon.");
-        conn.on('ready', ready);
-        conn.on('reconnect', ready);
-      }, {
-        reconnect: 200
-      });
+       function ready() {
+         parent.logger.debug('Remote ready!');
+         if (remote.cs_ready) {
+           parent.logger.debug('(already queued)!');
+           return;
+         }
+         remote.cs_ready = true;
+         parent.remotes.push(remote);
+         parent.dispatch();
+       }
+
+       dnode({ ready: ready }).
+         connect(
+           'localhost', config.DNODE_PORT,
+           function (r, conn) {
+             parent.connections.push(conn);
+             remote = r;
+             remote.cs_ready = false;
+             parent.logger.info("Connected to codesearch daemon.");
+             conn.on('ready', ready);
+             conn.on('reconnect', ready);
+           }, {
+             reconnect: 200
+           });
+     })();
+  }
 
   this.Server = function (remote, conn) {
     parent.clients[conn.id] = new Client(parent, remote);
