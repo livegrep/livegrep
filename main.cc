@@ -158,7 +158,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
         }
         string line;
         getline(in, line);
-        if (feof(in))
+        if (feof(in) || ferror(in))
             break;
         RE2 re(line, opts);
         if (!re.ok()) {
