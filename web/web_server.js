@@ -23,8 +23,6 @@ if (!opts) {
   process.exit(1);
 }
 
-log4js.configure(path.join(__dirname, "log4js.json"));
-
 if (opts.options.autolaunch) {
   console.log("Autolaunching a back-end server...");
   require('./cs_server.js')
