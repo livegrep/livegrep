@@ -1,5 +1,6 @@
 "use strict";
 var Benchmark = function() {
+  var WINDOW = 5000;
   var queries = [
     "____do",
     "errno\\W",
@@ -14,17 +15,24 @@ var Benchmark = function() {
   ];
 
   function render() {
-    var ms = +(new Date() - Benchmark.start_time)
+    var now = new Date();
+    var ms = +(now - Benchmark.start_time)
     $("#val_time").text(ms);
     $("#val_searches").text(Benchmark.searches);
     $("#val_errors").text(Benchmark.errors);
     $("#val_qps").text(1000 * Benchmark.searches / ms);
+    $("#val_window").text(1000 * Benchmark.responses.length /
+        (now - Benchmark.responses[0]));
   }
 
   function done(error) {
     Benchmark.searches++;
     if (error)
       Benchmark.errors++;
+    Benchmark.responses.push(new Date());
+    var now = new Date();
+    while ((now - Benchmark.responses[0]) > WINDOW)
+      Benchmark.responses.shift(1);
     render();
   }
 
@@ -46,6 +54,8 @@ var Benchmark = function() {
     start_time: 0,
     searches: 0,
     errors: 0,
+    responses: [],
+
     timer: undefined,
     onload: function() {
       Codesearch.connect(Benchmark);
