@@ -11,6 +11,7 @@ var delegate = {
     process.exit(1);
   },
   match: function (m) {
+    m = JSON.parse(m);
     console.log("%s:%d %s", m.file, m.lno, m.line);
   },
   done: function () {

@@ -9,7 +9,11 @@
 function remote_call(obj, fn) {
   var args = Array.prototype.slice.call(arguments, 2);
   try {
-    obj[fn].apply(obj, args);
+    obj[fn].apply(obj, args.map(function (a) {
+                                  if (typeof a === 'object')
+                                    a = JSON.stringify(a);
+                                  return a;
+                                }));
   } catch (e) {
     console.log("fn: %s", e);
   }

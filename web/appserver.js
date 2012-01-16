@@ -52,12 +52,14 @@ Client.prototype.dispatch_search = function() {
         util.remote_call(remote, 'error', search, err);
       },
       match: function (match) {
+        match = JSON.parse(match);
         self.parent.logger.trace("Reporting match %j for %s.",
                                  match, search);
         matches.push(match);
         flush();
       },
       done: function (stats) {
+        stats = JSON.parse(stats);
         var time = (new Date()) - start;
         flush(true);
         util.remote_call(remote, 'search_done', search, time, stats.why);
