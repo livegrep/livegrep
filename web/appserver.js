@@ -63,7 +63,7 @@ Client.prototype.dispatch_search = function() {
         var time = (new Date()) - start;
         flush(true);
         util.remote_call(remote, 'search_done', search, time, stats.why);
-        self.parent.logger.info("Search done: %s: %s: %j",
+        self.parent.logger.debug("Search done: %s: %s: %j",
                                 search, time, stats);
       }
     }
