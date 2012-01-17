@@ -43,13 +43,6 @@ var Benchmark = function() {
     Benchmark.timer = setTimeout(function() {loop(i+1)}, 10);
   }
 
-  function start() {
-    Benchmark.start_time = new Date();
-    Benchmark.searches = 0;
-    Benchmark.errors = 0;
-    loop(0);
-  }
-
   return {
     start_time: 0,
     searches: 0,
@@ -70,17 +63,18 @@ var Benchmark = function() {
     },
     on_connect: function() {
       if (Benchmark.timer === undefined)
-        start();
+        Benchmark.start();
     },
-    playpause: function() {
-      var btn = $('#playpause');
+    start: function() {
+      Benchmark.start_time = new Date();
+      Benchmark.searches = 0;
+      Benchmark.errors = 0;
+      loop(0);
+    },
+    stop: function() {
       if (Benchmark.timer) {
         clearTimeout(Benchmark.timer);
         Benchmark.timer = null;
-        btn.text("start")
-      } else {
-        start();
-        btn.text("stop")
       }
     }
   }
