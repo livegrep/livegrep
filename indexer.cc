@@ -252,7 +252,7 @@ namespace {
         assert(hi.size() != 0);
         if (lo[0] < hi[0])
             out->insert(IndexKey::value_type
-                        (pair<uchar, uchar>(lo[0], hi[0] - 1), 0));
+                        (pair<uchar, uchar>(lo[0], hi[0] - 1), (IndexKey*)0));
         out->insert(IndexKey::value_type
                     (pair<uchar, uchar>(hi[0], hi[0]),
                      LexRange(lo.substr(1), hi.substr(1))));
@@ -269,7 +269,7 @@ namespace {
             if (i->lo < Runeself && i->lo < Runeself)
                 k->insert(IndexKey::value_type
                           (pair<uchar, uchar>(i->lo, i->hi),
-                           0));
+                           (IndexKey*)0));
             else {
                 alternate_cache cache;
                 k = Alternate(cache, k, LexRange(RuneToString(i->lo),

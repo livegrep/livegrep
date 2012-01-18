@@ -636,7 +636,7 @@ int code_searcher::search_thread::match_internal(RE2& pat,
 
 code_searcher::search_thread::~search_thread() {
     for (int i = 0; i < FLAGS_threads; i++)
-        pool_.queue(pair<searcher*, chunk*>(0, 0));
+        pool_.queue(pair<searcher*, chunk*>((searcher*)0, (chunk*)0));
 }
 
 bool code_searcher::search_thread::search_one(const pair<searcher*, chunk*>& pair) {
