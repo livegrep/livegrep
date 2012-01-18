@@ -4,6 +4,7 @@
 #include <gflags/gflags.h>
 
 #include <list>
+#include <limits>
 
 #include <stdarg.h>
 

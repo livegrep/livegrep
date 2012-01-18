@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <limits>
 
 #include <re2/re2.h>
 
