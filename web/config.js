@@ -8,7 +8,8 @@ var config = {
   DNODE_PORT: 0xC5EA,
   SEARCH_REPO: path.join(__dirname, "../../linux"),
   SEARCH_REF:  "v3.0",
-  SEARCH_ARGS: []
+  SEARCH_ARGS: [],
+  BACKEND_CONNECTIONS: 8
 };
 
 try {

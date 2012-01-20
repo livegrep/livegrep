@@ -4,9 +4,9 @@ var dnode  = require('dnode'),
     util   = require('./util.js'),
     config = require('./config.js');
 
-function Client(parent, remote) {
+function Client(parent, sock) {
   this.parent = parent;
-  this.remote = remote;
+  this.socket = sock;
   this.pending_search = null;
   this.last_search = null;
 }
@@ -30,13 +30,13 @@ Client.prototype.dispatch_search = function() {
     var search = this.pending_search;
     this.pending_search = null;
     var self   = this;
-    var remote = this.remote;
+    var sock   = this.socket;
     var matches = [];
     var last_flush = new Date();
     function flush(force) {
       if (force || (new Date() - last_flush) > 10) {
         matches.forEach(function (m) {
-                          util.remote_call(remote, 'match', search, m);
+                          sock.emit('match', search, m);
                         });
         last_flush = new Date();
         matches = [];
@@ -49,7 +49,7 @@ Client.prototype.dispatch_search = function() {
           self.pending_search = search;
       },
       error: function (err) {
-        util.remote_call(remote, 'error', search, err);
+        sock.emit('error', search, err);
       },
       match: function (match) {
         match = JSON.parse(match);
@@ -62,7 +62,7 @@ Client.prototype.dispatch_search = function() {
         stats = JSON.parse(stats);
         var time = (new Date()) - start;
         flush(true);
-        util.remote_call(remote, 'search_done', search, time, stats.why);
+        sock.emit('search_done', search, time, stats.why);
         self.parent.logger.debug("Search done: %s: %s: %j",
                                 search, time, stats);
       }
@@ -72,14 +72,15 @@ Client.prototype.dispatch_search = function() {
   }
 }
 
-function SearchServer() {
+function SearchServer(config, io) {
   var parent = this;
+  this.config  = config;
   this.remotes = [];
   this.connections = [];
   this.clients = {};
   this.logger  = log4js.getLogger('appserver');
 
-  for (var i = 0; i < 4; i++) {
+  for (var i = 0; i < config.BACKEND_CONNECTIONS; i++) {
     (function() {
        var remote = null;
 
@@ -110,15 +111,19 @@ function SearchServer() {
      })();
   }
 
-  this.Server = function (remote, conn) {
-    parent.clients[conn.id] = new Client(parent, remote);
-    this.new_search = function(str) {
-      parent.clients[conn.id].new_search(str);
-    }
-    conn.on('end', function() {
-              delete parent.clients[conn.id];
+  var Server = function (sock) {
+    parent.clients[sock.id] = new Client(parent, sock);
+    sock.on('new_search', function(str) {
+      parent.clients[sock.id].new_search(str);
+    });
+    sock.on('disconnect', function() {
+              delete parent.clients[sock.id];
             });
-  }
+  };
+
+  io.sockets.on('connection', function(sock) {
+    new Server(sock);
+  });
 }
 
 function shuffle(lst) {

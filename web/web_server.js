@@ -4,7 +4,8 @@ var express = require('express'),
     path    = require('path'),
     parseopt= require('parseopt'),
     log4js = require('log4js'),
-    Server  = require('./appserver.js');
+    Server  = require('./appserver.js'),
+    config  = require('./config.js');
 
 var parser = new parseopt.OptionParser(
   {
@@ -43,9 +44,8 @@ app.get('/', function (req, res) {
 app.listen(8910);
 console.log("http://localhost:8910");
 
-var server = dnode(new Server().Server);
-server.listen(app, {
-                io: {
-                  transports: ["htmlfile", "xhr-polling", "jsonp-polling"]
-                }
-              });
+var io = require('socket.io').listen(app, {
+                                       'log level': 0
+                                     });
+
+var server = new Server(config, io);

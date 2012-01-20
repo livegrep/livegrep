@@ -76,7 +76,6 @@ var CodesearchUI = function() {
       $('#regex-error').hide();
     },
     match: function(search, match) {
-      match = JSON.parse(match);
       CodesearchUI.handle_result(search);
       CodesearchUI.results++;
       $('#results').append(render_match(match));
