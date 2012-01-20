@@ -53,7 +53,7 @@ var Benchmark = function() {
     onload: function() {
       Codesearch.connect(Benchmark);
     },
-    error: function(search, err) {
+    regex_error: function(search, err) {
       done(true);
     },
     match: function(search, match) {

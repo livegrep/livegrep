@@ -49,7 +49,7 @@ Client.prototype.dispatch_search = function() {
           self.pending_search = search;
       },
       error: function (err) {
-        sock.emit('error', search, err);
+        sock.emit('regex_error', search, err);
       },
       match: function (match) {
         match = JSON.parse(match);
