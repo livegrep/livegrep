@@ -2,7 +2,8 @@ var dnode  = require('dnode'),
     fs     = require('fs'),
     log4js = require('log4js'),
     util   = require('./util.js'),
-    config = require('./config.js');
+    config = require('./config.js'),
+    Batch  = require('./batch.js');
 var logger  = log4js.getLogger('appserver');
 
 function Client(parent, sock) {
@@ -32,17 +33,9 @@ Client.prototype.dispatch_search = function() {
     this.pending_search = null;
     var self   = this;
     var sock   = this.socket;
-    var matches = [];
-    var last_flush = new Date();
-    function flush(force) {
-      if (force || (new Date() - last_flush) > 10) {
-        matches.forEach(function (m) {
-                          sock.emit('match', search, m);
-                        });
-        last_flush = new Date();
-        matches = [];
-      }
-    }
+    var batch  = new Batch(function (m) {
+                             sock.emit('match', search, m);
+                           });
     var cbs = {
       not_ready: function() {
         logger.info('Remote reports not ready for %s', search);
@@ -55,13 +48,12 @@ Client.prototype.dispatch_search = function() {
       match: function (match) {
         match = JSON.parse(match);
         logger.trace("Reporting match %j for %s.", match, search);
-        matches.push(match);
-        flush();
+        batch.send(match);
       },
       done: function (stats) {
         stats = JSON.parse(stats);
         var time = (new Date()) - start;
-        flush(true);
+        batch.flush();
         sock.emit('search_done', search, time, stats.why);
         logger.debug("Search done: %s: %s", search, time);
       }

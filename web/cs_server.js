@@ -4,7 +4,8 @@ var dnode   = require('dnode'),
     config  = require('./config.js'),
     git_util   = require('./git_util.js'),
     util       = require('./util.js'),
-    Codesearch = require('./codesearch.js');
+    Codesearch = require('./codesearch.js'),
+    Batch      = require('./batch.js');
 
 function Client(parent, remote) {
   var self = this;
@@ -36,9 +37,15 @@ Client.prototype.search = function (re, cb) {
     return;
   }
   var search = this.conn.search(re);
+  var batch  = new Batch(function (m) {
+                           util.remote_call(cb, 'match', m);
+                         });
   search.on('error', util.remote_call.bind(null, cb, 'error'));
-  search.on('done',  util.remote_call.bind(null, cb, 'done'));
-  search.on('match', util.remote_call.bind(null, cb, 'match'));
+  search.on('done',  function () {
+              batch.flush();
+              util.remote_call.apply(null, [cb, 'done'].concat(Array.prototype.slice.call(arguments)));
+            });
+  search.on('match', batch.send.bind(batch));
 }
 
 function Server(config) {
