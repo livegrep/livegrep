@@ -10,6 +10,8 @@ var spawn   = require('child_process').spawn,
 
 var logger = log4js.getLogger('codesearch');
 
+var uniq = 0;
+
 function Codesearch(repo, refs, opts) {
   if (opts === null)
     opts = {};
@@ -46,6 +48,7 @@ Codesearch.prototype.connect = function(cb) {
 function Connection(parent) {
   var self = this;
   self.parent = parent;
+  self.id     = ++uniq;
   function connect() {
     if (!path.existsSync(parent.socket)) {
       logger.debug("Waiting for daemon startup...");
@@ -71,6 +74,7 @@ util.inherits(Connection, events.EventEmitter);
 
 Connection.prototype.search = function(str) {
   var evt;
+  logger.debug("[cs %s] search(%s)", this.id, str);
   console.assert(this.readyState == 'ready');
   this.socket.write(str + "\n");
   this.setState('searching');
@@ -112,6 +116,7 @@ Connection.prototype.handle_line = {
 }
 
 Connection.prototype.ready = function() {
+  logger.debug("[cs %s] ready", this.id);
   this.setState('ready');
   this.emit('ready');
 }
@@ -122,6 +127,7 @@ Connection.prototype.error = function(err) {
 }
 
 Connection.prototype.endSearch = function() {
+  logger.debug("[cs %s] search_done(%s)", this.id, this.current_search.search);
   this.setState('search_done');
   this.current_search = null;
 }
