@@ -317,8 +317,8 @@ namespace {
     IndexKey::Stats TryConcat(intrusive_ptr<IndexKey> *start,
                               intrusive_ptr<IndexKey> *end) {
         IndexKey::Stats st = (*start)->stats();
-        debug(4, "TryConcat: Searching suffix of length %ld\n",
-              end - start);
+        debug(4, "TryConcat: Searching suffix of length %d\n",
+              int(end - start));
         if (!*start || !((*start)->anchor & kAnchorRight) || (*start)->empty()) {
             debug(4, "!ConcatRight, returning early.\n");
             return st;
@@ -357,8 +357,8 @@ namespace {
         for (ptr = children; ptr != end; ptr++) {
             IndexKey::Stats st = TryConcat(ptr, end);
             if (st.nodes_ > 1 && Prefer(st, best_stats)) {
-                debug(3, "Concat: Found new best: %ld: %f\n",
-                      ptr - children, st.selectivity_);
+                debug(3, "Concat: Found new best: %d: %f\n",
+                      int(ptr - children), st.selectivity_);
                 best_start = ptr;
                 best_stats = st;
             }
