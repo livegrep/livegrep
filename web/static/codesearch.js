@@ -19,9 +19,9 @@ var Codesearch = function() {
       socket.on('match', Codesearch.delegate.match);
       socket.on('search_done', Codesearch.delegate.search_done);
     },
-    new_search: function(re) {
+    new_search: function(re, id) {
       if (Codesearch.socket !== null)
-        Codesearch.socket.emit('new_search', re);
+        Codesearch.socket.emit('new_search', re, id);
     }
   };
 }();

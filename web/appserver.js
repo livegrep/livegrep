@@ -10,13 +10,15 @@ function Client(parent, sock) {
   this.parent = parent;
   this.socket = sock;
   this.pending_search = null;
+  this.pending_id = null;
   this.last_search = null;
 }
 
-Client.prototype.new_search = function (str) {
+Client.prototype.new_search = function (str, id) {
   if (str === this.last_search)
     return;
   this.pending_search = str;
+  this.pending_id = id;
   this.dispatch_search();
 }
 
@@ -30,11 +32,12 @@ Client.prototype.dispatch_search = function() {
     logger.debug('dispatching: %s...', this.pending_search);
 
     var search = this.pending_search;
+    var id     = this.pending_id;
     this.pending_search = null;
     var self   = this;
     var sock   = this.socket;
     var batch  = new Batch(function (m) {
-                             sock.emit('match', search, m);
+                             sock.emit('match', id, m);
                            });
     var cbs = {
       not_ready: function() {
@@ -43,7 +46,7 @@ Client.prototype.dispatch_search = function() {
           self.pending_search = search;
       },
       error: function (err) {
-        sock.emit('regex_error', search, err);
+        sock.emit('regex_error', id, err);
       },
       match: function (match) {
         match = JSON.parse(match);
@@ -54,7 +57,7 @@ Client.prototype.dispatch_search = function() {
         stats = JSON.parse(stats);
         var time = (new Date()) - start;
         batch.flush();
-        sock.emit('search_done', search, time, stats.why);
+        sock.emit('search_done', id, time, stats.why);
         logger.debug("Search done: %s: %s", search, time);
       }
     }
@@ -106,8 +109,10 @@ function SearchServer(config, io) {
 
   var Server = function (sock) {
     parent.clients[sock.id] = new Client(parent, sock);
-    sock.on('new_search', function(str) {
-      parent.clients[sock.id].new_search(str);
+    sock.on('new_search', function(str, id) {
+              if (id == null)
+                id = str;
+              parent.clients[sock.id].new_search(str, id);
     });
     sock.on('disconnect', function() {
               delete parent.clients[sock.id];

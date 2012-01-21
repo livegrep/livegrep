@@ -34,31 +34,37 @@ var Benchmark = function() {
     $("#val_max").text(max_time());
   }
 
-  function done(error) {
+  function done(search, error) {
     var now = new Date();
     Benchmark.searches++;
     if (error)
       Benchmark.errors++;
     Benchmark.responses.push({
                                end: now,
-                               time: now - Benchmark.search_start
+                               time: now - Benchmark.search_start[search]
                              });
     while ((now - Benchmark.responses[0].end) > WINDOW)
       Benchmark.responses.shift(1);
     render();
+    Object.keys(Benchmark.search_start).forEach(
+      function (n) {
+        if (+n < search)
+          delete Benchmark.search_start[n];
+      });
   }
 
   function loop(i) {
     if (i === queries.length)
       i = 0;
-    Benchmark.search_start = new Date();
-    Codesearch.new_search(queries[i]);
+    Benchmark.search_start[++Benchmark.search_id] = new Date();
+    Codesearch.new_search(queries[i], Benchmark.search_id);
     Benchmark.timer = setTimeout(function() {loop(i+1)}, 10);
   }
 
   return {
     start_time: 0,
-    search_start: 0,
+    search_start: {},
+    search_id: 0,
     searches: 0,
     errors: 0,
     responses: [],
@@ -68,12 +74,12 @@ var Benchmark = function() {
       Codesearch.connect(Benchmark);
     },
     regex_error: function(search, err) {
-      done(true);
+      done(search, true);
     },
     match: function(search, match) {
     },
     search_done: function(search, time, why) {
-      done(false);
+      done(search, false);
     },
     on_connect: function() {
       if (Benchmark.timer === undefined)
