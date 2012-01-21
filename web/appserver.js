@@ -70,36 +70,39 @@ function SearchServer(config, io) {
   this.connections = [];
   this.clients = {};
 
-  for (var i = 0; i < config.BACKEND_CONNECTIONS; i++) {
-    (function() {
-       var remote = null;
+  config.BACKENDS.forEach(
+    function (bk) {
+      for (var i = 0; i < config.BACKEND_CONNECTIONS; i++) {
+        (function() {
+           var remote = null;
 
-       function ready() {
-         logger.debug('Remote ready!');
-         if (remote.cs_ready) {
-           logger.debug('(already queued)!');
-           return;
-         }
-         remote.cs_ready = true;
-         parent.remotes.push(remote);
-         parent.dispatch();
-       }
+           function ready() {
+             logger.debug('Remote ready!');
+             if (remote.cs_ready) {
+               logger.debug('(already queued)!');
+               return;
+             }
+             remote.cs_ready = true;
+             parent.remotes.push(remote);
+             parent.dispatch();
+           }
 
-       dnode({ ready: ready }).
-         connect(
-           'localhost', config.DNODE_PORT,
-           function (r, conn) {
-             parent.connections.push(conn);
-             remote = r;
-             remote.cs_ready = false;
-             logger.info("Connected to codesearch daemon.");
-             conn.on('ready', ready);
-             conn.on('reconnect', ready);
-           }, {
-             reconnect: 200
-           });
-     })();
-  }
+           dnode({ ready: ready }).
+             connect(
+               bk[0], bk[1],
+               function (r, conn) {
+                 parent.connections.push(conn);
+                 remote = r;
+                 remote.cs_ready = false;
+                 logger.info("Connected to codesearch daemon.");
+                 conn.on('ready', ready);
+                 conn.on('reconnect', ready);
+               }, {
+                 reconnect: 200
+               });
+         })();
+      }
+    });
 
   var Server = function (sock) {
     parent.clients[sock.id] = new Client(parent, sock);

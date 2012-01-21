@@ -9,7 +9,10 @@ var config = {
   SEARCH_REPO: path.join(__dirname, "../../linux"),
   SEARCH_REF:  "v3.0",
   SEARCH_ARGS: [],
-  BACKEND_CONNECTIONS: 8
+  BACKEND_CONNECTIONS: 8,
+  BACKENDS: [
+    ["localhost", 0xC5EA]
+  ]
 };
 
 try {
