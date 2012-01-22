@@ -40,7 +40,7 @@ Client.prototype.search = function (re, cb) {
   var search = this.conn.search(re);
   var batch  = new Batch(function (m) {
                            util.remote_call(cb, 'match', m);
-                         });
+                         }, 50);
   search.on('error', util.remote_call.bind(null, cb, 'error'));
   search.on('done',  function () {
               batch.flush();

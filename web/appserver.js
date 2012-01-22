@@ -38,7 +38,7 @@ Client.prototype.dispatch_search = function() {
     var sock   = this.socket;
     var batch  = new Batch(function (m) {
                              sock.emit('match', id, m);
-                           });
+                           }, 50);
     var cbs = {
       not_ready: function() {
         logger.info('Remote reports not ready for %s', search);
