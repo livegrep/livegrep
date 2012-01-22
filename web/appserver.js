@@ -12,6 +12,7 @@ function Client(parent, sock) {
   this.pending_search = null;
   this.pending_id = null;
   this.last_search = null;
+  this.active_search = null;
 }
 
 Client.prototype.new_search = function (str, id) {
@@ -22,8 +23,14 @@ Client.prototype.new_search = function (str, id) {
   this.dispatch_search();
 }
 
+Client.prototype.search_done = function() {
+  this.active_search = null;
+  process.nextTick(this.dispatch_search.bind(this));
+}
+
 Client.prototype.dispatch_search = function() {
   if (this.pending_search !== null &&
+      !this.active_search &&
       this.parent.remotes.length) {
     var codesearch = this.parent.remotes.pop();
     console.assert(codesearch.cs_ready);
@@ -34,6 +41,7 @@ Client.prototype.dispatch_search = function() {
     var search = this.pending_search;
     var id     = this.pending_id;
     this.pending_search = null;
+    this.active_search  = search;
     var self   = this;
     var sock   = this.socket;
     var batch  = new Batch(function (m) {
@@ -44,9 +52,11 @@ Client.prototype.dispatch_search = function() {
         logger.info('Remote reports not ready for %s', search);
         if (self.pending_search === null)
           self.pending_search = search;
+        self.search_done();
       },
       error: function (err) {
         sock.emit('regex_error', id, err);
+        self.search_done();
       },
       match: function (match) {
         match = JSON.parse(match);
@@ -59,6 +69,7 @@ Client.prototype.dispatch_search = function() {
         batch.flush();
         sock.emit('search_done', id, time, stats.why);
         logger.debug("Search done: %s: %s", search, time);
+        self.search_done();
       }
     }
     codesearch.try_search(search, cbs);
