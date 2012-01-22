@@ -25,7 +25,8 @@ function Client(parent, remote) {
 }
 
 Client.prototype.ready = function() {
-  util.remote_call(this.remote, 'ready');
+  if (this.remote.ready)
+    util.remote_call(this.remote, 'ready');
 }
 
 Client.prototype.search = function (re, cb) {

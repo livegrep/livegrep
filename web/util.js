@@ -15,7 +15,8 @@ function remote_call(obj, fn) {
                                   return a;
                                 }));
   } catch (e) {
-    console.log("remote_call: %s: %s", fn, e);
+    console.warn("remote_call: %s: %s", fn, e);
+    console.trace();
   }
 }
 
