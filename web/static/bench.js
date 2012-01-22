@@ -15,10 +15,10 @@ var Benchmark = function() {
   ];
 
   function max_time() {
-    var max = 0;
+    var max = {time: 0};
     Benchmark.responses.forEach(function (r) {
-                                  if (r.time > max)
-                                    max = r.time;
+                                  if (r.time > max.time)
+                                    max = r
                                 });
     return max;
   }
@@ -31,17 +31,20 @@ var Benchmark = function() {
     $("#val_errors").text(Benchmark.errors);
     $("#val_window").text(1000 * Benchmark.responses.length /
         (now - Benchmark.responses[0].end));
-    $("#val_max").text(max_time());
+    var max = max_time();
+    $("#val_max").text(max.time);
+    $("#val_serv_max").text(max.serv_time);
   }
 
-  function done(search, error) {
+  function done(search, error, time) {
     var now = new Date();
     Benchmark.searches++;
     if (error)
       Benchmark.errors++;
     Benchmark.responses.push({
                                end: now,
-                               time: now - Benchmark.search_start[search]
+                               time: now - Benchmark.search_start[search],
+                               serv_time: time
                              });
     while ((now - Benchmark.responses[0].end) > WINDOW)
       Benchmark.responses.shift(1);
@@ -74,12 +77,12 @@ var Benchmark = function() {
       Codesearch.connect(Benchmark);
     },
     regex_error: function(search, err) {
-      done(search, true);
+      done(search, true, 0);
     },
     match: function(search, match) {
     },
     search_done: function(search, time, why) {
-      done(search, false);
+      done(search, false, time);
     },
     on_connect: function() {
       if (Benchmark.timer === undefined)
