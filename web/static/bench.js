@@ -41,10 +41,16 @@ var Benchmark = function() {
     Benchmark.searches++;
     if (error)
       Benchmark.errors++;
+    if (Benchmark.responses.length &&
+        search < Benchmark.responses[Benchmark.responses.length - 1].id) {
+      console.log("Search moved backwards: %s < %s",
+                 search, Benchmark.responses[Benchmark.responses.length - 1].id);
+    }
     Benchmark.responses.push({
                                end: now,
                                time: now - Benchmark.search_start[search],
-                               serv_time: time
+                               serv_time: time,
+                               id: search
                              });
     while ((now - Benchmark.responses[0].end) > WINDOW)
       Benchmark.responses.shift(1);
