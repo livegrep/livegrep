@@ -558,8 +558,9 @@ match_result *searcher::try_match(const StringPiece& line,
     m->file = sf;
     m->lno  = lno;
     m->line = line;
-    m->matchleft = int(match.data() - line.data());
-    m->matchright = m->matchleft + match.size();
+    m->matchleft = utf8::distance(line.data(), match.data());
+    m->matchright = m->matchleft +
+        utf8::distance(match.data(), match.data() + match.size());
 
     vector<StringPiece>::iterator mit = it;
     StringPiece l = line;
