@@ -1,15 +1,36 @@
 {
   "appenders": [
     {
-      "type": "console",
+      "type": "logLevelFilter",
+      "level": "INFO",
+      "appender": {
+        "type": "console",
+        "layout": {
+          "type": "colored"
+        }
+      }
+    },
+    {
+      "type": "file",
+      "filename": "web/log/codesearch.log",
+      "category": "codesearch",
+      "level": "DEBUG",
       "layout": {
-        "type": "colored"
-      },
-      "level": "INFO"
+        "type": "basic"
+      }
+    },
+    {
+      "type": "file",
+      "filename": "web/log/appserver.log",
+      "category": "appserver",
+      "level": "DEBUG",
+      "layout": {
+        "type": "basic"
+      }
     }
   ],
   "levels": {
-    "appserver":  "INFO",
-    "codesearch": "INFO"
+    "appserver":  "DEBUG",
+    "codesearch": "DEBUG"
   }
 }
