@@ -47,5 +47,6 @@ console.log("http://localhost:8910");
 var io = require('socket.io').listen(app, {
                                        'log level': 0
                                      });
+io.enable('browser client gzip');
 
 var server = new Server(config, io);
