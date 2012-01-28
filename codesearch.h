@@ -54,18 +54,21 @@ typedef google::dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
 typedef google::sparse_hash_set<StringPiece, hashstr, eqstr> string_hash;
 #endif
 
+enum exit_reason {
+    kExitNone = 0,
+    kExitTimeout,
+    kExitMatchLimit,
+};
+
+
 struct match_stats {
     timeval re2_time;
     timeval git_time;
     timeval sort_time;
     timeval index_time;
     timeval analyze_time;
-};
-
-enum exit_reason {
-    kExitNone = 0,
-    kExitTimeout,
-    kExitMatchLimit,
+    int matches;
+    exit_reason why;
 };
 
 struct chunk;
@@ -114,14 +117,14 @@ public:
             T cb_;
         };
 
-        int match_internal(RE2& pat, const base_cb& cb, match_stats *stats, exit_reason *why);
+        void match_internal(RE2& pat, const base_cb& cb, match_stats *stats);
     public:
         search_thread(code_searcher *cs);
         ~search_thread();
 
         template <class T>
-        int match(RE2& pat, T cb, match_stats *stats, exit_reason *why) {
-            return match_internal(pat, match_cb<T>(cb), stats, why);
+        void match(RE2& pat, T cb, match_stats *stats) {
+            match_internal(pat, match_cb<T>(cb), stats);
         }
     protected:
         const code_searcher *cs_;

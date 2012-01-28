@@ -88,7 +88,7 @@ protected:
     FILE *out_;
 };
 
-void print_stats(FILE *out, const match_stats &stats, exit_reason why) {
+void print_stats(FILE *out, const match_stats &stats) {
     json_object *obj = json_object_new_object();
     json_object_object_add(obj, "re2_time", json_object_new_int
                            (timeval_ms(stats.re2_time)));
@@ -100,7 +100,7 @@ void print_stats(FILE *out, const match_stats &stats, exit_reason why) {
                            (timeval_ms(stats.index_time)));
     json_object_object_add(obj, "analyze_time", json_object_new_int
                            (timeval_ms(stats.analyze_time)));
-    switch(why) {
+    switch(stats.why) {
     case kExitNone: break;
     case kExitMatchLimit:
         json_object_object_add(obj, "why", json_object_new_string("limit"));
@@ -178,20 +178,19 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             timer tm;
             struct timeval elapsed;
             match_stats stats;
-            exit_reason why;
 
             if (!FLAGS_json)
                 fprintf(out, "ProgramSize: %d\n", re.ProgramSize());
 
-            search.match(re, print_match(out), &stats, &why);
+            search.match(re, print_match(out), &stats);
             elapsed = tm.elapsed();
             if (FLAGS_json)
-                print_stats(out, stats, why);
+                print_stats(out, stats);
             else {
                 fprintf(out,
                         "Match completed in %d.%06ds.",
                         (int)elapsed.tv_sec, (int)elapsed.tv_usec);
-                switch (why) {
+                switch (stats.why) {
                 case kExitNone:
                     fprintf(out, "\n");
                     break;

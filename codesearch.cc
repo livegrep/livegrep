@@ -596,9 +596,9 @@ code_searcher::search_thread::search_thread(code_searcher *cs)
     : cs_(cs), pool_(FLAGS_threads, &search_one) {
 }
 
-int code_searcher::search_thread::match_internal(RE2& pat,
+void code_searcher::search_thread::match_internal(RE2& pat,
                                                  const code_searcher::search_thread::base_cb& cb,
-                                                 match_stats *stats, exit_reason *why) {
+                                                 match_stats *stats) {
     list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
@@ -609,10 +609,13 @@ int code_searcher::search_thread::match_internal(RE2& pat,
     thread_queue<match_result*> results;
     searcher search(cs_, results, pat);
 
-    *why = kExitNone;
+    memset(stats, 0, sizeof *stats);
+    stats->why = kExitNone;
 
-    if (!FLAGS_search)
-        return 0;
+    if (!FLAGS_search) {
+        return;
+    }
+
 
     for (it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
         pool_.queue(pair<searcher*, chunk*>(&search, *it));
@@ -630,8 +633,8 @@ int code_searcher::search_thread::match_internal(RE2& pat,
     }
 
     search.get_stats(stats);
-    *why = search.why();
-    return matches;
+    stats->why = search.why();
+    stats->matches = matches;
 }
 
 
