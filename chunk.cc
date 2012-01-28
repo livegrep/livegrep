@@ -141,7 +141,9 @@ void chunk::finalize() {
         suffixes = new uint32_t[size];
         for (int i = 0; i < size; i++)
             suffixes[i] = i;
-        radix_sorter sort(this);
-        sort.sort();
+        radix_sorter sorter(this);
+        sorter.sort();
+
+        sort(files.begin(), files.end());
     }
 }
