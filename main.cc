@@ -23,6 +23,7 @@ DEFINE_string(load_index, "", "Load the index from a file instead of walking the
 DEFINE_string(git_dir, ".git", "The git directory to read from");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_string(listen, "", "Listen on a UNIX socket for connections");
+DEFINE_string(file, "", "Only match files matching the provided regex");
 
 using namespace std;
 using namespace re2;
@@ -161,6 +162,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
         if (feof(in) || ferror(in))
             break;
         RE2 re(line, opts);
+        RE2 file(FLAGS_file, opts);
         if (!re.ok()) {
             print_error(out, re.error());
             continue;
@@ -182,7 +184,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             if (!FLAGS_json)
                 fprintf(out, "ProgramSize: %d\n", re.ProgramSize());
 
-            search.match(re, print_match(out), &stats);
+            search.match(re, FLAGS_file.size() ? &file : 0, print_match(out), &stats);
             elapsed = tm.elapsed();
             if (FLAGS_json)
                 print_stats(out, stats);

@@ -33,7 +33,11 @@ const int    kMaxMatches   = 50;
 const int    kContextLines = 3;
 
 #ifdef PROFILE_CODESEARCH
-#define log_profile(format, ...) fprintf(stderr, format, __VA_ARGS__)
+DEFINE_bool(debug_search, false, "Produce debugging output about the search process");
+#define log_profile(format, ...) do {                   \
+        if (FLAGS_debug_search)                         \
+            fprintf(stderr, format, ## __VA_ARGS__);    \
+    } while(0)
 #else
 #define log_profile(...)
 #endif
@@ -59,19 +63,21 @@ size_t hashstr::operator()(const StringPiece& str) const {
 const StringPiece empty_string(NULL, 0);
 
 class code_searcher;
+struct match_finger;
 
 class searcher {
 public:
-    searcher(const code_searcher *cc, thread_queue<match_result*>& queue, RE2& pat) :
-        cc_(cc), pat_(pat), queue_(queue),
+    searcher(const code_searcher *cc, thread_queue<match_result*>& queue,
+             RE2& pat, RE2 *file_pat) :
+        cc_(cc), pat_(pat), file_pat_(file_pat), queue_(queue),
         matches_(0), re2_time_(false), git_time_(false),
         index_time_(false), sort_time_(false), analyze_time_(false),
-        exit_reason_(kExitNone)
+        exit_reason_(kExitNone), files_(new uint8_t[cc->files_.size()])
     {
+        memset(files_, 0xff, cc->files_.size());
         {
             run_timer run(analyze_time_);
             index_ = indexRE(pat);
-            log_profile("Index: %s\n", index_->ToString().c_str());
         }
 
         if (FLAGS_timeout <= 0) {
@@ -83,6 +89,8 @@ public:
     }
 
     ~searcher() {
+        delete files_;
+
         log_profile("re2 time: %d.%06ds\n",
                     int(re2_time_.elapsed().tv_sec),
                     int(re2_time_.elapsed().tv_usec));
@@ -115,11 +123,27 @@ public:
     }
 
 protected:
+    void next_range(match_finger *finger, int& minpos, int& maxpos, int end);
     void full_search(const chunk *chunk);
-    void full_search(const chunk *chunk, size_t minpos, size_t maxpos);
+    void full_search(match_finger *finger, const chunk *chunk,
+                     size_t minpos, size_t maxpos);
 
     void filtered_search(const chunk *chunk);
     void search_lines(uint32_t *left, int count, const chunk *chunk);
+
+    bool accept(search_file *sf) {
+        if (!file_pat_)
+            return true;
+
+        assert(cc_->files_[sf->no] == sf);
+
+        if (files_[sf->no] == 0xff) {
+            files_[sf->no] = file_pat_->Match(sf->path, 0, sf->path.size(),
+                                              RE2::UNANCHORED, 0, 0);
+        }
+
+        return files_[sf->no];
+    }
 
     void find_match (const chunk *chunk,
                      const StringPiece& match,
@@ -128,22 +152,21 @@ protected:
         timer tm;
         int off = (unsigned char*)line.data() - chunk->data;
         int searched = 0;
-        bool found = false;
+
         for(vector<chunk_file>::const_iterator it = chunk->files.begin();
             it != chunk->files.end(); it++) {
-            if (off >= it->left && off <= it->right) {
+            if (off >= it->left && off <= it->right && accept(it->file)) {
                 searched++;
                 if (exit_early())
                     break;
                 match_result *m = try_match(line, match, it->file);
                 if (m) {
-                    found = true;
                     queue_.push(m);
                     ++matches_;
                 }
             }
         }
-        assert(found || exit_reason_);
+
         tm.pause();
         log_profile("Searched %d files in %d.%06ds\n",
                     searched,
@@ -215,6 +238,7 @@ protected:
 
     const code_searcher *cc_;
     RE2& pat_;
+    RE2 *file_pat_;
     thread_queue<match_result*>& queue_;
     atomic_int matches_;
     intrusive_ptr<IndexKey> index_;
@@ -225,6 +249,7 @@ protected:
     timer analyze_time_;
     timeval limit_;
     exit_reason exit_reason_;
+    uint8_t *files_;
 
     friend class code_searcher::search_thread;
 };
@@ -463,6 +488,14 @@ void searcher::filtered_search(const chunk *chunk)
     delete[] indexes;
 }
 
+
+struct match_finger {
+    const chunk *chunk_;
+    vector<chunk_file>::const_iterator it_;
+    match_finger(const chunk *chunk) :
+        chunk_(chunk), it_(chunk->files.begin()) {};
+};
+
 const size_t kMinSkip = 250;
 const int kMinFilterRatio = 50;
 
@@ -484,6 +517,7 @@ void searcher::search_lines(uint32_t *indexes, int count,
         lsd_radix_sort(indexes, indexes + count);
     }
 
+    match_finger finger(chunk);
 
     StringPiece search((char*)chunk->data, chunk->size);
     uint32_t max = indexes[0];
@@ -498,7 +532,7 @@ void searcher::search_lines(uint32_t *indexes, int count,
         }
 
         int end = line_end(chunk, max);
-        full_search(chunk, min, end);
+        full_search(&finger, chunk, min, end);
 
         if (i != count) {
             max = indexes[i];
@@ -509,19 +543,77 @@ void searcher::search_lines(uint32_t *indexes, int count,
 
 void searcher::full_search(const chunk *chunk)
 {
-    full_search(chunk, 0, chunk->size - 1);
+    match_finger finger(chunk);
+    full_search(&finger, chunk, 0, chunk->size - 1);
 }
 
-void searcher::full_search(const chunk *chunk, size_t minpos, size_t maxpos)
+void searcher::next_range(match_finger *finger,
+                          int& pos, int& endpos, int maxpos)
+{
+    if (!file_pat_ || !FLAGS_index)
+        return;
+
+    log_profile("next_range(%d, %d, %d)\n", pos, endpos, maxpos);
+
+    vector<chunk_file>::const_iterator& it = finger->it_;
+    const vector<chunk_file>::const_iterator& end = finger->chunk_->files.end();
+
+    /* Find the first matching range that intersects [pos, maxpos) */
+    while (it != end &&
+           (it->right < pos || !accept(it->file)) &&
+           it->left < maxpos)
+        ++it;
+
+    if (it == end || it->left >= maxpos) {
+        pos = endpos = maxpos;
+        return;
+    }
+
+    pos = max(pos, it->left);
+
+    /*
+     * Now scan until we either prove that [pos, maxpos) is all in
+     * range, or until we pass maxpos.
+     */
+    do {
+        if (it->right > endpos && accept(it->file)) {
+            endpos = max(endpos, it->right);
+            if (endpos >= maxpos)
+                /*
+                 * We've accepted the entire range. No point in going on.
+                 */
+                break;
+        }
+        ++it;
+    } while (it != end && it->left < maxpos);
+
+    endpos = min(endpos, maxpos);
+}
+
+void searcher::full_search(match_finger *finger,
+                           const chunk *chunk, size_t minpos, size_t maxpos)
 {
     StringPiece str((char*)chunk->data, chunk->size);
     StringPiece match;
-    int pos = minpos, new_pos;
+    int pos = minpos, new_pos, end = minpos;
     while (pos < maxpos && !exit_early()) {
+        if (pos >= end) {
+            end = maxpos;
+            next_range(finger, pos, end, maxpos);
+            assert(pos <= end);
+        }
+        if (pos >= maxpos)
+            break;
+
+        log_profile("[%p] range:%d-%d/%d-%d\n",
+                    (void*)(chunk), pos, end, int(minpos), int(maxpos));
+
         {
             run_timer run(re2_time_);
-            if (!pat_.Match(str, pos, maxpos, RE2::UNANCHORED, &match, 1))
-                break;
+            if (!pat_.Match(str, pos, end, RE2::UNANCHORED, &match, 1)) {
+                pos = end + 1;
+                continue;
+            }
         }
         assert(memchr(match.data(), '\n', match.size()) == NULL);
         StringPiece line = find_line(str, match);
@@ -596,7 +688,7 @@ code_searcher::search_thread::search_thread(code_searcher *cs)
     : cs_(cs), pool_(FLAGS_threads, &search_one) {
 }
 
-void code_searcher::search_thread::match_internal(RE2& pat,
+void code_searcher::search_thread::match_internal(RE2& pat, RE2 *file_pat,
                                                  const code_searcher::search_thread::base_cb& cb,
                                                  match_stats *stats) {
     list<chunk*>::iterator it;
@@ -607,7 +699,7 @@ void code_searcher::search_thread::match_internal(RE2& pat,
     assert(cs_->finalized_);
 
     thread_queue<match_result*> results;
-    searcher search(cs_, results, pat);
+    searcher search(cs_, results, pat, file_pat);
 
     memset(stats, 0, sizeof *stats);
     stats->why = kExitNone;
