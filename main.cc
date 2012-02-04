@@ -134,6 +134,37 @@ void getline(FILE *stream, string &out) {
         out.assign(line, n - 1);
 }
 
+bool parse_input(FILE *out, string in, string& line_re, string& file_re)
+{
+    json_object *js = json_tokener_parse(in.c_str());
+    if (is_error(js)) {
+        print_error(out, "Parse error: " +
+                    string(json_tokener_errors[-(unsigned long)js]));
+        return false;
+    }
+    if (json_object_get_type(js) != json_type_object) {
+        print_error(out, "Expected a JSON object");
+        return false;
+    }
+
+    json_object *line_js = json_object_object_get(js, "line");
+    if (!line_js || json_object_get_type(line_js) != json_type_string) {
+        print_error(out, "No regex specified!");
+        return false;
+    }
+    line_re = json_object_get_string(line_js);
+
+    json_object *file_js = json_object_object_get(js, "file");
+    if (file_js && json_object_get_type(file_js) == json_type_string)
+        file_re = json_object_get_string(file_js);
+    else
+        file_re = "";
+
+    json_object_put(js);
+
+    return true;
+}
+
 void interact(code_searcher *cs, FILE *in, FILE *out) {
     code_searcher::search_thread search(cs);
     WidthWalker width;
@@ -157,12 +188,22 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             fprintf(out, "regex> ");
             fflush(out);
         }
-        string line;
-        getline(in, line);
+        string input;
+        getline(in, input);
         if (feof(in) || ferror(in))
             break;
+
+        string line, file;
+        if (!FLAGS_json) {
+            line = input;
+            file = FLAGS_file;
+        } else {
+            if (!parse_input(out, input, line, file))
+                continue;
+        }
+
         RE2 re(line, opts);
-        RE2 file(FLAGS_file, opts);
+        RE2 file_re(file, opts);
         if (!re.ok()) {
             print_error(out, re.error());
             continue;
@@ -184,7 +225,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             if (!FLAGS_json)
                 fprintf(out, "ProgramSize: %d\n", re.ProgramSize());
 
-            search.match(re, FLAGS_file.size() ? &file : 0, print_match(out), &stats);
+            search.match(re, file.size() ? &file_re : 0, print_match(out), &stats);
             elapsed = tm.elapsed();
             if (FLAGS_json)
                 print_stats(out, stats);

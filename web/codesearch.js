@@ -76,7 +76,7 @@ Connection.prototype.search = function(str) {
   var evt;
   logger.debug("[cs %s] search(%s)", this.id, str);
   console.assert(this.readyState == 'ready');
-  this.socket.write(str + "\n");
+  this.socket.write(JSON.stringify({line: str}) + "\n");
   this.setState('searching');
 
   evt = new events.EventEmitter();
