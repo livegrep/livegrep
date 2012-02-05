@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
+#include <sys/prctl.h>
 #include <iostream>
 
 #include <gflags/gflags.h>
@@ -328,6 +329,8 @@ void listen(code_searcher *search, string path) {
 int main(int argc, char **argv) {
     google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
     google::ParseCommandLineFlags(&argc, &argv, true);
+
+    prctl(PR_SET_PDEATHSIG, SIGINT);
 
     code_searcher counter;
 
