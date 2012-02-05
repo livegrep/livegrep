@@ -572,10 +572,14 @@ void searcher::next_range(match_finger *finger,
     pos = max(pos, it->left);
 
     /*
-     * Now scan until we either prove that [pos, maxpos) is all in
-     * range, or until we pass maxpos.
+     * Now scan until we either:
+     * - prove that [pos, maxpos) is all in range,
+     * - find a gap greater than kMinSkip, or
+     * - pass maxpos entirely.
      */
     do {
+        if (it->left > endpos + kMinSkip)
+            break;
         if (it->right > endpos && accept(it->file)) {
             endpos = max(endpos, it->right);
             if (endpos >= maxpos)
