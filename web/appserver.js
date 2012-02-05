@@ -10,17 +10,21 @@ function Client(parent, sock) {
   this.parent = parent;
   this.socket = sock;
   this.pending_search = null;
-  this.pending_id = null;
   this.last_search = null;
   this.active_search = null;
 }
 
-Client.prototype.new_search = function (str, id) {
-  logger.debug('new search: (%s) %s', id, str);
-  if (str === this.last_search)
+Client.prototype.new_search = function (line, file, id) {
+  logger.debug('new search: (%s) %s/%s', id, line, file);
+  if (this.last_search &&
+      line === this.last_search.line &&
+      file === this.last_search.file)
     return;
-  this.pending_search = str;
-  this.pending_id = id;
+  this.pending_search = {
+    line: line,
+    file: file,
+    id: id
+  };
   this.dispatch_search();
 }
 
@@ -37,43 +41,42 @@ Client.prototype.dispatch_search = function() {
     console.assert(codesearch.cs_ready);
     var start = new Date();
     this.last_search = this.pending_search;
-    logger.debug('dispatching: (%s) %s...', this.pending_id, this.pending_search);
+    logger.debug('dispatching: %j...', this.pending_search);
 
     var search = this.pending_search;
-    var id     = this.pending_id;
     this.pending_search = null;
     this.active_search  = search;
     var self   = this;
     var sock   = this.socket;
     var batch  = new Batch(function (m) {
-                             sock.emit('match', id, m);
+                             sock.emit('match', search.id, m);
                            }, 50);
     var cbs = {
       not_ready: function() {
-        logger.info('Remote reports not ready for %s', search);
+        logger.info('Remote reports not ready for %j', search);
         if (self.pending_search === null)
           self.pending_search = search;
         self.search_done();
       },
       error: function (err) {
-        sock.emit('regex_error', id, err);
+        sock.emit('regex_error', search.id, err);
         self.search_done();
       },
       match: function (match) {
         match = JSON.parse(match);
-        logger.trace("Reporting match %j for %s.", match, search);
+        logger.trace("Reporting match %j for %j.", match, search);
         batch.send(match);
       },
       done: function (stats) {
         stats = JSON.parse(stats);
         var time = (new Date()) - start;
         batch.flush();
-        sock.emit('search_done', id, time, stats.why);
-        logger.debug("Search done: (%s) %s: %s", id, search, time);
+        sock.emit('search_done', search.id, time, stats.why);
+        logger.debug("Search done: (%s) %s: %s", search.id, search.line, time);
         self.search_done();
       }
     }
-    codesearch.try_search(search, cbs);
+    codesearch.try_search(search.line, search.file, cbs);
     codesearch.cs_ready = false;
   }
 }
@@ -121,10 +124,10 @@ function SearchServer(config, io) {
 
   var Server = function (sock) {
     parent.clients[sock.id] = new Client(parent, sock);
-    sock.on('new_search', function(str, id) {
+    sock.on('new_search', function(line, file, id) {
               if (id == null)
-                id = str;
-              parent.clients[sock.id].new_search(str, id);
+                id = line;
+              parent.clients[sock.id].new_search(line, file, id);
     });
     sock.on('disconnect', function() {
               delete parent.clients[sock.id];

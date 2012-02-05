@@ -66,7 +66,7 @@ var Benchmark = function() {
     if (i === queries.length)
       i = 0;
     Benchmark.search_start[++Benchmark.search_id] = new Date();
-    Codesearch.new_search(queries[i], Benchmark.search_id);
+    Codesearch.new_search(queries[i], null, Benchmark.search_id);
     Benchmark.timer = setTimeout(function() {loop(i+1)}, 10);
   }
 

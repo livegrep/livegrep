@@ -22,5 +22,7 @@ var delegate = {
 dnode().connect(
         'localhost', config.DNODE_PORT,
         function (remote) {
-          remote.search(process.argv[2], delegate);
+          remote.search(process.argv[2],
+                        process.argv[3],
+                        delegate);
         });

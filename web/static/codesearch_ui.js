@@ -61,7 +61,7 @@ var CodesearchUI = function() {
       setTimeout(CodesearchUI.newsearch, 0);
     },
     newsearch: function() {
-      Codesearch.new_search(CodesearchUI.input.val());
+      Codesearch.new_search(CodesearchUI.input.val(), null);
     },
     error: function(search, error) {
       if (search === CodesearchUI.input.val()) {
