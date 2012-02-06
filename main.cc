@@ -209,6 +209,10 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             print_error(out, re.error());
             continue;
         }
+        if (!file_re.ok()) {
+            print_error(out, file_re.error());
+            continue;
+        }
         if (re.ProgramSize() > kMaxProgramSize) {
             print_error(out, "Parse error.");
             continue;
