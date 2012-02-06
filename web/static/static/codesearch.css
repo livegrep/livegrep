@@ -10,6 +10,10 @@ body {
     border: 1px solid black;
 }
 
+#searchinput {
+    float: left;
+}
+
 #regex-error {
     float: right;
     display: none;

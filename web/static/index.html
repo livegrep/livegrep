@@ -10,8 +10,16 @@
   </head>
   <body>
     <div id='searcharea'>
-      <span class='label'>regex:</span>
-      <input type="text" id='searchbox'></input>
+      <table id='searchinput'>
+        <tr>
+          <td><span class='label'>regex:</span></td>
+          <td><input type="text" id='searchbox'></input></td>
+        </tr>
+        <tr>
+          <td><span class='label'>paths:</span></td>
+          <td><input type="text" id='filebox'></input></td>
+        </tr>
+      </table>
       <div id='regex-error'>
         <span class='label'> Error: </span>
         <span id='errortext'>

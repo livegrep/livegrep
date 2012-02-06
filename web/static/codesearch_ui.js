@@ -52,19 +52,25 @@ var CodesearchUI = function() {
   return {
     displaying: null,
     results: 0,
+    search_id: 0,
     onload: function() {
-      CodesearchUI.input = $('#searchbox');
+      CodesearchUI.input     = $('#searchbox');
+      CodesearchUI.input_file = $('#filebox');
       CodesearchUI.input.keydown(CodesearchUI.keypress);
+      CodesearchUI.input_file.keydown(CodesearchUI.keypress);
       Codesearch.connect(CodesearchUI);
     },
     keypress: function() {
       setTimeout(CodesearchUI.newsearch, 0);
     },
     newsearch: function() {
-      Codesearch.new_search(CodesearchUI.input.val(), null);
+      Codesearch.new_search(
+        CodesearchUI.input.val(),
+        CodesearchUI.input_file.val(),
+        ++CodesearchUI.search_id);
     },
     error: function(search, error) {
-      if (search === CodesearchUI.input.val()) {
+      if (search === CodesearchUI.search_id) {
         CodesearchUI.show_error(error);
       }
     },
