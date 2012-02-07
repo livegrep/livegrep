@@ -54,7 +54,7 @@ function Server(config) {
   var parent = this;
   this.clients = [];
 
-  this.codesearch = new Codesearch(config.SEARCH_REPO, [config.sha1], {
+  this.codesearch = new Codesearch(config.SEARCH_REPO, [config.SEARCH_REF], {
                                      args: config.SEARCH_ARGS
                                    });
   this.Server = function (remote, conn) {
@@ -76,14 +76,5 @@ function Server(config) {
   }
 }
 
-var server = null;
-
-git_util.rev_parse(
-  config.SEARCH_REPO, config.SEARCH_REF,
-  function (err, sha1) {
-    if (err) throw err;
-    console.log("Searching commit %s (%s)", config.SEARCH_REF, sha1);
-    config.sha1 = sha1;
-    server = dnode(new Server(config).Server);
-    server.listen(config.DNODE_PORT);
-  });
+var server = dnode(new Server(config).Server);
+server.listen(config.DNODE_PORT);
