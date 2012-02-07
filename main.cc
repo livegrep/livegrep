@@ -125,14 +125,17 @@ void print_error(FILE *out, const string& err) {
 const int kMaxProgramSize = 4000;
 const int kMaxWidth       = 200;
 
-void getline(FILE *stream, string &out) {
+bool getline(FILE *stream, string &out) {
     char *line = 0;
     size_t n = 0;
-    n = getline(&line, &n, stream);
-    if (n == 0 || n == (size_t)-1)
+    ssize_t r;
+    r = getline(&line, &n, stream);
+    if (r == 0 || r == -1)
         out.clear();
     else
-        out.assign(line, n - 1);
+        out.assign(line, r - 1);
+
+    return r != -1;
 }
 
 bool parse_input(FILE *out, string in, string& line_re, string& file_re)
@@ -170,8 +173,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
     code_searcher::search_thread search(cs);
     WidthWalker width;
 
-    setvbuf(in, NULL, _IOLBF, 0);
-    setvbuf(out, NULL, _IOLBF, 0);
+    assert(!setvbuf(in,  NULL, _IOFBF, 4096*4));
 
     RE2::Options opts;
     opts.set_never_nl(true);
@@ -190,9 +192,14 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             fflush(out);
         }
         string input;
-        getline(in, input);
-        if (feof(in) || ferror(in))
+        if (!getline(in, input)) {
+            fprintf(stderr, "!getline\n");
             break;
+        }
+        if (feof(in) || ferror(in)) {
+            fprintf(stderr, "error?\n");
+            break;
+        }
 
         string line, file;
         if (!FLAGS_json) {
@@ -294,7 +301,7 @@ void *handle_client(void *data) {
     child_state *child = static_cast<child_state*>(data);
     FILE *client = fdopen(child->fd, "w+");
     interact(child->search, client, client);
-    close(child->fd);
+    fclose(client);
     delete child;
     return 0;
 }
