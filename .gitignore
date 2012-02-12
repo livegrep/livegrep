@@ -4,3 +4,4 @@
 .*.d
 .config/
 /node_modules
+/web/log/
