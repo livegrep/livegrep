@@ -569,7 +569,8 @@ void searcher::next_range(match_finger *finger,
         return;
     }
 
-    pos = max(pos, it->left);
+    pos    = max(pos, it->left);
+    endpos = it->right;
 
     /*
      * Now scan until we either:
