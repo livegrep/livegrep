@@ -193,11 +193,9 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
         }
         string input;
         if (!getline(in, input)) {
-            fprintf(stderr, "!getline\n");
             break;
         }
         if (feof(in) || ferror(in)) {
-            fprintf(stderr, "error?\n");
             break;
         }
 
