@@ -173,7 +173,9 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
     code_searcher::search_thread search(cs);
     WidthWalker width;
 
+    assert(in != out);
     assert(!setvbuf(in,  NULL, _IOFBF, 4096*4));
+    assert(!setvbuf(out, NULL, _IONBF, 0));
 
     RE2::Options opts;
     opts.set_never_nl(true);
@@ -297,9 +299,11 @@ struct child_state {
 
 void *handle_client(void *data) {
     child_state *child = static_cast<child_state*>(data);
-    FILE *client = fdopen(child->fd, "w+");
-    interact(child->search, client, client);
-    fclose(client);
+    FILE *r = fdopen(child->fd, "r");
+    FILE *w = fdopen(dup(child->fd), "w");
+    interact(child->search, r, w);
+    fclose(r);
+    fclose(w);
     delete child;
     return 0;
 }
@@ -342,6 +346,8 @@ int main(int argc, char **argv) {
     prctl(PR_SET_PDEATHSIG, SIGINT);
 
     code_searcher counter;
+
+    signal(SIGPIPE, SIG_IGN);
 
     initialize_search(&counter, argc, argv);
 
