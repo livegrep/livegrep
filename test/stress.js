@@ -4,7 +4,11 @@ var Codesearch = require('../web/codesearch.js'),
     path       = require('path'),
     common     = require('./common.js');
 
-common.parseopts();
+common.parser.add('--clients', {
+                    default: 8,
+                    type: 'integer',
+                  });
+var opts = common.parseopts();
 
 var cs = common.get_codesearch();
 var queries = common.load_queries();
@@ -34,13 +38,13 @@ QueryThread.prototype.step = function() {
   search.on('done', this.done.bind(this));
 }
 
-QueryThread.prototype.done = function() {
+QueryThread.prototype.done = function(stats) {
   var end = new Date();
-  console.log("%d: %s", this.id, +(end - this.start_time));
+  console.log("%d: %s %j", this.id, +(end - this.start_time), stats);
 }
 
 var qs = [];
-for (var i = 0; i < 8; i++) {
+for (var i = 0; i < opts.clients; i++) {
   var q = new QueryThread(cs);
   qs.push(q);
   q.start();
