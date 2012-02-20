@@ -2,6 +2,7 @@ var dnode  = require('dnode'),
     fs     = require('fs'),
     log4js = require('log4js'),
     util   = require('./util.js'),
+    list   = require('../lib/list.js'),
     config = require('./config.js'),
     Batch  = require('./batch.js');
 var logger  = log4js.getLogger('appserver');
@@ -139,19 +140,9 @@ function SearchServer(config, io) {
   });
 }
 
-function shuffle(lst) {
-  for (var i = lst.length - 1; i >= 0; i--) {
-    var j = Math.floor(Math.random() * (i+1));
-    var tmp = lst[i];
-    lst[i] = lst[j];
-    lst[j] = tmp;
-  }
-  return lst;
-}
-
 SearchServer.prototype.dispatch = function () {
   var clients = this.clients;
-  shuffle(Object.keys(this.clients)).forEach(
+  list.shuffle(Object.keys(this.clients)).forEach(
     function (id) {
       clients[id].dispatch_search();
     })

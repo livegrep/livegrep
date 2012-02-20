@@ -2,7 +2,8 @@ var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     assert     = require('assert'),
     path       = require('path'),
-    common     = require('./common.js');
+    common     = require('./common.js'),
+    list       = require('../lib/list.js');
 
 common.parser.add('--clients', {
                     default: 8,
@@ -16,8 +17,9 @@ var queries = common.load_queries();
 var QueryThread = (
   function () {
     var id = 0;
-    return function (cs) {
+    return function (cs, queries) {
       this.connection = cs.connect();
+      this.queries    = list.shuffle(queries.concat());
       this.i          = 0;
       this.id         = ++id;
       this.start_time = null;
@@ -31,7 +33,7 @@ QueryThread.prototype.start = function() {
 }
 
 QueryThread.prototype.step = function() {
-  var q = queries[(++this.i) % queries.length];
+  var q = this.queries[(++this.i) % this.queries.length];
   this.start_time = new Date();
   this.query = q;
   var search = this.connection.search(q, null);
@@ -40,12 +42,12 @@ QueryThread.prototype.step = function() {
 
 QueryThread.prototype.done = function(stats) {
   var end = new Date();
-  console.log("%d: %s %j", this.id, +(end - this.start_time), stats);
+  console.log("%d: %s", this.id, +(end - this.start_time));
 }
 
 var qs = [];
 for (var i = 0; i < opts.clients; i++) {
-  var q = new QueryThread(cs);
+  var q = new QueryThread(cs, queries);
   qs.push(q);
   q.start();
 }
