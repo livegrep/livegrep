@@ -15,6 +15,7 @@
     "parseopt": ">= 1.0.0",
     "temp": ">= 0.4.0",
     "printf": ">= 0.0.4",
-    "socket.io": ">= 0.8.7"
+    "socket.io": ">= 0.8.7",
+    "underscore": ">= 1.3"
   }
 }

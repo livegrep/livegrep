@@ -2,7 +2,7 @@ var dnode  = require('dnode'),
     fs     = require('fs'),
     log4js = require('log4js'),
     util   = require('./util.js'),
-    list   = require('../lib/list.js'),
+    _      = require('underscore'),
     config = require('./config.js'),
     Batch  = require('./batch.js');
 var logger  = log4js.getLogger('appserver');
@@ -142,10 +142,10 @@ function SearchServer(config, io) {
 
 SearchServer.prototype.dispatch = function () {
   var clients = this.clients;
-  list.shuffle(Object.keys(this.clients)).forEach(
-    function (id) {
-      clients[id].dispatch_search();
-    })
+  _.shuffle(_.values(this.clients)).forEach(
+    function (client) {
+      client.dispatch_search();
+    });
 }
 
 module.exports = SearchServer;

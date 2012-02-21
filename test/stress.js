@@ -1,9 +1,9 @@
 var Codesearch = require('../web/codesearch.js'),
+    _          = require('underscore'),
     fs         = require('fs'),
     assert     = require('assert'),
     path       = require('path'),
-    common     = require('./common.js'),
-    list       = require('../lib/list.js');
+    common     = require('./common.js');
 
 common.parser.add('--clients', {
                     default: 8,
@@ -19,7 +19,7 @@ var QueryThread = (
     var id = 0;
     return function (cs, queries) {
       this.connection = cs.connect();
-      this.queries    = list.shuffle(queries.concat());
+      this.queries    = _.shuffle(queries.concat());
       this.i          = 0;
       this.id         = ++id;
       this.start_time = null;
