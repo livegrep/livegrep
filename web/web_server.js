@@ -36,7 +36,7 @@ app.use(log4js.connectLogger(logger, {
                                format: ':remote-addr [:date] :method :url'
                              }));
 
-app.use(express.static(path.join(__dirname, 'static')));
+app.use(express.static(path.join(__dirname, 'htdocs')));
 app.get('/', function (req, res) {
           res.redirect('/index.html');
         })
