@@ -3,7 +3,8 @@ var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     assert     = require('assert'),
     path       = require('path'),
-    common     = require('./common.js');
+    common     = require('./common.js'),
+    QueryStats = require('../lib/query-stats.js');
 
 common.parser.add('--clients', {
                     default: 8,
@@ -14,6 +15,8 @@ var opts = common.parseopts();
 var cs = common.get_codesearch();
 var queries = common.load_queries();
 
+var DISPLAY_INTERVAL = 100;
+
 var QueryThread = (
   function () {
     var id = 0;
@@ -23,6 +26,7 @@ var QueryThread = (
       this.i          = 0;
       this.id         = ++id;
       this.start_time = null;
+      this.stats      = new QueryStats({timeout: 60*1000});
     }
   })();
 
@@ -41,8 +45,18 @@ QueryThread.prototype.step = function() {
 }
 
 QueryThread.prototype.done = function(stats) {
-  var end = new Date();
-  console.log("%d: %s", this.id, +(end - this.start_time));
+  this.stats.done(this.i, this.start_time);
+  if (this.i % DISPLAY_INTERVAL == 0)
+    this.show_stats();
+}
+
+QueryThread.prototype.show_stats = function () {
+  var stats = this.stats.stats();
+  console.log("%d: %s/%s/%s/%s", this.id,
+              stats.percentile[50],
+              stats.percentile[90],
+              stats.percentile[95],
+              stats.percentile[99]);
 }
 
 var qs = [];
