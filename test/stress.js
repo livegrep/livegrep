@@ -16,6 +16,8 @@ var cs = common.get_codesearch();
 var queries = common.load_queries();
 
 var DISPLAY_INTERVAL = 100;
+var start = null;
+var count = 0;
 
 var QueryThread = (
   function () {
@@ -37,6 +39,9 @@ QueryThread.prototype.start = function() {
 }
 
 QueryThread.prototype.step = function() {
+  if (start === null)
+    start = new Date();
+
   var q = this.queries[(++this.i) % this.queries.length];
   this.start_time = new Date();
   this.query = q;
@@ -45,6 +50,7 @@ QueryThread.prototype.step = function() {
 }
 
 QueryThread.prototype.done = function(stats) {
+  count++;
   this.stats.done(this.i, this.start_time);
   if (this.i % DISPLAY_INTERVAL == 0)
     this.show_stats();
@@ -57,6 +63,7 @@ QueryThread.prototype.show_stats = function () {
               stats.percentile[90],
               stats.percentile[95],
               stats.percentile[99]);
+  console.log("qps: %s", 1000 * count/(new Date() - start))
 }
 
 var qs = [];
