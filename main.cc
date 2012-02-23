@@ -8,6 +8,8 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
+#include <semaphore.h>
+
 #include <iostream>
 
 #include <gflags/gflags.h>
@@ -19,6 +21,7 @@
 
 DEFINE_bool(json, false, "Use JSON output.");
 DEFINE_int32(threads, 4, "Number of threads to use.");
+DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 DEFINE_string(git_dir, ".git", "The git directory to read from");
@@ -169,6 +172,8 @@ bool parse_input(FILE *out, string in, string& line_re, string& file_re)
     return true;
 }
 
+sem_t interact_sem;
+
 void interact(code_searcher *cs, FILE *in, FILE *out) {
     code_searcher::search_thread search(cs);
     WidthWalker width;
@@ -237,7 +242,11 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             if (!FLAGS_json)
                 fprintf(out, "ProgramSize: %d\n", re.ProgramSize());
 
-            search.match(re, file.size() ? &file_re : 0, print_match(out), &stats);
+            {
+                sem_wait(&interact_sem);
+                search.match(re, file.size() ? &file_re : 0, print_match(out), &stats);
+                sem_post(&interact_sem);
+            }
             elapsed = tm.elapsed();
             if (FLAGS_json)
                 print_stats(out, stats);
@@ -350,6 +359,10 @@ int main(int argc, char **argv) {
     signal(SIGPIPE, SIG_IGN);
 
     initialize_search(&counter, argc, argv);
+
+    if (sem_init(&interact_sem, 0, FLAGS_concurrency) < 0)
+        die_errno("sem_init");
+
 
     if (FLAGS_listen.size())
         listen(&counter, FLAGS_listen);
