@@ -15,20 +15,18 @@ var opts = common.parseopts();
 var cs = common.get_codesearch();
 var queries = common.load_queries();
 
-var DISPLAY_INTERVAL = 100;
-var start = null;
 var count = 0;
 
 var QueryThread = (
   function () {
     var id = 0;
-    return function (cs, queries) {
+    return function (cs, queries, stats) {
       this.connection = cs.connect();
       this.queries    = _.shuffle(queries.concat());
       this.i          = 0;
       this.id         = ++id;
       this.start_time = null;
-      this.stats      = new QueryStats({timeout: 60*1000});
+      this.stats      = stats;
     }
   })();
 
@@ -39,36 +37,34 @@ QueryThread.prototype.start = function() {
 }
 
 QueryThread.prototype.step = function() {
-  if (start === null)
-    start = new Date();
-
   var q = this.queries[(++this.i) % this.queries.length];
   this.start_time = new Date();
   this.query = q;
+  this.stats.start(this.i);
   var search = this.connection.search(q, null);
   search.on('done', this.done.bind(this));
 }
 
 QueryThread.prototype.done = function(stats) {
   count++;
-  this.stats.done(this.i, this.start_time);
-  if (this.i % DISPLAY_INTERVAL == 0)
+  if (this.stats.done(this.i, this.start_time))
     this.show_stats();
 }
 
 QueryThread.prototype.show_stats = function () {
   var stats = this.stats.stats();
-  console.log("%d: %s/%s/%s/%s", this.id,
+  console.log("%s/%s/%s/%s",
               stats.percentile[50],
               stats.percentile[90],
               stats.percentile[95],
               stats.percentile[99]);
-  console.log("qps: %s", 1000 * count/(new Date() - start))
+  console.log("qps: %s", stats.qps)
 }
 
+var stats = new QueryStats({timeout: 60*1000});
 var qs = [];
 for (var i = 0; i < opts.clients; i++) {
-  var q = new QueryThread(cs, queries);
+  var q = new QueryThread(cs, queries, stats);
   qs.push(q);
   q.start();
 }
