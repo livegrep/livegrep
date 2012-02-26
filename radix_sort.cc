@@ -1,11 +1,20 @@
 #include <stdint.h>
 #include <string.h>
+#include <vector>
+
+using std::vector;
+
+#include "per_thread.h"
 
 void lsd_radix_sort(uint32_t *left, uint32_t *right)
 {
+    static per_thread<vector<uint32_t> > scratch;
+
     int width = right - left;
-    uint32_t *scratch = new uint32_t[width];
-    uint32_t *cur = left, *other = scratch;
+    if (!scratch.get())
+        scratch.put(new vector<uint32_t>(width));
+    scratch->reserve(width);
+    uint32_t *cur = left, *other = &(*scratch)[0];
     uint32_t counts[256];
     /*
      * We do four passes
@@ -37,6 +46,4 @@ void lsd_radix_sort(uint32_t *left, uint32_t *right)
         cur = other;
         other = tmp;
     }
-
-    delete[] scratch;
 }
