@@ -22,6 +22,7 @@
 #include "radix_sort.h"
 #include "atomic.h"
 #include "indexer.h"
+#include "per_thread.h"
 
 #include "utf8.h"
 
@@ -431,7 +432,10 @@ struct lt_index {
 
 void searcher::filtered_search(const chunk *chunk)
 {
-    uint32_t *indexes = new uint32_t[kChunkSpace];
+    static per_thread<vector<uint32_t> > indexes;
+    if (!indexes.get()) {
+        indexes.put(new vector<uint32_t>(kChunkSpace));
+    }
     int count = 0;
     {
         run_timer run(index_time_);
@@ -443,7 +447,7 @@ void searcher::filtered_search(const chunk *chunk)
             walk_state st = stack.back();
             stack.pop_back();
             if (!st.key || st.key->empty() || (st.right - st.left) <= 100) {
-                memcpy(indexes + count, st.left,
+                memcpy(&(*indexes)[count], st.left,
                        (st.right - st.left) * sizeof(uint32_t));
                 count += (st.right - st.left);
                 continue;
@@ -483,9 +487,7 @@ void searcher::filtered_search(const chunk *chunk)
 
     }
 
-    search_lines(indexes, count, chunk);
-
-    delete[] indexes;
+    search_lines(&(*indexes)[0], count, chunk);
 }
 
 
