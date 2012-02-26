@@ -33,6 +33,9 @@ using namespace std;
 const int    kMaxMatches   = 50;
 const int    kContextLines = 3;
 
+const size_t kMinSkip = 250;
+const int kMinFilterRatio = 50;
+
 #ifdef PROFILE_CODESEARCH
 DEFINE_bool(debug_search, false, "Produce debugging output about the search process");
 #define log_profile(format, ...) do {                   \
@@ -434,7 +437,7 @@ void searcher::filtered_search(const chunk *chunk)
 {
     static per_thread<vector<uint32_t> > indexes;
     if (!indexes.get()) {
-        indexes.put(new vector<uint32_t>(kChunkSpace));
+        indexes.put(new vector<uint32_t>(kChunkSpace / kMinFilterRatio));
     }
     int count = 0;
     {
@@ -447,6 +450,10 @@ void searcher::filtered_search(const chunk *chunk)
             walk_state st = stack.back();
             stack.pop_back();
             if (!st.key || st.key->empty() || (st.right - st.left) <= 100) {
+                if ((count + st.right - st.left) > indexes->size()) {
+                    count = indexes->size() + 1;
+                    break;
+                }
                 memcpy(&(*indexes)[count], st.left,
                        (st.right - st.left) * sizeof(uint32_t));
                 count += (st.right - st.left);
@@ -484,7 +491,6 @@ void searcher::filtered_search(const chunk *chunk)
                 }
             }
         }
-
     }
 
     search_lines(&(*indexes)[0], count, chunk);
@@ -497,9 +503,6 @@ struct match_finger {
     match_finger(const chunk *chunk) :
         chunk_(chunk), it_(chunk->files.begin()) {};
 };
-
-const size_t kMinSkip = 250;
-const int kMinFilterRatio = 50;
 
 void searcher::search_lines(uint32_t *indexes, int count,
                             const chunk *chunk)
