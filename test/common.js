@@ -2,7 +2,8 @@ var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     path       = require('path'),
     parseopt   = require('parseopt'),
-    log4js     = require('log4js');
+    log4js     = require('log4js'),
+    config     = require('../web/config.js');
 
 log4js.configure({
                    levels: {
@@ -10,7 +11,6 @@ log4js.configure({
                    }
                  });
 
-var REPO;
 var extra_args;
 var parser = new parseopt.OptionParser(
   {
@@ -20,6 +20,18 @@ var parser = new parseopt.OptionParser(
         default: path.join(__dirname, 'testcases'),
         type: 'string',
         help: 'Load an alternate list of query terms'
+      },
+      {
+        name: "--repo",
+        default: config.SEARCH_REPO,
+        type: 'string',
+        help: 'Git repository to search'
+      },
+      {
+        name: "--ref",
+        default: config.SEARCH_REF,
+        type: 'string',
+        help: 'Git ref to search.'
       }
     ]
   });
@@ -29,8 +41,7 @@ module.exports.parser = parser;
 
 function parseopts(argv) {
   opts = parser.parse(argv);
-  REPO = opts.arguments[0];
-  extra_args = opts.arguments.slice(1);
+  extra_args = opts.arguments.slice();
   return opts.options;
 }
 module.exports.parseopts = parseopts;
@@ -39,8 +50,8 @@ function get_codesearch(args) {
   if (args === undefined)
     args = [];
   return new Codesearch(
-    REPO, [], {
-      args: args.concat(extra_args)
+    opts.options.repo, [opts.options.ref], {
+      args: config.SEARCH_ARGS.concat(args).concat(extra_args)
     });
 }
 module.exports.get_codesearch = get_codesearch;
