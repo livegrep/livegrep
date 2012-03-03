@@ -584,9 +584,9 @@ void searcher::next_range(match_finger *finger,
      * - pass maxpos entirely.
      */
     do {
-        if (it->left > endpos + kMinSkip)
+        if (it->left >= endpos + kMinSkip)
             break;
-        if (it->right > endpos && accept(it->file)) {
+        if (it->right >= endpos && accept(it->file)) {
             endpos = max(endpos, it->right);
             if (endpos >= maxpos)
                 /*
