@@ -45,7 +45,8 @@ app.listen(8910);
 console.log("http://localhost:8910");
 
 var io = require('socket.io').listen(app, {
-                                       'log level': 0
+                                       logger: log4js.getLogger('socket.io'),
+                                       'log level': log4js.levels.INFO
                                      });
 io.configure(
   function() {
