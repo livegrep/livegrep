@@ -74,13 +74,13 @@ util.inherits(Connection, events.EventEmitter);
 
 Connection.prototype.search = function(str, file) {
   var evt;
-  logger.debug("[cs %s] search(%s)", this.id, str);
+  logger.debug("[cs %s] search(%j)", this.id, {line: str, file: file});
   console.assert(this.readyState == 'ready');
   this.socket.write(JSON.stringify({line: str, file: file}) + "\n");
   this.setState('searching');
 
   evt = new events.EventEmitter();
-  evt.search = str;
+  evt.search = {line: str, file: file};
   this.current_search = evt;
   return evt;
 }
@@ -127,7 +127,7 @@ Connection.prototype.error = function(err) {
 }
 
 Connection.prototype.endSearch = function() {
-  logger.debug("[cs %s] search_done(%s)", this.id, this.current_search.search);
+  logger.debug("[cs %s] search_done(%j)", this.id, this.current_search);
   this.setState('search_done');
   this.current_search = null;
 }

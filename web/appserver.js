@@ -16,7 +16,7 @@ function Client(parent, sock) {
 }
 
 Client.prototype.new_search = function (line, file, id) {
-  logger.debug('new search: (%s) %s/%s', id, line, file);
+  logger.debug('new search: (%s) (%j)', id, {line:line, file:file});
   if (this.last_search &&
       line === this.last_search.line &&
       file === this.last_search.file)
@@ -42,7 +42,7 @@ Client.prototype.dispatch_search = function() {
     console.assert(codesearch.cs_ready);
     var start = new Date();
     this.last_search = this.pending_search;
-    logger.debug('dispatching: %j...', this.pending_search);
+    logger.debug('dispatching: (%j)...', this.pending_search);
 
     var search = this.pending_search;
     this.pending_search = null;
@@ -73,7 +73,7 @@ Client.prototype.dispatch_search = function() {
         var time = (new Date()) - start;
         batch.flush();
         sock.emit('search_done', search.id, time, stats.why);
-        logger.debug("Search done: (%s) %s: %s", search.id, search.line, time);
+        logger.debug("Search done: (%j): %s", search, time);
         self.search_done();
       }
     }
