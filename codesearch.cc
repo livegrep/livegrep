@@ -609,8 +609,19 @@ void searcher::full_search(match_finger *finger,
     while (pos < maxpos && !exit_early()) {
         if (pos >= end) {
             end = maxpos;
+#if 0
+            int opos = pos;
+#endif
             next_range(finger, pos, end, maxpos);
             assert(pos <= end);
+#if 0
+            if (pos != opos) {
+                for (vector<chunk_file>::const_iterator it =
+                         chunk->files.begin(); it != chunk->files.end(); ++it) {
+                    assert(it->left > pos || it->right <= opos || !accept(it->file));
+                }
+            }
+#endif
         }
         if (pos >= maxpos)
             break;
