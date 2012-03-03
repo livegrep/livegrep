@@ -162,6 +162,7 @@ void code_searcher::load_chunk(istream& stream, chunk *chunk) {
     chunk->suffixes = new uint32_t[chunk->size];
     stream.read(reinterpret_cast<char*>(chunk->suffixes),
                 sizeof(uint32_t) * chunk->size);
+    chunk->build_tree();
 }
 
 void code_searcher::load_file_contents(std::istream& stream,

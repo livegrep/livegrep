@@ -34,12 +34,20 @@ extern size_t kChunkSize;
 const size_t kMaxGap       = 1 << 10;
 #define CHUNK_MAGIC 0xC407FADE
 
+struct chunk_file_node {
+    chunk_file *chunk;
+    int right_limit;
+
+    chunk_file_node *left, *right;
+};
+
 struct chunk {
     static int chunk_files;
     int size;
     unsigned magic;
     vector<chunk_file> files;
     vector<chunk_file> cur_file;
+    chunk_file_node *cf_root;
     uint32_t *suffixes;
     unsigned char data[0];
 
@@ -51,6 +59,7 @@ struct chunk {
     void finish_file();
     void finalize();
     void finalize_files();
+    void build_tree();
 
     static chunk *from_str(const char *p) {
         chunk *out = reinterpret_cast<chunk*>
@@ -94,6 +103,8 @@ struct chunk {
             return cmp;
         }
     };
+
+    chunk_file_node *build_tree(int left, int right);
 
 private:
     chunk(const chunk&);
