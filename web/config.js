@@ -2,8 +2,6 @@ var path   = require('path'),
     fs     = require('fs'),
     log4js = require('log4js');
 
-log4js.configure(path.join(__dirname, "log4js.json"));
-
 var config = {
   DNODE_PORT: 0xC5EA,
   SEARCH_REPO: path.join(__dirname, "../../linux"),
@@ -12,7 +10,8 @@ var config = {
   BACKEND_CONNECTIONS: 8,
   BACKENDS: [
     ["localhost", 0xC5EA]
-  ]
+  ],
+  LOG4JS_CONFIG: path.join(__dirname, "log4js.json")
 };
 
 try {
@@ -24,5 +23,7 @@ try {
     })
 } catch (e) {
 }
+
+log4js.configure(config.LOG4JS_CONFIG);
 
 module.exports = config;
