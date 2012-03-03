@@ -165,7 +165,7 @@ bool parse_input(FILE *out, string in, string& line_re, string& file_re)
     if (file_js && json_object_get_type(file_js) == json_type_string)
         file_re = json_object_get_string(file_js);
     else
-        file_re = "";
+        file_re = FLAGS_file;
 
     json_object_put(js);
 
