@@ -64,10 +64,12 @@ var CodesearchUI = function() {
       setTimeout(CodesearchUI.newsearch, 0);
     },
     newsearch: function() {
-      Codesearch.new_search(
-        CodesearchUI.input.val(),
-        CodesearchUI.input_file.val(),
-        ++CodesearchUI.search_id);
+      if (CodesearchUI.input.val().length) {
+        Codesearch.new_search(
+          CodesearchUI.input.val(),
+          CodesearchUI.input_file.val(),
+          ++CodesearchUI.search_id);
+      }
     },
     error: function(search, error) {
       if (search === CodesearchUI.search_id) {
