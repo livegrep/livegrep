@@ -32,6 +32,12 @@ var parser = new parseopt.OptionParser(
         default: config.SEARCH_REF,
         type: 'string',
         help: 'Git ref to search.'
+      },
+      {
+        name: "--noempty",
+        default: false,
+        type: 'flag',
+        help: 'Do not search for the empty string'
       }
     ]
   });
@@ -57,7 +63,11 @@ function get_codesearch(args) {
 module.exports.get_codesearch = get_codesearch;
 
 function load_queries() {
-  return fs.readFileSync(opts.options.querylist, 'utf8').split(/\n/);
+  var qs = fs.readFileSync(opts.options.querylist, 'utf8').split(/\n/);
+  if (opts.options.noempty) {
+    qs = qs.filter(function (s) {return s.length > 0;});
+  }
+  return qs;
 }
 module.exports.load_queries = load_queries;
 
