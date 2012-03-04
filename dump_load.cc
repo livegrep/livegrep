@@ -5,7 +5,7 @@
 #include <map>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 4;
+const uint32_t kIndexVersion = 5;
 
 struct index_header {
     uint32_t magic;
@@ -40,7 +40,11 @@ void code_searcher::dump_file(ostream& stream, search_file *sf) {
 }
 
 void dump_chunk_file(ostream& stream, chunk_file *cf) {
-    dump_int32(stream, cf->file->no);
+    dump_int32(stream, cf->files.size());
+    for (list<search_file*>::iterator it = cf->files.begin();
+         it != cf->files.end(); ++it)
+        dump_int32(stream, (*it)->no);
+
     dump_int32(stream, cf->left);
     dump_int32(stream, cf->right);
 }
@@ -141,14 +145,18 @@ void code_searcher::load_chunk(istream& stream, chunk *chunk) {
     assert(hdr.size <= kChunkSpace);
     chunk->size = hdr.size;
 
-    uint32_t buf[3*hdr.nfiles];
-    stream.read(reinterpret_cast<char*>(buf), sizeof buf);
+    /*
+      uint32_t buf[3*hdr.nfiles];
+      stream.read(reinterpret_cast<char*>(buf), sizeof buf);
+    */
     for (int i = 0; i < hdr.nfiles; i++) {
         chunk->files.push_back(chunk_file());
         chunk_file &cf = chunk->files.back();
-        cf.file  = files_[buf[3*i]];
-        cf.left  = buf[3*i + 1];
-        cf.right = buf[3*i + 2];
+        uint32_t nfiles = load_int32(stream);
+        for (int j = 0; j < nfiles; j++)
+            cf.files.push_back(files_[load_int32(stream)]);
+        cf.left  = load_int32(stream);
+        cf.right = load_int32(stream);
     }
     stream.read(reinterpret_cast<char*>(chunk->data), chunk->size);
     chunk->suffixes = new uint32_t[chunk->size];

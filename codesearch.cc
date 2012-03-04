@@ -149,6 +149,15 @@ protected:
         return files_[sf->no];
     }
 
+    bool accept(const list<search_file *> &sfs) {
+        for (list<search_file *>::const_iterator it = sfs.begin();
+             it != sfs.end(); ++it) {
+            if (accept(*it))
+                return true;
+        }
+        return false;
+    }
+
     void find_match (const chunk *chunk,
                      const StringPiece& match,
                      const StringPiece& line) {
@@ -159,14 +168,19 @@ protected:
 
         for(vector<chunk_file>::const_iterator it = chunk->files.begin();
             it != chunk->files.end(); it++) {
-            if (off >= it->left && off <= it->right && accept(it->file)) {
-                searched++;
-                if (exit_early())
-                    break;
-                match_result *m = try_match(line, match, it->file);
-                if (m) {
-                    queue_.push(m);
-                    ++matches_;
+            if (off >= it->left && off <= it->right) {
+                for (list<search_file *>::const_iterator fit = it->files.begin();
+                     fit != it->files.end(); ++fit) {
+                    if (!accept(*fit))
+                        continue;
+                    searched++;
+                    if (exit_early())
+                        break;
+                    match_result *m = try_match(line, match, *fit);
+                    if (m) {
+                        queue_.push(m);
+                        ++matches_;
+                    }
                 }
             }
         }
@@ -565,7 +579,7 @@ void searcher::next_range(match_finger *finger,
 
     /* Find the first matching range that intersects [pos, maxpos) */
     while (it != end &&
-           (it->right < pos || !accept(it->file)) &&
+           (it->right < pos || !accept(it->files)) &&
            it->left < maxpos)
         ++it;
 
@@ -586,7 +600,7 @@ void searcher::next_range(match_finger *finger,
     do {
         if (it->left >= endpos + kMinSkip)
             break;
-        if (it->right >= endpos && accept(it->file)) {
+        if (it->right >= endpos && accept(it->files)) {
             endpos = max(endpos, it->right);
             if (endpos >= maxpos)
                 /*

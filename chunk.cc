@@ -108,7 +108,7 @@ void chunk::add_chunk_file(search_file *sf, const StringPiece& line)
     chunk_files++;
     cur_file.push_back(chunk_file());
     chunk_file& cf = cur_file.back();
-    cf.file = sf;
+    cf.files.push_front(sf);
     cf.left = l;
     cf.right = r;
 }
@@ -144,6 +144,20 @@ void chunk::finalize() {
         sorter.sort();
 
         sort(files.begin(), files.end());
+        vector<chunk_file>::iterator out, in;
+        out = in = files.begin();
+        while (in != files.end()) {
+            *out = *in;
+            ++in;
+            while (in != files.end() &&
+                   out->left == in->left &&
+                   out->right == in->right) {
+                out->files.push_back(in->files.front());
+                ++in;
+            }
+            ++out;
+        }
+        files.resize(out - files.begin());
     }
 }
 

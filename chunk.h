@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <list>
 
 #include <stdint.h>
 
@@ -16,7 +17,7 @@ using namespace std;
 using re2::StringPiece;
 
 struct chunk_file {
-    search_file *file;
+    list<search_file *> files;
     int left;
     int right;
     void expand(int l, int r) {
@@ -25,7 +26,7 @@ struct chunk_file {
     }
 
     bool operator<(const chunk_file& rhs) const {
-        return left < rhs.left;
+        return left < rhs.left || (left == rhs.left && right < rhs.right);
     }
 };
 
