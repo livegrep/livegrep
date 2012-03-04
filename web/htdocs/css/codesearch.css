@@ -10,12 +10,19 @@ body {
     border: 1px solid black;
 }
 
+#searcharea p {
+    margin: 10px;
+}
+
 #searchinput {
     float: left;
 }
 
-#regex-error {
+#errorbox {
     float: right;
+}
+
+#regex-error {
     display: none;
 }
 
@@ -74,4 +81,34 @@ body {
 #countarea {
     float: right;
     display: none;
+}
+
+.what {
+    font-size: 80%;
+    color: #999;
+    padding-bottom: 5px;
+}
+
+#header li {
+    display: inline;
+}
+
+#header li:before {
+    content: "∙";
+    color: #999;
+    text-decoration: none;
+    margin: 5px;
+}
+
+#header li:first-child:before {
+    content: ""
+}
+
+#header .first {}
+
+#header {
+    font-size: 80%;
+    color: #999;
+    margin: auto;
+    width: 40em;
 }
