@@ -49,6 +49,7 @@ struct chunk {
     void add_chunk_file(search_file *sf, const StringPiece& line);
     void finish_file();
     void finalize();
+    void finalize_files();
 
     static chunk *from_str(const char *p) {
         chunk *out = reinterpret_cast<chunk*>

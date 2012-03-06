@@ -135,7 +135,6 @@ void radix_sorter::sort() {
     assert(is_sorted(chunk_->suffixes, chunk_->suffixes + chunk_->size, cmp));
 }
 
-
 void chunk::finalize() {
     if (FLAGS_index) {
         suffixes = new uint32_t[size];
@@ -146,4 +145,8 @@ void chunk::finalize() {
 
         sort(files.begin(), files.end());
     }
+}
+
+void chunk::finalize_files() {
+    sort(files.begin(), files.end());
 }
