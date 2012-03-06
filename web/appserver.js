@@ -1,7 +1,7 @@
 var dnode  = require('dnode'),
     fs     = require('fs'),
     log4js = require('log4js'),
-    util   = require('./util.js'),
+    util   = require('util'),
     _      = require('underscore'),
     config = require('./config.js'),
     Batch  = require('./batch.js');
@@ -13,10 +13,18 @@ function Client(parent, sock) {
   this.pending_search = null;
   this.last_search = null;
   this.active_search = null;
+  this.remote_address = sock.handshake.address;
+}
+
+Client.prototype.debug = function() {
+  logger.debug("[%s:%d] %s",
+               this.remote_address.address,
+               this.remote_address.port,
+               util.format.apply(null, arguments));
 }
 
 Client.prototype.new_search = function (line, file, id) {
-  logger.debug('new search: (%s) (%j)', id, {line:line, file:file});
+  this.debug('new search: (%s) (%j)', id, {line:line, file:file});
   if (this.last_search &&
       line === this.last_search.line &&
       file === this.last_search.file)
@@ -42,7 +50,7 @@ Client.prototype.dispatch_search = function() {
     console.assert(codesearch.cs_ready);
     var start = new Date();
     this.last_search = this.pending_search;
-    logger.debug('dispatching: (%j)...', this.pending_search);
+    this.debug('dispatching: (%j)...', this.pending_search);
 
     var search = this.pending_search;
     this.pending_search = null;
@@ -73,7 +81,7 @@ Client.prototype.dispatch_search = function() {
         var time = (new Date()) - start;
         batch.flush();
         sock.emit('search_done', search.id, time, stats.why);
-        logger.debug("Search done: (%j): %s", search, time);
+        self.debug("Search done: (%j): %s", search, time);
         self.search_done();
       }
     }
@@ -124,6 +132,7 @@ function SearchServer(config, io) {
     });
 
   var Server = function (sock) {
+    logger.info("New client [%j]", sock.handshake.address);
     parent.clients[sock.id] = new Client(parent, sock);
     sock.on('new_search', function(line, file, id) {
               if (id == null)
