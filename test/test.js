@@ -2,6 +2,9 @@ var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     assert     = require('assert'),
     path       = require('path'),
+    util       = require('util'),
+    temp       = require('temp'),
+    child_process = require('child_process'),
     common     = require('./common.js');
 
 common.parseopts();
@@ -25,35 +28,52 @@ function loop(i) {
   console.log("%s ...", queries[i]);
 
   var need_matches = 2;
-  var ready = 2;
+  var ready = 3;
   var matches = {};
 
-  function compare() {
+  function compare(cb) {
     try {
       assert.deepEqual(matches.index,
                        matches.noindex,
                        "Matches: `" + queries[i] + "'");
+      process.nextTick(cb);
     } catch (e) {
-      console.log(e.message);
-      console.log("Non-Indexed:");
-      e.expected.forEach(
-        function (m) {
-          console.log("  - %s:%d %s", m.file, m.lno, m.line);
-        });
-      console.log("Indexed:");
-      e.actual.forEach(
-        function (m) {
-          console.log("  - %s:%d %s", m.file, m.lno, m.line);
-        });
       failures++;
+      console.log(e.message);
+      var dir = temp.mkdirSync('codesearch.test');
+      var tmp_noindex = path.join(dir, 'unindexed');
+      var tmp_index   = path.join(dir, 'indexed');
+
+      fs.writeFileSync(tmp_noindex, e.expected.map(
+                         function (m) {
+                           return util.format("%s:%d %s\n", m.file, m.lno, m.line);
+                         }
+                       ).join(""));
+      fs.writeFileSync(tmp_index, e.actual.map(
+                         function (m) {
+                           return util.format("%s:%d %s\n", m.file, m.lno, m.line);
+                         }
+                       ).join(""));
+      var diff = child_process.spawn('diff', ['-u', 'unindexed', 'indexed'], {
+                                       cwd: dir
+                                     });
+      diff.stdout.on('data', function(data) {
+                       process.stdout.write(data);
+                     });
+      diff.on('exit', function (code) {
+                fs.unlinkSync(tmp_noindex);
+                fs.unlinkSync(tmp_index);
+                fs.rmdirSync(dir);
+                cb();
+              });
     }
   }
 
-  function got_matches(which) {
+  function got_matches(which, cb) {
     return function (ms) {
       matches[which] = ms;
       if (--need_matches == 0) {
-        compare();
+        compare(cb);
       }
     }
   }
@@ -66,8 +86,8 @@ function loop(i) {
   conn_index.once('ready', one_ready);
   conn_noindex.once('ready', one_ready);
 
-  common.query_all(conn_index, queries[i], got_matches('index'));
-  common.query_all(conn_noindex, queries[i], got_matches('noindex'));
+  common.query_all(conn_index, queries[i], got_matches('index', one_ready));
+  common.query_all(conn_noindex, queries[i], got_matches('noindex', one_ready));
 }
 
 var ready = 2;
