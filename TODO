@@ -1,0 +1,13 @@
+# -*- mode: org -*-
+* Search core
+** Recalibrate the index tradeoff calculation with sparse file regexes.
+* Server backend
+** memcached caching?
+   Probably not worthwhile.
+** Backoff after slow queries
+** Benchmark performance in the presence of slow queries.
+* Server frontend
+** Comment form of some sort
+** IE/firefox support
+* Future
+  - Better UI for handling multiple versions
