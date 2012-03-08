@@ -174,7 +174,8 @@ bool parse_input(FILE *out, string in, string& line_re, string& file_re)
 
 sem_t interact_sem;
 
-void interact(code_searcher::search_thread *search, FILE *in, FILE *out) {
+void interact(code_searcher *cs, FILE *in, FILE *out) {
+    code_searcher::search_thread search(cs);
     WidthWalker width;
 
     assert(in != out);
@@ -243,7 +244,7 @@ void interact(code_searcher::search_thread *search, FILE *in, FILE *out) {
 
             {
                 sem_wait(&interact_sem);
-                search->match(re, file.size() ? &file_re : 0, print_match(out), &stats);
+                search.match(re, file.size() ? &file_re : 0, print_match(out), &stats);
                 sem_post(&interact_sem);
             }
             elapsed = tm.elapsed();
@@ -302,7 +303,7 @@ void initialize_search(code_searcher *search, int argc, char **argv) {
 
 struct child_state {
     int fd;
-    code_searcher::search_thread *search;
+    code_searcher *search;
 };
 
 void *handle_client(void *data) {
@@ -316,7 +317,7 @@ void *handle_client(void *data) {
     return 0;
 }
 
-void listen(code_searcher::search_thread *search, string path) {
+void listen(code_searcher *search, string path) {
     int server = socket(AF_UNIX, SOCK_STREAM, 0);
     if (server < 0)
         die_errno("socket(AF_UNIX)");
@@ -354,7 +355,6 @@ int main(int argc, char **argv) {
     prctl(PR_SET_PDEATHSIG, SIGINT);
 
     code_searcher counter;
-    code_searcher::search_thread thread(&counter);
 
     signal(SIGPIPE, SIG_IGN);
 
@@ -365,9 +365,9 @@ int main(int argc, char **argv) {
 
 
     if (FLAGS_listen.size())
-        listen(&thread, FLAGS_listen);
+        listen(&counter, FLAGS_listen);
     else
-        interact(&thread, stdin, stdout);
+        interact(&counter, stdin, stdout);
 
     return 0;
 }
