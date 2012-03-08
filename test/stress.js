@@ -10,6 +10,11 @@ common.parser.add('--clients', {
                     default: 8,
                     type: 'integer',
                   });
+common.parser.add('--slow-clients', {
+                    default: 1,
+                    type: 'integer',
+                    target: 'slow_clients'
+                  });
 var opts = common.parseopts();
 
 var cs = common.get_codesearch();
@@ -53,18 +58,30 @@ QueryThread.prototype.done = function(stats) {
 
 QueryThread.prototype.show_stats = function () {
   var stats = this.stats.stats();
-  console.log("%s/%s/%s/%s",
+  console.log("[%s] %s/%s/%s/%s",
+              this.stats.name,
               stats.percentile[50],
               stats.percentile[90],
               stats.percentile[95],
               stats.percentile[99]);
-  console.log("qps: %s", stats.qps)
+  console.log("[%s] qps: %s",
+              this.stats.name, stats.qps)
 }
 
-var stats = new QueryStats({timeout: 60*1000});
-var qs = [];
+var stats = new QueryStats('main', {timeout: 60*1000});
+var qs = [], slow_qs = [];
+var q;
 for (var i = 0; i < opts.clients; i++) {
-  var q = new QueryThread(cs, queries, stats);
+  q = new QueryThread(cs, queries, stats);
   qs.push(q);
+  q.start();
+}
+
+var stats_slow = new QueryStats('slow', {timeout: 60*1000, interval: 50});
+var slow_queries = fs.readFileSync(path.join(__dirname, 'slow'),
+                                   'utf8').split(/\n/);
+for (var i = 0; i < opts.slow_clients; i++) {
+  q = new QueryThread(cs, slow_queries, stats_slow);
+  slow_qs.push(q);
   q.start();
 }
