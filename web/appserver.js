@@ -7,8 +7,9 @@ var dnode  = require('dnode'),
     Batch  = require('./batch.js');
 var logger  = log4js.getLogger('appserver');
 
-function Client(parent, sock) {
+function Client(parent, pool, sock) {
   this.parent = parent;
+  this.pool   = pool;
   this.socket = sock;
   this.pending_search = null;
   this.last_search = null;
@@ -45,8 +46,8 @@ Client.prototype.search_done = function() {
 Client.prototype.dispatch_search = function() {
   if (this.pending_search !== null &&
       !this.active_search &&
-      this.parent.remotes.length) {
-    var codesearch = this.parent.remotes.pop();
+      this.pool.remotes.length) {
+    var codesearch = this.pool.remotes.pop();
     console.assert(codesearch.cs_ready);
     var start = new Date();
     this.last_search = this.pending_search;
@@ -94,12 +95,11 @@ Client.prototype.dispatch_search = function() {
   }
 }
 
-function SearchServer(config, io) {
+function ConnectionPool(server, config) {
   var parent = this;
-  this.config  = config;
+  this.server  = server
   this.remotes = [];
   this.connections = [];
-  this.clients = {};
 
   config.BACKENDS.forEach(
     function (bk) {
@@ -148,10 +148,25 @@ function SearchServer(config, io) {
          })();
       }
     });
+}
+
+ConnectionPool.prototype.dispatch = function () {
+  var clients = this.clients;
+  _.shuffle(_.values(this.clients)).forEach(
+    function (client) {
+      client.dispatch_search();
+    });
+}
+
+function SearchServer(config, io) {
+  var parent = this;
+  this.config  = config;
+  this.clients = {};
+  this.pool = new ConnectionPool(this, config);
 
   var Server = function (sock) {
     logger.info("New client (%s)[%j]", sock.id, sock.handshake.address);
-    parent.clients[sock.id] = new Client(parent, sock);
+    parent.clients[sock.id] = new Client(parent, parent.pool, sock);
     sock.on('new_search', function(line, file, id) {
               if (id == null)
                 id = line;
@@ -166,14 +181,6 @@ function SearchServer(config, io) {
   io.sockets.on('connection', function(sock) {
     new Server(sock);
   });
-}
-
-SearchServer.prototype.dispatch = function () {
-  var clients = this.clients;
-  _.shuffle(_.values(this.clients)).forEach(
-    function (client) {
-      client.dispatch_search();
-    });
 }
 
 module.exports = SearchServer;
