@@ -150,7 +150,7 @@ function SearchServer(config, io) {
     });
 
   var Server = function (sock) {
-    logger.info("New client [%j]", sock.handshake.address);
+    logger.info("New client (%s)[%j]", sock.id, sock.handshake.address);
     parent.clients[sock.id] = new Client(parent, sock);
     sock.on('new_search', function(line, file, id) {
               if (id == null)
@@ -158,6 +158,7 @@ function SearchServer(config, io) {
               parent.clients[sock.id].new_search(line, file, id);
     });
     sock.on('disconnect', function() {
+              logger.info("Disconnected (%d)[%j]", sock.id, sock.handshake.address);
               delete parent.clients[sock.id];
             });
   };
