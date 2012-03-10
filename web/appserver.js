@@ -66,10 +66,12 @@ Client.prototype.dispatch_search = function() {
         if (self.pending_search === null)
           self.pending_search = search;
         self.search_done();
+        codesearch.cs_client = null;
       },
       error: function (err) {
         sock.emit('regex_error', search.id, err);
         self.search_done();
+        codesearch.cs_client = null;
       },
       match: function (match) {
         match = JSON.parse(match);
@@ -83,10 +85,12 @@ Client.prototype.dispatch_search = function() {
         sock.emit('search_done', search.id, time, stats.why);
         self.debug("Search done: (%j): %s", search, time);
         self.search_done();
+        codesearch.cs_client = null;
       }
     }
     codesearch.try_search(search.line, search.file, cbs);
     codesearch.cs_ready = false;
+    codesearch.cs_client = this;
   }
 }
 
@@ -102,6 +106,7 @@ function SearchServer(config, io) {
       for (var i = 0; i < config.BACKEND_CONNECTIONS; i++) {
         (function() {
            var remote = null;
+           var connection = null;
 
            function ready() {
              logger.debug('Remote ready!');
@@ -114,16 +119,29 @@ function SearchServer(config, io) {
              parent.dispatch();
            }
 
+           function disconnected() {
+             logger.info("Lost connection to backend")
+             parent.remotes = parent.remotes.filter(function (r) {return r !== remote});
+             parent.connections = parent.connections.filter(
+               function (c) { return c !== connection});
+             if (remote.cs_client)
+               remote.cs_client.search_done();
+           }
+
            dnode({ ready: ready }).
              connect(
                bk[0], bk[1],
                function (r, conn) {
                  parent.connections.push(conn);
                  remote = r;
-                 remote.cs_ready = false;
+                 connection = conn;
+                 remote.cs_ready  = false;
+                 remote.cs_client = null;
                  logger.info("Connected to codesearch daemon.");
-                 conn.on('ready', ready);
+                 conn.on('ready',     ready);
                  conn.on('reconnect', ready);
+                 conn.on('close',     disconnected);
+                 conn.on('end',       disconnected);
                }, {
                  reconnect: 200
                });
