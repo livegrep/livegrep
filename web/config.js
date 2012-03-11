@@ -11,7 +11,11 @@ var config = {
   BACKENDS: [
     ["localhost", 0xC5EA]
   ],
-  LOG4JS_CONFIG: path.join(__dirname, "log4js.json")
+  LOG4JS_CONFIG: path.join(__dirname, "log4js.json"),
+  SLOW_THRESHOLD:  300,
+  MIN_SLOW_TIME:   2000,
+  MAX_SLOW_TIME:   10000,
+  QUERY_STREAK:    5,
 };
 
 try {

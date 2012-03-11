@@ -15,6 +15,8 @@ function Client(parent, pool, sock) {
   this.last_search = null;
   this.active_search = null;
   this.remote_address = sock.handshake.address;
+  this.fast_streak = 0;
+  this.last_slow   = null;
 }
 
 Client.prototype.debug = function() {
@@ -43,10 +45,36 @@ Client.prototype.search_done = function() {
   process.nextTick(this.dispatch_search.bind(this));
 }
 
+Client.prototype.switch_pool = function(pool) {
+  if (this.pool === pool)
+    return;
+  this.debug("Switching to %s pool",
+             pool === this.parent.slow_pool ? "slow" : "fast");
+  this.pool = pool;
+}
+
+Client.prototype.slow_query = function() {
+  this.last_slow = new Date();
+  this.fast_streak = 0;
+  this.switch_pool(this.parent.slow_pool);
+}
+
+Client.prototype.fast_query = function() {
+  this.fast_streak++;
+  if ((new Date() - this.last_slow) < this.parent.config.MIN_SLOW_TIME)
+    return;
+  if (this.fast_streak >= this.parent.config.QUERY_STREAK)
+    this.switch_pool(this.parent.fast_pool);
+}
+
 Client.prototype.dispatch_search = function() {
   if (this.pending_search !== null &&
       !this.active_search &&
       this.pool.remotes.length) {
+    if (this.last_slow &&
+        (new Date() - this.last_slow) >= this.parent.config.MAX_SLOW_TIME)
+      this.switch_pool(this.parent.fast_pool);
+
     var codesearch = this.pool.remotes.pop();
     console.assert(codesearch.cs_ready);
     var start = new Date();
@@ -85,6 +113,11 @@ Client.prototype.dispatch_search = function() {
         batch.flush();
         sock.emit('search_done', search.id, time, stats.why);
         self.debug("Search done: (%j): %s", search, time);
+        if (time > self.parent.config.SLOW_THRESHOLD) {
+          self.slow_query();
+        } else {
+          self.fast_query();
+        }
         self.search_done();
         codesearch.cs_client = null;
       }
@@ -162,11 +195,12 @@ function SearchServer(config, io) {
   var parent = this;
   this.config  = config;
   this.clients = {};
-  this.pool = new ConnectionPool(this, config);
+  this.fast_pool = new ConnectionPool(this, config);
+  this.slow_pool = new ConnectionPool(this, config);
 
   var Server = function (sock) {
     logger.info("New client (%s)[%j]", sock.id, sock.handshake.address);
-    parent.clients[sock.id] = new Client(parent, parent.pool, sock);
+    parent.clients[sock.id] = new Client(parent, parent.fast_pool, sock);
     sock.on('new_search', function(line, file, id) {
               if (id == null)
                 id = line;
