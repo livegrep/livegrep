@@ -1,4 +1,4 @@
-var Codesearch = require('../web/codesearch.js'),
+var io         = require('socket.io-client'),
     _          = require('underscore'),
     fs         = require('fs'),
     assert     = require('assert'),
@@ -17,7 +17,7 @@ common.parser.add('--slow-clients', {
                   });
 var opts = common.parseopts();
 
-var cs = common.get_codesearch();
+// var cs = common.get_codesearch();
 var queries = common.load_queries();
 
 var count = 0;
@@ -25,8 +25,17 @@ var count = 0;
 var QueryThread = (
   function () {
     var id = 0;
-    return function (cs, queries, stats) {
-      this.connection = cs.connect();
+    return function (queries, stats) {
+      var self = this;
+      this.connection = io.connect('http://localhost:8910/', {
+                                     'force new connection': true,
+                                     'transports': ['xhr']
+                                   });
+      this.ready      = false;
+      this.connection.on('connect', function() {
+                           self.ready = true;
+                         });
+      this.connection.on('search_done', this.done.bind(this));
       this.queries    = _.shuffle(queries.concat());
       this.i          = 0;
       this.id         = ++id;
@@ -36,9 +45,9 @@ var QueryThread = (
   })();
 
 QueryThread.prototype.start = function() {
-  if (this.connection.readyState === 'ready')
+  if (this.ready)
     process.nextTick(this.step.bind(this));
-  this.connection.on('ready', this.step.bind(this));
+  this.connection.on('connect', this.step.bind(this));
 }
 
 QueryThread.prototype.step = function() {
@@ -46,14 +55,14 @@ QueryThread.prototype.step = function() {
   this.start_time = new Date();
   this.query = q;
   this.stats.start(this.i);
-  var search = this.connection.search(q, null);
-  search.on('done', this.done.bind(this));
+  this.connection.emit('new_search', q, null, null);
 }
 
 QueryThread.prototype.done = function(stats) {
   count++;
   if (this.stats.done(this.i, this.start_time))
     this.show_stats();
+  this.step();
 }
 
 QueryThread.prototype.show_stats = function () {
@@ -72,7 +81,7 @@ var stats = new QueryStats('main', {timeout: 60*1000});
 var qs = [], slow_qs = [];
 var q;
 for (var i = 0; i < opts.clients; i++) {
-  q = new QueryThread(cs, queries, stats);
+  q = new QueryThread(queries, stats);
   qs.push(q);
   q.start();
 }
@@ -81,7 +90,7 @@ var stats_slow = new QueryStats('slow', {timeout: 60*1000, interval: 50});
 var slow_queries = fs.readFileSync(path.join(__dirname, 'slow'),
                                    'utf8').split(/\n/);
 for (var i = 0; i < opts.slow_clients; i++) {
-  q = new QueryThread(cs, slow_queries, stats_slow);
+  q = new QueryThread(slow_queries, stats_slow);
   slow_qs.push(q);
   q.start();
 }
