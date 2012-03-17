@@ -15,6 +15,11 @@ common.parser.add('--slow-clients', {
                     type: 'integer',
                     target: 'slow_clients'
                   });
+
+common.parser.add('--remote', {
+                    default: 'http://localhost:8910/',
+                    type: 'string'
+                  });
 var opts = common.parseopts();
 
 // var cs = common.get_codesearch();
@@ -27,7 +32,7 @@ var QueryThread = (
     var id = 0;
     return function (queries, stats) {
       var self = this;
-      this.connection = io.connect('http://localhost:8910/', {
+      this.connection = io.connect(opts.remote, {
                                      'force new connection': true,
                                      'transports': ['xhr']
                                    });
