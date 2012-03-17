@@ -33,6 +33,8 @@ var QueryThread = (
                                    });
       this.ready      = false;
       this.connection.on('connect', function() {
+                           console.log("[%s] connected to remote",
+                                      stats.name);
                            self.ready = true;
                          });
       this.connection.on('search_done', this.done.bind(this));
