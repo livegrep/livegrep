@@ -65,9 +65,9 @@ QueryThread.prototype.step = function() {
   this.connection.emit('new_search', q, null, null);
 }
 
-QueryThread.prototype.done = function(stats) {
+QueryThread.prototype.done = function(id, time) {
   count++;
-  if (this.stats.done(this.i, this.start_time))
+  if (this.stats.done(this.i, this.start_time, time))
     this.show_stats();
   this.step();
 }
@@ -80,6 +80,12 @@ QueryThread.prototype.show_stats = function () {
               stats.percentile[90],
               stats.percentile[95],
               stats.percentile[99]);
+  console.log("[%s/bk] %s/%s/%s/%s",
+              this.stats.name,
+              stats.srv_percentile[50],
+              stats.srv_percentile[90],
+              stats.srv_percentile[95],
+              stats.srv_percentile[99]);
   console.log("[%s] qps: %s",
               this.stats.name, stats.qps)
 }
