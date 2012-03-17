@@ -2,6 +2,7 @@ var dnode  = require('dnode'),
     fs     = require('fs'),
     log4js = require('log4js'),
     util   = require('util'),
+    path   = require('path'),
     _      = require('underscore'),
     config = require('./config.js'),
     Batch  = require('./batch.js');
@@ -215,6 +216,32 @@ function SearchServer(config, io) {
   io.sockets.on('connection', function(sock) {
     new Server(sock);
   });
+  setInterval(function() {
+                parent.dump_stats();
+              }, 5000);
+}
+
+SearchServer.prototype.dump_stats = function() {
+  var clients = 0, slow = 0, fast = 0;
+  var self = this;
+  _.values(this.clients).forEach(
+    function (c){
+      clients++;
+      if (c.pool === self.slow_pool)
+        slow++;
+      else if (c.pool === self.fast_pool)
+        fast++;
+      else
+        console.log("WTF pool %j", c);
+    });
+  logger.info("Clients/slow/fast: %d %d %d", clients, slow, fast);
+  fs.writeFile(path.join(__dirname, "log/stats.json"),
+               JSON.stringify({
+                                clients: clients,
+                                slow: slow,
+                                fast: fast
+                              }) + "\n",
+               "utf8");
 }
 
 module.exports = SearchServer;
