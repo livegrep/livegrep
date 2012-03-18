@@ -50,8 +50,7 @@ Client.prototype.search_done = function() {
 Client.prototype.switch_pool = function(pool) {
   if (this.pool === pool)
     return;
-  this.debug("Switching to %s pool",
-             pool === this.parent.slow_pool ? "slow" : "fast");
+  this.debug("Switching to %s pool", pool.stats.name);
   this.pool = pool;
 }
 
@@ -112,7 +111,7 @@ Client.prototype.dispatch_search = function() {
       done: function (stats) {
         stats = JSON.parse(stats);
         var time = (new Date()) - start;
-        self.parent.stats.done(search.id, start, time);
+        self.pool.stats.done(search.id, start, time);
         batch.flush();
         sock.emit('search_done', search.id, time, stats.why);
         self.debug("Search done: (%j): %s", search, time);
@@ -131,11 +130,13 @@ Client.prototype.dispatch_search = function() {
   }
 }
 
-function ConnectionPool(server, config) {
+function ConnectionPool(server, name, config) {
   var parent = this;
   this.server  = server
   this.remotes = [];
   this.connections = [];
+  this.stats       = new QueryStats(name, {timeout: 60*1000});
+  this.stats.start();
 
   config.BACKENDS.forEach(
     function (bk) {
@@ -198,10 +199,8 @@ function SearchServer(config, io) {
   var parent = this;
   this.config  = config;
   this.clients = {};
-  this.fast_pool = new ConnectionPool(this, config);
-  this.slow_pool = new ConnectionPool(this, config);
-  this.stats     = new QueryStats('appserver', {timeout: 60*1000});
-  this.stats.start();
+  this.fast_pool = new ConnectionPool(this, 'fast', config);
+  this.slow_pool = new ConnectionPool(this, 'slow', config);
 
   var Server = function (sock) {
     logger.info("New client (%s)[%j]", sock.id, sock.handshake.address);
@@ -239,7 +238,9 @@ SearchServer.prototype.dump_stats = function() {
         console.log("WTF pool %j", c);
     });
   logger.info("Clients/slow/fast: %d %d %d", clients, slow, fast);
-  var stats = this.stats.stats();
+  var stats = {};
+  stats.slow = this.slow_pool.stats.stats();
+  stats.fast = this.fast_pool.stats.stats();
   stats.server = {
     clients: clients,
     slow: slow,
