@@ -5,7 +5,8 @@ var dnode  = require('dnode'),
     path   = require('path'),
     _      = require('underscore'),
     config = require('./config.js'),
-    Batch  = require('./batch.js');
+    Batch  = require('./batch.js'),
+    QueryStats  = require('../lib/query-stats.js');
 var logger  = log4js.getLogger('appserver');
 
 function Client(parent, pool, sock) {
@@ -111,6 +112,7 @@ Client.prototype.dispatch_search = function() {
       done: function (stats) {
         stats = JSON.parse(stats);
         var time = (new Date()) - start;
+        self.parent.stats.done(search.id, start, time);
         batch.flush();
         sock.emit('search_done', search.id, time, stats.why);
         self.debug("Search done: (%j): %s", search, time);
@@ -198,6 +200,8 @@ function SearchServer(config, io) {
   this.clients = {};
   this.fast_pool = new ConnectionPool(this, config);
   this.slow_pool = new ConnectionPool(this, config);
+  this.stats     = new QueryStats('appserver', {timeout: 60*1000});
+  this.stats.start();
 
   var Server = function (sock) {
     logger.info("New client (%s)[%j]", sock.id, sock.handshake.address);
@@ -235,12 +239,14 @@ SearchServer.prototype.dump_stats = function() {
         console.log("WTF pool %j", c);
     });
   logger.info("Clients/slow/fast: %d %d %d", clients, slow, fast);
+  var stats = this.stats.stats();
+  stats.server = {
+    clients: clients,
+    slow: slow,
+    fast: fast
+  };
   fs.writeFile(path.join(__dirname, "log/stats.json"),
-               JSON.stringify({
-                                clients: clients,
-                                slow: slow,
-                                fast: fast
-                              }) + "\n",
+               JSON.stringify(stats) + "\n",
                "utf8");
 }
 
