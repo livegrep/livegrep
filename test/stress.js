@@ -11,7 +11,7 @@ common.parser.add('--clients', {
                     type: 'integer',
                   });
 common.parser.add('--slow-clients', {
-                    default: 1,
+                    default: 0,
                     type: 'integer',
                     target: 'slow_clients'
                   });
