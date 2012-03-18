@@ -30,7 +30,6 @@ using re2::RE2;
 using re2::StringPiece;
 using namespace std;
 
-const int    kMaxMatches   = 50;
 const int    kContextLines = 3;
 
 const size_t kMinSkip = 250;
@@ -48,6 +47,7 @@ DEFINE_bool(debug_search, false, "Produce debugging output about the search proc
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(search, true, "Actually do the search.");
+DEFINE_int32(max_matches, 50, "The maximum number of results to return for a single query.");
 DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
 DECLARE_int32(threads);
 
@@ -312,7 +312,7 @@ protected:
         if (exit_reason_)
             return true;
 
-        if (matches_.load() >= kMaxMatches) {
+        if (matches_.load() >= FLAGS_max_matches) {
             exit_reason_ = kExitMatchLimit;
             return true;
         }
