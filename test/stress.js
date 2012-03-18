@@ -34,7 +34,7 @@ var QueryThread = (
       var self = this;
       this.connection = io.connect(opts.remote, {
                                      'force new connection': true,
-                                     'transports': ['xhr']
+                                     'transports': ['websocket', 'xhr-polling']
                                    });
       this.ready      = false;
       this.connection.on('connect', function() {
