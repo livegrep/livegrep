@@ -1,0 +1,31 @@
+#!/home/nelhage/sw/bin/node
+
+var fs    = require('fs'),
+path  = require('path');
+
+var stats = path.join(__dirname, '..', 'web', 'log', 'stats.json');
+
+if (process.argv[2] === 'config') {
+  console.log("graph_title Codesearch stats");
+  console.log("graph_vlabel Users");
+  console.log("graph_category Codesearch");
+  console.log("slow.label Slow-query users");
+  console.log("slow.draw AREA");
+  console.log("fast.label Fast-query users");
+  console.log("fast.draw STACK");
+  console.log("users.label Total active connections");
+  console.log("users.draw LINE1");
+  process.exit(0);
+}
+
+var data;
+try {
+  data = JSON.parse(fs.readFileSync(stats, 'utf8'));
+} catch(e) {
+  process.stderr.write("No data file found.\n");
+  process.exit(1)
+}
+
+console.log("slow.value %d", data.server.slow);
+console.log("fast.value %d", data.server.fast);
+console.log("users.value %d", data.server.clients);
