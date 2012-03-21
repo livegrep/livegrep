@@ -1,0 +1,31 @@
+#!/home/nelhage/sw/bin/node
+
+var fs    = require('fs'),
+path  = require('path');
+
+var which = path.basename(process.argv[1]).replace(/cs_perf_/, '');
+
+var stats = path.join(__dirname, '..', 'web', 'log', 'stats.json');
+
+if (process.argv[2] === 'config') {
+  console.log("graph_title Codesearch Performance (%s)", which);
+  console.log("graph_vlabel ms");
+  console.log("graph_category Codesearch");
+  console.log("pct50.label 50th %ile perf");
+  console.log("pct90.label 90th %ile perf");
+  console.log("pct95.label 95th %ile perf");
+  console.log("pct99.label 99th %ile perf");
+  process.exit(0);
+}
+
+var data;
+try {
+  data = JSON.parse(fs.readFileSync(stats, 'utf8'));
+} catch(e) {
+  process.stderr.write("No data file found.\n");
+  process.exit(1);
+}
+
+Object.keys(data[which].percentile).forEach(function (p) {
+  console.log("pct%d.value %d", p, data[which].percentile[p]);
+});
