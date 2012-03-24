@@ -232,6 +232,15 @@ namespace {
         return Literal(RuneToString(r));
     }
 
+    intrusive_ptr<IndexKey> CaseFoldLiteral(Rune r) {
+        assert(r >= 'a' && r <= 'z');
+        intrusive_ptr<IndexKey> k(new IndexKey(kAnchorBoth));
+        k->insert(make_pair(make_pair((uchar)r, (uchar)r), (IndexKey*)0));
+        k->insert(make_pair(make_pair((uchar)r - 'a' + 'A',
+                                      (uchar)r - 'a' + 'A'), (IndexKey*)0));
+        return k;
+    }
+
     intrusive_ptr<IndexKey> Literal(Rune *runes, int nrunes) {
         string lit;
 
@@ -240,6 +249,15 @@ namespace {
         }
 
         return Literal(lit);
+    }
+
+    intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> lhs, intrusive_ptr<IndexKey> rhs);
+    intrusive_ptr<IndexKey> CaseFoldLiteral(Rune *runes, int nrunes) {
+        intrusive_ptr<IndexKey> k = Empty();
+        for (int i = 0; i < nrunes; ++i) {
+            k = Concat(k, CaseFoldLiteral(runes[i]));
+        }
+        return k;
     }
 
     intrusive_ptr<IndexKey> LexRange(const string &lo, const string& hi) {
@@ -522,6 +540,8 @@ IndexWalker::PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
                        int nchild_args) {
     intrusive_ptr<IndexKey> key;
 
+    /* assert(!(re->parse_flags() & Regexp::FoldCase)); */
+
     switch (re->op()) {
     case kRegexpNoMatch:
     case kRegexpEmptyMatch:      // anywhere
@@ -540,7 +560,11 @@ IndexWalker::PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
         break;
 
     case kRegexpLiteral:
-        key = Literal(re->rune());
+        if (re->parse_flags() & Regexp::FoldCase) {
+            key = CaseFoldLiteral(re->rune());
+        } else {
+            key = Literal(re->rune());
+        }
         break;
 
     case kRegexpCharClass:
@@ -548,7 +572,11 @@ IndexWalker::PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
         break;
 
     case kRegexpLiteralString:
-        key = Literal(re->runes(), re->nrunes());
+        if (re->parse_flags() & Regexp::FoldCase) {
+            key = CaseFoldLiteral(re->runes(), re->nrunes());
+        } else {
+            key = Literal(re->runes(), re->nrunes());
+        }
         break;
 
     case kRegexpConcat:
