@@ -54,10 +54,11 @@ var CodesearchUI = function() {
     results: 0,
     search_id: 0,
     onload: function() {
-      CodesearchUI.input     = $('#searchbox');
+      CodesearchUI.input      = $('#searchbox');
       CodesearchUI.input_file = $('#filebox');
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input_file.keydown(CodesearchUI.keypress);
+      CodesearchUI.input.focus();
       Codesearch.connect(CodesearchUI);
     },
     keypress: function() {
