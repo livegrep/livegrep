@@ -2,8 +2,6 @@
 * Search core
 ** Recalibrate the index tradeoff calculation with sparse file regexes.
 * Server backend
-** Benchmark performance in the presence of slow queries.
-** Split clients into good/bad thread pools?
 * Server frontend
 ** Comment form of some sort
 ** Test IE7 and IE9 support
