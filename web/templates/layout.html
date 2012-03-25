@@ -1,0 +1,27 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>code search ⋅ about</title>
+    <link rel="stylesheet" href='css/codesearch.css' />
+    {{#if js}}
+    <script language="javascript" type="text/javascript" src="js/jquery.js"></script>
+    <script language="javascript" type="text/javascript" src="js/underscore.js"></script>
+    <script language="javascript" type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script language="javascript" type="text/javascript" src="js/html.js"></script>
+    <script language="javascript" type="text/javascript" src="codesearch.js"></script>
+    <script language="javascript" type="text/javascript" src="codesearch_ui.js"></script>
+    {{/if}}    
+  </head>
+  <body>
+    <div id='header'>
+      <ul>
+        <li><a href="/">search</a></li>
+        <li><a href="/about">about</a></li>
+        <li><a href="mailto:feedback@livegrep.com">feedback</a></li>
+        <li class='first'>livegrep is a project by <a href="http://blog.nelhage.com/">Nelson Elhage</a></li>
+      </ul>
+    </div>
+    {{{body}}}
+  </body>
+</html>

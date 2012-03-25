@@ -39,13 +39,14 @@ app.use(log4js.connectLogger(logger, {
 app.configure(
   function() {
     app.register('.html', require('handlebars'));
-    app.set("view options", { layout: false });
     app.set('view engine', 'html');
     app.set('views', path.join(__dirname, 'templates'));
     app.use(express.static(path.join(__dirname, 'htdocs')));
   });
 
-app.get('/', function (req, res) {res.render('index');});
+app.get('/', function (req, res) {
+          res.render('index', {js: true});
+        });
 app.get('/about', function (req, res) {res.render('about');});
 
 app.listen(8910);
