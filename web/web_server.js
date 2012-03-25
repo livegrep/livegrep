@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 var express = require('express'),
-    dnode   = require('dnode'),
     path    = require('path'),
     parseopt= require('parseopt'),
-    log4js = require('log4js'),
+    handlebars = require('handlebars'),
+    log4js  = require('log4js'),
     Server  = require('./appserver.js'),
     config  = require('./config.js');
 
@@ -36,10 +36,17 @@ app.use(log4js.connectLogger(logger, {
                                format: ':remote-addr [:date] :method :url'
                              }));
 
-app.use(express.static(path.join(__dirname, 'htdocs')));
-app.get('/', function (req, res) {
-          res.redirect('/index.html');
-        })
+app.configure(
+  function() {
+    app.register('.html', require('handlebars'));
+    app.set("view options", { layout: false });
+    app.set('view engine', 'html');
+    app.set('views', path.join(__dirname, 'templates'));
+    app.use(express.static(path.join(__dirname, 'htdocs')));
+  });
+
+app.get('/', function (req, res) {res.render('index');});
+app.get('/about', function (req, res) {res.render('about');});
 
 app.listen(8910);
 console.log("http://localhost:8910");
