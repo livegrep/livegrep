@@ -59,11 +59,11 @@ var event_names = {
 // http://www.w3.org/TR/html4/index/elements.html
 // also excluding the following elements that seem unlikely to be used in the body:
 // HEAD, HTML, LINK, MAP, META, NOFRAMES, NOSCRIPT, STYLE, TITLE
-('A ABBR ACRONYM B BDO BIG BLOCKQUOTE BR BUTTON CAPTION CITE CODE COL ' +
- 'COLGROUP DD DEL DFN DIV DL DT EM FIELDSET FORM H1 H2 H3 H4 H5 H6 HR ' +
- 'I IFRAME IMG INPUT INS KBD LABEL LEGEND LI OBJECT OL OPTGROUP OPTION ' +
- 'P PARAM PRE Q S SAMP SCRIPT SELECT SMALL SPAN STRIKE STRONG SUB SUP TABLE' +
- 'TBODY TD TEXTAREA TFOOT TH THEAD TR TT U UL VAR').split(' ').forEach(
+_(('A ABBR ACRONYM B BDO BIG BLOCKQUOTE BR BUTTON CAPTION CITE CODE COL ' +
+   'COLGROUP DD DEL DFN DIV DL DT EM FIELDSET FORM H1 H2 H3 H4 H5 H6 HR ' +
+   'I IFRAME IMG INPUT INS KBD LABEL LEGEND LI OBJECT OL OPTGROUP OPTION ' +
+   'P PARAM PRE Q S SAMP SCRIPT SELECT SMALL SPAN STRIKE STRONG SUB SUP TABLE' +
+   'TBODY TD TEXTAREA TFOOT TH THEAD TR TT U UL VAR').split(' ')).forEach(
    function (tag) {
      HTMLFactory.prototype[tag.toLowerCase()] = function (arg1, arg2) {
        var attrs, contents;
@@ -92,7 +92,7 @@ var event_names = {
            elt.setAttribute(a, attrs[a]);
        }
        var addChildren = function (children) {
-         children.forEach(function (c) {
+         _(children).forEach(function (c) {
            if (!c && c !== '')
              throw new Error("Bad value for element body: " + c);
            else if (c instanceof Array)
