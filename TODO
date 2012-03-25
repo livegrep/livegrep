@@ -6,6 +6,6 @@
 ** Split clients into good/bad thread pools?
 * Server frontend
 ** Comment form of some sort
-** IE/firefox support
+** Test IE7 and IE9 support
 * Future
   - Better UI for handling multiple versions
