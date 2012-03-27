@@ -15,6 +15,12 @@ var parser = new parseopt.OptionParser(
         default: false,
         type: 'flag',
         help: 'Automatically launch a code-search backend server.'
+      },
+      {
+        name: "--production",
+        default: false,
+        type: 'flag',
+        help: 'Enable options for a production deployment.'
       }
     ]
   });
@@ -40,6 +46,9 @@ app.configure(
   function() {
     app.register('.html', require('handlebars'));
     app.set('view engine', 'html');
+    app.set('view options', {
+              production: opts.options.production
+            });
     app.set('views', path.join(__dirname, 'templates'));
     app.use(express.static(path.join(__dirname, 'htdocs')));
   });
