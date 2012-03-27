@@ -45,9 +45,18 @@ app.configure(
   });
 
 app.get('/', function (req, res) {
-          res.render('index', {js: true});
+          res.render('index',
+                     {
+                       js: true,
+                       title: 'search'
+                     });
         });
-app.get('/about', function (req, res) {res.render('about');});
+app.get('/about', function (req, res) {
+          res.render('about',
+                     {
+                       title: 'about'
+                     });
+        });
 
 app.listen(8910);
 console.log("http://localhost:8910");
