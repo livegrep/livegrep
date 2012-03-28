@@ -6,7 +6,6 @@ var Codesearch = function() {
     connect: function(delegate) {
       if (Codesearch.socket !== null)
         return;
-      console.log("Connecting...");
       Codesearch.remote = null;
       Codesearch.delegate = delegate;
       var socket = io.connect("http://" + document.location.host.replace(/:\d+$/, '') + ":8910");
