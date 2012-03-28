@@ -4,8 +4,9 @@
   <head>
     <title>code search ⋅ {{title}}</title>
     <link rel="stylesheet" href='css/codesearch.css' />
-    {{#if js}}
     <script language="javascript" type="text/javascript" src="js/jquery.js"></script>
+    <script language="javascript" type="text/javascript" src="feedback.js"></script>
+    {{#if js}}
     <script language="javascript" type="text/javascript" src="js/underscore.js"></script>
     <script language="javascript" type="text/javascript" src="/socket.io/socket.io.js"></script>
     <script language="javascript" type="text/javascript" src="js/html.js"></script>
@@ -33,9 +34,24 @@
       <ul>
         <li><a href="/">search</a></li>
         <li><a href="/about">about</a></li>
-        <li><a href="mailto:feedback@livegrep.com">feedback</a></li>
+        <li><a id='feedbacklink' href="mailto:feedback@livegrep.com">feedback</a></li>
         <li class='first'>livegrep is a project by <a href="http://blog.nelhage.com/">Nelson Elhage</a></li>
       </ul>
+    </div>
+    <div id='feedback'>
+      <form id='feedbackform' action='#'>
+        <div class='label'>Comments? Questions? Suggestions? </div>
+        <textarea rows='10' cols='40'></textarea>
+        <div class='clear'> </div>
+        <span class='label'>Email (if you want a reply):</span>
+        <input type='text' class='email'> </input>
+        <div class='clear'> </div>
+        <span class='submit'>
+          <span class='result'> </span>
+          <img class='spinner' src='ajax-loader.gif' alt='…'> </img>
+          <button>Send It</button>
+        </span>
+      </form>
     </div>
     {{{body}}}
   </body>

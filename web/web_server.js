@@ -50,6 +50,7 @@ app.configure(
               production: opts.options.production
             });
     app.set('views', path.join(__dirname, 'templates'));
+    app.use(express.bodyParser());
     app.use(express.static(path.join(__dirname, 'htdocs')));
   });
 
@@ -66,6 +67,11 @@ app.get('/about', function (req, res) {
                        title: 'about'
                      });
         });
+app.post('/feedback', function (req, res) {
+           console.log(req.body);
+           res.contentType('application/json');
+           res.send(JSON.stringify({}));
+         });
 
 app.listen(8910);
 console.log("http://localhost:8910");

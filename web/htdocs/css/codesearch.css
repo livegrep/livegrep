@@ -112,3 +112,41 @@ body {
     margin: auto;
     width: 40em;
 }
+
+#feedback {
+    border: 3px double black;
+    background: white;
+    z-index: 1;
+    position: absolute;
+    display: none;
+}
+
+#feedback .spinner {
+    display: none;
+}
+
+#feedback input {
+    margin: 5px;
+}
+
+#feedback button {
+    margin: 5px;
+}
+
+#feedback textarea {
+    margin: 5px;
+}
+
+#feedback .submit {
+    float: right;
+}
+
+#feedback {
+    font-size: 80%;
+    color: #999;
+    margin: 5px;
+}
+
+#feedback .result {
+    font-size: 100%;
+}
