@@ -221,7 +221,7 @@ function SearchServer(config, io) {
   });
   setInterval(function() {
                 parent.dump_stats();
-              }, 5000);
+              }, 30*1000);
 }
 
 SearchServer.prototype.dump_stats = function() {
