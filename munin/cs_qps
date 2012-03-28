@@ -9,6 +9,7 @@ if (process.argv[2] === 'config') {
   console.log("graph_title Codesearch qps");
   console.log("graph_vlabel Queries/sec");
   console.log("graph_category Codesearch");
+  console.log("graph_scale no");
   console.log("fast.label Fast QPS");
   console.log("slow.label Slow QPS");
   process.exit(0);
