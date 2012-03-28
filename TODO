@@ -2,8 +2,9 @@
 * Search core
 ** Recalibrate the index tradeoff calculation with sparse file regexes.
 * Server backend
+** Sort files in some predefined way
 * Server frontend
-** Comment form of some sort
-** Test IE7 and IE9 support
+** Test IE7 support
+** Test the feedback box on IE
 * Future
   - Better UI for handling multiple versions
