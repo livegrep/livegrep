@@ -16,6 +16,7 @@ var config = {
   MIN_SLOW_TIME:   2000,
   MAX_SLOW_TIME:   10000,
   QUERY_STREAK:    5,
+  SMTP_CONFIG:     null,
 };
 
 try {

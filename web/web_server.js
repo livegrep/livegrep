@@ -4,6 +4,8 @@ var express = require('express'),
     parseopt= require('parseopt'),
     handlebars = require('handlebars'),
     log4js  = require('log4js'),
+    email   = require('emailjs'),
+    util    = require('util'),
     Server  = require('./appserver.js'),
     config  = require('./config.js');
 
@@ -33,6 +35,11 @@ if (!opts) {
 if (opts.options.autolaunch) {
   console.log("Autolaunching a back-end server...");
   require('./cs_server.js')
+}
+
+var smtp = null;
+if (config.SMTP_CONFIG) {
+  smtp = email.server.connect(config.SMTP_CONFIG);
 }
 
 var app = express.createServer();
@@ -68,9 +75,47 @@ app.get('/about', function (req, res) {
                      });
         });
 app.post('/feedback', function (req, res) {
-           console.log(req.body);
-           res.contentType('application/json');
-           res.send(JSON.stringify({}));
+           console.log("FEEDBACK", req.body);
+           if (!('data' in req.body)) {
+             res.send(400);
+             return;
+           }
+           var data;
+           try {
+             data = JSON.parse(req.body.data);
+           } catch(e) {
+             console.log("Feedback error: %s", e);
+             res.send(400);
+             return;
+           }
+
+           if (smtp) {
+             smtp.send({
+                         to: "Nelson Elhage <feedback@livegrep.com>",
+                         from: "Codesearch <mailer@livegrep.com",
+                         subject: "Feedback from codesearch!",
+                         text: util.format(
+                           "Codesearch feedback from: %s \n" +
+                             "IP: %s\n" +
+                             "Session: %s\n\n" +
+                             "%s",
+                           data.email,
+                           req.connection.remoteAddress,
+                           data.session,
+                           data.text
+                         )
+                       }, function (err, message) {
+                         if (err) {
+                           console.log("Error sending email!", err);
+                           res.send(500);
+                         } else {
+                           console.log("Email sent!");
+                           res.send(200);
+                         }
+                       });
+           } else {
+             res.send(200);
+           }
          });
 
 app.listen(8910);
