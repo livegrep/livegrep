@@ -211,7 +211,7 @@ function SearchServer(config, io) {
               parent.clients[sock.id].new_search(line, file, id);
     });
     sock.on('disconnect', function() {
-              logger.info("Disconnected (%d)[%j]", sock.id, sock.handshake.address);
+              logger.info("Disconnected (%s)[%j]", sock.id, sock.handshake.address);
               delete parent.clients[sock.id];
             });
   };
