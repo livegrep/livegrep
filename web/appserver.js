@@ -135,7 +135,7 @@ function ConnectionPool(server, name, config) {
   this.server  = server
   this.remotes = [];
   this.connections = [];
-  this.stats       = new QueryStats(name, {timeout: 60*1000});
+  this.stats       = new QueryStats(name, {timeout: 5*60*1000});
   this.stats.start();
 
   config.BACKENDS.forEach(
