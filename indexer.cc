@@ -253,8 +253,10 @@ namespace {
 
     intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> lhs, intrusive_ptr<IndexKey> rhs);
     intrusive_ptr<IndexKey> CaseFoldLiteral(Rune *runes, int nrunes) {
-        intrusive_ptr<IndexKey> k = Empty();
-        for (int i = 0; i < nrunes; ++i) {
+        if (nrunes == 0)
+            return Empty();
+        intrusive_ptr<IndexKey> k = CaseFoldLiteral(runes[0]);
+        for (int i = 1; i < nrunes; ++i) {
             k = Concat(k, CaseFoldLiteral(runes[i]));
         }
         return k;
