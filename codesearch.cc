@@ -95,7 +95,7 @@ public:
     }
 
     ~searcher() {
-        delete files_;
+        delete[] files_;
 
         log_profile("re2 time: %d.%06ds\n",
                     int(re2_time_.elapsed().tv_sec),
