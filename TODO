@@ -1,6 +1,5 @@
 # -*- mode: org -*-
 * Search core
-** Recalibrate the index tradeoff calculation with sparse file regexes.
 * Server backend
 ** Sort files in some predefined way
 * Server frontend

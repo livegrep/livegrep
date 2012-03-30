@@ -78,7 +78,8 @@ public:
         cc_(cc), pat_(pat), file_pat_(file_pat), queue_(queue),
         matches_(0), re2_time_(false), git_time_(false),
         index_time_(false), sort_time_(false), analyze_time_(false),
-        exit_reason_(kExitNone), files_(new uint8_t[cc->files_.size()])
+        exit_reason_(kExitNone), files_(new uint8_t[cc->files_.size()]),
+        files_density_(-1)
     {
         memset(files_, 0xff, cc->files_.size());
         {
@@ -158,6 +159,20 @@ protected:
                 return true;
         }
         return false;
+    }
+
+    double files_density(void) {
+        mutex_locker locked(mtx_);
+        if (files_density_ >= 0)
+            return files_density_;
+
+        int hits = 0;
+        int sample = min(1000, int(cc_->files_.size()));
+        for (int i = 0; i < sample; i++) {
+            if (accept(cc_->files_[rand() % cc_->files_.size()]))
+                hits++;
+        }
+        return (files_density_ = double(hits) / sample);
     }
 
     void find_match_brute(const chunk *chunk,
@@ -348,6 +363,14 @@ protected:
     timeval limit_;
     exit_reason exit_reason_;
     uint8_t *files_;
+
+    /*
+     * The approximate ratio of how many files match file_pat_. Lazily
+     * computed -- -1 means it hasn't been computed yet. Protected by
+     * mtx_.
+     */
+    double files_density_;
+    cs_mutex mtx_;
 
     friend class code_searcher::search_thread;
 };
@@ -642,6 +665,11 @@ void searcher::search_lines(uint32_t *indexes, int count,
         return;
 
     if (count * kMinFilterRatio > chunk->size) {
+        full_search(chunk);
+        return;
+    }
+
+    if (file_pat_ && double(count * 30) / chunk->size > files_density()) {
         full_search(chunk);
         return;
     }
