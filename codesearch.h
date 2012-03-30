@@ -139,6 +139,7 @@ public:
     };
     friend class search_thread;
 protected:
+    void walk_root(git_repository *repo, const char *ref, git_tree *tree);
     void walk_tree(git_repository *repo, const char *ref, const string& pfx, git_tree *tree);
     void update_stats(const char *ref, const string& path, git_blob *blob);
 

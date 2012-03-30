@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <limits>
 
 #include <re2/re2.h>
@@ -49,6 +50,7 @@ DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(search, true, "Actually do the search.");
 DEFINE_int32(max_matches, 50, "The maximum number of results to return for a single query.");
 DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
+DEFINE_string(order_root, "", "Walk top-level directories in this order.");
 DECLARE_int32(threads);
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
@@ -396,7 +398,42 @@ void code_searcher::walk_ref(git_repository *repo, const char *ref) {
 
     refs_.push_back(ref);
 
-    walk_tree(repo, ref, "", tree);
+    walk_root(repo, ref, tree);
+}
+
+void code_searcher::walk_root(git_repository *repo, const char *ref, git_tree *tree) {
+    map<string, const git_tree_entry *> root;
+    vector<const git_tree_entry *> ordered;
+    int entries = git_tree_entrycount(tree);
+    for (int i = 0; i < entries; ++i) {
+        const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
+        root[git_tree_entry_name(ent)] = ent;
+    }
+
+    istringstream stream(FLAGS_order_root);
+    string dir;
+    while(stream >> dir) {
+        map<string, const git_tree_entry *>::iterator it = root.find(dir);
+        if (it == root.end())
+            continue;
+        ordered.push_back(it->second);
+        root.erase(it);
+    }
+    for (map<string, const git_tree_entry *>::iterator it = root.begin();
+         it != root.end(); ++it)
+        ordered.push_back(it->second);
+    for (vector<const git_tree_entry *>::iterator it = ordered.begin();
+         it != ordered.end(); ++it) {
+        smart_object<git_object> obj;
+        git_tree_entry_2object(obj, repo, *it);
+        string path = string(git_tree_entry_name(*it)) + "/";
+
+        if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
+            walk_tree(repo, ref, path, obj);
+        } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
+            update_stats(ref, path, obj);
+        }
+    }
 }
 
 void code_searcher::dump_stats() {
