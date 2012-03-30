@@ -5,6 +5,6 @@
 ** Sort files in some predefined way
 * Server frontend
 ** Test IE7 support
-** Test the feedback box on IE
+** Fix Firefox behind an HTTP proxy.
 * Future
   - Better UI for handling multiple versions
