@@ -11,6 +11,7 @@ if (process.argv[2] === 'config') {
   console.log("graph_title Codesearch Performance (%s)", which);
   console.log("graph_vlabel ms");
   console.log("graph_category Codesearch");
+  console.log("graph_args --logarithmic");
   console.log("pct50.label 50th %ile perf");
   console.log("pct90.label 90th %ile perf");
   console.log("pct95.label 95th %ile perf");
