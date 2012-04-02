@@ -34,6 +34,10 @@ Client.prototype.new_search = function (line, file, id) {
       line === this.last_search.line &&
       file === this.last_search.file)
     return;
+  if (line === '') {
+    this.last_search = null;
+    return;
+  }
   this.pending_search = {
     line: line,
     file: file,

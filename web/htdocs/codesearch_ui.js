@@ -65,12 +65,21 @@ var CodesearchUI = function() {
       setTimeout(CodesearchUI.newsearch, 0);
     },
     newsearch: function() {
-      if (CodesearchUI.input.val().length) {
-        Codesearch.new_search(
-          CodesearchUI.input.val(),
-          CodesearchUI.input_file.val(),
-          ++CodesearchUI.search_id);
+      Codesearch.new_search(
+        CodesearchUI.input.val(),
+        CodesearchUI.input_file.val(),
+        ++CodesearchUI.search_id);
+      if (!CodesearchUI.input.val().length) {
+        CodesearchUI.clear();
+        CodesearchUI.displaying = null;
       }
+    },
+    clear: function() {
+      CodesearchUI.hide_error();
+      $('#numresults').hide();
+      $('#results').empty();
+      $('#searchtimebox').hide();
+      $('#countarea').hide();
     },
     error: function(search, error) {
       if (search === CodesearchUI.search_id) {
@@ -102,10 +111,8 @@ var CodesearchUI = function() {
     handle_result: function(search) {
       CodesearchUI.hide_error();
       if (search != CodesearchUI.displaying) {
+        CodesearchUI.clear();
         $('#numresults').text('0');
-        $('#results').empty();
-        $('#searchtimebox').hide();
-        $('#countarea').hide();
         CodesearchUI.displaying = search;
         CodesearchUI.results = 0;
       }
