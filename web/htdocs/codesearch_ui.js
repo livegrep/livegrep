@@ -58,6 +58,8 @@ var CodesearchUI = function() {
       CodesearchUI.input_file = $('#filebox');
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input_file.keydown(CodesearchUI.keypress);
+      CodesearchUI.input.bind('paste', CodesearchUI.keypress);
+      CodesearchUI.input_file.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input.focus();
       Codesearch.connect(CodesearchUI);
     },
