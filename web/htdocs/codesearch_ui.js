@@ -78,7 +78,7 @@ var CodesearchUI = function() {
     },
     clear: function() {
       CodesearchUI.hide_error();
-      $('#numresults').hide();
+      $('#numresults').val('');
       $('#results').empty();
       $('#searchtimebox').hide();
       $('#countarea').hide();
