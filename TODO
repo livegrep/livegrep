@@ -1,9 +1,10 @@
 # -*- mode: org -*-
 * Search core
 * Server backend
-** Sort files in some predefined way
 * Server frontend
 ** Test IE7 support
 ** Fix Firefox behind an HTTP proxy.
+** Better UI affordances
+** Statistical estimation of the number of matches
 * Future
   - Better UI for handling multiple versions
