@@ -74,6 +74,36 @@ app.get('/about', function (req, res) {
                        title: 'about'
                      });
         });
+function send_feedback(data, cb) {
+  if (smtp) {
+    smtp.send({
+                to: "Nelson Elhage <feedback@livegrep.com>",
+                from: "Codesearch <mailer@livegrep.com",
+                subject: "Feedback from codesearch!",
+                text: util.format(
+                  "Codesearch feedback from: %s \n" +
+                    "IP: %s\n" +
+                    "Session: %s\n\n" +
+                    "%s",
+                  data.email,
+                  data.remoteAddress,
+                  data.session,
+                  data.text
+                )
+              }, function (err, message) {
+                if (err) {
+                  console.log("Error sending email!", err);
+                  cb(err);
+                } else {
+                  console.log("Email sent!");
+                  cb();
+                }
+              });
+  } else {
+    process.nextTick(cb);
+  }
+}
+
 app.post('/feedback', function (req, res) {
            console.log("FEEDBACK", req.body);
            if (!('data' in req.body)) {
@@ -95,33 +125,15 @@ app.post('/feedback', function (req, res) {
              return;
            }
 
-           if (smtp) {
-             smtp.send({
-                         to: "Nelson Elhage <feedback@livegrep.com>",
-                         from: "Codesearch <mailer@livegrep.com",
-                         subject: "Feedback from codesearch!",
-                         text: util.format(
-                           "Codesearch feedback from: %s \n" +
-                             "IP: %s\n" +
-                             "Session: %s\n\n" +
-                             "%s",
-                           data.email,
-                           req.connection.remoteAddress,
-                           data.session,
-                           data.text
-                         )
-                       }, function (err, message) {
-                         if (err) {
-                           console.log("Error sending email!", err);
-                           res.send(500);
-                         } else {
-                           console.log("Email sent!");
-                           res.send(200);
-                         }
-                       });
-           } else {
-             res.send(200);
-           }
+           data.remoteAddress = req.connection.remoteAddress;
+           send_feedback(data,
+                         function (err) {
+                           if (err) {
+                             res.send(500);
+                           } else {
+                             res.send(200);
+                           }
+                         });
          });
 
 app.listen(8910);
