@@ -43,6 +43,11 @@ var Feedback = (
         var result = $('#feedback span.result');
         result.text('');
 
+        if (!data.text) {
+          result.text('Please enter feedback.');
+          return false;
+        }
+
         Feedback.spinner.show();
 
         $.post('/feedback',

@@ -89,6 +89,12 @@ app.post('/feedback', function (req, res) {
              return;
            }
 
+           if (!data.email && !data.text) {
+             console.log("Empty feedback: %j", data);
+             res.send(200);
+             return;
+           }
+
            if (smtp) {
              smtp.send({
                          to: "Nelson Elhage <feedback@livegrep.com>",
