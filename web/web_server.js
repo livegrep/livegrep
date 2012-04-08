@@ -61,7 +61,8 @@ app.configure(
     app.use(express.static(path.join(__dirname, 'htdocs')));
   });
 
-app.get('/', function (req, res) {
+app.get('/', function (req, res) {res.redirect('/search');});
+app.get('/search', function (req, res) {
           res.render('index',
                      {
                        js: true,

@@ -61,7 +61,28 @@ var CodesearchUI = function() {
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input_file.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input.focus();
+      var parms = CodesearchUI.parse_query_params();
+      if (parms.q)
+        CodesearchUI.input.val(parms.q);
+      if (parms.file)
+        CodesearchUI.input_file.val(parms.file);
+
       Codesearch.connect(CodesearchUI);
+    },
+    parse_query_params: function() {
+      var urlParams = {};
+      var e,
+          a = /\+/g,
+          r = /([^&=]+)=?([^&]*)/g,
+          d = function (s) { return decodeURIComponent(s.replace(a, " ")); },
+          q = window.location.search.substring(1);
+
+      while (e = r.exec(q))
+        urlParams[d(e[1])] = d(e[2]);
+      return urlParams;
+    },
+    on_connect: function() {
+      CodesearchUI.newsearch();
     },
     keypress: function() {
       setTimeout(CodesearchUI.newsearch, 0);
