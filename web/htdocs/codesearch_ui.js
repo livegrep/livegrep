@@ -112,7 +112,7 @@ var CodesearchUI = function() {
       $('#numresults').val('');
       $('#results').empty();
       $('#searchtimebox').hide();
-      $('#countarea').hide();
+      $('#resultarea').hide();
     },
     error: function(search, error) {
       if (search === CodesearchUI.search_id) {
@@ -131,36 +131,38 @@ var CodesearchUI = function() {
       CodesearchUI.results++;
       $('#results').append(render_match(match));
       $('#numresults').text(CodesearchUI.results);
-      $('#countarea').show();
     },
     search_done: function(search, time, why) {
       CodesearchUI.handle_result(search);
       if (why === 'limit')
         $('#numresults').append('+');
-      $('#countarea').show();
       $('#searchtime').text((time/1000) + "s");
       $('#searchtimebox').show();
     },
     handle_result: function(search) {
       CodesearchUI.hide_error();
-      if (search != CodesearchUI.displaying) {
-        for (var k in CodesearchUI.search_map) {
-          if (k < search)
-            delete CodesearchUI.search_map[k];
-        }
-        CodesearchUI.clear();
-        $('#numresults').text('0');
-        CodesearchUI.displaying = search;
-        CodesearchUI.results = 0;
-        CodesearchUI.update_url(CodesearchUI.search_map[search]);
+      if (search == CodesearchUI.displaying)
+        return;
+
+      for (var k in CodesearchUI.search_map) {
+        if (k < search)
+          delete CodesearchUI.search_map[k];
       }
+      CodesearchUI.clear();
+      $('#numresults').text('0');
+      $('#resultarea').show();
+      CodesearchUI.displaying = search;
+      CodesearchUI.results = 0;
+      CodesearchUI.update_url(CodesearchUI.search_map[search]);
     },
     update_url: function (q) {
+      if (!q.q)    delete q.q;
+      if (!q.file) delete q.file;
+      var url = '/search?' + $.param(q);
       if (history.replaceState) {
-        if (!q.q)    delete q.q;
-        if (!q.file) delete q.file;
-        history.replaceState(null, '', '/search?' + $.param(q));
+        history.replaceState(null, '', url);
       }
+      $('#permalink').attr('href', url);
     }
   };
 }();

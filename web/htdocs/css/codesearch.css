@@ -34,7 +34,7 @@ body {
     display: none
 }
 
-#resultarea {
+#resultbox {
     width: 100%;
     border: 1px solid black;
     padding: 5px;
@@ -80,7 +80,6 @@ body {
 
 #countarea {
     float: right;
-    display: none;
 }
 
 .what {
@@ -149,4 +148,12 @@ body {
 
 #feedback .result {
     font-size: 100%;
+}
+
+#permalink {
+    font-size: 80%;
+}
+
+#resultarea {
+    display: none;
 }
