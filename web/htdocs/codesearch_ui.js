@@ -53,19 +53,24 @@ var CodesearchUI = function() {
     displaying: null,
     results: 0,
     search_id: 0,
+    search_map: {},
     onload: function() {
+      if (CodesearchUI.input)
+        return;
+
       CodesearchUI.input      = $('#searchbox');
       CodesearchUI.input_file = $('#filebox');
-      CodesearchUI.input.keydown(CodesearchUI.keypress);
-      CodesearchUI.input_file.keydown(CodesearchUI.keypress);
-      CodesearchUI.input.bind('paste', CodesearchUI.keypress);
-      CodesearchUI.input_file.bind('paste', CodesearchUI.keypress);
-      CodesearchUI.input.focus();
       var parms = CodesearchUI.parse_query_params();
       if (parms.q)
         CodesearchUI.input.val(parms.q);
       if (parms.file)
         CodesearchUI.input_file.val(parms.file);
+
+      CodesearchUI.input.keydown(CodesearchUI.keypress);
+      CodesearchUI.input_file.keydown(CodesearchUI.keypress);
+      CodesearchUI.input.bind('paste', CodesearchUI.keypress);
+      CodesearchUI.input_file.bind('paste', CodesearchUI.keypress);
+      CodesearchUI.input.focus();
 
       Codesearch.connect(CodesearchUI);
     },
@@ -88,13 +93,18 @@ var CodesearchUI = function() {
       setTimeout(CodesearchUI.newsearch, 0);
     },
     newsearch: function() {
+      CodesearchUI.search_map[++CodesearchUI.search_id] = {
+        q: CodesearchUI.input.val(),
+        file: CodesearchUI.input_file.val()
+      };
       Codesearch.new_search(
         CodesearchUI.input.val(),
         CodesearchUI.input_file.val(),
-        ++CodesearchUI.search_id);
+        CodesearchUI.search_id);
       if (!CodesearchUI.input.val().length) {
         CodesearchUI.clear();
         CodesearchUI.displaying = null;
+        CodesearchUI.update_url({});
       }
     },
     clear: function() {
@@ -134,10 +144,22 @@ var CodesearchUI = function() {
     handle_result: function(search) {
       CodesearchUI.hide_error();
       if (search != CodesearchUI.displaying) {
+        for (var k in CodesearchUI.search_map) {
+          if (k < search)
+            delete CodesearchUI.search_map[k];
+        }
         CodesearchUI.clear();
         $('#numresults').text('0');
         CodesearchUI.displaying = search;
         CodesearchUI.results = 0;
+        CodesearchUI.update_url(CodesearchUI.search_map[search]);
+      }
+    },
+    update_url: function (q) {
+      if (history.replaceState) {
+        if (!q.q)    delete q.q;
+        if (!q.file) delete q.file;
+        history.replaceState(null, '', '/search?' + $.param(q));
       }
     }
   };
