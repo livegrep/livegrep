@@ -103,7 +103,7 @@ var CodesearchUI = function() {
         CodesearchUI.search_id);
       if (!CodesearchUI.input.val().length) {
         CodesearchUI.clear();
-        CodesearchUI.displaying = null;
+        CodesearchUI.displaying = CodesearchUI.search_id;
         CodesearchUI.update_url({});
       }
     },
@@ -141,7 +141,7 @@ var CodesearchUI = function() {
     },
     handle_result: function(search) {
       CodesearchUI.hide_error();
-      if (search == CodesearchUI.displaying)
+      if (search <= CodesearchUI.displaying)
         return;
 
       for (var k in CodesearchUI.search_map) {

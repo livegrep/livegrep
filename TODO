@@ -1,12 +1,12 @@
 # -*- mode: org -*-
 * Search core
 ** Handle pathological queries better
+** Statistical estimation of the number of matches
 * Server backend
 * Server frontend
 ** Test IE7 support
 ** Fix Firefox behind an HTTP proxy.
 ** Better UI affordances
-** Statistical estimation of the number of matches
 ** Log client-side errors.
 * Future
   - Better UI for handling multiple versions
