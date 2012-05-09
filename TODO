@@ -2,6 +2,9 @@
 * Search core
 ** Handle pathological queries better
 ** Statistical estimation of the number of matches
+** Better handling for identical files
+** Store indexes on disk
+** Loading a filesystem tree instead of git
 * Server backend
 * Server frontend
 ** Test IE7 support
