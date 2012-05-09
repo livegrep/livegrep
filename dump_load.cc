@@ -67,7 +67,7 @@ void code_searcher::dump_file_contents(ostream& stream,
     dump_int32(stream, sf->content.size());
     for (vector<StringPiece>::iterator it = sf->content.begin();
              it != sf->content.end(); ++it) {
-        chunk *chunk = chunk::from_str(it->data());
+        chunk *chunk = chunk::from_str(reinterpret_cast<const unsigned char*>(it->data()));
         dump_int32(stream, chunks[chunk]);
         dump_int32(stream, reinterpret_cast<const unsigned char*>(it->data()) - chunk->data);
         dump_int32(stream, it->size());

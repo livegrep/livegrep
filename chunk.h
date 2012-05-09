@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <vector>
+#include <map>
 #include <string>
 #include <algorithm>
 #include <list>
@@ -32,7 +33,6 @@ struct chunk_file {
 
 extern size_t kChunkSize;
 const size_t kMaxGap       = 1 << 10;
-#define CHUNK_MAGIC 0xC407FADE
 
 struct chunk_file_node {
     chunk_file *chunk;
@@ -43,16 +43,23 @@ struct chunk_file_node {
 
 struct chunk {
     static int chunk_files;
+    static map<const unsigned char *, chunk *> chunk_map;
+
     int size;
-    unsigned magic;
     vector<chunk_file> files;
     vector<chunk_file> cur_file;
     chunk_file_node *cf_root;
     uint32_t *suffixes;
-    unsigned char data[0];
+    unsigned char *data;
 
     chunk()
-        : size(0), magic(CHUNK_MAGIC), files(), suffixes(0) {
+        : size(0), files(), suffixes(0), data(new unsigned char[kChunkSize]) {
+        chunk_map[data] = this;
+    }
+
+    ~chunk() {
+        chunk_map.erase(data);
+        delete[] data;
     }
 
     void add_chunk_file(search_file *sf, const StringPiece& line);
@@ -61,11 +68,14 @@ struct chunk {
     void finalize_files();
     void build_tree();
 
-    static chunk *from_str(const char *p) {
-        chunk *out = reinterpret_cast<chunk*>
-            ((uintptr_t(p) - 1) & ~(kChunkSize - 1));
-        assert(out->magic == CHUNK_MAGIC);
-        return out;
+    static chunk *from_str(const unsigned char *p) {
+        auto it = chunk_map.lower_bound(p);
+        if (it == chunk_map.end() || it->first != p) {
+            assert(it != chunk_map.begin());
+            --it;
+        }
+        assert(it->first <= p && p <= it->first + it->second->size);
+        return it->second;
     }
 
     struct lt_suffix {

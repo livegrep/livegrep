@@ -126,6 +126,7 @@ void chunk::finish_file() {
 }
 
 int chunk::chunk_files = 0;
+map<const unsigned char *, chunk *> chunk::chunk_map;
 
 void radix_sorter::sort() {
     cmp_suffix cmp(*this);

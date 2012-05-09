@@ -27,10 +27,7 @@ unsigned char *chunk_allocator::alloc(size_t len) {
 }
 
 static chunk *alloc_chunk() {
-    void *p;
-    if (posix_memalign(&p, kChunkSize, kChunkSize) != 0)
-        return NULL;
-    return new(p) chunk;
+    return new chunk;
 };
 
 void chunk_allocator::new_chunk()  {
