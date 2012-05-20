@@ -35,6 +35,7 @@ const int    kContextLines = 3;
 
 const size_t kMinSkip = 250;
 const int kMinFilterRatio = 50;
+const int kMaxScan        = (1 << 20);
 
 #ifdef PROFILE_CODESEARCH
 DEFINE_bool(debug_search, false, "Produce debugging output about the search process");
@@ -766,19 +767,8 @@ void searcher::full_search(match_finger *finger,
     while (pos < maxpos && !exit_early()) {
         if (pos >= end) {
             end = maxpos;
-#if 0
-            int opos = pos;
-#endif
             next_range(finger, pos, end, maxpos);
             assert(pos <= end);
-#if 0
-            if (pos != opos) {
-                for (vector<chunk_file>::const_iterator it =
-                         chunk->files.begin(); it != chunk->files.end(); ++it) {
-                    assert(it->left > pos || it->right <= opos || !accept(it->file));
-                }
-            }
-#endif
         }
         if (pos >= maxpos)
             break;
@@ -787,9 +777,12 @@ void searcher::full_search(match_finger *finger,
                     (void*)(chunk), pos, end, int(minpos), int(maxpos));
 
         {
+            int limit = end;
+            if (limit - pos > kMaxScan)
+                limit = line_end(chunk, pos + kMaxScan);
             run_timer run(re2_time_);
-            if (!pat_.Match(str, pos, end, RE2::UNANCHORED, &match, 1)) {
-                pos = end + 1;
+            if (!pat_.Match(str, pos, limit, RE2::UNANCHORED, &match, 1)) {
+                pos = limit + 1;
                 continue;
             }
         }
