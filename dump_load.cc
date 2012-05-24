@@ -5,32 +5,57 @@
 #include <map>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 5;
+const uint32_t kIndexVersion = 6;
+const uint32_t kPageSize     = (1 << 12);
 
 struct index_header {
     uint32_t magic;
     uint32_t version;
     uint32_t chunk_size;
+    uint32_t pad;
+
+    uint64_t metadata_off;
+    uint64_t chunks_off;
+} __attribute__((packed));
+
+struct metadata_header {
     uint32_t nrefs;
     uint32_t nfiles;
     uint32_t nchunks;
 } __attribute__((packed));
 
+/*
+struct chunks_header {
+    
+} __attribute__((packed));
+*/
 
 struct chunk_header {
     uint32_t size;
     uint32_t nfiles;
 } __attribute__((packed));
 
-static void dump_int32(ostream& stream, uint32_t i) {
-    stream.write(reinterpret_cast<char*>(&i), sizeof i);
-}
+namespace {
+    void stream_alignp(ostream& stream, uint32_t align) {
+        streampos pos = stream.tellp();
+        stream.seekp((size_t(pos) + align) & ~(align - 1));
+    }
 
-static void dump_string(ostream& stream, const char *str) {
-    uint32_t len = strlen(str);
-    dump_int32(stream, len);
-    stream.write(str, len);
-}
+    void stream_aligng(istream& stream, uint32_t align) {
+        streampos pos = stream.tellg();
+        stream.seekg((size_t(pos) + align) & ~(align - 1));
+    }
+
+    void dump_int32(ostream& stream, uint32_t i) {
+        stream.write(reinterpret_cast<char*>(&i), sizeof i);
+    }
+
+    void dump_string(ostream& stream, const char *str) {
+        uint32_t len = strlen(str);
+        dump_int32(stream, len);
+        stream.write(str, len);
+    }
+};
 
 void code_searcher::dump_file(ostream& stream, search_file *sf) {
     /* (str path, int ref, oid id) */
@@ -55,10 +80,16 @@ void code_searcher::dump_chunk(ostream& stream, chunk *chunk) {
     for (vector<chunk_file>::iterator it = chunk->files.begin();
          it != chunk->files.end(); it ++)
         dump_chunk_file(stream, &(*it));
+}
+
+void code_searcher::dump_chunk_data(ostream& stream, chunk *chunk) {
+    stream_alignp(stream, kPageSize);
     stream.write(reinterpret_cast<char*>(chunk->data), chunk->size);
+    stream_alignp(stream, kPageSize);
     stream.write(reinterpret_cast<char*>(chunk->suffixes),
                  sizeof(uint32_t) * chunk->size);
 }
+
 
 void code_searcher::dump_file_contents(ostream& stream,
                                        map<chunk*, int>& chunks,
@@ -78,15 +109,19 @@ void code_searcher::dump_file_contents(ostream& stream,
 void code_searcher::dump_index(const string& path) {
     assert(finalized_);
     ofstream stream(path.c_str());
-    index_header hdr;
+    index_header hdr = {};
     hdr.magic   = kIndexMagic;
     hdr.version = kIndexVersion;
     hdr.chunk_size = kChunkSize;
-    hdr.nrefs   = refs_.size();
-    hdr.nfiles  = files_.size();
-    hdr.nchunks = alloc_->size();
+
+    metadata_header meta;
+    meta.nrefs   = refs_.size();
+    meta.nfiles  = files_.size();
+    meta.nchunks = alloc_->size();
 
     stream.write(reinterpret_cast<const char*>(&hdr), sizeof(hdr));
+    hdr.metadata_off = stream.tellp();
+    stream.write(reinterpret_cast<const char*>(&meta), sizeof(meta));
 
     for (vector<const char*>::iterator it = refs_.begin();
          it != refs_.end(); ++it) {
@@ -112,6 +147,15 @@ void code_searcher::dump_index(const string& path) {
         dump_file_contents(stream, chunks, *it);
     }
 
+    stream_alignp(stream, kPageSize);
+    hdr.chunks_off = stream.tellp();
+    for (list<chunk*>::iterator it = alloc_->begin();
+         it != alloc_->end(); ++it) {
+        dump_chunk_data(stream, *it);
+    }
+
+    stream.seekp(0);
+    stream.write(reinterpret_cast<const char*>(&hdr), sizeof(hdr));
 }
 
 uint32_t load_int32(istream& stream) {
@@ -158,7 +202,12 @@ void code_searcher::load_chunk(istream& stream, chunk *chunk) {
         cf.left  = load_int32(stream);
         cf.right = load_int32(stream);
     }
+}
+
+void code_searcher::load_chunk_data(istream& stream, chunk *chunk) {
+    stream_aligng(stream, kPageSize);
     stream.read(reinterpret_cast<char*>(chunk->data), chunk->size);
+    stream_aligng(stream, kPageSize);
     chunk->suffixes = new uint32_t[chunk->size];
     stream.read(reinterpret_cast<char*>(chunk->suffixes),
                 sizeof(uint32_t) * chunk->size);
@@ -194,24 +243,34 @@ void code_searcher::load_index(const string& path) {
     assert(hdr.version == kIndexVersion);
     assert(hdr.chunk_size == kChunkSize);
 
-    for (int i = 0; i < hdr.nrefs; i++) {
+    stream.seekg(hdr.metadata_off);
+    metadata_header meta;
+    stream.read(reinterpret_cast<char*>(&meta), sizeof meta);
+
+    for (int i = 0; i < meta.nrefs; i++) {
         refs_.push_back(load_string(stream));
     }
 
-    for (int i = 0; i < hdr.nfiles; i++) {
+    for (int i = 0; i < meta.nfiles; i++) {
         files_.push_back(load_file(stream));
     }
 
     vector<chunk*> chunks;
-    for (int i = 0; i < hdr.nchunks; i++) {
+    for (int i = 0; i < meta.nchunks; i++) {
         load_chunk(stream, alloc_->current_chunk());
         chunks.push_back(alloc_->current_chunk());
-        if (i != hdr.nchunks - 1)
+        if (i != meta.nchunks - 1)
             alloc_->skip_chunk();
     }
 
-    for (int i = 0; i < hdr.nfiles; i++) {
+    for (int i = 0; i < meta.nfiles; i++) {
         load_file_contents(stream, chunks, files_[i]);
+    }
+
+    stream.seekg(hdr.chunks_off);
+    for (list<chunk*>::iterator it = alloc_->begin();
+         it != alloc_->end(); ++it) {
+        load_chunk_data(stream, *it);
     }
 
     finalized_ = true;

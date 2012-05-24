@@ -52,14 +52,13 @@ struct chunk {
     uint32_t *suffixes;
     unsigned char *data;
 
-    chunk()
-        : size(0), files(), suffixes(0), data(new unsigned char[kChunkSize]) {
-        chunk_map[data] = this;
+    chunk(unsigned char *data = 0)
+        : size(0), files(), suffixes(0), data(data ?: new unsigned char[kChunkSize]) {
+        chunk_map[this->data] = this;
     }
 
     ~chunk() {
         chunk_map.erase(data);
-        delete[] data;
     }
 
     void add_chunk_file(search_file *sf, const StringPiece& line);
