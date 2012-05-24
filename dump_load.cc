@@ -4,6 +4,10 @@
 
 #include <map>
 
+#include <sys/fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
 const uint32_t kIndexMagic   = 0xc0d35eac;
 const uint32_t kIndexVersion = 6;
 const uint32_t kPageSize     = (1 << 12);
@@ -204,13 +208,23 @@ void code_searcher::load_chunk(istream& stream, chunk *chunk) {
     }
 }
 
-void code_searcher::load_chunk_data(istream& stream, chunk *chunk) {
+void code_searcher::load_chunk_data(int fd, istream& stream, chunk *chunk) {
     stream_aligng(stream, kPageSize);
-    stream.read(reinterpret_cast<char*>(chunk->data), chunk->size);
+    chunk::chunk_map.erase(chunk->data);
+    delete[] chunk->data;
+    chunk->data = static_cast<unsigned char*>
+        (mmap(NULL, chunk->size, PROT_READ, MAP_SHARED,
+              fd, stream.tellg()));
+    assert(chunk->data != MAP_FAILED);
+    chunk::chunk_map[chunk->data] = chunk;
+
+    stream.seekg(chunk->size, ios_base::cur);
     stream_aligng(stream, kPageSize);
-    chunk->suffixes = new uint32_t[chunk->size];
-    stream.read(reinterpret_cast<char*>(chunk->suffixes),
-                sizeof(uint32_t) * chunk->size);
+
+    chunk->suffixes = static_cast<uint32_t*>
+        (mmap(NULL, chunk->size * sizeof(uint32_t), PROT_READ, MAP_SHARED,
+              fd, stream.tellg()));
+    stream.seekg(chunk->size * sizeof(uint32_t), ios_base::cur);
     chunk->build_tree();
 }
 
@@ -263,15 +277,24 @@ void code_searcher::load_index(const string& path) {
             alloc_->skip_chunk();
     }
 
-    for (int i = 0; i < meta.nfiles; i++) {
-        load_file_contents(stream, chunks, files_[i]);
-    }
+    streampos files_pos = stream.tellg();
+
+    int fd = open(path.c_str(), O_RDONLY);
+    assert(fd > 0);
 
     stream.seekg(hdr.chunks_off);
     for (list<chunk*>::iterator it = alloc_->begin();
          it != alloc_->end(); ++it) {
-        load_chunk_data(stream, *it);
+        load_chunk_data(fd, stream, *it);
     }
+
+    close(fd);
+
+    stream.seekg(files_pos);
+    for (int i = 0; i < meta.nfiles; i++) {
+        load_file_contents(stream, chunks, files_[i]);
+    }
+
 
     finalized_ = true;
 }

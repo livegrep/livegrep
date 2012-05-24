@@ -151,7 +151,7 @@ protected:
     search_file *load_file(std::istream& stream);
     void load_file_contents(std::istream& stream, vector<chunk*>&, search_file *sf);
     void load_chunk(std::istream& stream, chunk *);
-    void load_chunk_data(std::istream& stream, chunk *);
+    void load_chunk_data(int fd, std::istream& stream, chunk *);
 
     string_hash lines_;
     struct {
