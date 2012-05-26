@@ -11,6 +11,7 @@
 #else
 #include <google/sparse_hash_set>
 #endif
+#include <google/sparse_hash_map>
 #include <re2/re2.h>
 #include <locale>
 
@@ -48,6 +49,12 @@ struct hashstr {
 };
 
 
+bool operator==(const git_oid &lhs, const git_oid &rhs);
+
+struct hashoid {
+    size_t operator()(const git_oid &oid) const;
+};
+
 #ifdef USE_DENSE_HASH_SET
 typedef google::dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
 #else
@@ -75,8 +82,8 @@ struct chunk;
 struct chunk_file;
 
 struct search_file {
-    string path;
-    const char *ref;
+    // <ref, path>
+    vector<pair<const char*, string> > paths;
     git_oid oid;
     vector<StringPiece> content;
     int no;
@@ -154,9 +161,11 @@ protected:
     void load_chunk_data(int fd, std::istream& stream, chunk *);
 
     string_hash lines_;
+    google::sparse_hash_map<git_oid, search_file*, hashoid> file_map_;
     struct {
         unsigned long bytes, dedup_bytes;
         unsigned long lines, dedup_lines;
+        unsigned long files, dedup_files;
     } stats_;
     chunk_allocator *alloc_;
     bool finalized_;

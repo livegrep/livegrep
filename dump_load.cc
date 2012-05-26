@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 6;
+const uint32_t kIndexVersion = 7;
 const uint32_t kPageSize     = (1 << 12);
 
 struct index_header {
@@ -62,10 +62,12 @@ namespace {
 };
 
 void code_searcher::dump_file(ostream& stream, search_file *sf) {
-    /* (str path, int ref, oid id) */
-    dump_string(stream, sf->path.c_str());
-    dump_int32(stream, find(refs_.begin(), refs_.end(), sf->ref) - refs_.begin());
     stream.write(reinterpret_cast<char*>(&sf->oid), sizeof sf->oid);
+    dump_int32(stream, sf->paths.size());
+    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
+        dump_int32(stream, find(refs_.begin(), refs_.end(), it->first) - refs_.begin());
+        dump_string(stream, it->second.c_str());
+    }
 }
 
 void dump_chunk_file(ostream& stream, chunk_file *cf) {
@@ -178,11 +180,14 @@ char *load_string(istream& stream) {
 
 search_file *code_searcher::load_file(istream& stream) {
     search_file *sf = new search_file;
-    char *str = load_string(stream);
-    sf->path = str;
-    delete[] str;
-    sf->ref = refs_[load_int32(stream)];
     stream.read(reinterpret_cast<char*>(&sf->oid), sizeof(sf->oid));
+    sf->paths.resize(load_int32(stream));
+    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
+        it->first = refs_[load_int32(stream)];
+        char *str = load_string(stream);
+        it->second = str;
+        delete[] str;
+    }
     sf->no = files_.size();
     return sf;
 }

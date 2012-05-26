@@ -67,6 +67,23 @@ size_t hashstr::operator()(const StringPiece& str) const {
     return coll.hash(str.data(), str.data() + str.size());
 }
 
+bool operator==(const git_oid &lhs, const git_oid &rhs) {
+    return memcmp(lhs.id, rhs.id, GIT_OID_RAWSZ) == 0;
+}
+
+size_t hashoid::operator()(const git_oid& oid) const {
+    /*
+     * We could hash the entire oid together, but since the oid is the
+     * output of a cryptographic hash anyways, just taking the first N
+     * bytes should work just well.
+     */
+    union {
+        git_oid oid;
+        size_t size;
+    } u = {oid};
+    return u.size;
+}
+
 const StringPiece empty_string(NULL, 0);
 
 class code_searcher;
@@ -146,8 +163,15 @@ protected:
         assert(cc_->files_[sf->no] == sf);
 
         if (files_[sf->no] == 0xff) {
-            files_[sf->no] = file_pat_->Match(sf->path, 0, sf->path.size(),
-                                              RE2::UNANCHORED, 0, 0);
+            bool match = 0;
+            for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
+                if (file_pat_->Match(it->second, 0, it->second.size(),
+                                     RE2::UNANCHORED, 0, 0)) {
+                    match = true;
+                    break;
+                }
+            }
+            files_[sf->no] = match;
         }
 
         return files_[sf->no];
@@ -464,6 +488,7 @@ void code_searcher::dump_stats() {
     log_profile("chunk_files: %d\n", chunk::chunk_files);
     printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
+    printf("Files: %ld (dedup: %ld)\n", stats_.files, stats_.dedup_files);
 }
 
 void code_searcher::finalize() {
@@ -503,12 +528,25 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     if (memchr(p, 0, len) != NULL)
         return;
 
+    stats_.bytes += len;
+    stats_.files++;
+
+    const git_oid *oid = git_object_id(reinterpret_cast<git_object*>(blob));
+    auto sit = file_map_.find(*oid);
+    if (sit != file_map_.end()) {
+        search_file *sf = sit->second;
+        sf->paths.push_back(make_pair(ref, path));
+        return;
+    }
+
+    stats_.dedup_files++;
+
     search_file *sf = new search_file;
-    sf->path = path;
-    sf->ref = ref;
-    git_oid_cpy(&sf->oid, git_object_id(reinterpret_cast<git_object*>(blob)));
+    sf->paths.push_back(make_pair(ref, path));
+    git_oid_cpy(&sf->oid, oid);
     sf->no  = files_.size();
     files_.push_back(sf);
+    file_map_[*oid] = sf;
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
         string_hash::iterator it = lines_.find(StringPiece(p, f - p));
@@ -544,8 +582,6 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     for (list<chunk*>::iterator it = alloc_->begin();
          it != alloc_->end(); it++)
         (*it)->finish_file();
-
-    stats_.bytes += len;
 }
 
 void searcher::operator()(const chunk *chunk)
