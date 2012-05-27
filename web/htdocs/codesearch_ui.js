@@ -35,7 +35,7 @@ var CodesearchUI = function() {
                          [
                            h.a({
                                  href: url_for(match)
-                               }, [match.file])
+                               }, [shorten(match.ref), ":", match.file])
                          ]),
                    h.div({cls: 'contents'},
                          [
