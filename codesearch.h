@@ -81,9 +81,14 @@ struct match_stats {
 struct chunk;
 struct chunk_file;
 
+struct git_path {
+    const char *ref;
+    string path;
+};
+
 struct search_file {
     // <ref, path>
-    vector<pair<const char*, string> > paths;
+    vector<git_path> paths;
     git_oid oid;
     vector<StringPiece> content;
     int no;

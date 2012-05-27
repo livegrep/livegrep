@@ -65,8 +65,8 @@ void code_searcher::dump_file(ostream& stream, search_file *sf) {
     stream.write(reinterpret_cast<char*>(&sf->oid), sizeof sf->oid);
     dump_int32(stream, sf->paths.size());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        dump_int32(stream, find(refs_.begin(), refs_.end(), it->first) - refs_.begin());
-        dump_string(stream, it->second.c_str());
+        dump_int32(stream, find(refs_.begin(), refs_.end(), it->ref) - refs_.begin());
+        dump_string(stream, it->path.c_str());
     }
 }
 
@@ -183,9 +183,9 @@ search_file *code_searcher::load_file(istream& stream) {
     stream.read(reinterpret_cast<char*>(&sf->oid), sizeof(sf->oid));
     sf->paths.resize(load_int32(stream));
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        it->first = refs_[load_int32(stream)];
+        it->ref = refs_[load_int32(stream)];
         char *str = load_string(stream);
-        it->second = str;
+        it->path = str;
         delete[] str;
     }
     sf->no = files_.size();

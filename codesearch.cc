@@ -165,7 +165,7 @@ protected:
         if (files_[sf->no] == 0xff) {
             bool match = 0;
             for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-                if (file_pat_->Match(it->second, 0, it->second.size(),
+                if (file_pat_->Match(it->path, 0, it->path.size(),
                                      RE2::UNANCHORED, 0, 0)) {
                     match = true;
                     break;
@@ -535,14 +535,14 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     auto sit = file_map_.find(*oid);
     if (sit != file_map_.end()) {
         search_file *sf = sit->second;
-        sf->paths.push_back(make_pair(ref, path));
+        sf->paths.push_back((git_path){ref, path});
         return;
     }
 
     stats_.dedup_files++;
 
     search_file *sf = new search_file;
-    sf->paths.push_back(make_pair(ref, path));
+    sf->paths.push_back((git_path){ref, path});
     git_oid_cpy(&sf->oid, oid);
     sf->no  = files_.size();
     files_.push_back(sf);

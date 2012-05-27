@@ -54,8 +54,8 @@ struct print_match {
     void print(const match_result *m) const {
         fprintf(out_,
                 "%s:%s:%d:%d-%d: %.*s\n",
-                m->file->paths[0].first,
-                m->file->paths[0].second.c_str(),
+                m->file->paths[0].ref,
+                m->file->paths[0].path.c_str(),
                 m->lno,
                 m->matchleft, m->matchright,
                 m->line.size(), m->line.data());
@@ -64,9 +64,9 @@ struct print_match {
     void print_json(const match_result *m) const {
         json_object *obj = json_object_new_object();
         json_object_object_add(obj, "ref",
-                               json_object_new_string(m->file->paths[0].first));
+                               json_object_new_string(m->file->paths[0].ref));
         json_object_object_add(obj, "file",
-                               json_object_new_string(m->file->paths[0].second.c_str()));
+                               json_object_new_string(m->file->paths[0].path.c_str()));
         json_object_object_add(obj, "lno",  json_object_new_int(m->lno));
         json_object *bounds = json_object_new_array();
         json_object_array_add(bounds, json_object_new_int(m->matchleft));
