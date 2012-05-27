@@ -96,6 +96,7 @@ struct search_file {
 
 struct match_result {
     search_file *file;
+    vector<git_path> paths;
     int lno;
     vector<string> context_before;
     vector<string> context_after;

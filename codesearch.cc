@@ -156,6 +156,13 @@ protected:
     void filtered_search(const chunk *chunk);
     void search_lines(uint32_t *left, int count, const chunk *chunk);
 
+    bool accept(const git_path &path) {
+        if (!file_pat_)
+            return true;
+        return file_pat_->Match(path.path, 0, path.path.size(),
+                                RE2::UNANCHORED, 0, 0);
+    }
+
     bool accept(search_file *sf) {
         if (!file_pat_)
             return true;
@@ -165,8 +172,7 @@ protected:
         if (files_[sf->no] == 0xff) {
             bool match = 0;
             for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-                if (file_pat_->Match(it->path, 0, it->path.size(),
-                                     RE2::UNANCHORED, 0, 0)) {
+                if (accept(*it)) {
                     match = true;
                     break;
                 }
@@ -854,6 +860,9 @@ match_result *searcher::try_match(const StringPiece& line,
         return 0;
 
     match_result *m = new match_result;
+    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it)
+        if (accept(*it))
+            m->paths.push_back(*it);
     m->file = sf;
     m->lno  = lno;
     m->line = line;
