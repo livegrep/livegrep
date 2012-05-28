@@ -1,7 +1,8 @@
-function Batch(cb, interval) {
+function Batch(cb, interval, preprocess) {
   if (interval === undefined)
     interval = 10;
   this.cb         = cb;
+  this.preprocess = preprocess;
   this.interval   = interval;
   this.results    = [];
   this.last_flush = new Date();
@@ -18,6 +19,8 @@ Batch.prototype.maybe_flush = function(r) {
 }
 
 Batch.prototype.flush = function() {
+  if (this.preprocess)
+    this.results = this.preprocess(this.results);
   this.results.forEach(this.cb);
   this.results = [];
   this.last_flush = new Date();

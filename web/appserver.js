@@ -72,6 +72,32 @@ Client.prototype.fast_query = function() {
     this.switch_pool(this.parent.fast_pool);
 }
 
+Client.prototype.sort_matches = function(matches) {
+  var order =  {};
+  for (var i = 0; i < this.parent.config.ORDER_DIRS.length; i++)
+    order[this.parent.config.ORDER_DIRS[i]] = i;
+  function sort_order(path) {
+    var dir = /^[^\/]+/.exec(path)[0];
+    if (dir in order)
+      return order[dir];
+    return 1000;
+  }
+  i = 0;
+  var annotated = matches.map(function (m) {
+                                return {
+                                  match: m,
+                                  order: sort_order(m.file),
+                                  index: i
+                                }
+                              });
+  var sorted = annotated.sort(function (a,b) {
+                                if (a.order != b.order)
+                                  return a.order - b.order;
+                                return a.index - b.index;
+                              });
+  return sorted.map(function (r) {return r.match});
+}
+
 Client.prototype.dispatch_search = function() {
   if (this.pending_search !== null &&
       !this.active_search &&
@@ -93,7 +119,10 @@ Client.prototype.dispatch_search = function() {
     var sock   = this.socket;
     var batch  = new Batch(function (m) {
                              sock.emit('match', search.id, m);
-                           }, 50);
+                           }, 50,
+                           function (matches) {
+                             return self.sort_matches(matches)
+                           });
     var cbs = {
       not_ready: function() {
         logger.info('Remote reports not ready for %j', search);
