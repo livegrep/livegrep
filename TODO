@@ -1,15 +1,17 @@
 # -*- mode: org -*-
 * Search core
-** Handle pathological queries better
 ** Statistical estimation of the number of matches
-** Better handling for identical files
 ** Store indexes on disk
 ** Loading a filesystem tree instead of git
 * Server backend
+** Add a script to do the indexing
+** Sort results in batches
 * Server frontend
 ** Test IE7 support
 ** Fix Firefox behind an HTTP proxy.
 ** Better UI affordances
 ** Log client-side errors.
+** minify and merge JS and CSS
 * Future
   - Better UI for handling multiple versions
+  - Select which refs to query
