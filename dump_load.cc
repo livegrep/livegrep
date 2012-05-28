@@ -28,12 +28,6 @@ struct metadata_header {
     uint32_t nchunks;
 } __attribute__((packed));
 
-/*
-struct chunks_header {
-    
-} __attribute__((packed));
-*/
-
 struct chunk_header {
     uint32_t size;
     uint32_t nfiles;
