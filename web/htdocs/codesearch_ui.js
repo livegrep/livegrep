@@ -31,12 +31,17 @@ var CodesearchUI = function() {
     }
     return h.div({cls: 'match'},
                  [
-                   h.div({cls: 'label'},
-                         [
-                           h.a({
-                                 href: url_for(match)
-                               }, [shorten(match.ref), ":", match.file])
-                         ]),
+                   h.div({},
+                         [h.span({cls: 'label'},
+                                 [
+                                   h.a({
+                                         href: url_for(match)
+                                       }, [shorten(match.ref), ":", match.file]),
+                                 ])
+                         ].concat((match.paths.length > 1) ?
+                         [h.span({cls: "more"},
+                                 [" (+", "" + (match.paths.length - 1), " identical)"])] : [])
+                        ),
                    h.div({cls: 'contents'},
                          [
                            ctx_before,

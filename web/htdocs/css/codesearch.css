@@ -56,6 +56,10 @@ body {
     font-family: monospace;
 }
 
+.match .more {
+    font-size: 90%;
+}
+
 .match .lno {
     width: 4em;
     padding-right: 1em;
