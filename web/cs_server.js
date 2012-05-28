@@ -55,7 +55,8 @@ function Server(config) {
   this.clients = [];
 
   this.codesearch = new Codesearch(config.SEARCH_REPO, [config.SEARCH_REF], {
-                                     args: config.SEARCH_ARGS
+                                     args: config.SEARCH_ARGS.concat(
+                                       ['--load_index', config.SEARCH_INDEX])
                                    });
   this.Server = function (remote, conn) {
     parent.clients[conn.id] = new Client(parent, remote);

@@ -5,7 +5,8 @@ var path   = require('path'),
 var config = {
   DNODE_PORT: 0xC5EA,
   SEARCH_REPO: path.join(__dirname, "../../linux"),
-  SEARCH_REF:  "v3.0",
+  SEARCH_REF:  "refs/tags/v3.4",
+  SEARCH_INDEX: path.join(__dirname, "../../linux/codesearch.idx"),
   SEARCH_ARGS: [],
   BACKEND_CONNECTIONS: 4,
   BACKENDS: [
@@ -17,6 +18,7 @@ var config = {
   MAX_SLOW_TIME:   10000,
   QUERY_STREAK:    5,
   SMTP_CONFIG:     null,
+  ORDER_DIRS:      'include kernel mm fs arch'.split(/\s+/)
 };
 
 try {

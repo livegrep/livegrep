@@ -57,7 +57,8 @@ function get_codesearch(args) {
     args = [];
   return new Codesearch(
     opts.options.repo, [opts.options.ref], {
-      args: config.SEARCH_ARGS.concat(args).concat(extra_args)
+      args: config.SEARCH_ARGS.concat(
+        ['--load_index', config.SEARCH_INDEX]).concat(args)
     });
 }
 module.exports.get_codesearch = get_codesearch;
