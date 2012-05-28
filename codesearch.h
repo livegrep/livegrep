@@ -156,16 +156,6 @@ protected:
     void walk_tree(git_repository *repo, const char *ref, const string& pfx, git_tree *tree);
     void update_stats(const char *ref, const string& path, git_blob *blob);
 
-    void dump_file(std::ostream& stream, search_file *sf);
-    void dump_file_contents(std::ostream& stream, map<chunk*, int>&, search_file *sf);
-    void dump_chunk(std::ostream& stream, chunk *);
-    void dump_chunk_data(std::ostream& stream, chunk *);
-
-    search_file *load_file(std::istream& stream);
-    void load_file_contents(std::istream& stream, vector<chunk*>&, search_file *sf);
-    void load_chunk(std::istream& stream, chunk *);
-    void load_chunk_data(int fd, std::istream& stream, chunk *);
-
     string_hash lines_;
     google::sparse_hash_map<git_oid, search_file*, hashoid> file_map_;
     struct {
@@ -179,6 +169,7 @@ protected:
     std::vector<search_file*> files_;
 
     friend class searcher;
+    friend class codesearch_index;
 };
 
 
