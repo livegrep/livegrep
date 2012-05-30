@@ -36,7 +36,9 @@ struct chunk_header {
 class codesearch_index {
 public:
     codesearch_index(code_searcher *cs, string path, bool dump) :
-        cs_(cs), stream_(path.c_str(), dump ? (ios::out | ios::trunc) : ios::in) {
+        cs_(cs),
+        stream_(path.c_str(), dump ? (ios::out | ios::trunc) : ios::in),
+        hdr_() {
         assert(!stream_.fail());
         fd_ = open(path.c_str(), dump ? O_WRONLY|O_APPEND : O_RDONLY);
         assert(fd_ > 0);
@@ -45,6 +47,8 @@ public:
     void dump();
     void load();
 protected:
+    void dump_chunk_data();
+    void dump_metadata();
     void dump_file(search_file *);
     void dump_file_contents(search_file *);
     void dump_chunk_file(chunk_file *cf);
@@ -104,6 +108,7 @@ protected:
     std::fstream stream_;
     int fd_;
 
+    index_header hdr_;
     map<chunk*, int> chunk_ids_;
     vector<chunk*> chunks_;
 };
@@ -157,20 +162,13 @@ void codesearch_index::dump_file_contents(search_file *sf) {
     }
 }
 
-void codesearch_index::dump() {
-    assert(cs_->finalized_);
-    index_header hdr = {};
-    hdr.magic   = kIndexMagic;
-    hdr.version = kIndexVersion;
-    hdr.chunk_size = kChunkSize;
+void codesearch_index::dump_metadata() {
+    hdr_.metadata_off = stream_.tellp();
 
     metadata_header meta;
     meta.nrefs   = cs_->refs_.size();
     meta.nfiles  = cs_->files_.size();
     meta.nchunks = cs_->alloc_->size();
-
-    dump(&hdr);
-    hdr.metadata_off = stream_.tellp();
     dump(&meta);
 
     for (vector<const char*>::iterator it = cs_->refs_.begin();
@@ -195,16 +193,30 @@ void codesearch_index::dump() {
          it != cs_->files_.end(); ++it) {
         dump_file_contents(*it);
     }
+}
 
+void codesearch_index::dump_chunk_data() {
     alignp(kPageSize);
-    hdr.chunks_off = stream_.tellp();
+    hdr_.chunks_off = stream_.tellp();
     for (list<chunk*>::iterator it = cs_->alloc_->begin();
          it != cs_->alloc_->end(); ++it) {
         dump_chunk_data(*it);
     }
+}
+
+void codesearch_index::dump() {
+    assert(cs_->finalized_);
+    hdr_.magic      = kIndexMagic;
+    hdr_.version    = kIndexVersion;
+    hdr_.chunk_size = kChunkSize;
+
+    dump(&hdr_);
+
+    dump_metadata();
+    dump_chunk_data();
 
     stream_.seekp(0);
-    dump(&hdr);
+    dump(&hdr_);
 }
 
 search_file *codesearch_index::load_file() {
