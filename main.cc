@@ -308,7 +308,7 @@ void initialize_search(code_searcher *search, int argc, char **argv) {
     }
     if (!FLAGS_json && !FLAGS_load_index.size())
         search->dump_stats();
-    if (FLAGS_dump_index.size())
+    if (FLAGS_dump_index.size() && FLAGS_load_index.size())
         search->dump_index(FLAGS_dump_index);
 }
 
@@ -365,7 +365,8 @@ int main(int argc, char **argv) {
 
     prctl(PR_SET_PDEATHSIG, SIGINT);
 
-    code_searcher counter;
+    code_searcher counter((FLAGS_dump_index.size() && !FLAGS_load_index.size())
+                          ? FLAGS_dump_index.c_str() : 0);
 
     signal(SIGPIPE, SIG_IGN);
 

@@ -406,13 +406,16 @@ protected:
     friend class code_searcher::search_thread;
 };
 
-code_searcher::code_searcher()
+code_searcher::code_searcher(const char *write_dump)
     : stats_(), finalized_(false)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
 #endif
-    alloc_ = new chunk_allocator();
+    if (write_dump == 0)
+        alloc_ = new chunk_allocator();
+    else
+        alloc_ = make_dump_allocator(this, write_dump);
 }
 
 code_searcher::~code_searcher() {

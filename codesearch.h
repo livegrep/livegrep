@@ -106,7 +106,7 @@ struct match_result {
 
 class code_searcher {
 public:
-    code_searcher();
+    code_searcher(const char *write_dump);
     ~code_searcher();
     void walk_ref(git_repository *repo, const char *ref);
     void dump_stats();

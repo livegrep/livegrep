@@ -3,6 +3,8 @@
 
 #include <gflags/gflags.h>
 
+#include <sys/mman.h>
+
 DECLARE_int32(threads);
 
 bool chunk_allocator::finalizer::operator()(chunk *chunk) {
@@ -14,19 +16,19 @@ bool chunk_allocator::finalizer::operator()(chunk *chunk) {
 
 chunk_allocator::chunk_allocator()  :
     current_(0), finalizer_(), finalize_pool_(0) {
-    new_chunk();
+    //    new_chunk();
 }
 
 unsigned char *chunk_allocator::alloc(size_t len) {
     assert(len < kChunkSpace);
-    if ((current_->size + len) > kChunkSpace)
+    if (current_ == 0 || (current_->size + len) > kChunkSpace)
         new_chunk();
     unsigned char *out = current_->data + current_->size;
     current_->size += len;
     return out;
 }
 
-static chunk *alloc_chunk() {
+chunk *chunk_allocator::alloc_chunk() {
     return new chunk;
 };
 
@@ -71,7 +73,7 @@ chunk *chunk_allocator::chunk_from_string(const unsigned char *p) {
 
 void chunk_allocator::replace_data(chunk *chunk, unsigned char *new_data) {
     by_data_.erase(chunk->data);
-    delete[] chunk->data;
+    munmap(chunk->data, kChunkSize);
     chunk->data = new_data;
     by_data_[new_data] = chunk;
 }

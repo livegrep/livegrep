@@ -4,6 +4,7 @@
 
 using namespace std;
 struct chunk;
+class code_searcher;
 
 class chunk_allocator {
 public:
@@ -27,7 +28,7 @@ public:
     }
 
     void skip_chunk();
-    void finalize();
+    virtual void finalize();
 
     chunk *chunk_from_string(const unsigned char *p);
     void replace_data(chunk *chunk, unsigned char *new_data);
@@ -38,6 +39,7 @@ protected:
         bool operator()(chunk *chunk);
     };
 
+    virtual chunk *alloc_chunk();
     void new_chunk();
 
     list<chunk*> chunks_;
@@ -46,3 +48,6 @@ protected:
     thread_pool<chunk*, finalizer> *finalize_pool_;
     map<const unsigned char*, chunk*> by_data_;
 };
+
+// dump_load.cc
+chunk_allocator *make_dump_allocator(code_searcher *search, const char *path);

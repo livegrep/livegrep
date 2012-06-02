@@ -137,7 +137,8 @@ void radix_sorter::sort() {
 
 void chunk::finalize() {
     if (FLAGS_index) {
-        suffixes = new uint32_t[size];
+        if (!suffixes)
+            suffixes = new uint32_t[size];
         for (int i = 0; i < size; i++)
             suffixes[i] = i;
         radix_sorter sorter(this);
