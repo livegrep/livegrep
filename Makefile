@@ -25,6 +25,9 @@ endif
 ifneq ($(slowgtod),)
 override CXXFLAGS+=-DCODESEARCH_SLOWGTOD
 endif
+ifneq ($(tcmalloc),)
+override LDLIBS+=-ltcmalloc
+endif
 
 OBJECTS = codesearch.o main.o chunk.o \
           chunk_allocator.o radix_sort.o \
