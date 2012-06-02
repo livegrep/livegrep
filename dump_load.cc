@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 7;
+const uint32_t kIndexVersion = 8;
 const uint32_t kPageSize     = (1 << 12);
 
 struct index_header {
@@ -62,12 +62,12 @@ protected:
 
     void alignp(uint32_t align) {
         streampos pos = stream_.tellp();
-        stream_.seekp((size_t(pos) + align) & ~(align - 1));
+        stream_.seekp((size_t(pos) + align - 1) & ~(align - 1));
     }
 
     void aligng(uint32_t align) {
         streampos pos = stream_.tellg();
-        stream_.seekg((size_t(pos) + align) & ~(align - 1));
+        stream_.seekg((size_t(pos) + align - 1) & ~(align - 1));
     }
 
     template<class T>
@@ -143,10 +143,12 @@ void codesearch_index::dump_chunk(chunk *chunk) {
 
 void codesearch_index::dump_chunk_data(chunk *chunk) {
     alignp(kPageSize);
-    stream_.write(reinterpret_cast<char*>(chunk->data), chunk->size);
-    alignp(kPageSize);
+    size_t off = stream_.tellp();
+    assert(ftruncate(fd_, off + 5 * kChunkSize) == 0);
+    stream_.write(reinterpret_cast<char*>(chunk->data), kChunkSize);
     stream_.write(reinterpret_cast<char*>(chunk->suffixes),
                   sizeof(uint32_t) * chunk->size);
+    stream_.seekp(off + 5 * kChunkSize);
 }
 
 
@@ -257,18 +259,17 @@ void codesearch_index::load_chunk(chunk *chunk) {
 
 void codesearch_index::load_chunk_data(chunk *chunk) {
     aligng(kPageSize);
+    size_t off = stream_.tellg();
     cs_->alloc_->replace_data(chunk, static_cast<unsigned char*>
-                              (mmap(NULL, chunk->size, PROT_READ, MAP_SHARED,
-                                    fd_, stream_.tellg())));
+                              (mmap(NULL, kChunkSize, PROT_READ, MAP_SHARED,
+                                    fd_, off)));
     assert(chunk->data != MAP_FAILED);
 
-    stream_.seekg(chunk->size, ios_base::cur);
-    aligng(kPageSize);
-
     chunk->suffixes = static_cast<uint32_t*>
-        (mmap(NULL, chunk->size * sizeof(uint32_t), PROT_READ, MAP_SHARED,
-              fd_, stream_.tellg()));
-    stream_.seekg(chunk->size * sizeof(uint32_t), ios_base::cur);
+        (mmap(NULL, kChunkSize * sizeof(uint32_t), PROT_READ, MAP_SHARED,
+              fd_, off + kChunkSize));
+    assert(chunk->suffixes != MAP_FAILED);
+    stream_.seekg(kChunkSize * (1 + sizeof(uint32_t)), ios_base::cur);
     chunk->build_tree();
 }
 
