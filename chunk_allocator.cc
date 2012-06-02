@@ -38,6 +38,7 @@ void chunk_allocator::new_chunk()  {
         finalize_pool_->queue(current_);
     }
     current_ = alloc_chunk();
+    by_data_[current_->data] = current_;
     chunks_.push_back(current_);
 }
 
@@ -57,3 +58,21 @@ void chunk_allocator::skip_chunk() {
     current_ = 0;
     new_chunk();
 }
+
+chunk *chunk_allocator::chunk_from_string(const unsigned char *p) {
+    auto it = by_data_.lower_bound(p);
+    if (it == by_data_.end() || it->first != p) {
+        assert(it != by_data_.begin());
+        --it;
+    }
+    assert(it->first <= p && p <= it->first + it->second->size);
+    return it->second;
+}
+
+void chunk_allocator::replace_data(chunk *chunk, unsigned char *new_data) {
+    by_data_.erase(chunk->data);
+    delete[] chunk->data;
+    chunk->data = new_data;
+    by_data_[new_data] = chunk;
+}
+

@@ -568,7 +568,8 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
             c = alloc_->current_chunk();
         } else {
             line = *it;
-            c = chunk::from_str(reinterpret_cast<const unsigned char*>(line.data()));
+            c = alloc_->chunk_from_string
+                (reinterpret_cast<const unsigned char*>(line.data()));
         }
         c->add_chunk_file(sf, line);
         if (sf->content.size() &&

@@ -43,7 +43,6 @@ struct chunk_file_node {
 
 struct chunk {
     static int chunk_files;
-    static map<const unsigned char *, chunk *> chunk_map;
 
     int size;
     vector<chunk_file> files;
@@ -54,11 +53,9 @@ struct chunk {
 
     chunk(unsigned char *data = 0)
         : size(0), files(), suffixes(0), data(data ?: new unsigned char[kChunkSize]) {
-        chunk_map[this->data] = this;
     }
 
     ~chunk() {
-        chunk_map.erase(data);
     }
 
     void add_chunk_file(search_file *sf, const StringPiece& line);
@@ -66,16 +63,6 @@ struct chunk {
     void finalize();
     void finalize_files();
     void build_tree();
-
-    static chunk *from_str(const unsigned char *p) {
-        auto it = chunk_map.lower_bound(p);
-        if (it == chunk_map.end() || it->first != p) {
-            assert(it != chunk_map.begin());
-            --it;
-        }
-        assert(it->first <= p && p <= it->first + it->second->size);
-        return it->second;
-    }
 
     struct lt_suffix {
         const chunk *chunk_;

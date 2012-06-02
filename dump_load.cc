@@ -155,7 +155,8 @@ void codesearch_index::dump_file_contents(search_file *sf) {
     dump_int32(sf->content.size());
     for (vector<StringPiece>::iterator it = sf->content.begin();
              it != sf->content.end(); ++it) {
-        chunk *chunk = chunk::from_str(reinterpret_cast<const unsigned char*>(it->data()));
+        chunk *chunk = cs_->alloc_->chunk_from_string
+            (reinterpret_cast<const unsigned char*>(it->data()));
         dump_int32(chunk_ids_[chunk]);
         dump_int32(reinterpret_cast<const unsigned char*>(it->data()) - chunk->data);
         dump_int32(it->size());
@@ -256,13 +257,10 @@ void codesearch_index::load_chunk(chunk *chunk) {
 
 void codesearch_index::load_chunk_data(chunk *chunk) {
     aligng(kPageSize);
-    chunk::chunk_map.erase(chunk->data);
-    delete[] chunk->data;
-    chunk->data = static_cast<unsigned char*>
-        (mmap(NULL, chunk->size, PROT_READ, MAP_SHARED,
-              fd_, stream_.tellg()));
+    cs_->alloc_->replace_data(chunk, static_cast<unsigned char*>
+                              (mmap(NULL, chunk->size, PROT_READ, MAP_SHARED,
+                                    fd_, stream_.tellg())));
     assert(chunk->data != MAP_FAILED);
-    chunk::chunk_map[chunk->data] = chunk;
 
     stream_.seekg(chunk->size, ios_base::cur);
     aligng(kPageSize);
