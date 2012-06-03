@@ -41,12 +41,35 @@ long timeval_ms (struct timeval tv) {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-static json_object *to_json(vector<StringPiece> vec) {
+json_object *to_json(const char *str) {
+    return json_object_new_string(str);
+}
+
+json_object *to_json(const string &str) {
+    return json_object_new_string(str.c_str());
+}
+
+json_object *to_json(const StringPiece &str) {
+    return json_object_new_string_len(str.data(),
+                                      str.size());
+}
+
+json_object *to_json(int i) {
+    return json_object_new_int(i);
+}
+
+template <class T>
+json_object *to_json(vector<T> vec) {
     json_object *out = json_object_new_array();
     for (auto it = vec.begin(); it != vec.end(); it++)
-        json_object_array_add(out,
-                              json_object_new_string_len(it->data(),
-                                                         it->size()));
+        json_object_array_add(out, to_json(*it));
+    return out;
+}
+
+static json_object *to_json(const git_path &path) {
+    json_object *out = json_object_new_object();
+    json_object_object_add(out, "ref",  to_json(path.ref));
+    json_object_object_add(out, "path", to_json(path.path));
     return out;
 }
 
@@ -54,44 +77,49 @@ struct print_match {
     print_match(FILE *out) : out_(out) {}
 
     void print(const match_result *m) const {
-        for (auto it = m->context.paths.begin();
-             it != m->context.paths.end(); ++it)
-            fprintf(out_,
-                    "%s:%s:%d:%d-%d: %.*s\n",
-                    it->ref,
-                    it->path.c_str(),
-                    m->context.lno,
-                    m->matchleft, m->matchright,
-                    m->line.size(), m->line.data());
+        for (auto ctx = m->context.begin();
+             ctx != m->context.end(); ++ctx) {
+            for (auto it = ctx->paths.begin(); it != ctx->paths.end(); ++it) {
+                fprintf(out_,
+                        "%s:%s:%d:%d-%d: %.*s\n",
+                        it->ref,
+                        it->path.c_str(),
+                        ctx->lno,
+                        m->matchleft, m->matchright,
+                        m->line.size(), m->line.data());
+            }
+        }
     }
 
     void print_json(const match_result *m) const {
         json_object *obj = json_object_new_object();
         json_object_object_add(obj, "ref",
-                               json_object_new_string(m->context.paths[0].ref));
+                               to_json(m->context[0].paths[0].ref));
         json_object_object_add(obj, "file",
-                               json_object_new_string(m->context.paths[0].path.c_str()));
-        json_object *paths = json_object_new_array();
-        for (auto it = m->context.paths.begin();
-             it != m->context.paths.end(); ++it) {
-            json_object *path = json_object_new_object();
-            json_object_object_add(path, "ref",  json_object_new_string(it->ref));
-            json_object_object_add(path, "path", json_object_new_string(it->path.c_str()));
-            json_object_array_add(paths, path);
+                               to_json(m->context[0].paths[0].path));
+        json_object *contexts = json_object_new_array();
+        for (auto ctx = m->context.begin();
+             ctx != m->context.end(); ++ctx) {
+            json_object *jctx = json_object_new_object();
+            json_object_object_add(jctx, "paths",  to_json(ctx->paths));
+            json_object_object_add(jctx, "lno", to_json(ctx->lno));
+            json_object_object_add(jctx, "context_before",
+                                   to_json(ctx->context_before));
+            json_object_object_add(jctx, "context_after",
+                                   to_json(ctx->context_after));
+            json_object_array_add(contexts, jctx);
         }
-        json_object_object_add(obj, "paths", paths);
-        json_object_object_add(obj, "lno",  json_object_new_int(m->context.lno));
+        json_object_object_add(obj, "contexts", contexts);
+        json_object_object_add(obj, "lno",  json_object_new_int(m->context[0].lno));
         json_object *bounds = json_object_new_array();
-        json_object_array_add(bounds, json_object_new_int(m->matchleft));
-        json_object_array_add(bounds, json_object_new_int(m->matchright));
+        json_object_array_add(bounds, to_json(m->matchleft));
+        json_object_array_add(bounds, to_json(m->matchright));
         json_object_object_add(obj, "bounds", bounds);
-        json_object_object_add(obj, "line",
-                               json_object_new_string_len(m->line.data(),
-                                                          m->line.size()));
+        json_object_object_add(obj, "line", to_json(m->line));
         json_object_object_add(obj, "context_before",
-                               to_json(m->context.context_before));
+                               to_json(m->context[0].context_before));
         json_object_object_add(obj, "context_after",
-                               to_json(m->context.context_after));
+                               to_json(m->context[0].context_after));
         fprintf(out_, "%s\n", json_object_to_json_string(obj));
         json_object_put(obj);
     }

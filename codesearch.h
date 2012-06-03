@@ -103,7 +103,7 @@ struct match_context {
 };
 
 struct match_result {
-    match_context context;
+    vector<match_context> context;
     StringPiece line;
     int matchleft, matchright;
 };

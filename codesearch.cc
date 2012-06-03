@@ -88,6 +88,7 @@ const StringPiece empty_string(NULL, 0);
 
 class code_searcher;
 struct match_finger;
+struct match_group;
 
 class searcher {
 public:
@@ -229,9 +230,12 @@ protected:
      * file, determine whether that file actually contains that line,
      * and if so, post a match to the result queue.
      */
-    void try_match(const StringPiece&,
+    void try_match(match_group *,
+                   const StringPiece&,
                    const StringPiece&,
                    search_file *);
+
+    void finish_group(match_group *);
 
     static int line_start(const chunk *chunk, int pos) {
         const unsigned char *start = static_cast<const unsigned char*>
@@ -607,7 +611,6 @@ void searcher::filtered_search(const chunk *chunk)
     search_lines(&(*indexes)[0], count, chunk);
 }
 
-
 struct match_finger {
     const chunk *chunk_;
     vector<chunk_file>::const_iterator it_;
@@ -754,6 +757,19 @@ void searcher::full_search(match_finger *finger,
     }
 }
 
+struct match_group {
+    StringPiece match, line;
+    int left, right;
+    map<string, vector<match_context> > matches;
+
+    match_group(const StringPiece& match, const StringPiece &line)
+        : match(match), line(line) {
+        left = utf8::distance(line.data(), match.data());
+        right = left +
+            utf8::distance(match.data(), match.data() + match.size());
+    }
+};
+
 void searcher::find_match_brute(const chunk *chunk,
                                 const StringPiece& match,
                                 const StringPiece& line) {
@@ -761,6 +777,7 @@ void searcher::find_match_brute(const chunk *chunk,
     timer tm;
     int off = (unsigned char*)line.data() - chunk->data;
     int searched = 0;
+    match_group group(match, line);
 
     for(vector<chunk_file>::const_iterator it = chunk->files.begin();
         it != chunk->files.end(); it++) {
@@ -772,10 +789,12 @@ void searcher::find_match_brute(const chunk *chunk,
                 searched++;
                 if (exit_early())
                     break;
-                try_match(line, match, *fit);
+                try_match(&group, line, match, *fit);
             }
         }
     }
+
+    finish_group(&group);
 
     tm.pause();
     log_profile("Searched %d files in %d.%06ds\n",
@@ -794,6 +813,7 @@ void searcher::find_match(const chunk *chunk,
 
     run_timer run(git_time_);
     int loff = (unsigned char*)line.data() - chunk->data;
+    match_group group(match, line);
 
     /*
      * We use an explicit stack instead of direct recursion. We
@@ -837,7 +857,7 @@ void searcher::find_match(const chunk *chunk,
                     continue;
                 if (exit_early())
                     break;
-                try_match(line, match, *it);
+                try_match(&group, line, match, *it);
             }
             continue;
         }
@@ -856,10 +876,12 @@ void searcher::find_match(const chunk *chunk,
         if (n->left)
             stack.push_back((frame){n->left, false});
     }
+    finish_group(&group);
 }
 
 
-void searcher::try_match(const StringPiece& line,
+void searcher::try_match(match_group *group,
+                         const StringPiece& line,
                          const StringPiece& match,
                          search_file *sf) {
 
@@ -879,16 +901,8 @@ void searcher::try_match(const StringPiece& line,
     if (it == sf->content.end())
         return;
 
-    match_result *m = new match_result;
-    m->line = line;
-    m->matchleft = utf8::distance(line.data(), match.data());
-    m->matchright = m->matchleft +
-        utf8::distance(match.data(), match.data() + match.size());
-    match_context &ctx = m->context;
+    match_context ctx;
 
-    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it)
-        if (accept(*it))
-            ctx.paths.push_back(*it);
     ctx.file = sf;
     ctx.lno  = lno;
 
@@ -919,8 +933,30 @@ void searcher::try_match(const StringPiece& line,
         ctx.context_after.push_back(l);
     }
 
-    queue_.push(m);
-    ++matches_;
+    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
+        if (!accept(*it))
+            continue;
+        auto git = group->matches.find(it->path);
+        if (git == group->matches.end()) {
+            ++matches_;
+            group->matches[it->path] = vector<match_context>();
+            group->matches[it->path].push_back(ctx);
+        } else if (git->second.back().file != sf) {
+            git->second.push_back(ctx);
+        }
+        group->matches[it->path].back().paths.push_back(*it);
+    }
+}
+
+void searcher::finish_group(match_group *group) {
+    for (auto it = group->matches.begin(); it != group->matches.end(); ++it) {
+        match_result *m = new match_result;
+        m->line       = group->line;
+        m->matchleft  = group->left;
+        m->matchright = group->right;
+        m->context.swap(it->second);
+        queue_.push(m);
+    }
 }
 
 code_searcher::search_thread::search_thread(code_searcher *cs)

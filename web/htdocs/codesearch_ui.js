@@ -29,6 +29,8 @@ var CodesearchUI = function() {
                              match.context_after[i]
                            ]));
     }
+    var count = 0;
+    match.contexts.forEach(function (ctx) {count += ctx.paths.length;});
     return h.div({cls: 'match'},
                  [
                    h.div({},
@@ -38,9 +40,10 @@ var CodesearchUI = function() {
                                          href: url_for(match)
                                        }, [shorten(match.ref), ":", match.file]),
                                  ])
-                         ].concat((match.paths.length > 1) ?
-                         [h.span({cls: "more"},
-                                 [" (+", "" + (match.paths.length - 1), " identical)"])] : [])
+                         ].concat(count > 1 ?
+                                  [h.span({cls: "more"},
+                                          [" (+", "" + (count - 1), " identical)"])] :
+                                  [])
                         ),
                    h.div({cls: 'contents'},
                          [
