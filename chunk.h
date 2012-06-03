@@ -17,6 +17,11 @@ namespace re2 {
 using namespace std;
 using re2::StringPiece;
 
+/*
+ * A chunk_file in a given chunk's `files' list means that some or all
+ * of bytes `left' through `right' (inclusive on both sides) in
+ * chunk->data are present in each of chunk->files.
+ */
 struct chunk_file {
     list<search_file *> files;
     int left;
