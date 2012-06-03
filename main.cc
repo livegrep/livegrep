@@ -41,10 +41,12 @@ long timeval_ms (struct timeval tv) {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-static json_object *to_json(vector<string> vec) {
+static json_object *to_json(vector<StringPiece> vec) {
     json_object *out = json_object_new_array();
-    for (vector<string>::iterator it = vec.begin(); it != vec.end(); it++)
-        json_object_array_add(out, json_object_new_string(it->c_str()));
+    for (auto it = vec.begin(); it != vec.end(); it++)
+        json_object_array_add(out,
+                              json_object_new_string_len(it->data(),
+                                                         it->size()));
     return out;
 }
 
@@ -52,12 +54,13 @@ struct print_match {
     print_match(FILE *out) : out_(out) {}
 
     void print(const match_result *m) const {
-        for (auto it = m->paths.begin(); it != m->paths.end(); ++it)
+        for (auto it = m->context.paths.begin();
+             it != m->context.paths.end(); ++it)
             fprintf(out_,
                     "%s:%s:%d:%d-%d: %.*s\n",
                     it->ref,
                     it->path.c_str(),
-                    m->lno,
+                    m->context.lno,
                     m->matchleft, m->matchright,
                     m->line.size(), m->line.data());
     }
@@ -65,18 +68,19 @@ struct print_match {
     void print_json(const match_result *m) const {
         json_object *obj = json_object_new_object();
         json_object_object_add(obj, "ref",
-                               json_object_new_string(m->paths[0].ref));
+                               json_object_new_string(m->context.paths[0].ref));
         json_object_object_add(obj, "file",
-                               json_object_new_string(m->paths[0].path.c_str()));
+                               json_object_new_string(m->context.paths[0].path.c_str()));
         json_object *paths = json_object_new_array();
-        for (auto it = m->paths.begin(); it != m->paths.end(); ++it) {
+        for (auto it = m->context.paths.begin();
+             it != m->context.paths.end(); ++it) {
             json_object *path = json_object_new_object();
             json_object_object_add(path, "ref",  json_object_new_string(it->ref));
             json_object_object_add(path, "path", json_object_new_string(it->path.c_str()));
             json_object_array_add(paths, path);
         }
         json_object_object_add(obj, "paths", paths);
-        json_object_object_add(obj, "lno",  json_object_new_int(m->lno));
+        json_object_object_add(obj, "lno",  json_object_new_int(m->context.lno));
         json_object *bounds = json_object_new_array();
         json_object_array_add(bounds, json_object_new_int(m->matchleft));
         json_object_array_add(bounds, json_object_new_int(m->matchright));
@@ -85,9 +89,9 @@ struct print_match {
                                json_object_new_string_len(m->line.data(),
                                                           m->line.size()));
         json_object_object_add(obj, "context_before",
-                               to_json(m->context_before));
+                               to_json(m->context.context_before));
         json_object_object_add(obj, "context_after",
-                               to_json(m->context_after));
+                               to_json(m->context.context_after));
         fprintf(out_, "%s\n", json_object_to_json_string(obj));
         json_object_put(obj);
     }

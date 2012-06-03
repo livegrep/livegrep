@@ -94,12 +94,16 @@ struct search_file {
     int no;
 };
 
-struct match_result {
+struct match_context {
     search_file *file;
     vector<git_path> paths;
     int lno;
-    vector<string> context_before;
-    vector<string> context_after;
+    vector<StringPiece> context_before;
+    vector<StringPiece> context_after;
+};
+
+struct match_result {
+    match_context context;
     StringPiece line;
     int matchleft, matchright;
 };

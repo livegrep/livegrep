@@ -227,12 +227,11 @@ protected:
     /*
      * Given a matching substring, its containing line, and a search
      * file, determine whether that file actually contains that line,
-     * and if so, return a filled-out match_result containing
-     * information about the match. If not, return NULL.
+     * and if so, post a match to the result queue.
      */
-    match_result *try_match(const StringPiece&,
-                            const StringPiece&,
-                            search_file *);
+    void try_match(const StringPiece&,
+                   const StringPiece&,
+                   search_file *);
 
     static int line_start(const chunk *chunk, int pos) {
         const unsigned char *start = static_cast<const unsigned char*>
@@ -773,11 +772,7 @@ void searcher::find_match_brute(const chunk *chunk,
                 searched++;
                 if (exit_early())
                     break;
-                match_result *m = try_match(line, match, *fit);
-                if (m) {
-                    queue_.push(m);
-                    ++matches_;
-                }
+                try_match(line, match, *fit);
             }
         }
     }
@@ -842,11 +837,7 @@ void searcher::find_match(const chunk *chunk,
                     continue;
                 if (exit_early())
                     break;
-                match_result *m = try_match(line, match, *it);
-                if (m) {
-                    queue_.push(m);
-                    ++matches_;
-                }
+                try_match(line, match, *it);
             }
             continue;
         }
@@ -868,9 +859,9 @@ void searcher::find_match(const chunk *chunk,
 }
 
 
-match_result *searcher::try_match(const StringPiece& line,
-                                  const StringPiece& match,
-                                  search_file *sf) {
+void searcher::try_match(const StringPiece& line,
+                         const StringPiece& match,
+                         search_file *sf) {
 
     int lno = 1;
     vector<StringPiece>::iterator it;
@@ -886,18 +877,20 @@ match_result *searcher::try_match(const StringPiece& line,
     }
 
     if (it == sf->content.end())
-        return 0;
+        return;
 
     match_result *m = new match_result;
-    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it)
-        if (accept(*it))
-            m->paths.push_back(*it);
-    m->file = sf;
-    m->lno  = lno;
     m->line = line;
     m->matchleft = utf8::distance(line.data(), match.data());
     m->matchright = m->matchleft +
         utf8::distance(match.data(), match.data() + match.size());
+    match_context &ctx = m->context;
+
+    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it)
+        if (accept(*it))
+            ctx.paths.push_back(*it);
+    ctx.file = sf;
+    ctx.lno  = lno;
 
     vector<StringPiece>::iterator mit = it;
     StringPiece l = line;
@@ -911,7 +904,7 @@ match_result *searcher::try_match(const StringPiece& line,
             l = StringPiece(it->data() + it->size() + 1, 0);
         }
         l = find_line(*it, StringPiece(l.data() - 1, 0));
-        m->context_before.push_back(l.as_string());
+        ctx.context_before.push_back(l);
     }
 
     l = line;
@@ -923,10 +916,11 @@ match_result *searcher::try_match(const StringPiece& line,
             l = StringPiece(it->data() - 1, 0);
         }
         l = find_line(*it, StringPiece(l.data() + l.size() + 1, 0));
-        m->context_after.push_back(l.as_string());
+        ctx.context_after.push_back(l);
     }
 
-    return m;
+    queue_.push(m);
+    ++matches_;
 }
 
 code_searcher::search_thread::search_thread(code_searcher *cs)
