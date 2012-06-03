@@ -1,6 +1,5 @@
+include Makefile.lib
 -include Makefile.config
-
-comma:=,
 
 libre2=$(CURDIR)/re2/obj/libre2.a
 
@@ -43,24 +42,7 @@ $(libre2): FORCE
 clean:
 	rm -f codesearch $(OBJECTS) $(DEPFILES)
 
-codesearch.o: .config/profile
-$(OBJECTS): .config/densehash .config/noopt .config/CXX .config/CXXFLAGS
-
-.%.d: %.cc
-	@set -e; rm -f $@; \
-	 $(CXX) -M $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
-	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-	 rm -f $@.$$$$
-
-FORCE:
-.config:
-	@mkdir -p $@
-
-.config/%.tmp: .config FORCE
-	@echo $(call $*) > $@
-
-.config/%: .config/%.tmp
-	@cmp -s $< $@ || cp -f $< $@
-	@rm $<
+$(OBJECTS): .config/CXX .config/CXXFLAGS
 
 -include $(DEPFILES)
+
