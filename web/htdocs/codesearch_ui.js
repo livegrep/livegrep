@@ -1,62 +1,75 @@
 "use strict";
-var CodesearchUI = function() {
-  function shorten(ref) {
-    var match = /^refs\/(tags|branches)\/(.*)/.exec(ref);
-    if (match)
-      return match[2];
-    return ref;
+var Match = Backbone.Model.extend({
+  url: function() {
+    return "https://github.com/torvalds/linux/blob/" + shorten(this.ref) +
+      "/" + this.get('path').path + "#L" + this.get('context').lno;
   }
-  function url_for(match) {
-    return "https://github.com/torvalds/linux/blob/" + shorten(match.ref) +
-      "/" + match.file + "#L" + match.lno;
-  }
-  function render_match(match) {
+});
+
+function shorten(ref) {
+  var match = /^refs\/(tags|branches)\/(.*)/.exec(ref);
+  if (match)
+    return match[2];
+  return ref;
+}
+
+var MatchView = Backbone.View.extend({
+  tagName: 'div',
+  render: function() {
+    var div = this._render();
+    this.$el.empty();
+    this.$el.append(div);
+    return this;
+  },
+  _render: function() {
     var h = new HTMLFactory();
-    var pieces = [match.line.substring(0, match.bounds[0]),
-                  match.line.substring(match.bounds[0], match.bounds[1]),
-                  match.line.substring(match.bounds[1])];
+    var ctx = this.model.get('context');
     var i;
     var ctx_before = [], ctx_after = [];
-    for (i = 0; i < match.context_before.length; i ++) {
+    for (i = 0; i < ctx.context_before.length; i ++) {
       ctx_before.unshift(h.div([
-                                 h.span({cls: 'lno'}, [match.lno - i - 1, ":"]),
-                                 match.context_before[i]
+                                 h.span({cls: 'lno'}, [ctx.lno - i - 1, ":"]),
+                                 ctx.context_before[i]
                                ]));
     }
-    for (i = 0; i < match.context_after.length; i ++) {
+    for (i = 0; i < ctx.context_after.length; i ++) {
       ctx_after.push(h.div([
-                             h.span({cls: 'lno'}, [match.lno + i + 1, ":"]),
-                             match.context_after[i]
+                             h.span({cls: 'lno'}, [ctx.lno + i + 1, ":"]),
+                             ctx.context_after[i]
                            ]));
     }
-    var count = 0;
-    match.contexts.forEach(function (ctx) {count += ctx.paths.length;});
+    var line = this.model.get('line');
+    var bounds = this.model.get('bounds');
+    var pieces = [line.substring(0, bounds[0]),
+                  line.substring(bounds[0], bounds[1]),
+                  line.substring(bounds[1])];
+
     return h.div({cls: 'match'},
                  [
                    h.div({},
                          [h.span({cls: 'label'},
                                  [
                                    h.a({
-                                         href: url_for(match)
-                                       }, [shorten(match.ref), ":", match.file]),
-                                 ])
-                         ].concat(count > 1 ?
-                                  [h.span({cls: "more"},
-                                          [" (+", "" + (count - 1), " identical)"])] :
-                                  [])
-                        ),
+                                         href: this.model.url()
+                                       },
+                                   [ shorten(this.model.get('path').ref), ":",
+                                     this.model.get('path').path])])
+                         ]),
                    h.div({cls: 'contents'},
                          [
                            ctx_before,
                            h.div({cls: 'matchline'},
                                  [
-                                   h.span({cls: 'lno'}, [match.lno + ":"]),
+                                   h.span({cls: 'lno'}, [ctx.lno + ":"]),
                                    pieces[0],
                                    h.span({cls: 'matchstr'}, [pieces[1]]),
                                    pieces[2]
                                  ]),
                            ctx_after])]);
   }
+});
+var CodesearchUI = function() {
+
   return {
     displaying: null,
     results: 0,
@@ -137,7 +150,14 @@ var CodesearchUI = function() {
     match: function(search, match) {
       CodesearchUI.handle_result(search);
       CodesearchUI.results++;
-      $('#results').append(render_match(match));
+      var m  = new Match({
+                           line: match.line,
+                           bounds: match.bounds,
+                           context: match.contexts[0],
+                           path: match.contexts[0].paths[0],
+                         });
+      window.match = m;
+      $('#results').append(new MatchView({model: m}).render().el);
       $('#numresults').text(CodesearchUI.results);
     },
     search_done: function(search, time, why) {
