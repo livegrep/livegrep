@@ -1,3 +1,5 @@
+$(function() {
+
 "use strict";
 var Match = Backbone.Model.extend({
   url: function() {
@@ -68,16 +70,42 @@ var MatchView = Backbone.View.extend({
                            ctx_after])]);
   }
 });
-var CodesearchUI = function() {
 
+var MatchSet = Backbone.Collection.extend({
+  model: Match
+});
+
+var ResultView = Backbone.View.extend({
+  el: $('#resultbox'),
+  initialize: function() {
+    CodesearchUI.matches.bind('add', this.add_one, this);
+    CodesearchUI.matches.bind('reset', this.add_all, this);
+
+    this.results = this.$('#results');
+  },
+  add_one: function(model) {
+    var view = new MatchView({model: model});
+    this.results.append(view.render().el);
+  },
+  add_all: function(mode) {
+    this.results.empty();
+    CodesearchUI.matches.each(this.add_one);
+  }
+});
+
+var CodesearchUI = function() {
   return {
     displaying: null,
     results: 0,
     search_id: 0,
     search_map: {},
+    matches: new MatchSet(),
+    view: null,
     onload: function() {
       if (CodesearchUI.input)
         return;
+
+      CodesearchUI.view = new ResultView();
 
       CodesearchUI.input      = $('#searchbox');
       CodesearchUI.input_file = $('#filebox');
@@ -131,7 +159,7 @@ var CodesearchUI = function() {
     clear: function() {
       CodesearchUI.hide_error();
       $('#numresults').val('');
-      $('#results').empty();
+      CodesearchUI.matches.reset();
       $('#searchtimebox').hide();
       $('#resultarea').hide();
     },
@@ -150,14 +178,12 @@ var CodesearchUI = function() {
     match: function(search, match) {
       CodesearchUI.handle_result(search);
       CodesearchUI.results++;
-      var m  = new Match({
-                           line: match.line,
-                           bounds: match.bounds,
-                           context: match.contexts[0],
-                           path: match.contexts[0].paths[0],
-                         });
-      window.match = m;
-      $('#results').append(new MatchView({model: m}).render().el);
+      CodesearchUI.matches.add({
+                                 line: match.line,
+                                 bounds: match.bounds,
+                                 context: match.contexts[0],
+                                 path: match.contexts[0].paths[0],
+                               });
       $('#numresults').text(CodesearchUI.results);
     },
     search_done: function(search, time, why) {
@@ -194,4 +220,6 @@ var CodesearchUI = function() {
     }
   };
 }();
-$(document).ready(CodesearchUI.onload);
+CodesearchUI.onload();
+
+});
