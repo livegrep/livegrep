@@ -75,37 +75,160 @@ var MatchSet = Backbone.Collection.extend({
   model: Match
 });
 
-var ResultView = Backbone.View.extend({
-  el: $('#resultbox'),
-  initialize: function() {
-    CodesearchUI.matches.bind('add', this.add_one, this);
-    CodesearchUI.matches.bind('reset', this.add_all, this);
+var SearchState = Backbone.Model.extend({
+  defaults: function() {
+    return {
+      displaying: null,
+      error: null,
+      time: null,
+      why: null
+    };
+  },
 
-    this.results = this.$('#results');
+  initialize: function() {
+    this.search_map = {};
+    this.matches = new MatchSet();
+    this.search_id = 0;
+    this.on('change:displaying', this.new_search, this);
+  },
+
+  new_search: function() {
+    this.set({
+        error: null,
+        time: null,
+        why: null
+    });
+    this.matches.reset();
+    for (var k in this.search_map) {
+      if (k < this.get('displaying'))
+        delete this.search_map[k];
+    }
+  },
+
+  next_id: function() {
+    return ++this.search_id;
+  },
+
+  dispatch: function (q, file) {
+    var id = this.next_id();
+    this.search_map[id] = {q: q, file: file};
+    if (!q.length)
+      this.set('displaying', id);
+    return id;
+  },
+
+  url: function() {
+    var q = {};
+    var current = this.search_map[this.get('displaying')];
+    if (!current)
+      return '/search';
+
+    if (current.q)    q.q = current.q;
+    if (current.file) q.file = current.file;
+    return '/search?' + $.param(q);
+  },
+
+  handle_error: function (search, error) {
+    if (search === this.search_id) {
+      this.set('displaying', search);
+      this.set('error', error);
+    }
+  },
+
+  handle_match: function (search, match) {
+    if (search < this.get('displaying'))
+      return false;
+    this.set('displaying', search);
+    this.matches.add({
+                       line: match.line,
+                       bounds: match.bounds,
+                       context: match.contexts[0],
+                       path: match.contexts[0].paths[0],
+                     });
+  },
+  handle_done: function (search, time, why) {
+    this.set('displaying', search);
+    this.set({time: time, why: why});
+  }
+});
+
+var MatchesView = Backbone.View.extend({
+  el: $('#results'),
+  initialize: function() {
+    this.model.matches.bind('add', this.add_one, this);
+    this.model.matches.bind('reset', this.add_all, this);
   },
   add_one: function(model) {
     var view = new MatchView({model: model});
-    this.results.append(view.render().el);
+    this.$el.append(view.render().el);
   },
-  add_all: function(mode) {
-    this.results.empty();
-    CodesearchUI.matches.each(this.add_one);
+  add_all: function() {
+    this.$el.empty();
+    this.model.matches.each(this.add_one);
+  }
+});
+
+var ResultView = Backbone.View.extend({
+  el: $('#resultarea'),
+  initialize: function() {
+    this.matches_view = new MatchesView({model: this.model});
+    this.permalink = this.$('#permalink');
+    this.results   = this.$('#numresults');
+    this.errorbox  = $('#regex-error');
+    this.time      = this.$('#searchtime');
+
+    this.model.on('all', this.render, this);
+    this.model.matches.on('all', this.render, this);
+  },
+
+  render: function() {
+    if (this.model.get('error')) {
+      this.errorbox.find('#errortext').text(this.model.get('error'));
+      this.errorbox.show();
+    } else {
+      this.errorbox.hide()
+    }
+
+    var url = this.model.url();
+    this.permalink.attr('href', url);
+    if (history.replaceState) {
+      history.replaceState(null, '', url);
+    }
+
+    if (this.model.search_map[this.model.get('displaying')].q === '' ||
+       this.model.get('error')) {
+      this.$el.hide();
+      return this;
+    }
+
+    this.$el.show();
+
+    if (this.model.get('time')) {
+      this.$('#searchtimebox').show();
+      var time = this.model.get('time');
+      this.time.text((time/1000) + "s")
+    } else {
+      this.$('#searchtimebox').hide();
+    }
+
+    var results = '' + this.model.matches.size();
+    if (this.model.get('why') === 'limit')
+      results = results + '+';
+    this.results.text(results);
+
+    return this;
   }
 });
 
 var CodesearchUI = function() {
   return {
-    displaying: null,
-    results: 0,
-    search_id: 0,
-    search_map: {},
-    matches: new MatchSet(),
+    state: new SearchState(),
     view: null,
     onload: function() {
       if (CodesearchUI.input)
         return;
 
-      CodesearchUI.view = new ResultView();
+      CodesearchUI.view = new ResultView({model: CodesearchUI.state});
 
       CodesearchUI.input      = $('#searchbox');
       CodesearchUI.input_file = $('#filebox');
@@ -142,84 +265,24 @@ var CodesearchUI = function() {
       setTimeout(CodesearchUI.newsearch, 0);
     },
     newsearch: function() {
-      CodesearchUI.search_map[++CodesearchUI.search_id] = {
-        q: CodesearchUI.input.val(),
-        file: CodesearchUI.input_file.val()
-      };
+      var id = CodesearchUI.state.dispatch(CodesearchUI.input.val(),
+                                           CodesearchUI.input_file.val());
       Codesearch.new_search(
         CodesearchUI.input.val(),
         CodesearchUI.input_file.val(),
-        CodesearchUI.search_id);
-      if (!CodesearchUI.input.val().length) {
-        CodesearchUI.clear();
-        CodesearchUI.displaying = CodesearchUI.search_id;
-        CodesearchUI.update_url({});
-      }
-    },
-    clear: function() {
-      CodesearchUI.hide_error();
-      $('#numresults').val('');
-      CodesearchUI.matches.reset();
-      $('#searchtimebox').hide();
-      $('#resultarea').hide();
+        id);
     },
     error: function(search, error) {
-      if (search === CodesearchUI.search_id) {
-        CodesearchUI.show_error(error);
-      }
-    },
-    show_error: function (error) {
-      $('#errortext').text(error);
-      $('#regex-error').show();
-    },
-    hide_error: function (){
-      $('#regex-error').hide();
+      CodesearchUI.state.handle_error(search, error);
     },
     match: function(search, match) {
-      CodesearchUI.handle_result(search);
-      CodesearchUI.results++;
-      CodesearchUI.matches.add({
-                                 line: match.line,
-                                 bounds: match.bounds,
-                                 context: match.contexts[0],
-                                 path: match.contexts[0].paths[0],
-                               });
-      $('#numresults').text(CodesearchUI.results);
+      CodesearchUI.state.handle_match(search, match);
     },
     search_done: function(search, time, why) {
-      CodesearchUI.handle_result(search);
-      if (why === 'limit')
-        $('#numresults').append('+');
-      $('#searchtime').text((time/1000) + "s");
-      $('#searchtimebox').show();
+      CodesearchUI.state.handle_done(search, time, why);
     },
-    handle_result: function(search) {
-      CodesearchUI.hide_error();
-      if (search <= CodesearchUI.displaying)
-        return;
-
-      for (var k in CodesearchUI.search_map) {
-        if (k < search)
-          delete CodesearchUI.search_map[k];
-      }
-      CodesearchUI.clear();
-      $('#numresults').text('0');
-      $('#resultarea').show();
-      CodesearchUI.displaying = search;
-      CodesearchUI.results = 0;
-      CodesearchUI.update_url(CodesearchUI.search_map[search]);
-    },
-    update_url: function (q) {
-      if (!q.q)    delete q.q;
-      if (!q.file) delete q.file;
-      var url = '/search?' + $.param(q);
-      if (history.replaceState) {
-        history.replaceState(null, '', url);
-      }
-      $('#permalink').attr('href', url);
-    }
   };
 }();
 CodesearchUI.onload();
-
+window.CodesearchUI = CodesearchUI;
 });
