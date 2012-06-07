@@ -176,6 +176,7 @@ var ResultView = Backbone.View.extend({
     this.results   = this.$('#numresults');
     this.errorbox  = $('#regex-error');
     this.time      = this.$('#searchtime');
+    this.last_url  = null;
 
     this.model.on('all', this.render, this);
     this.model.matches.on('all', this.render, this);
@@ -190,9 +191,12 @@ var ResultView = Backbone.View.extend({
     }
 
     var url = this.model.url();
-    this.permalink.attr('href', url);
-    if (history.replaceState) {
-      history.replaceState(null, '', url);
+    if (this.last_url !== url ) {
+      this.permalink.attr('href', url);
+      if (history.replaceState) {
+        history.replaceState(null, '', url);
+      }
+      this.last_url = url;
     }
 
     if (this.model.search_map[this.model.get('displaying')].q === '' ||
