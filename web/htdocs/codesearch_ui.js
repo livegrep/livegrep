@@ -3,7 +3,7 @@ $(function() {
 "use strict";
 var Match = Backbone.Model.extend({
   url: function() {
-    return "https://github.com/torvalds/linux/blob/" + shorten(this.ref) +
+    return "https://github.com/torvalds/linux/blob/" + shorten(this.get('path').ref) +
       "/" + this.get('path').path + "#L" + this.get('context').lno;
   }
 });
