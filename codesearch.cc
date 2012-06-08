@@ -951,10 +951,23 @@ void searcher::try_match(match_group *group,
             ++matches_;
             group->matches[it->path] = vector<match_context>();
             group->matches[it->path].push_back(ctx);
-        } else if (git->second.back().file != sf) {
-            git->second.push_back(ctx);
+            group->matches[it->path].back().paths.push_back(*it);
+        } else {
+            bool found = false;
+            for (auto m = git->second.begin(); m != git->second.end(); ++m) {
+                if (m->file == sf ||
+                    (m->context_before == ctx.context_before &&
+                    m->context_after  == ctx.context_after)) {
+                    m->paths.push_back(*it);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                git->second.push_back(ctx);
+                git->second.back().paths.push_back(*it);
+            }
         }
-        group->matches[it->path].back().paths.push_back(*it);
     }
 }
 
