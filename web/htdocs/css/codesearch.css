@@ -161,3 +161,18 @@ body {
 #resultarea {
     display: none;
 }
+
+.contexts ul {
+    display: inline;
+    padding-left: 0;
+}
+
+.contexts li {
+    display: inline;
+    list-style: none;
+    padding-left: 1em
+}
+
+.contexts li.selected {
+    font-weight: bold;
+}

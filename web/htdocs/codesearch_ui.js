@@ -17,6 +17,9 @@ function shorten(ref) {
 
 var MatchView = Backbone.View.extend({
   tagName: 'div',
+  initialize: function() {
+    this.model.on('change', this.render, this);
+  },
   render: function() {
     var div = this._render();
     this.$el.empty();
@@ -46,28 +49,44 @@ var MatchView = Backbone.View.extend({
                   line.substring(bounds[0], bounds[1]),
                   line.substring(bounds[1])];
 
-    return h.div({cls: 'match'},
-                 [
-                   h.div({},
-                         [h.span({cls: 'label'},
-                                 [
-                                   h.a({
-                                         href: this.model.url()
-                                       },
-                                   [ shorten(this.model.get('path').ref), ":",
-                                     this.model.get('path').path])])
-                         ]),
-                   h.div({cls: 'contents'},
-                         [
-                           ctx_before,
-                           h.div({cls: 'matchline'},
-                                 [
-                                   h.span({cls: 'lno'}, [ctx.lno + ":"]),
-                                   pieces[0],
-                                   h.span({cls: 'matchstr'}, [pieces[1]]),
-                                   pieces[2]
-                                 ]),
-                           ctx_after])]);
+    return h.div({cls: 'match'}, [
+        h.div({}, [
+          h.span({cls: 'label'}, [
+            h.a({href: this.model.url()}, [
+                  shorten(this.model.get('path').ref),
+                  ":",
+                  this.model.get('path').path])])]),
+        h.div({cls: 'contents'}, [
+                ctx_before,
+                h.div({cls: 'matchline'}, [
+                  h.span({cls: 'lno'}, [ctx.lno + ":"]),
+                  pieces[0],
+                  h.span({cls: 'matchstr'}, [pieces[1]]),
+                  pieces[2]
+                ]),
+                ctx_after]),
+        this.render_contexts(h)]);
+  },
+  render_contexts: function(h) {
+    var self = this;
+    return h.div({cls: 'contexts'}, [
+          h.span({cls: 'label'}, ["Also in:"]),
+          h.ul({},
+          this.model.get('contexts').map(function (ctx) {
+            return h.li(ctx === self.model.get('context') ? {cls: 'selected'} : {}, [
+                h.a({href: "#",
+                     click: _.bind(self.switch_context, self, ctx)}, [
+                shorten(ctx.paths[0].ref)]),
+                ctx.paths.length > 1 ? (" +" + (ctx.paths.length - 1) + " identical") : [],
+            ]);
+          }))])
+  },
+  switch_context: function(ctx) {
+    this.model.set({
+                     context: ctx,
+                     path: ctx.paths[0]
+                   });
+    return false;
   }
 });
 
@@ -144,6 +163,7 @@ var SearchState = Backbone.Model.extend({
                        bounds: match.bounds,
                        context: match.contexts[0],
                        path: match.contexts[0].paths[0],
+                       contexts: match.contexts
                      });
   },
   handle_done: function (search, time, why) {
