@@ -1,12 +1,33 @@
 $(function() {
-
 "use strict";
-var Match = Backbone.Model.extend({
-  url: function() {
-    return "https://github.com/torvalds/linux/blob/" + shorten(this.get('path').ref) +
-      "/" + this.get('path').path + "#L" + this.get('context').lno;
+
+function vercmp(a, b) {
+  var re = /^([0-9]*)([^0-9]*)(.*)$/;
+  var abits, bbits;
+  var anum, bnum;
+  while (a.length && b.length) {
+    abits = re.exec(a);
+    bbits = re.exec(b);
+    if ((abits[1] === '') != (bbits[1] === '')) {
+      return abits[1] ? -1 : 1;
+    }
+    if (abits[1] !== '') {
+      anum = parseInt(abits[1]);
+      bnum = parseInt(bbits[1])
+      if (anum !== bnum)
+        return anum - bnum;
+    }
+
+    if (abits[2] !== bbits[2]) {
+      return abits[2] < bbits[2] ? -1 : 1
+    }
+
+    a = abits[3];
+    b = bbits[3];
   }
-});
+
+  return a.length - b.length;
+}
 
 function shorten(ref) {
   var match = /^refs\/(tags|branches)\/(.*)/.exec(ref);
@@ -14,6 +35,25 @@ function shorten(ref) {
     return match[2];
   return ref;
 }
+
+var Match = Backbone.Model.extend({
+  initialize: function() {
+    this.get('contexts').forEach(function (ctx) {
+        ctx.paths.sort(function (a,b) {return vercmp(a.ref, b.ref);})
+    });
+    this.get('contexts').sort(function (a,b) {
+        return vercmp(a.paths[0].ref, b.paths[0].ref);
+    });
+    this.set({
+               context: this.get('contexts')[0],
+               path: this.get('contexts')[0].paths[0]
+             });
+  },
+  url: function() {
+    return "https://github.com/torvalds/linux/blob/" + shorten(this.get('path').ref) +
+      "/" + this.get('path').path + "#L" + this.get('context').lno;
+  }
+});
 
 var MatchView = Backbone.View.extend({
   tagName: 'div',
@@ -161,8 +201,6 @@ var SearchState = Backbone.Model.extend({
     this.matches.add({
                        line: match.line,
                        bounds: match.bounds,
-                       context: match.contexts[0],
-                       path: match.contexts[0].paths[0],
                        contexts: match.contexts
                      });
   },
