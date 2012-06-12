@@ -8,7 +8,7 @@ var Codesearch = function() {
         return;
       Codesearch.remote = null;
       Codesearch.delegate = delegate;
-      var socket = io.connect("http://" + document.location.host.replace(/:\d+$/, '') + ":8910");
+      var socket = io.connect();
       socket.on('connect', function () {
                   Codesearch.socket = socket;
                   if (Codesearch.delegate.on_connect)
