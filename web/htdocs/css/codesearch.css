@@ -162,6 +162,11 @@ body {
     display: none;
 }
 
+.contexts {
+    font-size: 90%;
+    padding-top: 5px;
+}
+
 .contexts ul {
     display: inline;
     padding-left: 0;
@@ -170,9 +175,10 @@ body {
 .contexts li {
     display: inline;
     list-style: none;
-    padding-left: 1em
+    margin: 0em 1em;
+    padding: 3px;
 }
 
 .contexts li.selected {
-    font-weight: bold;
+    border-bottom: 1px solid black;
 }
