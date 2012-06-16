@@ -110,7 +110,7 @@ struct match_result {
 
 class code_searcher {
 public:
-    code_searcher(const char *write_dump);
+    code_searcher();
     ~code_searcher();
     void walk_ref(git_repository *repo, const char *ref);
     void dump_stats();
@@ -118,6 +118,8 @@ public:
     void load_index(const string& path);
 
     void finalize();
+
+    void set_alloc(chunk_allocator *alloc);
 
     class search_thread {
     protected:
@@ -176,5 +178,9 @@ protected:
     friend class codesearch_index;
 };
 
+// dump_load.cc
+chunk_allocator *make_dump_allocator(code_searcher *search, const string& path);
+// chunk_allocator.cc
+chunk_allocator *make_mem_allocator();
 
 #endif /* CODESEARCH_H */

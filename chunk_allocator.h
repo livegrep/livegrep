@@ -1,5 +1,6 @@
 #include <list>
 #include <map>
+#include <string>
 #include "thread_pool.h"
 
 using namespace std;
@@ -9,6 +10,9 @@ class code_searcher;
 class chunk_allocator {
 public:
     chunk_allocator();
+    virtual ~chunk_allocator();
+    void cleanup();
+
     unsigned char *alloc(size_t len);
 
     list<chunk*>::iterator begin () {
@@ -39,7 +43,9 @@ protected:
         bool operator()(chunk *chunk);
     };
 
-    virtual chunk *alloc_chunk();
+    virtual chunk *alloc_chunk() = 0;
+    virtual void free_chunk(chunk *chunk) = 0;
+    void finish_chunk();
     void new_chunk();
 
     list<chunk*> chunks_;
@@ -48,6 +54,3 @@ protected:
     thread_pool<chunk*, finalizer> *finalize_pool_;
     map<const unsigned char*, chunk*> by_data_;
 };
-
-// dump_load.cc
-chunk_allocator *make_dump_allocator(code_searcher *search, const char *path);

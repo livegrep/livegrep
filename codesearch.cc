@@ -322,19 +322,22 @@ protected:
     friend class code_searcher::search_thread;
 };
 
-code_searcher::code_searcher(const char *write_dump)
-    : stats_(), finalized_(false)
+code_searcher::code_searcher()
+    : stats_(), alloc_(0), finalized_(false)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
 #endif
-    if (write_dump == 0)
-        alloc_ = new chunk_allocator();
-    else
-        alloc_ = make_dump_allocator(this, write_dump);
+}
+
+void code_searcher::set_alloc(chunk_allocator *alloc) {
+    assert(!alloc_);
+    alloc_ = alloc;
 }
 
 code_searcher::~code_searcher() {
+    if (alloc_)
+        alloc_->cleanup();
     delete alloc_;
 }
 
@@ -363,6 +366,7 @@ namespace {
 };
 
 void code_searcher::walk_ref(git_repository *repo, const char *ref) {
+    assert(alloc_);
     assert(!finalized_);
     smart_object<git_commit> commit;
     smart_object<git_tree> tree;

@@ -43,9 +43,17 @@ public:
         fd_ = open(path.c_str(), dump ? (O_RDWR|O_APPEND) : O_RDONLY);
         assert(fd_ > 0);
 
-        hdr_.magic      = kIndexMagic;
-        hdr_.version    = kIndexVersion;
-        hdr_.chunk_size = kChunkSize;
+        if (dump) {
+            hdr_.magic      = kIndexMagic;
+            hdr_.version    = kIndexVersion;
+            hdr_.chunk_size = kChunkSize;
+        } else {
+            load(&hdr_);
+        }
+    }
+
+    ~codesearch_index() {
+        close(fd_);
     }
 
     void dump();
@@ -62,7 +70,6 @@ protected:
     search_file *load_file();
     void load_file_contents(search_file *sf);
     void load_chunk(chunk *);
-    void load_chunk_data(chunk *);
 
     void alignp(uint32_t align) {
         streampos pos = stream_.tellp();
@@ -116,12 +123,13 @@ protected:
     map<chunk*, int> chunk_ids_;
     vector<chunk*> chunks_;
 
-    friend class codesearch_index_allocator;
+    friend class dump_allocator;
+    friend class load_allocator;
 };
 
-class codesearch_index_allocator : public chunk_allocator {
+class dump_allocator : public chunk_allocator {
 public:
-    codesearch_index_allocator(code_searcher *cs, const char *path)
+    dump_allocator(code_searcher *cs, const char *path)
         : index_(cs, path, true){
         index_.dump(&index_.hdr_);
         index_.alignp(kPageSize);
@@ -150,12 +158,45 @@ public:
         index_.dump(&index_.hdr_);
         index_.stream_.close();
     }
+
+    virtual void free_chunk(chunk *chunk) {
+        munmap(chunk->data, 5*kChunkSize);
+        delete chunk;
+    }
 protected:
     codesearch_index index_;
 };
 
-chunk_allocator *make_dump_allocator(code_searcher *search, const char *path) {
-    return new codesearch_index_allocator(search, path);
+class load_allocator : public chunk_allocator {
+public:
+    load_allocator(codesearch_index *index)
+        : index_(index){
+        off_ = index_->hdr_.chunks_off;
+    }
+
+    virtual chunk *alloc_chunk() {
+        void *buf;
+        buf = mmap(NULL, 5*kChunkSize, PROT_READ, MAP_SHARED,
+                   index_->fd_, off_);
+        assert(buf != MAP_FAILED);
+        off_ += 5*kChunkSize;
+
+        return new chunk(static_cast<unsigned char*>(buf),
+                         reinterpret_cast<uint32_t*>
+                         (static_cast<unsigned char*>(buf) + kChunkSize));
+    }
+
+    virtual void free_chunk(chunk *chunk) {
+        munmap(chunk->data, 5*kChunkSize);
+        delete chunk;
+    }
+protected:
+    codesearch_index *index_;
+    size_t off_;
+};
+
+chunk_allocator *make_dump_allocator(code_searcher *search, const string& path) {
+    return new dump_allocator(search, path.c_str());
 }
 
 void codesearch_index::dump_file(search_file *sf) {
@@ -299,22 +340,6 @@ void codesearch_index::load_chunk(chunk *chunk) {
     }
 }
 
-void codesearch_index::load_chunk_data(chunk *chunk) {
-    aligng(kPageSize);
-    size_t off = stream_.tellg();
-    cs_->alloc_->replace_data(chunk, static_cast<unsigned char*>
-                              (mmap(NULL, kChunkSize, PROT_READ, MAP_SHARED,
-                                    fd_, off)));
-    assert(chunk->data != MAP_FAILED);
-
-    chunk->suffixes = static_cast<uint32_t*>
-        (mmap(NULL, kChunkSize * sizeof(uint32_t), PROT_READ, MAP_SHARED,
-              fd_, off + kChunkSize));
-    assert(chunk->suffixes != MAP_FAILED);
-    stream_.seekg(kChunkSize * (1 + sizeof(uint32_t)), ios_base::cur);
-    chunk->build_tree();
-}
-
 void codesearch_index::load_file_contents(search_file *sf) {
     int npieces = load_int32();
     uint32_t buf[3*npieces];
@@ -334,15 +359,13 @@ void codesearch_index::load() {
     assert(!cs_->finalized_);
     assert(!cs_->refs_.size());
 
-    index_header hdr;
-    load(&hdr);
-    assert(hdr.magic == kIndexMagic);
-    assert(hdr.version == kIndexVersion);
-    assert(hdr.chunk_size == kChunkSize);
-    assert(hdr.metadata_off);
-    assert(hdr.chunks_off);
+    assert(hdr_.magic == kIndexMagic);
+    assert(hdr_.version == kIndexVersion);
+    assert(hdr_.chunk_size == kChunkSize);
+    assert(hdr_.metadata_off);
+    assert(hdr_.chunks_off);
 
-    stream_.seekg(hdr.metadata_off);
+    stream_.seekg(hdr_.metadata_off);
     metadata_header meta;
     load(&meta);
 
@@ -358,19 +381,11 @@ void codesearch_index::load() {
     for (int i = 0; i < meta.nchunks; i++) {
         load_chunk(cs_->alloc_->current_chunk());
         chunks_.push_back(cs_->alloc_->current_chunk());
+        cs_->alloc_->current_chunk()->build_tree();
         if (i != meta.nchunks - 1)
             cs_->alloc_->skip_chunk();
     }
 
-    streampos files_pos = stream_.tellg();
-
-    stream_.seekg(hdr.chunks_off);
-    for (list<chunk*>::iterator it = cs_->alloc_->begin();
-         it != cs_->alloc_->end(); ++it) {
-        load_chunk_data(*it);
-    }
-
-    stream_.seekg(files_pos);
     for (int i = 0; i < meta.nfiles; i++) {
         load_file_contents(cs_->files_[i]);
     }
@@ -385,5 +400,6 @@ void code_searcher::dump_index(const string &path) {
 
 void code_searcher::load_index(const string &path) {
     codesearch_index idx(this, path, false);
+    set_alloc(new load_allocator(&idx));
     idx.load();
 }

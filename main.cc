@@ -318,6 +318,11 @@ void initialize_search(code_searcher *search, int argc, char **argv) {
         git_repository *repo;
         git_repository_open(&repo, FLAGS_git_dir.c_str());
 
+        if (FLAGS_dump_index.size())
+            search->set_alloc(make_dump_allocator(search, FLAGS_dump_index));
+        else
+            search->set_alloc(make_mem_allocator());
+
         timer tm;
         struct timeval elapsed;
 
@@ -397,21 +402,20 @@ int main(int argc, char **argv) {
 
     prctl(PR_SET_PDEATHSIG, SIGINT);
 
-    code_searcher counter((FLAGS_dump_index.size() && !FLAGS_load_index.size())
-                          ? FLAGS_dump_index.c_str() : 0);
+    code_searcher search;
 
     signal(SIGPIPE, SIG_IGN);
 
-    initialize_search(&counter, argc, argv);
+    initialize_search(&search, argc, argv);
 
     if (sem_init(&interact_sem, 0, FLAGS_concurrency) < 0)
         die_errno("sem_init");
 
 
     if (FLAGS_listen.size())
-        listen(&counter, FLAGS_listen);
+        listen(&search, FLAGS_listen);
     else
-        interact(&counter, stdin, stdout);
+        interact(&search, stdin, stdout);
 
     return 0;
 }

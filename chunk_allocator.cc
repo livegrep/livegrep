@@ -6,6 +6,7 @@
 #include <sys/mman.h>
 
 DECLARE_int32(threads);
+DECLARE_bool(index);
 
 bool chunk_allocator::finalizer::operator()(chunk *chunk) {
     if (!chunk)
@@ -19,6 +20,14 @@ chunk_allocator::chunk_allocator()  :
     //    new_chunk();
 }
 
+chunk_allocator::~chunk_allocator() {
+}
+
+void chunk_allocator::cleanup() {
+    for (auto c = begin(); c != end(); ++ c)
+        free_chunk(*c);
+}
+
 unsigned char *chunk_allocator::alloc(size_t len) {
     assert(len < kChunkSpace);
     if (current_ == 0 || (current_->size + len) > kChunkSpace)
@@ -28,26 +37,26 @@ unsigned char *chunk_allocator::alloc(size_t len) {
     return out;
 }
 
-chunk *chunk_allocator::alloc_chunk() {
-    return new chunk;
-};
-
-void chunk_allocator::new_chunk()  {
+void chunk_allocator::finish_chunk()  {
     if (current_) {
         if (!finalize_pool_) {
             finalize_pool_ = new thread_pool<chunk*, finalizer>(FLAGS_threads, finalizer_);
         }
         finalize_pool_->queue(current_);
     }
+}
+
+void chunk_allocator::new_chunk()  {
+    finish_chunk();
     current_ = alloc_chunk();
     by_data_[current_->data] = current_;
     chunks_.push_back(current_);
 }
 
 void chunk_allocator::finalize()  {
-    if (!finalize_pool_)
+    if (!current_)
         return;
-    finalize_pool_->queue(current_);
+    finish_chunk();
     for (int i = 0; i < FLAGS_threads; i++)
         finalize_pool_->queue(NULL);
     delete finalize_pool_;
@@ -78,3 +87,22 @@ void chunk_allocator::replace_data(chunk *chunk, unsigned char *new_data) {
     by_data_[new_data] = chunk;
 }
 
+
+class mem_allocator : public chunk_allocator {
+public:
+    virtual chunk *alloc_chunk() {
+        unsigned char *buf = new unsigned char[kChunkSize];
+        uint32_t *idx = FLAGS_index ? new uint32_t[kChunkSize] : 0;
+        return new chunk(buf, idx);
+    }
+
+    virtual void free_chunk(chunk *chunk) {
+        delete[] chunk->data;
+        delete[] chunk->suffixes;
+        delete chunk;
+    }
+};
+
+chunk_allocator *make_mem_allocator() {
+    return new mem_allocator();
+}
