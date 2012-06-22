@@ -33,6 +33,9 @@ function shorten(ref) {
   var match = /^refs\/(tags|branches)\/(.*)/.exec(ref);
   if (match)
     return match[2];
+  match = /^([0-9a-f]{8})[0-9a-f]+$/.exec(ref);
+  if (match)
+    return match[1];
   return ref;
 }
 
