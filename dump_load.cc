@@ -272,7 +272,7 @@ void codesearch_index::dump_metadata() {
 
     int i = 0;
 
-    for (list<chunk*>::iterator it = cs_->alloc_->begin();
+    for (auto it = cs_->alloc_->begin();
          it != cs_->alloc_->end(); ++it) {
         dump_chunk(*it);
         chunk_ids_[*it] = i++;
@@ -287,7 +287,7 @@ void codesearch_index::dump_metadata() {
 void codesearch_index::dump_chunk_data() {
     alignp(kPageSize);
     hdr_.chunks_off = stream_.tellp();
-    for (list<chunk*>::iterator it = cs_->alloc_->begin();
+    for (auto it = cs_->alloc_->begin();
          it != cs_->alloc_->end(); ++it) {
         dump_chunk_data(*it);
     }

@@ -509,7 +509,7 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
         stats_.lines++;
     }
 
-    for (list<chunk*>::iterator it = alloc_->begin();
+    for (auto it = alloc_->begin();
          it != alloc_->end(); it++)
         (*it)->finish_file();
 }
@@ -970,7 +970,6 @@ code_searcher::search_thread::search_thread(code_searcher *cs)
 void code_searcher::search_thread::match_internal(RE2& pat, RE2 *file_pat,
                                                  const code_searcher::search_thread::base_cb& cb,
                                                  match_stats *stats) {
-    list<chunk*>::iterator it;
     match_result *m;
     int matches = 0;
     int pending = cs_->alloc_->size();
@@ -988,7 +987,7 @@ void code_searcher::search_thread::match_internal(RE2& pat, RE2 *file_pat,
     }
 
 
-    for (it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
+    for (auto it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
         pool_.queue(pair<searcher*, chunk*>(&search, *it));
     }
 

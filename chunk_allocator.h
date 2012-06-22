@@ -1,4 +1,4 @@
-#include <list>
+#include <vector>
 #include <map>
 #include <string>
 #include "thread_pool.h"
@@ -15,11 +15,11 @@ public:
 
     unsigned char *alloc(size_t len);
 
-    list<chunk*>::iterator begin () {
+    vector<chunk*>::iterator begin () {
         return chunks_.begin();
     }
 
-    list<chunk*>::iterator end () {
+    vector<chunk*>::iterator end () {
         return chunks_.end();
     }
 
@@ -48,7 +48,7 @@ protected:
     void finish_chunk();
     void new_chunk();
 
-    list<chunk*> chunks_;
+    vector<chunk*> chunks_;
     chunk *current_;
     finalizer finalizer_;
     thread_pool<chunk*, finalizer> *finalize_pool_;

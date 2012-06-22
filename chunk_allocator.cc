@@ -61,7 +61,7 @@ void chunk_allocator::finalize()  {
         finalize_pool_->queue(NULL);
     delete finalize_pool_;
     finalize_pool_ = NULL;
-    for (list<chunk*>::iterator it = begin(); it != end(); ++it)
+    for (auto it = begin(); it != end(); ++it)
         (*it)->finalize_files();
 }
 
