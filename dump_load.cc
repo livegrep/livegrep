@@ -120,7 +120,6 @@ protected:
     int fd_;
 
     index_header hdr_;
-    map<chunk*, int> chunk_ids_;
 
     friend class dump_allocator;
     friend class load_allocator;
@@ -244,7 +243,7 @@ void codesearch_index::dump_file_contents(search_file *sf) {
              it != sf->content.end(); ++it) {
         chunk *chunk = cs_->alloc_->chunk_from_string
             (reinterpret_cast<const unsigned char*>(it->data()));
-        dump_int32(chunk_ids_[chunk]);
+        dump_int32(chunk->id);
         dump_int32(reinterpret_cast<const unsigned char*>(it->data()) - chunk->data);
         dump_int32(it->size());
     }
@@ -260,27 +259,20 @@ void codesearch_index::dump_metadata() {
     dump(&meta);
 
     for (vector<const char*>::iterator it = cs_->refs_.begin();
-         it != cs_->refs_.end(); ++it) {
+         it != cs_->refs_.end(); ++it)
         dump_string(*it);
-    }
 
     for (vector<search_file*>::iterator it = cs_->files_.begin();
-         it != cs_->files_.end(); ++it) {
+         it != cs_->files_.end(); ++it)
         dump_file(*it);
-    }
-
-    int i = 0;
 
     for (auto it = cs_->alloc_->begin();
-         it != cs_->alloc_->end(); ++it) {
+         it != cs_->alloc_->end(); ++it)
         dump_chunk(*it);
-        chunk_ids_[*it] = i++;
-    }
 
     for (vector<search_file*>::iterator it = cs_->files_.begin();
-         it != cs_->files_.end(); ++it) {
+         it != cs_->files_.end(); ++it)
         dump_file_contents(*it);
-    }
 }
 
 void codesearch_index::dump_chunk_data() {

@@ -49,6 +49,7 @@ struct chunk_file_node {
 struct chunk {
     static int chunk_files;
 
+    int id;     // Sequential id
     int size;
     vector<chunk_file> files;
     vector<chunk_file> cur_file;

@@ -49,6 +49,7 @@ void chunk_allocator::finish_chunk()  {
 void chunk_allocator::new_chunk()  {
     finish_chunk();
     current_ = alloc_chunk();
+    current_->id = chunks_.size();
     by_data_[current_->data] = current_;
     chunks_.push_back(current_);
 }
