@@ -121,7 +121,6 @@ protected:
 
     index_header hdr_;
     map<chunk*, int> chunk_ids_;
-    vector<chunk*> chunks_;
 
     friend class dump_allocator;
     friend class load_allocator;
@@ -348,7 +347,7 @@ void codesearch_index::load_file_contents(search_file *sf) {
     sf->content.resize(npieces);
 
     for (int i = 0; i < npieces; i++) {
-        chunk *chunk = chunks_[buf[3*i]];
+        chunk *chunk = cs_->alloc_->at(buf[3*i]);
         char *p = reinterpret_cast<char*>(chunk->data) + buf[3*i + 1];
         int len = buf[3*i + 2];
         sf->content[i] = StringPiece(p, len);
@@ -380,7 +379,6 @@ void codesearch_index::load() {
     cs_->alloc_->skip_chunk();
     for (int i = 0; i < meta.nchunks; i++) {
         load_chunk(cs_->alloc_->current_chunk());
-        chunks_.push_back(cs_->alloc_->current_chunk());
         cs_->alloc_->current_chunk()->build_tree();
         if (i != meta.nchunks - 1)
             cs_->alloc_->skip_chunk();

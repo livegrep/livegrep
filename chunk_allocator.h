@@ -23,6 +23,10 @@ public:
         return chunks_.end();
     }
 
+    chunk *at(size_t i) {
+        return chunks_[i];
+    }
+
     size_t size () {
         return chunks_.size();
     }
