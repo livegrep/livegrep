@@ -10,21 +10,6 @@ using re2::StringPiece;
 
 DECLARE_bool(index);
 
-DEFINE_int32(chunk_power, 24, "Size of search chunks, as a power of two");
-
-static bool validate_chunk_power(const char* flagname, int32_t value) {
-    if (value > 10 && value < 30) {
-        kChunkSize = (1 << value);
-        return true;
-    }
-    return false;
-}
-
-static const bool dummy = google::RegisterFlagValidator(&FLAGS_chunk_power,
-                                                        validate_chunk_power);
-
-size_t kChunkSize = (1 << 24);
-
 class radix_sorter {
 public:
     radix_sorter(chunk *chunk) : chunk_(chunk) {

@@ -36,7 +36,6 @@ struct chunk_file {
     }
 };
 
-extern size_t kChunkSize;
 const size_t kMaxGap       = 1 << 10;
 
 struct chunk_file_node {

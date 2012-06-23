@@ -478,11 +478,16 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     file_map_[*oid] = sf;
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
+        stats_.lines++;
         string_hash::iterator it = lines_.find(StringPiece(p, f - p));
         if (it == lines_.end()) {
             stats_.dedup_bytes += (f - p) + 1;
             stats_.dedup_lines ++;
 
+            if (f - p + 1 >= alloc_->chunk_size()) {
+                p = f + 1;
+                continue;
+            }
             // Include the trailing '\n' in the chunk buffer
             unsigned char *alloc = alloc_->alloc(f - p + 1);
             memcpy(alloc, p, f - p + 1);
@@ -506,7 +511,6 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
             sf->content.push_back(StringPiece(line.data(), line.size()));
         }
         p = f + 1;
-        stats_.lines++;
     }
 
     for (auto it = alloc_->begin();
@@ -556,7 +560,7 @@ void searcher::filtered_search(const chunk *chunk)
 {
     static per_thread<vector<uint32_t> > indexes;
     if (!indexes.get()) {
-        indexes.put(new vector<uint32_t>(kChunkSize / kMinFilterRatio));
+        indexes.put(new vector<uint32_t>(cc_->alloc_->chunk_size() / kMinFilterRatio));
     }
     int count = 0;
     {

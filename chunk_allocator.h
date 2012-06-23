@@ -13,6 +13,11 @@ public:
     virtual ~chunk_allocator();
     void cleanup();
 
+    void set_chunk_size(size_t size);
+    size_t chunk_size() {
+        return chunk_size_;
+    }
+
     unsigned char *alloc(size_t len);
 
     vector<chunk*>::iterator begin () {
@@ -50,6 +55,7 @@ protected:
     void finish_chunk();
     void new_chunk();
 
+    size_t chunk_size_;
     vector<chunk*> chunks_;
     chunk *current_;
     finalizer finalizer_;

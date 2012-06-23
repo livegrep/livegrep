@@ -7,6 +7,19 @@
 
 DECLARE_int32(threads);
 DECLARE_bool(index);
+DEFINE_int32(chunk_power, 24, "Size of search chunks, as a power of two");
+size_t kChunkSize = (1 << 24);
+
+static bool validate_chunk_power(const char* flagname, int32_t value) {
+    if (value > 10 && value < 30) {
+        kChunkSize = (1 << value);
+        return true;
+    }
+    return false;
+}
+
+static const bool dummy = google::RegisterFlagValidator(&FLAGS_chunk_power,
+                                                        validate_chunk_power);
 
 bool chunk_allocator::finalizer::operator()(chunk *chunk) {
     if (!chunk)
@@ -16,11 +29,17 @@ bool chunk_allocator::finalizer::operator()(chunk *chunk) {
 }
 
 chunk_allocator::chunk_allocator()  :
-    current_(0), finalizer_(), finalize_pool_(0) {
+    chunk_size_(kChunkSize), current_(0), finalizer_(), finalize_pool_(0) {
     //    new_chunk();
 }
 
 chunk_allocator::~chunk_allocator() {
+}
+
+void chunk_allocator::set_chunk_size(size_t size) {
+    assert(current_ == 0);
+    assert(!chunks_.size());
+    chunk_size_ = size;
 }
 
 void chunk_allocator::cleanup() {
@@ -29,8 +48,8 @@ void chunk_allocator::cleanup() {
 }
 
 unsigned char *chunk_allocator::alloc(size_t len) {
-    assert(len < kChunkSize);
-    if (current_ == 0 || (current_->size + len) > kChunkSize)
+    assert(len < chunk_size_);
+    if (current_ == 0 || (current_->size + len) > chunk_size_)
         new_chunk();
     unsigned char *out = current_->data + current_->size;
     current_->size += len;
@@ -84,8 +103,8 @@ chunk *chunk_allocator::chunk_from_string(const unsigned char *p) {
 class mem_allocator : public chunk_allocator {
 public:
     virtual chunk *alloc_chunk() {
-        unsigned char *buf = new unsigned char[kChunkSize];
-        uint32_t *idx = FLAGS_index ? new uint32_t[kChunkSize] : 0;
+        unsigned char *buf = new unsigned char[chunk_size_];
+        uint32_t *idx = FLAGS_index ? new uint32_t[chunk_size_] : 0;
         return new chunk(buf, idx);
     }
 
