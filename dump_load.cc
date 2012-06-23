@@ -313,7 +313,7 @@ search_file *codesearch_index::load_file() {
 void codesearch_index::load_chunk(chunk *chunk) {
     chunk_header hdr;
     load(&hdr);
-    assert(hdr.size <= kChunkSpace);
+    assert(hdr.size <= kChunkSize);
     chunk->size = hdr.size;
 
     /*

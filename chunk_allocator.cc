@@ -29,8 +29,8 @@ void chunk_allocator::cleanup() {
 }
 
 unsigned char *chunk_allocator::alloc(size_t len) {
-    assert(len < kChunkSpace);
-    if (current_ == 0 || (current_->size + len) > kChunkSpace)
+    assert(len < kChunkSize);
+    if (current_ == 0 || (current_->size + len) > kChunkSize)
         new_chunk();
     unsigned char *out = current_->data + current_->size;
     current_->size += len;

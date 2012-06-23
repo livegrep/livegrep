@@ -556,7 +556,7 @@ void searcher::filtered_search(const chunk *chunk)
 {
     static per_thread<vector<uint32_t> > indexes;
     if (!indexes.get()) {
-        indexes.put(new vector<uint32_t>(kChunkSpace / kMinFilterRatio));
+        indexes.put(new vector<uint32_t>(kChunkSize / kMinFilterRatio));
     }
     int count = 0;
     {
