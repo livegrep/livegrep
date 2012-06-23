@@ -39,8 +39,6 @@ public:
     virtual void finalize();
 
     chunk *chunk_from_string(const unsigned char *p);
-    void replace_data(chunk *chunk, unsigned char *new_data);
-
 protected:
 
     struct finalizer {

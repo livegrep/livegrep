@@ -81,14 +81,6 @@ chunk *chunk_allocator::chunk_from_string(const unsigned char *p) {
     return it->second;
 }
 
-void chunk_allocator::replace_data(chunk *chunk, unsigned char *new_data) {
-    by_data_.erase(chunk->data);
-    munmap(chunk->data, kChunkSize);
-    chunk->data = new_data;
-    by_data_[new_data] = chunk;
-}
-
-
 class mem_allocator : public chunk_allocator {
 public:
     virtual chunk *alloc_chunk() {
