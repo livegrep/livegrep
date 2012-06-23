@@ -57,10 +57,9 @@ struct chunk {
     uint32_t *suffixes;
     unsigned char *data;
 
-    chunk(unsigned char *data = 0, uint32_t *suffixes = 0)
+    chunk(unsigned char *data, uint32_t *suffixes)
         : size(0), files(),
-          suffixes(suffixes),
-          data(data ?: new unsigned char[kChunkSize]) {
+          suffixes(suffixes), data(data) {
     }
 
     ~chunk() {
