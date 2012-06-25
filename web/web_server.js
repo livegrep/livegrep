@@ -9,6 +9,13 @@ var express = require('express'),
     Server  = require('./appserver.js'),
     config  = require('./config.js');
 
+function shorten(ref) {
+  var match = /^refs\/(tags|branches)\/(.*)/.exec(ref);
+  if (match)
+    return match[2];
+  return ref;
+}
+
 var parser = new parseopt.OptionParser(
   {
     options: [
@@ -66,7 +73,8 @@ app.get('/search', function (req, res) {
           res.render('index',
                      {
                        js: true,
-                       title: 'search'
+                       title: 'search',
+                       ref: shorten(config.SEARCH_REF)
                      });
         });
 app.get('/about', function (req, res) {
