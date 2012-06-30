@@ -44,6 +44,8 @@ public:
     virtual void finalize();
 
     chunk *chunk_from_string(const unsigned char *p);
+
+    virtual void drop_caches();
 protected:
 
     struct finalizer {

@@ -90,6 +90,9 @@ void chunk_allocator::skip_chunk() {
     new_chunk();
 }
 
+void chunk_allocator::drop_caches() {
+}
+
 chunk *chunk_allocator::chunk_from_string(const unsigned char *p) {
     auto it = by_data_.lower_bound(p);
     if (it == by_data_.end() || it->first != p) {

@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include <locale>
 #include <list>
@@ -48,6 +49,7 @@ DEFINE_bool(debug_search, false, "Produce debugging output about the search proc
 #endif
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
+DEFINE_bool(drop_cache, false, "Drop caches before each search");
 DEFINE_bool(search, true, "Actually do the search.");
 DEFINE_int32(max_matches, 50, "The maximum number of results to return for a single query.");
 DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
@@ -977,6 +979,11 @@ void code_searcher::search_thread::match_internal(RE2& pat, RE2 *file_pat,
     match_result *m;
     int matches = 0;
     int pending = cs_->alloc_->size();
+
+
+    if (FLAGS_drop_cache) {
+        cs_->alloc_->drop_caches();
+    }
 
     assert(cs_->finalized_);
 

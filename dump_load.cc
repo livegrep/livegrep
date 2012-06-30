@@ -175,8 +175,8 @@ protected:
 
 class load_allocator : public chunk_allocator {
 public:
-    load_allocator(codesearch_index *index)
-        : index_(index) {
+    load_allocator(code_searcher *cs, const string& path)
+        : index_(new codesearch_index(cs, path, false)) {
         off_ = index_->hdr_.chunks_off;
         set_chunk_size(index_->hdr_.chunk_size);
     }
@@ -197,8 +197,22 @@ public:
         munmap(chunk->data, 5*chunk_size_);
         delete chunk;
     }
+
+    virtual void drop_caches() {
+        for (auto it = begin(); it != end(); ++it) {
+            madvise((*it)->data, (*it)->size, MADV_DONTNEED);
+            madvise((*it)->suffixes, (*it)->size * sizeof(*(*it)->suffixes), MADV_DONTNEED);
+        }
+        posix_fadvise(index_->fd_, index_->hdr_.chunks_off,
+                      chunks_.size() * chunk_size_ * (1 + sizeof(uint32_t)),
+                      POSIX_FADV_DONTNEED);
+    }
+
+    void load() {
+        index_->load();
+    }
 protected:
-    codesearch_index *index_;
+    unique_ptr<codesearch_index> index_;
     size_t off_;
 };
 
@@ -399,7 +413,7 @@ void code_searcher::dump_index(const string &path) {
 }
 
 void code_searcher::load_index(const string &path) {
-    codesearch_index idx(this, path, false);
-    set_alloc(new load_allocator(&idx));
-    idx.load();
+    load_allocator *alloc = new load_allocator(this, path);
+    set_alloc(alloc);
+    alloc->load();
 }
