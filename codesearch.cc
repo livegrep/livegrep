@@ -450,10 +450,10 @@ void code_searcher::walk_root(git_repository *repo, const char *ref, git_tree *t
          it != ordered.end(); ++it) {
         smart_object<git_object> obj;
         git_tree_entry_2object(obj, repo, *it);
-        string path = string(git_tree_entry_name(*it)) + "/";
+        string path = string(git_tree_entry_name(*it));
 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
-            walk_tree(repo, ref, path, obj);
+            walk_tree(repo, ref, path + "/", obj);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
             update_stats(ref, path, obj);
         }
