@@ -12,17 +12,9 @@ DECLARE_bool(index);
 
 class radix_sorter {
 public:
-    radix_sorter(chunk *chunk) : chunk_(chunk) {
-        lengths = new uint32_t[chunk_->size];
-        for (int i = 0; i < chunk_->size; i ++)
-            lengths[i] = static_cast<unsigned char*>
-                (memchr(&chunk_->data[i], '\n', chunk_->size - i)) -
-                (chunk_->data + i);
-    }
+    radix_sorter(chunk *chunk) : chunk_(chunk) { }
 
-    ~radix_sorter() {
-        delete[] lengths;
-    }
+    ~radix_sorter() { }
 
     void sort();
 
@@ -32,8 +24,10 @@ public:
         bool operator()(uint32_t lhs, uint32_t rhs) {
             unsigned char *l = &sort.chunk_->data[lhs];
             unsigned char *r = &sort.chunk_->data[rhs];
-            unsigned ll = sort.lengths[lhs];
-            unsigned rl = sort.lengths[rhs];
+            unsigned ll = static_cast<unsigned char*>
+                (memchr(l, '\n', sort.chunk_->size - lhs)) - l;
+            unsigned rl = static_cast<unsigned char*>
+                (memchr(r, '\n', sort.chunk_->size - rhs)) - r;
             int cmp = memcmp(l, r, min(ll, rl));
             if (cmp < 0)
                 return true;
@@ -53,12 +47,12 @@ public:
 
 private:
     unsigned index(uint32_t off, int i) {
-        if (i >= lengths[off]) return 0;
+        if (chunk_->data[off + i] == '\n')
+            return 0;
         return (unsigned)(unsigned char)chunk_->data[off + i];
     }
 
     chunk *chunk_;
-    unsigned *lengths;
 
     radix_sorter(const radix_sorter&);
     radix_sorter operator=(const radix_sorter&);
