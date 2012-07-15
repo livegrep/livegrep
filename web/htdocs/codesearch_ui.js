@@ -112,6 +112,9 @@ var MatchView = Backbone.View.extend({
   },
   render_contexts: function(h) {
     var self = this;
+    if (this.model.get('contexts').length == 1 &&
+        this.model.get('context').paths.length == 1)
+      return [];
     return h.div({cls: 'contexts'}, [
           h.span({cls: 'label'}, ["Also in:"]),
           h.ul({},
