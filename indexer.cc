@@ -1,5 +1,6 @@
 #include "indexer.h"
 #include "recursion.h"
+#include "debug.h"
 
 #include <gflags/gflags.h>
 
@@ -7,25 +8,6 @@
 #include <limits>
 
 #include <stdarg.h>
-
-DEFINE_int32(debug_index, 0, "Debug the index query generator.");
-static void __index_debug(const char *format, ...)
-    __attribute__((format (printf, 1, 2)));
-
-#define debug(lvl, fmt, ...) do {                \
-        if (FLAGS_debug_index >= lvl)            \
-            __index_debug(fmt, ## __VA_ARGS__);  \
-    } while(0)
-
-static void __index_debug(const char *format, ...) {
-    if (!FLAGS_debug_index)
-        return;
-    va_list ap;
-
-    va_start(ap, format);
-    vprintf(format, ap);
-    va_end(ap);
-}
 
 using namespace re2;
 using namespace std;
@@ -317,7 +299,8 @@ namespace {
         assert(lhs);
         intrusive_ptr<IndexKey> out = lhs;
 
-        debug(2, "Concat([%s](%ld), [%s](%ld)) = ",
+        debug(kDebugIndexAll,
+              "Concat([%s](%ld), [%s](%ld)) = ",
               lhs ? lhs->ToString().c_str() : "",
               lhs->nodes(),
               rhs ? rhs->ToString().c_str() : "",
@@ -329,7 +312,7 @@ namespace {
             out->anchor &= ~kAnchorRight;
         }
 
-        debug(2, "[%s]\n", out->ToString().c_str());
+        debug(kDebugIndexAll, "[%s]\n", out->ToString().c_str());
 
         return out;
     }
@@ -337,10 +320,10 @@ namespace {
     IndexKey::Stats TryConcat(intrusive_ptr<IndexKey> *start,
                               intrusive_ptr<IndexKey> *end) {
         IndexKey::Stats st = (*start)->stats();
-        debug(4, "TryConcat: Searching suffix of length %d\n",
+        debug(kDebugIndexAll, "TryConcat: Searching suffix of length %d\n",
               int(end - start));
         if (!*start || !((*start)->anchor & kAnchorRight) || (*start)->empty()) {
-            debug(4, "!ConcatRight, returning early.\n");
+            debug(kDebugIndexAll, "!ConcatRight, returning early.\n");
             return st;
         }
         for (intrusive_ptr<IndexKey> *ptr = start + 1; ptr != end; ptr++) {
@@ -354,7 +337,7 @@ namespace {
             if (((*ptr)->anchor & (kAnchorRepeat|kAnchorRight)) != kAnchorRight)
                 break;
         }
-        debug(4, "TryConcat: nodes=%ld, selectivity=%f\n",
+        debug(kDebugIndexAll, "TryConcat: nodes=%ld, selectivity=%f\n",
               st.nodes_, st.selectivity_);
         return st;
     }
@@ -373,11 +356,11 @@ namespace {
         intrusive_ptr<IndexKey> *end = children + nchildren, *best_start = 0, *ptr;
         IndexKey::Stats best_stats;
 
-        debug(3, "Concat: Searching %d positions\n", nchildren);
+        debug(kDebugIndexAll, "Concat: Searching %d positions\n", nchildren);
         for (ptr = children; ptr != end; ptr++) {
             IndexKey::Stats st = TryConcat(ptr, end);
             if (st.nodes_ > 1 && Prefer(st, best_stats)) {
-                debug(3, "Concat: Found new best: %d: %f\n",
+                debug(kDebugIndexAll, "Concat: Found new best: %d: %f\n",
                       int(ptr - children), st.selectivity_);
                 best_start = ptr;
                 best_stats = st;
@@ -385,7 +368,7 @@ namespace {
         }
 
         if (best_start == 0) {
-            debug(3, "Concat: No good results found.\n");
+            debug(kDebugIndexAll, "Concat: No good results found.\n");
             return Any();
         }
 
@@ -417,7 +400,8 @@ namespace {
               pair<uchar, uchar>& right,
               intrusive_ptr<IndexKey> rnext) {
         if (intersects(left, right)) {
-            debug(3, "Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
+            debug(kDebugIndexAll,
+                  "Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
                   left.first, left.second, right.first, right.second);
             if (left.first < right.first) {
                 out->insert
@@ -618,17 +602,17 @@ IndexWalker::PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
 
     assert(key);
 
-    debug(1, "* INDEX %s ==> ", re->ToString().c_str());
+    debug(kDebugIndex, "* INDEX %s ==> ", re->ToString().c_str());
     if (key)
-        debug(1, "[weight %d, nodes %ld, depth %d]\n",
+        debug(kDebugIndex, "[weight %d, nodes %ld, depth %d]\n",
               key->weight(), key->nodes(), key->depth());
     else
-        debug(1, "nul\n");
+        debug(kDebugIndex, "nul\n");
 
-    debug(2, "           ==> [%s]\n",
+    debug(kDebugIndexAll, "           ==> [%s]\n",
           key ? key->ToString().c_str() : "nul");
 
-    if (FLAGS_debug_index && key)
+    if ((debug_enabled & kDebugIndex) && key)
         key->check_rep();
 
     return key;

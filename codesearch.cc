@@ -38,15 +38,11 @@ const size_t kMinSkip = 250;
 const int kMinFilterRatio = 50;
 const int kMaxScan        = (1 << 20);
 
-#ifdef PROFILE_CODESEARCH
 DEFINE_bool(debug_search, false, "Produce debugging output about the search process");
 #define log_profile(format, ...) do {                   \
         if (FLAGS_debug_search)                         \
             fprintf(stderr, format, ## __VA_ARGS__);    \
     } while(0)
-#else
-#define log_profile(...)
-#endif
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(drop_cache, false, "Drop caches before each search");

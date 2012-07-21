@@ -19,9 +19,6 @@ endif
 ifneq ($(densehash),)
 override CXXFLAGS+=-DUSE_DENSE_HASH_SET
 endif
-ifneq ($(profile),)
-override CXXFLAGS+=-DPROFILE_CODESEARCH
-endif
 ifneq ($(slowgtod),)
 override CXXFLAGS+=-DCODESEARCH_SLOWGTOD
 endif
@@ -31,7 +28,8 @@ endif
 
 OBJECTS = codesearch.o main.o chunk.o \
           chunk_allocator.o radix_sort.o \
-          dump_load.o indexer.o re_width.o
+          dump_load.o indexer.o re_width.o \
+          debug.o
 DEPFILES = $(OBJECTS:%.o=.%.d)
 
 all: codesearch $(DEPFILES)
