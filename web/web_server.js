@@ -58,7 +58,9 @@ app.configure(
     app.use(extras.fixIP());
     app.use(log4js.connectLogger(logger, {
                                    level: log4js.levels.INFO,
-                                   format: ':remote-addr [:date] :method :url'
+                                   format: function (req, res, fmt) {
+                                     return '' + req.ip + fmt(' [:date] :method :url');
+                                   }
                                  }));
     app.register('.html', require('handlebars'));
     app.set('view engine', 'html');
