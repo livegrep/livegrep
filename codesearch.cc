@@ -25,6 +25,7 @@
 #include "atomic.h"
 #include "indexer.h"
 #include "per_thread.h"
+#include "debug.h"
 
 #include "utf8.h"
 
@@ -37,12 +38,6 @@ const int    kContextLines = 3;
 const size_t kMinSkip = 250;
 const int kMinFilterRatio = 50;
 const int kMaxScan        = (1 << 20);
-
-DEFINE_bool(debug_search, false, "Produce debugging output about the search process");
-#define log_profile(format, ...) do {                   \
-        if (FLAGS_debug_search)                         \
-            fprintf(stderr, format, ## __VA_ARGS__);    \
-    } while(0)
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(drop_cache, false, "Drop caches before each search");
@@ -115,21 +110,21 @@ public:
     ~searcher() {
         delete[] files_;
 
-        log_profile("re2 time: %d.%06ds\n",
-                    int(re2_time_.elapsed().tv_sec),
-                    int(re2_time_.elapsed().tv_usec));
-        log_profile("git time: %d.%06ds\n",
-                    int(git_time_.elapsed().tv_sec),
-                    int(git_time_.elapsed().tv_usec));
-        log_profile("index time: %d.%06ds\n",
-                    int(index_time_.elapsed().tv_sec),
-                    int(index_time_.elapsed().tv_usec));
-        log_profile("sort time: %d.%06ds\n",
-                    int(sort_time_.elapsed().tv_sec),
-                    int(sort_time_.elapsed().tv_usec));
-        log_profile("analyze time: %d.%06ds\n",
-                    int(analyze_time_.elapsed().tv_sec),
-                    int(analyze_time_.elapsed().tv_usec));
+        debug(kDebugProfile, "re2 time: %d.%06ds",
+              int(re2_time_.elapsed().tv_sec),
+              int(re2_time_.elapsed().tv_usec));
+        debug(kDebugProfile, "git time: %d.%06ds",
+              int(git_time_.elapsed().tv_sec),
+              int(git_time_.elapsed().tv_usec));
+        debug(kDebugProfile, "index time: %d.%06ds",
+              int(index_time_.elapsed().tv_sec),
+              int(index_time_.elapsed().tv_usec));
+        debug(kDebugProfile, "sort time: %d.%06ds",
+              int(sort_time_.elapsed().tv_sec),
+              int(sort_time_.elapsed().tv_usec));
+        debug(kDebugProfile, "analyze time: %d.%06ds",
+              int(analyze_time_.elapsed().tv_sec),
+              int(analyze_time_.elapsed().tv_usec));
     }
 
     void operator()(const chunk *chunk);
@@ -412,10 +407,10 @@ void code_searcher::walk_root(git_repository *repo, const char *ref, git_tree *t
 }
 
 void code_searcher::dump_stats() {
-    log_profile("chunk_files: %d\n", chunk::chunk_files);
-    printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
-    printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
-    printf("Files: %ld (dedup: %ld)\n", stats_.files, stats_.dedup_files);
+    debug(kDebugProfile, "chunk_files: %d", chunk::chunk_files);
+    printf("Bytes: %ld (dedup: %ld)", stats_.bytes, stats_.dedup_bytes);
+    printf("Lines: %ld (dedup: %ld)", stats_.lines, stats_.dedup_lines);
+    printf("Files: %ld (dedup: %ld)", stats_.files, stats_.dedup_files);
 }
 
 void code_searcher::finalize() {
@@ -627,7 +622,7 @@ struct match_finger {
 void searcher::search_lines(uint32_t *indexes, int count,
                             const chunk *chunk)
 {
-    log_profile("search_lines: Searching %d/%d indexes.\n", count, chunk->size);
+    debug(kDebugProfile, "search_lines: Searching %d/%d indexes.", count, chunk->size);
 
     if (count == 0)
         return;
@@ -683,7 +678,7 @@ void searcher::next_range(match_finger *finger,
     if (!file_pat_ || !FLAGS_index)
         return;
 
-    log_profile("next_range(%d, %d, %d)\n", pos, endpos, maxpos);
+    debug(kDebugSearch, "next_range(%d, %d, %d)", pos, endpos, maxpos);
 
     vector<chunk_file>::const_iterator& it = finger->it_;
     const vector<chunk_file>::const_iterator& end = finger->chunk_->files.end();
@@ -740,8 +735,8 @@ void searcher::full_search(match_finger *finger,
         if (pos >= maxpos)
             break;
 
-        log_profile("[%p] range:%d-%d/%d-%d\n",
-                    (void*)(chunk), pos, end, int(minpos), int(maxpos));
+        debug(kDebugSearch, "[%p] range:%d-%d/%d-%d",
+              (void*)(chunk), pos, end, int(minpos), int(maxpos));
 
         {
             int limit = end;
@@ -803,10 +798,10 @@ void searcher::find_match_brute(const chunk *chunk,
     finish_group(&group);
 
     tm.pause();
-    log_profile("Searched %d files in %d.%06ds\n",
-                searched,
-                int(tm.elapsed().tv_sec),
-                int(tm.elapsed().tv_usec));
+    debug(kDebugProfile, "Searched %d files in %d.%06ds",
+          searched,
+          int(tm.elapsed().tv_sec),
+          int(tm.elapsed().tv_usec));
 }
 
 void searcher::find_match(const chunk *chunk,
@@ -846,7 +841,7 @@ void searcher::find_match(const chunk *chunk,
     vector<frame> stack;
     stack.push_back((frame){chunk->cf_root, false});
 
-    log_profile("find_match(%d)\n", loff);
+    debug(kDebugSearch, "find_match(%d)", loff);
 
     while (!stack.empty() && !exit_reason_) {
         frame f = stack.back();
@@ -855,7 +850,7 @@ void searcher::find_match(const chunk *chunk,
         chunk_file_node *n = f.node;
 
         if (f.visit) {
-            log_profile("visit <%d-%d>\n", n->chunk->left, n->chunk->right);
+            debug(kDebugSearch, "visit <%d-%d>", n->chunk->left, n->chunk->right);
             assert(loff >= n->chunk->left && loff <= n->chunk->right);
             for (list<search_file *>::const_iterator it = n->chunk->files.begin();
                  it != n->chunk->files.end(); ++it) {
@@ -868,8 +863,9 @@ void searcher::find_match(const chunk *chunk,
             continue;
         }
 
-        log_profile("walk <%d-%d> - %d\n", n->chunk->left, n->chunk->right,
-                    n->right_limit);
+        debug(kDebugSearch,
+              "walk <%d-%d> - %d", n->chunk->left, n->chunk->right,
+              n->right_limit);
 
         if (loff > n->right_limit)
             continue;
