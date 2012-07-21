@@ -68,6 +68,8 @@ void chunk_allocator::finish_chunk()  {
 void chunk_allocator::new_chunk()  {
     finish_chunk();
     current_ = alloc_chunk();
+    madvise(current_->data,     chunk_size_,                               MADV_RANDOM);
+    madvise(current_->suffixes, chunk_size_ * sizeof(*current_->suffixes), MADV_RANDOM);
     current_->id = chunks_.size();
     by_data_[current_->data] = current_;
     chunks_.push_back(current_);
