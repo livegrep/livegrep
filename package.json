@@ -9,6 +9,7 @@
   "licenses": [],
   "dependencies": {
     "express": ">= 2.0",
+    "express-extras": "0.1.1",
     "carrier": ">= 0.1.3",
     "dnode": ">= 0.9.1",
     "log4js": ">= 0.4.1",

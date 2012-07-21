@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 var express = require('express'),
+    extras  = require('express-extras'),
     path    = require('path'),
     parseopt= require('parseopt'),
     handlebars = require('handlebars'),
@@ -51,13 +52,14 @@ if (config.SMTP_CONFIG) {
 
 var app = express.createServer();
 var logger = log4js.getLogger('web');
-app.use(log4js.connectLogger(logger, {
-                               level: log4js.levels.INFO,
-                               format: ':remote-addr [:date] :method :url'
-                             }));
 
 app.configure(
   function() {
+    app.use(extras.fixIP());
+    app.use(log4js.connectLogger(logger, {
+                                   level: log4js.levels.INFO,
+                                   format: ':remote-addr [:date] :method :url'
+                                 }));
     app.register('.html', require('handlebars'));
     app.set('view engine', 'html');
     app.set('view options', {
