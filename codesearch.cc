@@ -408,9 +408,9 @@ void code_searcher::walk_root(git_repository *repo, const char *ref, git_tree *t
 
 void code_searcher::dump_stats() {
     debug(kDebugProfile, "chunk_files: %d", chunk::chunk_files);
-    printf("Bytes: %ld (dedup: %ld)", stats_.bytes, stats_.dedup_bytes);
-    printf("Lines: %ld (dedup: %ld)", stats_.lines, stats_.dedup_lines);
-    printf("Files: %ld (dedup: %ld)", stats_.files, stats_.dedup_files);
+    printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
+    printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
+    printf("Files: %ld (dedup: %ld)\n", stats_.files, stats_.dedup_files);
 }
 
 void code_searcher::finalize() {
