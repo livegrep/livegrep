@@ -165,7 +165,7 @@ var SearchState = Backbone.Model.extend({
     });
     this.matches.reset();
     for (var k in this.search_map) {
-      if (k < this.get('displaying'))
+      if (parseInt(k) < this.get('displaying'))
         delete this.search_map[k];
     }
   },
