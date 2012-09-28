@@ -342,7 +342,7 @@ namespace {
         const git_oid *oid;
         git_oid tmp;
         smart_object<git_object> obj;
-        if (git_oid_fromstr(&tmp, refname) == GIT_SUCCESS) {
+        if (git_oid_fromstr(&tmp, refname) == 0) {
             git_object_lookup(obj, repo, &tmp, GIT_OBJ_ANY);
         } else {
             git_reference_lookup(&ref, repo, refname);
@@ -395,7 +395,7 @@ void code_searcher::walk_root(git_repository *repo, const char *ref, git_tree *t
     for (vector<const git_tree_entry *>::iterator it = ordered.begin();
          it != ordered.end(); ++it) {
         smart_object<git_object> obj;
-        git_tree_entry_2object(obj, repo, *it);
+        git_tree_entry_to_object(obj, repo, *it);
         string path = string(git_tree_entry_name(*it));
 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
@@ -430,7 +430,7 @@ void code_searcher::walk_tree(git_repository *repo,
         const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
         path = pfx + git_tree_entry_name(ent);
         smart_object<git_object> obj;
-        git_tree_entry_2object(obj, repo, ent);
+        git_tree_entry_to_object(obj, repo, ent);
         if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
             walk_tree(repo, ref, path + "/", obj);
         } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
