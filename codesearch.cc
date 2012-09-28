@@ -493,16 +493,7 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
                 (reinterpret_cast<const unsigned char*>(line.data()));
         }
         c->add_chunk_file(sf, line);
-        if (sf->content.size() &&
-            sf->content.back().data() +
-            sf->content.back().size() == line.data()) {
-            StringPiece &back = sf->content.back();
-            assert(back.data()[back.size()] == '\n');
-            back = StringPiece(back.data(),
-                               (line.data() - back.data() + line.size()));
-        } else {
-            sf->content.push_back(StringPiece(line.data(), line.size()));
-        }
+        sf->content.extend(line);
         p = f + 1;
     }
 

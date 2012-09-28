@@ -261,7 +261,7 @@ void codesearch_index::dump_chunk_data(chunk *chunk) {
 
 void codesearch_index::dump_file_contents(search_file *sf) {
     /* (int num, [chunkid, offset, len]) */
-    dump_int32(sf->content.size());
+    dump_int32(sf->content.pieces.size());
     for (vector<StringPiece>::iterator it = sf->content.begin();
              it != sf->content.end(); ++it) {
         chunk *chunk = cs_->alloc_->chunk_from_string
@@ -359,13 +359,13 @@ void codesearch_index::load_file_contents(search_file *sf) {
     uint32_t buf[3*npieces];
 
     stream_.read(reinterpret_cast<char*>(buf), sizeof buf);
-    sf->content.resize(npieces);
+    sf->content.pieces.resize(npieces);
 
     for (int i = 0; i < npieces; i++) {
         chunk *chunk = cs_->alloc_->at(buf[3*i]);
         char *p = reinterpret_cast<char*>(chunk->data) + buf[3*i + 1];
         int len = buf[3*i + 2];
-        sf->content[i] = StringPiece(p, len);
+        sf->content.pieces[i] = StringPiece(p, len);
     }
 }
 

@@ -18,6 +18,7 @@
 #include "smart_git.h"
 #include "mutex.h"
 #include "thread_pool.h"
+#include "content.h"
 
 class searcher;
 class chunk_allocator;
@@ -90,7 +91,7 @@ struct search_file {
     // <ref, path>
     vector<git_path> paths;
     git_oid oid;
-    vector<StringPiece> content;
+    file_contents content;
     int no;
 };
 
