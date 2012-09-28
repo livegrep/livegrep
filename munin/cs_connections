@@ -6,7 +6,7 @@ path  = require('path');
 var stats = path.join(__dirname, '..', 'web', 'log', 'stats.json');
 
 if (process.argv[2] === 'config') {
-  console.log("graph_title Codesearch stats");
+  console.log("graph_title Codesearch Users");
   console.log("graph_vlabel Users");
   console.log("graph_category Codesearch");
   console.log("slow.label Slow-query users");
