@@ -8,7 +8,7 @@
   "bugs": "mailto:nelhage@nelhage.com",
   "licenses": [],
   "dependencies": {
-    "express": ">= 2.0",
+    "express": ">= 3.0",
     "express-extras": "0.1.1",
     "carrier": ">= 0.1.3",
     "dnode": ">= 0.9.1",
@@ -19,6 +19,7 @@
     "socket.io": ">= 0.8.7",
     "underscore": ">= 1.3",
     "handlebars": ">= 1.0",
-    "emailjs": ">= 0.2.2"
+    "emailjs": ">= 0.2.2",
+    "hbs": ">= 1.0.5"
   }
 }

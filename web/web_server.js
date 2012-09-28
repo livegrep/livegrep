@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 var express = require('express'),
+    http    = require('http'),
     extras  = require('express-extras'),
     path    = require('path'),
     parseopt= require('parseopt'),
@@ -50,7 +51,7 @@ if (config.SMTP_CONFIG) {
   smtp = email.server.connect(config.SMTP_CONFIG);
 }
 
-var app = express.createServer();
+var app = express();
 var logger = log4js.getLogger('web');
 
 app.configure(
@@ -62,7 +63,7 @@ app.configure(
                                      return '' + req.ip + fmt(' [:date] :method :url');
                                    }
                                  }));
-    app.register('.html', require('handlebars'));
+    app.engine('.html', require('hbs').__express);
     app.set('view engine', 'html');
     app.set('view options', {
               production: opts.options.production
@@ -149,10 +150,11 @@ app.post('/feedback', function (req, res) {
                          });
          });
 
-app.listen(8910);
+var server = http.createServer(app);
+server.listen(8910);
 console.log("http://localhost:8910");
 
-var io = require('socket.io').listen(app, {
+var io = require('socket.io').listen(server, {
                                        logger: log4js.getLogger('socket.io'),
                                        'log level': log4js.levels.INFO
                                      });
