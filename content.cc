@@ -1,15 +1,19 @@
 #include "content.h"
 #include "chunk.h"
 
-
 void file_contents::extend(chunk *c, const StringPiece &piece) {
-    if (pieces.size() &&
-        pieces.back().data() + pieces.back().size() == piece.data()) {
-        StringPiece &back = pieces.back();
-        assert(back.data()[back.size()] == '\n');
-        back = StringPiece(back.data(),
-                           (piece.data() - back.data() + piece.size()));
-    } else {
-        pieces.push_back(piece);
+    uint32_t off = reinterpret_cast<const unsigned char*>(piece.data()) - c->data;
+    if (pieces.size()) {
+        uint32_t id = *(pieces.end() - 3);
+        uint32_t end = *(pieces.end() - 2) + *(pieces.end() - 2);
+        if (id == c->id &&
+            end == off) {
+            *(pieces.end() - 1) += piece.size();
+            return;
+        }
     }
+
+    pieces.push_back(c->id);
+    pieces.push_back(off);
+    pieces.push_back(piece.size());
 }

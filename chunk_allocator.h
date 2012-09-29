@@ -1,3 +1,6 @@
+#ifndef CODESEARCH_CHUNK_ALLOCATOR_H
+#define CODESEARCH_CHUNK_ALLOCATOR_H
+
 #include <vector>
 #include <map>
 #include <string>
@@ -64,3 +67,5 @@ protected:
     thread_pool<chunk*, finalizer> *finalize_pool_;
     map<const unsigned char*, chunk*> by_data_;
 };
+
+#endif

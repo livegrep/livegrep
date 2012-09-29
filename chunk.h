@@ -1,3 +1,6 @@
+#ifndef CODESEARCH_CHUNK_H
+#define CODESEARCH_CHUNK_H
+
 #include <assert.h>
 #include <string.h>
 
@@ -114,3 +117,5 @@ private:
 };
 
 extern size_t kChunkSpace;
+
+#endif

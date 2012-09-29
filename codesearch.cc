@@ -863,8 +863,8 @@ void searcher::try_match(match_group *group,
                          search_file *sf) {
 
     int lno = 1;
-    auto it = sf->content.begin();
-    for (;it != sf->content.end(); ++it) {
+    auto it = sf->content.begin(cc_->alloc_);
+    for (;it != sf->content.end(cc_->alloc_); ++it) {
         if (line.data() >= it->data() &&
             line.data() <= it->data() + it->size()) {
             lno += count(it->data(), line.data(), '\n');
@@ -874,7 +874,7 @@ void searcher::try_match(match_group *group,
         }
     }
 
-    if (it == sf->content.end())
+    if (it == sf->content.end(cc_->alloc_))
         return;
 
     match_context ctx;
@@ -888,7 +888,7 @@ void searcher::try_match(match_group *group,
 
     for (i = 0; i < kContextLines; i++) {
         if (l.data() == it->data()) {
-            if (it == sf->content.begin())
+            if (it == sf->content.begin(cc_->alloc_))
                 break;
             --it;
             l = StringPiece(it->data() + it->size() + 1, 0);
@@ -901,7 +901,7 @@ void searcher::try_match(match_group *group,
     it = mit;
     for (i = 0; i < kContextLines; i++) {
         if (l.data() + l.size() == it->data() + it->size()) {
-            if (++it == sf->content.end())
+            if (++it == sf->content.end(cc_->alloc_))
                 break;
             l = StringPiece(it->data() - 1, 0);
         }
