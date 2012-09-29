@@ -477,7 +477,7 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
                 (reinterpret_cast<const unsigned char*>(line.data()));
         }
         c->add_chunk_file(sf, line);
-        sf->content.extend(line);
+        sf->content.extend(c, line);
         p = f + 1;
     }
 
@@ -863,9 +863,8 @@ void searcher::try_match(match_group *group,
                          search_file *sf) {
 
     int lno = 1;
-    vector<StringPiece>::iterator it;
-    for (it = sf->content.begin();
-         it != sf->content.end(); ++it) {
+    auto it = sf->content.begin();
+    for (;it != sf->content.end(); ++it) {
         if (line.data() >= it->data() &&
             line.data() <= it->data() + it->size()) {
             lno += count(it->data(), line.data(), '\n');
@@ -883,7 +882,7 @@ void searcher::try_match(match_group *group,
     ctx.file = sf;
     ctx.lno  = lno;
 
-    vector<StringPiece>::iterator mit = it;
+    auto mit = it;
     StringPiece l = line;
     int i = 0;
 

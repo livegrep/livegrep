@@ -262,7 +262,7 @@ void codesearch_index::dump_chunk_data(chunk *chunk) {
 void codesearch_index::dump_file_contents(search_file *sf) {
     /* (int num, [chunkid, offset, len]) */
     dump_int32(sf->content.pieces.size());
-    for (vector<StringPiece>::iterator it = sf->content.begin();
+    for (auto it = sf->content.begin();
              it != sf->content.end(); ++it) {
         chunk *chunk = cs_->alloc_->chunk_from_string
             (reinterpret_cast<const unsigned char*>(it->data()));

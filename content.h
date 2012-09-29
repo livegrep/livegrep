@@ -7,30 +7,51 @@
 using re2::StringPiece;
 using std::vector;
 
+struct chunk;
+
 class file_contents {
 public:
+    class iterator {
+    public:
+        const StringPiece &operator*() {
+            return *it;
+        }
+        const vector<StringPiece>::iterator &operator->() {
+            return it;
+        }
 
-    typedef vector<StringPiece>::iterator iterator;
+        iterator &operator++() {
+            ++it;
+            return *this;
+        }
+
+        iterator &operator--() {
+            --it;
+            return *this;
+        }
+
+        bool operator==(const iterator &rhs) {
+            return it == rhs.it;
+        }
+        bool operator!=(const iterator &rhs) {
+            return !(*this == rhs);
+        }
+    protected:
+        iterator(vector<StringPiece>::iterator it) : it(it) {}
+        vector<StringPiece>::iterator it;
+
+        friend class file_contents;
+    };
 
     iterator begin() {
-        return pieces.begin();
+        return iterator(pieces.begin());
     }
 
     iterator end() {
-        return pieces.end();
+        return iterator(pieces.end());
     }
 
-    void extend(const StringPiece &piece) {
-        if (pieces.size() &&
-            pieces.back().data() + pieces.back().size() == piece.data()) {
-            StringPiece &back = pieces.back();
-            assert(back.data()[back.size()] == '\n');
-            back = StringPiece(back.data(),
-                               (piece.data() - back.data() + piece.size()));
-        } else {
-            pieces.push_back(piece);
-        }
-    }
+    void extend(chunk *chunk, const StringPiece &piece);
 
     friend class codesearch_index;
 
