@@ -49,21 +49,31 @@ public:
             return !(*this == rhs);
         }
     protected:
-        iterator(chunk_allocator *alloc, vector<uint32_t>::iterator it)
+        iterator(chunk_allocator *alloc, uint32_t *it)
             : alloc_(alloc), it_(it) {}
 
         chunk_allocator *alloc_;
-        vector<uint32_t>::iterator it_;
+        uint32_t *it_;
 
         friend class file_contents;
     };
 
+    file_contents(uint32_t npieces) : npieces_(npieces) { }
+
     iterator begin(chunk_allocator *alloc) {
-        return iterator(alloc, pieces.begin());
+        return iterator(alloc, buf_);
     }
 
     iterator end(chunk_allocator *alloc) {
-        return iterator(alloc, pieces.end());
+        return iterator(alloc, buf_ + 3*npieces_);
+    }
+
+    uint32_t *begin() {
+        return buf_;
+    }
+
+    uint32_t *end() {
+        return buf_ + 3*npieces_;
     }
 
     void extend(chunk *chunk, const StringPiece &piece);
@@ -71,7 +81,10 @@ public:
     friend class codesearch_index;
 
 protected:
-    vector<uint32_t> pieces;
+    file_contents() {}
+
+    uint32_t npieces_;
+    uint32_t buf_[];
 };
 
 #endif

@@ -261,9 +261,9 @@ void codesearch_index::dump_chunk_data(chunk *chunk) {
 
 void codesearch_index::dump_file_contents(search_file *sf) {
     /* (int num, [chunkid, offset, len]) */
-    dump_int32(sf->content.pieces.size() / 3);
-    stream_.write(reinterpret_cast<char*>(&sf->content.pieces[0]),
-                  sizeof(uint32_t) * sf->content.pieces.size());
+    dump_int32(sf->content->npieces_);
+    stream_.write(reinterpret_cast<char*>(sf->content->buf_),
+                  sizeof(uint32_t) * sf->content->npieces_ * 3);
 }
 
 void codesearch_index::dump_metadata() {
@@ -349,11 +349,6 @@ void codesearch_index::load_chunk(chunk *chunk) {
 }
 
 void codesearch_index::load_file_contents(search_file *sf) {
-    int npieces = load_int32();
-
-    sf->content.pieces.resize(npieces * 3);
-    stream_.read(reinterpret_cast<char*>(&sf->content.pieces[0]),
-                 sizeof(uint32_t) * npieces * 3);
 }
 
 void codesearch_index::load() {
@@ -387,9 +382,23 @@ void codesearch_index::load() {
             cs_->alloc_->skip_chunk();
     }
 
+    streampos pos = stream_.tellg();
+    stream_.seekg(0, ios::end);
+    streampos end = stream_.tellg();
+    streampos map_base = pos & ~(kPageSize - 1);
+    void *map = mmap(NULL, end - map_base, PROT_READ, MAP_SHARED,
+                     fd_, map_base);
+    assert(map != MAP_FAILED);
+
+    uint32_t *p = reinterpret_cast<uint32_t*>
+        (static_cast<char*>(map) + (pos - map_base));
+
     for (int i = 0; i < meta.nfiles; i++) {
-        load_file_contents(cs_->files_[i]);
+        cs_->files_[i]->content = new(p) file_contents;
+        p = cs_->files_[i]->content->end();
     }
+
+    assert(reinterpret_cast<char*>(p) - static_cast<char*>(map) == end - map_base);
 
     cs_->finalized_ = true;
 }

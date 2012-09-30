@@ -91,7 +91,7 @@ struct search_file {
     // <ref, path>
     vector<git_path> paths;
     git_oid oid;
-    file_contents content;
+    file_contents *content;
     int no;
 };
 
