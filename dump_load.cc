@@ -8,6 +8,7 @@
 
 #include <sys/fcntl.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
@@ -37,21 +38,17 @@ struct chunk_header {
 
 class codesearch_index {
 public:
-    codesearch_index(code_searcher *cs, string path, bool dump) :
+    codesearch_index(code_searcher *cs, string path) :
         cs_(cs),
-        stream_(path.c_str(), dump ? (ios::out | ios::trunc) : ios::in),
+        stream_(path.c_str(), ios::out | ios::trunc),
         hdr_() {
         assert(!stream_.fail());
-        fd_ = open(path.c_str(), dump ? (O_RDWR|O_APPEND) : O_RDONLY);
+        fd_ = open(path.c_str(), O_RDWR|O_APPEND);
         assert(fd_ > 0);
 
-        if (dump) {
-            hdr_.magic      = kIndexMagic;
-            hdr_.version    = kIndexVersion;
-            hdr_.chunk_size = cs->alloc_->chunk_size();
-        } else {
-            load(&hdr_);
-        }
+        hdr_.magic      = kIndexMagic;
+        hdr_.version    = kIndexVersion;
+        hdr_.chunk_size = cs->alloc_->chunk_size();
     }
 
     ~codesearch_index() {
@@ -59,7 +56,6 @@ public:
     }
 
     void dump();
-    void load();
 protected:
     void dump_chunk_data();
     void dump_metadata();
@@ -69,18 +65,9 @@ protected:
     void dump_chunk(chunk *);
     void dump_chunk_data(chunk *);
 
-    search_file *load_file();
-    void load_file_contents(search_file *sf);
-    void load_chunk(chunk *);
-
     void alignp(uint32_t align) {
         streampos pos = stream_.tellp();
         stream_.seekp((size_t(pos) + align - 1) & ~(align - 1));
-    }
-
-    void aligng(uint32_t align) {
-        streampos pos = stream_.tellg();
-        stream_.seekg((size_t(pos) + align - 1) & ~(align - 1));
     }
 
     template<class T>
@@ -92,34 +79,17 @@ protected:
         dump(&i);
     }
 
-    void dump_string(const char *str) {
-        uint32_t len = strlen(str);
-        dump_int32(len);
-        stream_.write(str, len);
-    }
-
-    template<class T>
-    void load(T *t) {
-        stream_.read(reinterpret_cast<char*>(t), sizeof *t);
-    }
-
-    uint32_t load_int32() {
-        uint32_t out;
-        load(&out);
-        return out;
-    }
-
-    char *load_string() {
-        uint32_t len = load_int32();
-        char *buf = new char[len + 1];
-        stream_.read(buf, len);
-        buf[len] = 0;
-        return buf;
+    void dump_string(const string &str) {
+        dump_int32(str.size());
+        stream_.write(str.c_str(), str.size());
     }
 
     code_searcher *cs_;
     std::fstream stream_;
     int fd_;
+
+    uint8_t *map_;
+    uint8_t *p_;
 
     index_header hdr_;
 
@@ -137,7 +107,7 @@ public:
         void *buf;
 
         if (!index_.get()) {
-            index_.reset(new codesearch_index(cs_, path_.c_str(), true));
+            index_.reset(new codesearch_index(cs_, path_.c_str()));
             index_->dump(&index_->hdr_);
             index_->alignp(kPageSize);
             index_->hdr_.chunks_off = index_->stream_.tellp();
@@ -175,26 +145,36 @@ protected:
 
 class load_allocator : public chunk_allocator {
 public:
-    load_allocator(code_searcher *cs, const string& path)
-        : index_(new codesearch_index(cs, path, false)) {
-        off_ = index_->hdr_.chunks_off;
-        set_chunk_size(index_->hdr_.chunk_size);
+    load_allocator(code_searcher *cs, const string& path) {
+        fd_ = open(path.c_str(), O_RDONLY);
+        assert(fd_ > 0);
+        struct stat st;
+        assert(fstat(fd_, &st) == 0);
+        map_size_ = st.st_size;
+        map_ = mmap(NULL, map_size_, PROT_READ, MAP_SHARED,
+                    fd_, 0);
+        assert(map_ != MAP_FAILED);
+        p_ = static_cast<unsigned char*>(map_);
+
+        hdr_ = consume<index_header>();
+        set_chunk_size(hdr_->chunk_size);
+        chunk_data_ = static_cast<unsigned char*>(map_) + hdr_->chunks_off;
+    }
+
+    ~load_allocator() {
+        close(fd_);
+        munmap(map_, map_size_);
     }
 
     virtual chunk *alloc_chunk() {
-        void *buf;
-        buf = mmap(NULL, 5*chunk_size_, PROT_READ, MAP_SHARED,
-                   index_->fd_, off_);
-        assert(buf != MAP_FAILED);
-        off_ += 5*chunk_size_;
+        unsigned char *data = chunk_data_;
+        uint32_t *indexes = reinterpret_cast<uint32_t*>(data + chunk_size_);
+        chunk_data_ += (1 + sizeof(uint32_t)) * chunk_size_;
 
-        return new chunk(static_cast<unsigned char*>(buf),
-                         reinterpret_cast<uint32_t*>
-                         (static_cast<unsigned char*>(buf) + chunk_size_));
+        return new chunk(data, indexes);
     }
 
     virtual void free_chunk(chunk *chunk) {
-        munmap(chunk->data, 5*chunk_size_);
         delete chunk;
     }
 
@@ -203,17 +183,45 @@ public:
             madvise((*it)->data, (*it)->size, MADV_DONTNEED);
             madvise((*it)->suffixes, (*it)->size * sizeof(*(*it)->suffixes), MADV_DONTNEED);
         }
-        posix_fadvise(index_->fd_, index_->hdr_.chunks_off,
+        posix_fadvise(fd_, hdr_->chunks_off,
                       chunks_.size() * chunk_size_ * (1 + sizeof(uint32_t)),
                       POSIX_FADV_DONTNEED);
     }
 
-    void load() {
-        index_->load();
-    }
+    void load(code_searcher *cs);
 protected:
-    unique_ptr<codesearch_index> index_;
-    size_t off_;
+    template <class T>
+    T *consume() {
+        T *out = reinterpret_cast<T*>(p_);
+        p_ += sizeof(T);
+        return out;
+    }
+
+    void seekg(off_t off) {
+        p_ = static_cast<uint8_t*>(map_) + off;
+    }
+
+    search_file *load_file(code_searcher *cs);
+    void load_chunk(code_searcher *, chunk *);
+
+    uint32_t load_int32() {
+        return *(consume<uint32_t>());
+    }
+
+    string load_string() {
+        uint32_t len = load_int32();
+        uint8_t *buf = p_;
+        p_ += len;
+        return string(reinterpret_cast<char*>(buf), len);
+    }
+
+    int fd_;
+    void *map_;
+    size_t map_size_;
+    uint8_t *p_;
+    uint8_t *chunk_data_;
+
+    index_header *hdr_;
 };
 
 chunk_allocator *make_dump_allocator(code_searcher *search, const string& path) {
@@ -275,7 +283,7 @@ void codesearch_index::dump_metadata() {
     meta.nchunks = cs_->alloc_->size();
     dump(&meta);
 
-    for (vector<const char*>::iterator it = cs_->refs_.begin();
+    for (auto it = cs_->refs_.begin();
          it != cs_->refs_.end(); ++it)
         dump_string(*it);
 
@@ -313,103 +321,81 @@ void codesearch_index::dump() {
     dump(&hdr_);
 }
 
-search_file *codesearch_index::load_file() {
+search_file *load_allocator::load_file(code_searcher *cs) {
     search_file *sf = new search_file;
-    load(&sf->oid);
+    memcpy(&sf->oid, consume<git_oid>(), sizeof(sf->oid));
     sf->paths.resize(load_int32());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        it->ref = cs_->refs_[load_int32()];
-        char *str = load_string();
-        it->path = str;
-        delete[] str;
+        it->ref = cs->refs_[load_int32()].c_str();
+        it->path = load_string();
     }
-    sf->no = cs_->files_.size();
+    sf->no = cs->files_.size();
     return sf;
 }
 
-void codesearch_index::load_chunk(chunk *chunk) {
-    chunk_header hdr;
-    load(&hdr);
-    assert(hdr.size <= hdr_.chunk_size);
-    chunk->size = hdr.size;
+void load_allocator::load_chunk(code_searcher *cs, chunk *chunk) {
+    chunk_header *hdr = consume<chunk_header>();
+    assert(hdr->size <= hdr_->chunk_size);
+    chunk->size = hdr->size;
 
-    /*
-      uint32_t buf[3*hdr.nfiles];
-      stream.read(reinterpret_cast<char*>(buf), sizeof buf);
-    */
-    for (int i = 0; i < hdr.nfiles; i++) {
+    for (int i = 0; i < hdr->nfiles; i++) {
         chunk->files.push_back(chunk_file());
         chunk_file &cf = chunk->files.back();
         uint32_t nfiles = load_int32();
         for (int j = 0; j < nfiles; j++)
-            cf.files.push_back(cs_->files_[load_int32()]);
+            cf.files.push_back(cs->files_[load_int32()]);
         cf.left  = load_int32();
         cf.right = load_int32();
     }
 }
 
-void codesearch_index::load_file_contents(search_file *sf) {
-}
+void load_allocator::load(code_searcher *cs) {
+    assert(!cs->finalized_);
+    assert(!cs->refs_.size());
 
-void codesearch_index::load() {
-    assert(!cs_->finalized_);
-    assert(!cs_->refs_.size());
+    assert(hdr_->magic == kIndexMagic);
+    assert(hdr_->version == kIndexVersion);
+    assert(hdr_->metadata_off);
+    assert(hdr_->chunks_off);
 
-    assert(hdr_.magic == kIndexMagic);
-    assert(hdr_.version == kIndexVersion);
-    assert(hdr_.metadata_off);
-    assert(hdr_.chunks_off);
+    set_chunk_size(hdr_->chunk_size);
 
-    cs_->alloc_->set_chunk_size(hdr_.chunk_size);
+    seekg(hdr_->metadata_off);
+    metadata_header *meta = consume<metadata_header>();
 
-    stream_.seekg(hdr_.metadata_off);
-    metadata_header meta;
-    load(&meta);
-
-    for (int i = 0; i < meta.nrefs; i++) {
-        cs_->refs_.push_back(load_string());
+    for (int i = 0; i < meta->nrefs; i++) {
+        cs->refs_.push_back(load_string());
     }
 
-    for (int i = 0; i < meta.nfiles; i++) {
-        cs_->files_.push_back(load_file());
+    for (int i = 0; i < meta->nfiles; i++) {
+        cs->files_.push_back(load_file(cs));
     }
 
-    cs_->alloc_->skip_chunk();
-    for (int i = 0; i < meta.nchunks; i++) {
-        load_chunk(cs_->alloc_->current_chunk());
-        cs_->alloc_->current_chunk()->build_tree();
-        if (i != meta.nchunks - 1)
-            cs_->alloc_->skip_chunk();
+    skip_chunk();
+    for (int i = 0; i < meta->nchunks; i++) {
+        load_chunk(cs, current_chunk());
+        current_chunk()->build_tree();
+        if (i != meta->nchunks - 1)
+            skip_chunk();
     }
 
-    streampos pos = stream_.tellg();
-    stream_.seekg(0, ios::end);
-    streampos end = stream_.tellg();
-    streampos map_base = pos & ~(kPageSize - 1);
-    void *map = mmap(NULL, end - map_base, PROT_READ, MAP_SHARED,
-                     fd_, map_base);
-    assert(map != MAP_FAILED);
-
-    uint32_t *p = reinterpret_cast<uint32_t*>
-        (static_cast<char*>(map) + (pos - map_base));
-
-    for (int i = 0; i < meta.nfiles; i++) {
-        cs_->files_[i]->content = new(p) file_contents;
-        p = cs_->files_[i]->content->end();
+    for (int i = 0; i < meta->nfiles; i++) {
+        cs->files_[i]->content = new(p_) file_contents;
+        p_ = reinterpret_cast<uint8_t*>(cs->files_[i]->content->end());
     }
 
-    assert(reinterpret_cast<char*>(p) - static_cast<char*>(map) == end - map_base);
+    assert(p_ - reinterpret_cast<unsigned char*>(map_) == map_size_ );
 
-    cs_->finalized_ = true;
+    cs->finalized_ = true;
 }
 
 void code_searcher::dump_index(const string &path) {
-    codesearch_index idx(this, path, true);
+    codesearch_index idx(this, path);
     idx.dump();
 }
 
 void code_searcher::load_index(const string &path) {
     load_allocator *alloc = new load_allocator(this, path);
     set_alloc(alloc);
-    alloc->load();
+    alloc->load(this);
 }

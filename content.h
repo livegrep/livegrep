@@ -79,6 +79,7 @@ public:
     void extend(chunk *chunk, const StringPiece &piece);
 
     friend class codesearch_index;
+    friend class load_allocator;
 
 protected:
     file_contents() {}

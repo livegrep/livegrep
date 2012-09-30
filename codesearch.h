@@ -172,11 +172,12 @@ protected:
     } stats_;
     chunk_allocator *alloc_;
     bool finalized_;
-    std::vector<const char*>  refs_;
+    std::vector<string>  refs_;
     std::vector<search_file*> files_;
 
     friend class searcher;
     friend class codesearch_index;
+    friend class load_allocator;
 };
 
 // dump_load.cc
