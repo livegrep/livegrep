@@ -338,23 +338,7 @@ namespace {
     void resolve_ref(git_repository *repo,
                      smart_object<git_commit>& out,
                      const char *refname) {
-        git_reference *ref;
-        const git_oid *oid;
-        git_oid tmp;
-        smart_object<git_object> obj;
-        if (git_oid_fromstr(&tmp, refname) == 0) {
-            git_object_lookup(obj, repo, &tmp, GIT_OBJ_ANY);
-        } else {
-            git_reference_lookup(&ref, repo, refname);
-            git_reference_resolve(&ref, ref);
-            oid = git_reference_oid(ref);
-            git_object_lookup(obj, repo, oid, GIT_OBJ_ANY);
-        }
-        if (git_object_type(obj) == GIT_OBJ_TAG) {
-            git_tag_target(out, obj);
-        } else {
-            out = obj.release();
-        }
+        git_revparse_single(out, repo, (string(refname) + "^0").c_str());
     }
 };
 

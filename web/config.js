@@ -5,7 +5,7 @@ var path   = require('path'),
 var config = {
   DNODE_PORT: 0xC5EA,
   SEARCH_REPO: path.join(__dirname, "../../linux"),
-  SEARCH_REF:  "refs/tags/v3.4",
+  SEARCH_REF:  "v3.6",
   SEARCH_INDEX: path.join(__dirname, "../../linux/codesearch.idx"),
   SEARCH_ARGS: [],
   BACKEND_CONNECTIONS: 4,
