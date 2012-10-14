@@ -158,9 +158,4 @@ var io = require('socket.io').listen(server, {
                                        logger: log4js.getLogger('socket.io'),
                                        'log level': log4js.levels.INFO
                                      });
-io.configure(
-  function() {
-    io.enable('browser client gzip');
-  });
-
 var server = new Server(config, io);

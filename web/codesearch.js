@@ -50,7 +50,7 @@ function Connection(parent) {
   self.parent = parent;
   self.id     = ++uniq;
   function connect() {
-    if (!path.existsSync(parent.socket)) {
+    if (!fs.existsSync(parent.socket)) {
       logger.debug("Waiting for daemon startup...");
       setTimeout(connect, 100);
       return;
