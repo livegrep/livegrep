@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- smart_git.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #ifndef CODESEARCH_SMART_GIT_H
 #define CODESEARCH_SMART_GIT_H
 

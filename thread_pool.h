@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- thread_pool.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #ifndef CODESEARCH_THREAD_POOL_H
 #define CODESEARCH_THREAD_POOL_H
 

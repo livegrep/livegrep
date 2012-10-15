@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- content.cc
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #include "content.h"
 #include "chunk.h"
 

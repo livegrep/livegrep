@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- chunk_allocator.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #ifndef CODESEARCH_CHUNK_ALLOCATOR_H
 #define CODESEARCH_CHUNK_ALLOCATOR_H
 

@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- re_width.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #ifndef CODESEARCH_RE_WIDTH_H
 #define CODESEARCH_RE_WIDTH_H
 

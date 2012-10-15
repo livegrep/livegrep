@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- mutex.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #ifndef CODESEARCH_MUTEX_H
 #define CODESEARCH_MUTEX_H
 

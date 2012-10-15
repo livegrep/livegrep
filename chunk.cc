@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- chunk.cc
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #include "chunk.h"
 #include "radix_sort.h"
 

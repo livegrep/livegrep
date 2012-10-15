@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- dump_load.cc
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #include "codesearch.h"
 #include "chunk.h"
 #include "chunk_allocator.h"

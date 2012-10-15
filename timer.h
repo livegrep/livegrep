@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- timer.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #include <sys/time.h>
 #include <assert.h>
 

@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- codesearch.cc
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

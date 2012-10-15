@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- radix_sort.cc
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #include <stdint.h>
 #include <string.h>
 #include <vector>

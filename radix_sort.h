@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- radix_sort.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #ifndef CODESEARCH_RADIX_SORT_H
 #define CODESEARCH_RADIX_SORT_H
 

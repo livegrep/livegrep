@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- codesearch.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #ifndef CODESEARCH_H
 #define CODESEARCH_H
 

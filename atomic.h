@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- atomic.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #ifndef CODESEARCH_ATOMIC_H
 #define CODESEARCH_ATOMIC_H
 

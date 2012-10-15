@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- main.cc
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #include "codesearch.h"
 #include "smart_git.h"
 #include "timer.h"

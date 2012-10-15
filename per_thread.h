@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- per_thread.h
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #ifndef CODESEARCH_PER_THREAD_H
 #define CODESEARCH_PER_THREAD_H
 

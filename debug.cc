@@ -1,3 +1,8 @@
+/********************************************************************
+ * livegrep -- debug.cc
+ * Copyright (c) 2011-2012 Nelson Elhage
+ * All Rights Reserved
+ ********************************************************************/
 #include "debug.h"
 
 #include <gflags/gflags.h>
