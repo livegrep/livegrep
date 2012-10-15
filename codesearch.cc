@@ -820,6 +820,7 @@ void searcher::find_match(const chunk *chunk,
     };
 
     vector<frame> stack;
+    assert(chunk->cf_root);
     stack.push_back((frame){chunk->cf_root, false});
 
     debug(kDebugSearch, "find_match(%d)", loff);
