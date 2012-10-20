@@ -790,18 +790,7 @@ void searcher::find_match_brute(const chunk *chunk,
           int(tm.elapsed().tv_usec));
 }
 
-void searcher::find_match(const chunk *chunk,
-                          const StringPiece& match,
-                          const StringPiece& line) {
-    if (!FLAGS_index) {
-        find_match_brute(chunk, match, line);
-        return;
-    }
-
-    run_timer run(git_time_);
-    int loff = (unsigned char*)line.data() - chunk->data;
-    match_group group(match, line);
-
+namespace {
     /*
      * We use an explicit stack instead of direct recursion. We
      * want to do an inorder traversal, so that we produce results
@@ -819,19 +808,32 @@ void searcher::find_match(const chunk *chunk,
      *
      */
 
-    struct frame {
+    struct match_frame {
         chunk_file_node *node;
         bool visit;
     };
+};
 
-    vector<frame> stack;
+void searcher::find_match(const chunk *chunk,
+                          const StringPiece& match,
+                          const StringPiece& line) {
+    if (!FLAGS_index) {
+        find_match_brute(chunk, match, line);
+        return;
+    }
+
+    run_timer run(git_time_);
+    int loff = (unsigned char*)line.data() - chunk->data;
+    match_group group(match, line);
+
+    vector<match_frame> stack;
     assert(chunk->cf_root);
-    stack.push_back((frame){chunk->cf_root, false});
+    stack.push_back((match_frame){chunk->cf_root, false});
 
     debug(kDebugSearch, "find_match(%d)", loff);
 
     while (!stack.empty() && !exit_reason_) {
-        frame f = stack.back();
+        match_frame f = stack.back();
         stack.pop_back();
 
         chunk_file_node *n = f.node;
@@ -858,12 +860,12 @@ void searcher::find_match(const chunk *chunk,
             continue;
         if (loff >= n->chunk->left) {
             if (n->right)
-                stack.push_back((frame){n->right, false});
+                stack.push_back((match_frame){n->right, false});
             if (loff <= n->chunk->right)
-                stack.push_back((frame){n, true});
+                stack.push_back((match_frame){n, true});
         }
         if (n->left)
-            stack.push_back((frame){n->left, false});
+            stack.push_back((match_frame){n->left, false});
     }
     finish_group(&group);
 }
