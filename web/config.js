@@ -4,6 +4,7 @@ var path   = require('path'),
 
 var config = {
   DNODE_PORT: 0xC5EA,
+  WEB_PORT: 8910,
   SEARCH_REPO: path.join(__dirname, "../../linux"),
   SEARCH_REF:  "v3.6",
   SEARCH_INDEX: path.join(__dirname, "../../linux/codesearch.idx"),
@@ -18,7 +19,7 @@ var config = {
   MAX_SLOW_TIME:   10000,
   QUERY_STREAK:    5,
   SMTP_CONFIG:     null,
-  ORDER_DIRS:      'include kernel mm fs arch'.split(/\s+/)
+  ORDER_DIRS:      'include kernel mm fs arch'.split(/\s+/),
 };
 
 try {

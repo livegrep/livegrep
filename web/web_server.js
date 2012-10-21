@@ -151,8 +151,8 @@ app.post('/feedback', function (req, res) {
          });
 
 var server = http.createServer(app);
-server.listen(8910);
-console.log("http://localhost:8910");
+server.listen(config.WEB_PORT);
+console.log("Listening on :%d.", config.WEB_PORT);
 
 var io = require('socket.io').listen(server, {
                                        logger: log4js.getLogger('socket.io'),
