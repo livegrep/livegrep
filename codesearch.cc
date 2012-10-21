@@ -47,6 +47,7 @@ const int kMaxScan        = (1 << 20);
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(drop_cache, false, "Drop caches before each search");
 DEFINE_bool(search, true, "Actually do the search.");
+DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided");
 DEFINE_int32(max_matches, 50, "The maximum number of results to return for a single query.");
 DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
 DEFINE_string(order_root, "", "Walk top-level directories in this order.");
@@ -355,9 +356,12 @@ void code_searcher::walk_ref(git_repository *repo, const char *ref) {
     resolve_ref(repo, commit, ref);
     git_commit_tree(tree, commit);
 
-    refs_.push_back(ref);
+    char oidstr[GIT_OID_HEXSZ+1];
+    const char *name = FLAGS_revparse ?
+        strdup(git_oid_tostr(oidstr, sizeof(oidstr), git_commit_id(commit))) : ref;
+    refs_.push_back(name);
 
-    walk_root(repo, ref, tree);
+    walk_root(repo, name, tree);
 }
 
 void code_searcher::walk_root(git_repository *repo, const char *ref, git_tree *tree) {
