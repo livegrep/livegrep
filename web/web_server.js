@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 var express = require('express'),
     http    = require('http'),
+    hbs     = require('hbs'),
     extras  = require('express-extras'),
     path    = require('path'),
     parseopt= require('parseopt'),
-    handlebars = require('handlebars'),
     log4js  = require('log4js'),
     email   = require('emailjs'),
     util    = require('util'),
@@ -79,6 +79,8 @@ app.get('/search', function (req, res) {
                      {
                        js: true,
                        title: 'search',
+                       repo_name: config.SEARCH_REPO_NAME,
+                       github_repo: new hbs.handlebars.SafeString(JSON.stringify(config.GITHUB_REPO)),
                        ref: shorten(config.SEARCH_REF)
                      });
         });

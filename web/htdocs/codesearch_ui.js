@@ -53,7 +53,7 @@ var Match = Backbone.Model.extend({
              });
   },
   url: function() {
-    return "https://github.com/torvalds/linux/blob/" + shorten(this.get('path').ref) +
+    return "https://github.com/" + CodesearchUI.github_repo + "/blob/" + shorten(this.get('path').ref) +
       "/" + this.get('path').path + "#L" + this.get('context').lno;
   }
 });
@@ -349,6 +349,7 @@ var CodesearchUI = function() {
     search_done: function(search, time, why) {
       CodesearchUI.state.handle_done(search, time, why);
     },
+    github_repo: ""
   };
 }();
 CodesearchUI.onload();

@@ -1,3 +1,6 @@
+<script type="text/javascript">
+  $(function(){CodesearchUI.github_repo = {{github_repo}};});
+</script>
 <div id='searcharea'>
   <table id='searchinput'>
     <tr>
@@ -10,7 +13,7 @@
     </tr>
   </table>
   <div id='errorbox'>
-    <div class='what'> Now searching: Linux {{ref}} </div>
+    <div class='what'> Now searching: {{repo_name}} {{ref}} </div>
     <div id='regex-error'>
       <span class='label'> Error: </span>
       <span id='errortext'>

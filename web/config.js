@@ -5,9 +5,11 @@ var path   = require('path'),
 var config = {
   DNODE_PORT: 0xC5EA,
   WEB_PORT: 8910,
+  SEARCH_REPO_NAME: "Linux",
   SEARCH_REPO: path.join(__dirname, "../../linux"),
   SEARCH_REF:  "v3.6",
   SEARCH_INDEX: path.join(__dirname, "../../linux/codesearch.idx"),
+  GITHUB_REPO: "torvalds/linux",
   SEARCH_ARGS: [],
   BACKEND_CONNECTIONS: 4,
   BACKENDS: [
