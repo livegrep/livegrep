@@ -160,4 +160,6 @@ var io = require('socket.io').listen(server, {
                                        logger: log4js.getLogger('socket.io'),
                                        'log level': log4js.levels.INFO
                                      });
+if (config.SOCKET_IO_TRANSPORTS)
+  io.set('transports', config.SOCKET_IO_TRANSPORTS);
 var server = new Server(config, io);
