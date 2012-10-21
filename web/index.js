@@ -14,7 +14,7 @@ var cs = spawn(path.join(__dirname, '..', 'codesearch'),
                ['--git_dir', path.join(config.SEARCH_REPO, ".git"),
                 '--dump_index', tmp,
                 '--order_root', config.ORDER_DIRS.join(' '),
-                config.SEARCH_REF] + config.SEARCH_ARGS,
+                config.SEARCH_REF].concat(config.SEARCH_ARGS),
                {
                  customFds: [-1, 1, 2]
                });
