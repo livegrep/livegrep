@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 var dnode   = require('dnode'),
     path    = require('path'),
+    net     = require('net'),
     config  = require('./config.js'),
     git_util   = require('./git_util.js'),
     util       = require('./util.js'),
     Codesearch = require('./codesearch.js'),
-    Batch      = require('./batch.js');
+    Batch      = require('./batch.js'),
+    Einhorn    = require('einhorn');
 
 function Client(parent, remote) {
   var self = this;
@@ -77,5 +79,16 @@ function Server(config) {
   }
 }
 
-var server = dnode(new Server(config).Server);
-server.listen(config.DNODE_PORT);
+if (Einhorn.is_worker()) {
+  Einhorn.ack();
+  var app = new Server(config).Server;
+  var srv = net.createServer(function (c) {
+    var d = dnode(app);
+    c.pipe(d).pipe(c);
+  });
+  var fd = Einhorn.socket();
+  srv.listen({fd: fd});
+} else {
+  var server = dnode(new Server(config).Server);
+  server.listen(config.DNODE_PORT);
+}

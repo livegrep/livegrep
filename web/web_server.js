@@ -9,7 +9,8 @@ var express = require('express'),
     email   = require('emailjs'),
     util    = require('util'),
     Server  = require('./appserver.js'),
-    config  = require('./config.js');
+    config  = require('./config.js'),
+    Einhorn = require('einhorn');
 
 function shorten(ref) {
   var match = /^refs\/(tags|branches)\/(.*)/.exec(ref);
@@ -153,8 +154,15 @@ app.post('/feedback', function (req, res) {
          });
 
 var server = http.createServer(app);
-server.listen(config.WEB_PORT);
-console.log("Listening on :%d.", config.WEB_PORT);
+        
+if (Einhorn.is_worker()) {
+  Einhorn.ack();
+  var fd = Einhorn.socket();
+  server.listen({fd: fd});
+} else {
+  server.listen(config.WEB_PORT);
+  console.log("Listening on :%d.", config.WEB_PORT);
+}
 
 var io = require('socket.io').listen(server, {
                                        logger: log4js.getLogger('socket.io'),
@@ -162,4 +170,5 @@ var io = require('socket.io').listen(server, {
                                      });
 if (config.SOCKET_IO_TRANSPORTS)
   io.set('transports', config.SOCKET_IO_TRANSPORTS);
+          
 var server = new Server(config, io);

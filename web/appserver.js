@@ -9,6 +9,12 @@ var dnode  = require('dnode'),
     QueryStats  = require('../lib/query-stats.js');
 var logger  = log4js.getLogger('appserver');
 
+function remote_address(sock) {
+ if (sock.handshake.address)
+   return sock.handshake.address;
+  return {};
+}
+
 function Client(parent, pool, sock) {
   this.parent = parent;
   this.pool   = pool;
@@ -16,7 +22,7 @@ function Client(parent, pool, sock) {
   this.pending_search = null;
   this.last_search = null;
   this.active_search = null;
-  this.remote_address = sock.handshake.address;
+  this.remote_address = remote_address(sock);
   this.fast_streak = 0;
   this.last_slow   = null;
 }
@@ -236,7 +242,7 @@ function SearchServer(config, io) {
   this.slow_pool = new ConnectionPool(this, 'slow', config);
 
   var Server = function (sock) {
-    logger.info("New client (%s)[%j]", sock.id, sock.handshake.address);
+    logger.info("New client (%s)[%j]", sock.id, remote_address(sock));
     parent.clients[sock.id] = new Client(parent, parent.fast_pool, sock);
     sock.on('new_search', function(line, file, id) {
               if (id == null)
@@ -244,7 +250,7 @@ function SearchServer(config, io) {
               parent.clients[sock.id].new_search(line, file, id);
     });
     sock.on('disconnect', function() {
-              logger.info("Disconnected (%s)[%j]", sock.id, sock.handshake.address);
+              logger.info("Disconnected (%s)[%j]", sock.id, remote_address(sock));
               delete parent.clients[sock.id];
             });
   };
