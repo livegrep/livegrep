@@ -117,7 +117,10 @@ Client.prototype.dispatch_search = function() {
     console.assert(codesearch.cs_ready);
     var start = new Date();
     this.last_search = this.pending_search;
-    this.debug('dispatching: (%j)...', this.pending_search);
+    this.debug('dispatching: (%j) to %s-%d...',
+      this.pending_search,
+      this.pool.stats.name,
+      codesearch.__id);
 
     var search = this.pending_search;
     this.pending_search = null;
@@ -178,65 +181,73 @@ function ConnectionPool(server, name, config) {
   this.stats       = new QueryStats(name, {timeout: 5*60*1000});
   this.stats.start();
 
+  var id = 0;
   config.BACKENDS.forEach(
     function (bk) {
       for (var i = 0; i < config.BACKEND_CONNECTIONS; i++) {
-        (function() {
-           var remote = null;
-           var delay = 100;
-           var d = null;
-           var stream = null;
-
-           function ready() {
-             if (!remote) return;
-             logger.debug('Remote ready!');
-             if (remote.cs_ready) {
-               logger.debug('(already queued)!');
-               return;
-             }
-             remote.cs_ready = true;
-             parent.remotes.push(remote);
-             parent.dispatch();
-             delay = 100;
-           }
-
-           function disconnected() {
-             logger.info("Lost connection to backend. Reconnect in %d...", delay);
-             stream.end();
-             parent.remotes = parent.remotes.filter(function (r) {return r !== remote});
-             parent.connections = parent.connections.filter(
-               function (c) { return c !== d});
-             if (remote && remote.cs_client)
-               remote.cs_client.search_done();
-             setTimeout(connect, delay)
-             delay = Math.min(delay * 2, 60*1000);
-           }
-
-           function connect() {
-             d = dnode({ ready: ready });
-             d.on('remote', function(r) {
-                    parent.connections.push(d);
-                    remote = r;
-                    remote.cs_ready  = false;
-                    remote.cs_client = null;
-                    logger.info("Connected to codesearch daemon.");
-                  });
-             d.on('ready',     ready);
-             d.on('close',     disconnected);
-             d.on('end',       disconnected);
-             d.on('error',     disconnected);
-             stream = net.connect({
-                                    host: bk[0],
-                                    port: bk[1]
-                                  });
-             stream.on('error',   disconnected);
-             stream.pipe(d).pipe(stream);
-           }
-
-           connect();
-         })();
+        parent.connect_to(bk, id++);
       }
     });
+}
+
+ConnectionPool.prototype.connect_to = function(bk, id) {
+  var self = this;
+  var remote = null;
+  var delay = 100;
+  var d = null;
+  var stream = null;
+  var me = id;
+
+  var ready = function() {
+    if (!remote) return;
+    logger.debug('Remote %s-%d ready (%d)!',
+      self.stats.name, remote.__id, me);
+    if (remote.cs_ready) {
+      logger.debug('(already queued)!');
+      return;
+    }
+    remote.cs_ready = true;
+    self.remotes.push(remote);
+    self.dispatch();
+    delay = 100;
+  }
+
+  var disconnected = function() {
+    logger.info("Lost connection to backend (%s-%d). Reconnect in %d...",
+      self.stats.name, remote.__id, delay);
+    stream.end();
+    self.remotes = self.remotes.filter(function (r) {return r !== remote});
+    self.connections = self.connections.filter(
+      function (c) { return c !== d});
+    if (remote && remote.cs_client)
+      remote.cs_client.search_done();
+    setTimeout(connect, delay)
+    delay = Math.min(delay * 2, 60*1000);
+  }
+
+  var connect = function() {
+    d = dnode({ ready: ready });
+    d.on('remote', function(r) {
+           self.connections.push(d);
+           remote = r;
+           remote.__id = id;
+           remote.cs_ready  = false;
+           remote.cs_client = null;
+           logger.info("Connected to codesearch daemon.");
+         });
+    d.on('ready',     ready);
+    d.on('close',     disconnected);
+    d.on('end',       disconnected);
+    d.on('error',     disconnected);
+    stream = net.connect({
+                           host: bk[0],
+                           port: bk[1]
+                         });
+    stream.on('error',   disconnected);
+    stream.pipe(d).pipe(stream);
+  }
+
+  connect();
 }
 
 ConnectionPool.prototype.dispatch = function () {
