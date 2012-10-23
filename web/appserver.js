@@ -1,5 +1,6 @@
 var dnode  = require('dnode'),
     fs     = require('fs'),
+    net    = require('net'),
     log4js = require('log4js'),
     util   = require('util'),
     path   = require('path'),
@@ -182,9 +183,12 @@ function ConnectionPool(server, name, config) {
       for (var i = 0; i < config.BACKEND_CONNECTIONS; i++) {
         (function() {
            var remote = null;
-           var connection = null;
+           var delay = 100;
+           var d = null;
+           var stream = null;
 
            function ready() {
+             if (!remote) return;
              logger.debug('Remote ready!');
              if (remote.cs_ready) {
                logger.debug('(already queued)!');
@@ -193,34 +197,43 @@ function ConnectionPool(server, name, config) {
              remote.cs_ready = true;
              parent.remotes.push(remote);
              parent.dispatch();
+             delay = 100;
            }
 
            function disconnected() {
-             logger.info("Lost connection to backend")
+             logger.info("Lost connection to backend. Reconnect in %d...", delay);
+             stream.end();
              parent.remotes = parent.remotes.filter(function (r) {return r !== remote});
              parent.connections = parent.connections.filter(
-               function (c) { return c !== connection});
-             if (remote.cs_client)
+               function (c) { return c !== d});
+             if (remote && remote.cs_client)
                remote.cs_client.search_done();
+             setTimeout(connect, delay)
+             delay = Math.min(delay * 2, 60*1000);
            }
 
-           dnode({ ready: ready }).
-             connect(
-               bk[0], bk[1],
-               function (r, conn) {
-                 parent.connections.push(conn);
-                 remote = r;
-                 connection = conn;
-                 remote.cs_ready  = false;
-                 remote.cs_client = null;
-                 logger.info("Connected to codesearch daemon.");
-                 conn.on('ready',     ready);
-                 conn.on('reconnect', ready);
-                 conn.on('close',     disconnected);
-                 conn.on('end',       disconnected);
-               }, {
-                 reconnect: 200
-               });
+           function connect() {
+             d = dnode({ ready: ready });
+             d.on('remote', function(r) {
+                    parent.connections.push(d);
+                    remote = r;
+                    remote.cs_ready  = false;
+                    remote.cs_client = null;
+                    logger.info("Connected to codesearch daemon.");
+                  });
+             d.on('ready',     ready);
+             d.on('close',     disconnected);
+             d.on('end',       disconnected);
+             d.on('error',     disconnected);
+             stream = net.connect({
+                                    host: bk[0],
+                                    port: bk[1]
+                                  });
+             stream.on('error',   disconnected);
+             stream.pipe(d).pipe(stream);
+           }
+
+           connect();
          })();
       }
     });
