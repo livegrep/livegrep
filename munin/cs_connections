@@ -1,4 +1,4 @@
-#!/home/nelhage/sw/bin/node
+#!/usr/bin/env node
 
 var fs    = require('fs'),
 path  = require('path');
