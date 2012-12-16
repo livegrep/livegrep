@@ -154,7 +154,7 @@ app.post('/feedback', function (req, res) {
          });
 
 var server = http.createServer(app);
-        
+
 if (Einhorn.is_worker()) {
   Einhorn.ack();
   var fd = Einhorn.socket();
@@ -170,5 +170,5 @@ var io = require('socket.io').listen(server, {
                                      });
 if (config.SOCKET_IO_TRANSPORTS)
   io.set('transports', config.SOCKET_IO_TRANSPORTS);
-          
+
 var server = new Server(config, io);
