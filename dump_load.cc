@@ -17,7 +17,7 @@
 #include <unistd.h>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 9;
+const uint32_t kIndexVersion = 10;
 const uint32_t kPageSize     = (1 << 12);
 
 struct index_header {
@@ -34,7 +34,8 @@ struct index_header {
     uint32_t nchunks;
     uint64_t chunks_off;
 
-    uint64_t contents_off;
+    uint32_t ncontent;
+    uint64_t content_off;
 } __attribute__((packed));
 
 struct chunk_header {
@@ -42,6 +43,11 @@ struct chunk_header {
     uint64_t files_off;
     uint32_t size;
     uint32_t nfiles;
+} __attribute__((packed));
+
+struct content_chunk_header {
+    uint64_t file_off;
+    uint32_t size;
 } __attribute__((packed));
 
 class codesearch_index {
@@ -101,6 +107,7 @@ protected:
 
     index_header hdr_;
     vector<chunk_header> chunks_;
+    vector<content_chunk_header> content_;
 
     friend class dump_allocator;
 };
@@ -302,10 +309,16 @@ void codesearch_index::dump_metadata() {
         dump_chunk_files(*it, &(*hdr));
     }
 
-    hdr_.contents_off = stream_.tellp();
+    uint64_t content_start = stream_.tellp();
     for (vector<search_file*>::iterator it = cs_->files_.begin();
          it != cs_->files_.end(); ++it)
         dump_file_contents(*it);
+    content_.push_back({content_start,
+                uint32_t(uint64_t(stream_.tellp()) - content_start)});
+    hdr_.content_off = stream_.tellp();
+    hdr_.ncontent = 1;
+    for (auto it = content_.begin(); it != content_.end(); ++it)
+        dump(&*it);
 
     hdr_.chunks_off = stream_.tellp();
     for (auto it = chunks_.begin(); it != chunks_.end(); ++it)
@@ -415,13 +428,18 @@ void load_allocator::load(code_searcher *cs) {
         load_chunk(cs);
     }
 
-    p_ = ptr<uint8_t>(hdr_->contents_off);
-    for (int i = 0; i < hdr_->nfiles; i++) {
-        cs->files_[i]->content = new(p_) file_contents;
-        p_ = reinterpret_cast<uint8_t*>(cs->files_[i]->content->end());
+    content_chunk_header *chdr = ptr<content_chunk_header>(hdr_->content_off);
+    auto it = cs->files_.begin();
+    for (int i = 0; i < hdr_->ncontent; i++) {
+        p_ = ptr<uint8_t>(chdr->file_off);
+        while (p_ != ptr<uint8_t>(chdr->file_off + chdr->size)) {
+            (*it)->content = new(p_) file_contents;
+            p_ = reinterpret_cast<uint8_t*>((*it)->content->end());
+            ++it;
+        }
+        ++chdr;
     }
-
-    /* assert(p_ - reinterpret_cast<unsigned char*>(map_) == map_size_ ); */
+    assert(it == cs->files_.end());
 
     cs->finalized_ = true;
 }
