@@ -6,21 +6,28 @@
 #include "content.h"
 #include "chunk.h"
 
-void file_contents::extend(chunk *c, const StringPiece &piece) {
-    uint32_t off = reinterpret_cast<const unsigned char*>(piece.data()) - c->data;
-    uint32_t *end = buf_ + 3*npieces_;
-    if (npieces_) {
-        uint32_t id = *(end - 3);
-        uint32_t tailoff = *(end - 2) + *(end - 2);
-        if (id == c->id &&
-            tailoff == off) {
-            *(end - 1) += piece.size();
+void file_contents_builder::extend(chunk *c, const StringPiece &piece) {
+    if (pieces_.size()) {
+        if (pieces_.back().data() + pieces_.back().size() == piece.data()) {
+            pieces_.back().set(pieces_.back().data(),
+                               piece.size() + pieces_.back().size());
             return;
         }
     }
 
-    *(end++) = c->id;
-    *(end++) = off;
-    *(end++) = piece.size();
-    ++npieces_;
+    pieces_.push_back(piece);
+}
+
+file_contents *file_contents_builder::build(chunk_allocator *alloc) {
+    size_t len = sizeof(uint32_t) * (1 + 3*pieces_.size());
+    file_contents *out = new(alloc->alloc_content_data(len)) file_contents(pieces_.size());
+    for (int i = 0; i < pieces_.size(); i++) {
+        const unsigned char *p = reinterpret_cast<const unsigned char*>
+            (pieces_[i].data());
+        chunk *chunk = alloc->chunk_from_string(p);
+        out->buf_[3*i]     = chunk->id;
+        out->buf_[3*i + 1] = p - chunk->data;
+        out->buf_[3*i + 2] = pieces_[i].size();
+    }
+    return out;
 }

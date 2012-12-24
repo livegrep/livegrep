@@ -34,7 +34,8 @@ bool chunk_allocator::finalizer::operator()(chunk *chunk) {
 }
 
 chunk_allocator::chunk_allocator()  :
-    chunk_size_(kChunkSize), current_(0), finalizer_(), finalize_pool_(0) {
+    chunk_size_(kChunkSize), content_finger_(0), current_(0),
+    finalizer_(), finalize_pool_(0) {
     //    new_chunk();
 }
 
@@ -58,6 +59,20 @@ unsigned char *chunk_allocator::alloc(size_t len) {
         new_chunk();
     unsigned char *out = current_->data + current_->size;
     current_->size += len;
+    return out;
+}
+
+uint8_t *chunk_allocator::alloc_content_data(size_t len) {
+    if (content_finger_ == 0 || (content_finger_ + len > content_chunks_.back().end)) {
+        if (content_finger_)
+            content_chunks_.back().end = content_finger_;
+        content_chunks_.push_back(alloc_content_chunk());
+        content_finger_ = content_chunks_.back().data;
+    }
+    uint8_t *out = content_finger_;
+    content_finger_ += len;
+    assert(content_finger_ > content_chunks_.back().data &&
+           content_finger_ <= content_chunks_.back().end);
     return out;
 }
 
@@ -90,6 +105,8 @@ void chunk_allocator::finalize()  {
     finalize_pool_ = NULL;
     for (auto it = begin(); it != end(); ++it)
         (*it)->finalize_files();
+    if (content_finger_)
+        content_chunks_.back().end = content_finger_;
 }
 
 void chunk_allocator::skip_chunk() {
@@ -116,6 +133,11 @@ public:
         unsigned char *buf = new unsigned char[chunk_size_];
         uint32_t *idx = FLAGS_index ? new uint32_t[chunk_size_] : 0;
         return new chunk(buf, idx);
+    }
+
+    virtual buffer alloc_content_chunk() {
+        uint8_t *buf = new uint8_t[kContentChunkSize];
+        return (buffer){ buf, buf + kContentChunkSize };
     }
 
     virtual void free_chunk(chunk *chunk) {

@@ -81,16 +81,23 @@ public:
         return buf_ + 3*npieces_;
     }
 
-    void extend(chunk *chunk, const StringPiece &piece);
-
     friend class codesearch_index;
     friend class load_allocator;
+    friend class file_contents_builder;
 
 protected:
     file_contents() {}
 
     uint32_t npieces_;
     uint32_t buf_[];
+};
+
+class file_contents_builder {
+public:
+    void extend(chunk *chunk, const StringPiece &piece);
+    file_contents *build(chunk_allocator *alloc);
+protected:
+    vector <StringPiece> pieces_;
 };
 
 #endif

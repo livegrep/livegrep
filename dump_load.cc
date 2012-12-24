@@ -74,10 +74,10 @@ protected:
     void dump_chunk_data();
     void dump_metadata();
     void dump_file(search_file *);
-    void dump_file_contents(search_file *);
     void dump_chunk_file(chunk_file *cf);
     void dump_chunk_files(chunk *, chunk_header *);
     void dump_chunk_data(chunk *);
+    void dump_content_data();
 
     void alignp(uint32_t align) {
         streampos pos = stream_.tellp();
@@ -113,12 +113,8 @@ protected:
 };
 
 class dump_allocator : public chunk_allocator {
-public:
-    dump_allocator(code_searcher *cs, const char *path)
-        : cs_(cs), path_(path), index_() {
-    }
-
-    virtual chunk *alloc_chunk() {
+private:
+    pair<off_t, uint8_t *> alloc_mmap(size_t len) {
         void *buf;
 
         if (!index_.get()) {
@@ -127,24 +123,53 @@ public:
             index_->alignp(kPageSize);
         }
 
-        size_t off = index_->stream_.tellp();
-        assert(ftruncate(index_->fd_, off + 5*chunk_size_) == 0);
-        buf = mmap(NULL, 5*chunk_size_, PROT_READ|PROT_WRITE, MAP_SHARED,
+        off_t off = index_->stream_.tellp();
+        assert(ftruncate(index_->fd_, off + len) == 0);
+        buf = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED,
                    index_->fd_, off);
         assert(buf != MAP_FAILED);
-        index_->stream_.seekp(5*chunk_size_, ios::cur);
+        index_->stream_.seekp(len, ios::cur);
+        return make_pair(off, static_cast<uint8_t*>(buf));
+    }
 
-        chunk_header chdr;
-        chdr.data_off = off;
+public:
+    dump_allocator(code_searcher *cs, const char *path)
+        : cs_(cs), path_(path), index_() {
+    }
+
+    virtual chunk *alloc_chunk() {
+        auto alloc = alloc_mmap((1 + sizeof(uint32_t)) * chunk_size_);
+
+        chunk_header chdr = {
+            .data_off = uint64_t(alloc.first)
+        };
         index_->chunks_.push_back(chdr);
 
-        return new chunk(static_cast<unsigned char*>(buf),
+        return new chunk(static_cast<unsigned char*>(alloc.second),
                          reinterpret_cast<uint32_t*>
-                         (static_cast<unsigned char*>(buf) + chunk_size_));
+                         (static_cast<unsigned char*>(alloc.second) + chunk_size_));
+    }
+
+    virtual buffer alloc_content_chunk() {
+        auto alloc = alloc_mmap(kContentChunkSize);
+        buffer b = {
+            alloc.second, alloc.second + kContentChunkSize
+        };
+        content_chunk_header hdr = {
+            .file_off = uint64_t(alloc.first),
+            /* .size will be calculated in finalize */
+        };
+        index_->content_.push_back(hdr);
+        return b;
     }
 
     virtual void finalize() {
         chunk_allocator::finalize();
+        auto cit = index_->content_.begin();
+        for (auto ait = begin_content();
+             ait != end_content(); ++ait, ++cit) {
+            cit->size = ait->end - ait->data;
+        }
         index_->dump_metadata();
         index_->stream_.seekp(0);
         index_->dump(&index_->hdr_);
@@ -159,6 +184,9 @@ protected:
     code_searcher *cs_;
     std::string path_;
     unique_ptr<codesearch_index> index_;
+    map<void *, off_t> alloc_map_;
+    vector<off_t> content_;
+
 };
 
 class load_allocator : public chunk_allocator {
@@ -171,6 +199,9 @@ public:
     }
 
     virtual chunk *alloc_chunk();
+    virtual buffer alloc_content_chunk() {
+        assert(0);
+    }
 
     virtual void free_chunk(chunk *chunk) {
         delete chunk;
@@ -277,20 +308,13 @@ void codesearch_index::dump_chunk_data(chunk *chunk) {
     stream_.write(reinterpret_cast<char*>(chunk->suffixes),
                   sizeof(uint32_t) * chunk->size);
     stream_.seekp(off + 5 * hdr_.chunk_size);
- }
-
-
-void codesearch_index::dump_file_contents(search_file *sf) {
-    /* (int num, [chunkid, offset, len]) */
-    dump_int32(sf->content->npieces_);
-    stream_.write(reinterpret_cast<char*>(sf->content->buf_),
-                  sizeof(uint32_t) * sf->content->npieces_ * 3);
 }
 
 void codesearch_index::dump_metadata() {
     hdr_.nrefs   = cs_->refs_.size();
     hdr_.nfiles  = cs_->files_.size();
     hdr_.nchunks = cs_->alloc_->size();
+    hdr_.ncontent = content_.size();
 
     hdr_.refs_off = stream_.tellp();
     for (auto it = cs_->refs_.begin();
@@ -309,19 +333,12 @@ void codesearch_index::dump_metadata() {
         dump_chunk_files(*it, &(*hdr));
     }
 
-    uint64_t content_start = stream_.tellp();
-    for (vector<search_file*>::iterator it = cs_->files_.begin();
-         it != cs_->files_.end(); ++it)
-        dump_file_contents(*it);
-    content_.push_back({content_start,
-                uint32_t(uint64_t(stream_.tellp()) - content_start)});
-    hdr_.content_off = stream_.tellp();
-    hdr_.ncontent = 1;
-    for (auto it = content_.begin(); it != content_.end(); ++it)
-        dump(&*it);
-
     hdr_.chunks_off = stream_.tellp();
     for (auto it = chunks_.begin(); it != chunks_.end(); ++it)
+        dump(&*it);
+
+    hdr_.content_off = stream_.tellp();
+    for (auto it = content_.begin(); it != content_.end(); ++it)
         dump(&*it);
 }
 
@@ -333,12 +350,26 @@ void codesearch_index::dump_chunk_data() {
     }
 }
 
+void codesearch_index::dump_content_data() {
+    alignp(kPageSize);
+    for (auto it = cs_->alloc_->begin_content();
+         it != cs_->alloc_->end_content(); ++it) {
+        off_t off = stream_.tellp();
+        stream_.write(reinterpret_cast<char*>(it->data), it->end - it->data);
+        content_.push_back((content_chunk_header) {
+                uint64_t(off),
+                uint32_t(it->end - it->data)
+            });
+    }
+}
+
 void codesearch_index::dump() {
     assert(cs_->finalized_);
 
     dump(&hdr_);
 
     dump_chunk_data();
+    dump_content_data();
     dump_metadata();
 
     stream_.seekp(0);
@@ -431,12 +462,16 @@ void load_allocator::load(code_searcher *cs) {
     content_chunk_header *chdr = ptr<content_chunk_header>(hdr_->content_off);
     auto it = cs->files_.begin();
     for (int i = 0; i < hdr_->ncontent; i++) {
+        buffer b;
         p_ = ptr<uint8_t>(chdr->file_off);
-        while (p_ != ptr<uint8_t>(chdr->file_off + chdr->size)) {
+        b.data = p_;
+        while (p_ < ptr<uint8_t>(chdr->file_off + chdr->size)) {
             (*it)->content = new(p_) file_contents;
             p_ = reinterpret_cast<uint8_t*>((*it)->content->end());
             ++it;
         }
+        b.end = p_;
+        content_chunks_.push_back(b);
         ++chdr;
     }
     assert(it == cs->files_.end());

@@ -465,7 +465,8 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
 
     uint32_t lines = count(p, end, '\n');
 
-    sf->content = new(new uint32_t[3*lines+1]) file_contents(0);
+    // sf->content = new(new uint32_t[3*lines+1]) file_contents(0);
+    file_contents_builder content;
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
         stats_.lines++;
@@ -490,10 +491,11 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
                 (reinterpret_cast<const unsigned char*>(line.data()));
         }
         c->add_chunk_file(sf, line);
-        sf->content->extend(c, line);
+        content.extend(c, line);
         p = f + 1;
     }
 
+    sf->content = content.build(alloc_);
     assert(sf->content->end() - sf->content->begin() <= 3*lines);
 
     for (auto it = alloc_->begin();
