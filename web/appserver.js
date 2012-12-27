@@ -7,7 +7,7 @@ var dnode  = require('dnode'),
     _      = require('underscore'),
     config = require('./config.js'),
     Batch  = require('./batch.js'),
-    QueryStats  = require('../lib/query-stats.js');
+    QueryStats  = require('./lib/query-stats.js');
 var logger  = log4js.getLogger('appserver');
 
 function remote_address(sock) {
@@ -213,8 +213,8 @@ ConnectionPool.prototype.connect_to = function(bk, id) {
   }
 
   var disconnected = function() {
-    logger.info("Lost connection to backend (%s-%d). Reconnect in %d...",
-      self.stats.name, remote.__id, delay);
+    logger.info("Lost connection to backend (%s-%s). Reconnect in %d...",
+      self.stats.name, remote ? remote.__id : "??", delay);
     stream.end();
     self.remotes = self.remotes.filter(function (r) {return r !== remote});
     self.connections = self.connections.filter(
