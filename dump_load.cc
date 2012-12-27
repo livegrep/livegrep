@@ -268,7 +268,8 @@ void codesearch_index::dump_file(search_file *sf) {
     dump(&sf->oid);
     dump_int32(sf->paths.size());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        dump_int32(find(cs_->refs_.begin(), cs_->refs_.end(), it->ref) -
+        dump_int32(find(cs_->refs_.begin(), cs_->refs_.end(),
+                        *it->repo_ref) -
                    cs_->refs_.begin());
         dump_string(it->path.c_str());
     }
@@ -405,7 +406,7 @@ search_file *load_allocator::load_file(code_searcher *cs) {
     memcpy(&sf->oid, consume<git_oid>(), sizeof(sf->oid));
     sf->paths.resize(load_int32());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        it->ref = cs->refs_[load_int32()].c_str();
+        it->repo_ref = &cs->refs_[load_int32()];
         it->path = load_string();
     }
     sf->no = cs->files_.size();

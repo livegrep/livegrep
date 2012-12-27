@@ -357,14 +357,14 @@ void code_searcher::walk_ref(git_repository *repo, const char *ref) {
     git_commit_tree(tree, commit);
 
     char oidstr[GIT_OID_HEXSZ+1];
-    const char *name = FLAGS_revparse ?
+    string name = FLAGS_revparse ?
         strdup(git_oid_tostr(oidstr, sizeof(oidstr), git_commit_id(commit))) : ref;
     refs_.push_back(name);
 
-    walk_root(repo, name, tree);
+    walk_root(repo, &(refs_.back()), tree);
 }
 
-void code_searcher::walk_root(git_repository *repo, const char *ref, git_tree *tree) {
+void code_searcher::walk_root(git_repository *repo, const string *ref, git_tree *tree) {
     map<string, const git_tree_entry *> root;
     vector<const git_tree_entry *> ordered;
     int entries = git_tree_entrycount(tree);
@@ -413,7 +413,7 @@ void code_searcher::finalize() {
 }
 
 void code_searcher::walk_tree(git_repository *repo,
-                              const char *ref,
+                              const string *ref,
                               const string& pfx,
                               git_tree *tree) {
     string path;
@@ -432,7 +432,8 @@ void code_searcher::walk_tree(git_repository *repo,
     }
 }
 
-void code_searcher::update_stats(const char *ref, const string& path, git_blob *blob) {
+void code_searcher::update_stats(const string *repo_ref,
+                                 const string& path, git_blob *blob) {
     size_t len = git_blob_rawsize(blob);
     const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
     const char *end = p + len;
@@ -450,14 +451,14 @@ void code_searcher::update_stats(const char *ref, const string& path, git_blob *
     auto sit = file_map_.find(*oid);
     if (sit != file_map_.end()) {
         search_file *sf = sit->second;
-        sf->paths.push_back((git_path){ref, path});
+        sf->paths.push_back((git_path){repo_ref, path});
         return;
     }
 
     stats_.dedup_files++;
 
     search_file *sf = new search_file;
-    sf->paths.push_back((git_path){ref, path});
+    sf->paths.push_back((git_path){repo_ref, path});
     git_oid_cpy(&sf->oid, oid);
     sf->no  = files_.size();
     files_.push_back(sf);

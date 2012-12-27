@@ -88,12 +88,11 @@ struct chunk;
 struct chunk_file;
 
 struct git_path {
-    const char *ref;
+    const string *repo_ref;
     string path;
 };
 
 struct search_file {
-    // <ref, path>
     vector<git_path> paths;
     git_oid oid;
     file_contents *content;
@@ -162,11 +161,12 @@ public:
         search_thread(const search_thread&);
         void operator=(const search_thread&);
     };
-    friend class search_thread;
+
 protected:
-    void walk_root(git_repository *repo, const char *ref, git_tree *tree);
-    void walk_tree(git_repository *repo, const char *ref, const string& pfx, git_tree *tree);
-    void update_stats(const char *ref, const string& path, git_blob *blob);
+    void walk_root(git_repository *repo, const string *ref, git_tree *tree);
+    void walk_tree(git_repository *repo, const string *ref,
+                   const string& pfx, git_tree *tree);
+    void update_stats(const string *ref, const string& path, git_blob *blob);
 
     string_hash lines_;
     google::sparse_hash_map<git_oid, search_file*, hashoid> file_map_;
@@ -180,6 +180,7 @@ protected:
     std::vector<string>  refs_;
     std::vector<search_file*> files_;
 
+    friend class search_thread;
     friend class searcher;
     friend class codesearch_index;
     friend class load_allocator;

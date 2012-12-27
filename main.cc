@@ -73,7 +73,7 @@ json_object *to_json(vector<T> vec) {
 
 static json_object *to_json(const git_path &path) {
     json_object *out = json_object_new_object();
-    json_object_object_add(out, "ref",  to_json(path.ref));
+    json_object_object_add(out, "ref",  to_json(*path.repo_ref));
     json_object_object_add(out, "path", to_json(path.path));
     return out;
 }
@@ -87,7 +87,7 @@ struct print_match {
             for (auto it = ctx->paths.begin(); it != ctx->paths.end(); ++it) {
                 fprintf(out_,
                         "%s:%s:%d:%d-%d: %.*s\n",
-                        it->ref,
+                        it->repo_ref->c_str(),
                         it->path.c_str(),
                         ctx->lno,
                         m->matchleft, m->matchright,
@@ -99,7 +99,7 @@ struct print_match {
     void print_json(const match_result *m) const {
         json_object *obj = json_object_new_object();
         json_object_object_add(obj, "ref",
-                               to_json(m->context[0].paths[0].ref));
+                               to_json(*m->context[0].paths[0].repo_ref));
         json_object_object_add(obj, "file",
                                to_json(m->context[0].paths[0].path));
         json_object *contexts = json_object_new_array();
