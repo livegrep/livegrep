@@ -1,26 +1,27 @@
 comma:=,
+MAKEVARS := .makevars
 
-.%.d: %.cc .config/CXX .config/CPPFLAGS .config/CXXFLAGS
+.%.d: %.cc $(MAKEVARS)/CXX $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/CXXFLAGS
 	@set -e; rm -f $@; \
 	 $(CXX) -M $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
 	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	 rm -f $@.$$$$
 
-.%.d: %.c .config/CC .config/CPPFLAGS .config/CFLAGS
+.%.d: %.c $(MAKEVARS)/CC $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/CFLAGS
 	@set -e; rm -f $@; \
 	 $(CC) -M $(CPPFLAGS) $(CFLAGS) $< > $@.$$$$; \
 	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	 rm -f $@.$$$$
 
-.config:
+$(MAKEVARS):
 	@mkdir -p $@
 
-.config/%.tmp: .config FORCE
+$(MAKEVARS)/%.tmp: $(MAKEVARS) FORCE
 	@echo $(call $*) > $@
 
-.config/%: .config/%.tmp
+$(MAKEVARS)/%: $(MAKEVARS)/%.tmp
 	@cmp -s $< $@ || cp -f $< $@
 	@rm $<
 
 .PHONY: FORCE
-.PRECIOUS: .config/%
+.PRECIOUS: $(MAKEVARS)/%

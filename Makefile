@@ -36,13 +36,13 @@ DEPFILES := $(foreach obj,$(OBJECTS), $(dir $(obj)).$(notdir $(obj:.o=)).d)
 
 all: codesearch $(DEPFILES)
 
-codesearch: $(OBJECTS) .config/LDFLAGS
-	$(CXX) -o $@ $(LDFLAGS) $(filter-out .config/%,$^) $(LDLIBS)
+codesearch: $(OBJECTS) $(MAKEVARS)/LDFLAGS
+	$(CXX) -o $@ $(LDFLAGS) $(filter-out $(MAKEVARS)/%,$^) $(LDLIBS)
 
 clean:
 	rm -f codesearch $(OBJECTS) $(DEPFILES)
 
-$(OBJECTS): .config/CXX .config/CXXFLAGS
+$(OBJECTS): $(MAKEVARS)/CXX $(MAKEVARS)/CXXFLAGS
 
 -include $(DEPFILES)
 

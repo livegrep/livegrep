@@ -2,6 +2,6 @@
 /Makefile.config
 *.o
 .*.d
-.config/
+/.makevars/
 /node_modules
 /web/log/
