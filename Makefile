@@ -28,11 +28,11 @@ ifneq ($(tcmalloc),)
 override LDLIBS+=-ltcmalloc
 endif
 
-OBJECTS = codesearch.o main.o chunk.o \
-          chunk_allocator.o radix_sort.o \
-          dump_load.o indexer.o re_width.o \
-          debug.o content.o
-DEPFILES = $(OBJECTS:%.o=.%.d)
+DIRS := src src/lib src/3party
+override CPPFLAGS += $(patsubst %,-I%, $(DIRS))
+OBJECTS :=
+include $(patsubst %, %/Makefrag, $(DIRS))
+DEPFILES := $(foreach obj,$(OBJECTS), $(dir $(obj)).$(notdir $(obj:.o=)).d)
 
 all: codesearch $(DEPFILES)
 
