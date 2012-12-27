@@ -1,7 +1,6 @@
 # -*- mode: org -*-
 * Search core
 ** Statistical estimation of the number of matches
-** Store indexes on disk
 ** Loading a filesystem tree instead of git
 ** Better profiling and analysis of on-disk indexes
 * Server backend
