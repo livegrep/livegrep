@@ -7,10 +7,19 @@ var Codesearch = require('../web/codesearch.js'),
     child_process = require('child_process'),
     common     = require('./common.js');
 
-common.parseopts();
+common.parser.add('--rebuild', {
+  defaulte: false,
+  type: 'flag',
+  help: 'Compare the results of --load_index with not building an index.'
+});
+var opts = common.parseopts();
 
 var cs_index = common.get_codesearch(['--threads=1', '--timeout=0']);
-var cs_noindex = common.get_codesearch(['--threads=1', '--noindex', '--timeout=0']);
+var cs_noindex;
+if (opts.rebuild)
+  cs_noindex = common.get_codesearch(['--threads=1', '--timeout=0', '--load_index=']);
+else
+  cs_noindex = common.get_codesearch(['--threads=1', '--noindex', '--timeout=0']);
 var queries = common.load_queries();
 var conn_index, conn_noindex;
 

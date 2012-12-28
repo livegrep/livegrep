@@ -17,8 +17,8 @@
 #include <limits>
 
 #include <re2/re2.h>
-
 #include <gflags/gflags.h>
+#include <openssl/sha.h>
 
 #include "timer.h"
 #include "thread_queue.h"
@@ -31,6 +31,7 @@
 #include "indexer.h"
 #include "per_thread.h"
 #include "debug.h"
+#include "smart_git.h"
 
 #include "utf8.h"
 
@@ -66,21 +67,29 @@ size_t hashstr::operator()(const StringPiece& str) const {
     return coll.hash(str.data(), str.data() + str.size());
 }
 
-bool operator==(const git_oid &lhs, const git_oid &rhs) {
-    return memcmp(lhs.id, rhs.id, GIT_OID_RAWSZ) == 0;
+bool operator==(const sha1_buf &lhs, const sha1_buf &rhs) {
+    return memcmp(lhs.hash, rhs.hash, sizeof(lhs.hash)) == 0;
 }
 
-size_t hashoid::operator()(const git_oid& oid) const {
+void sha1_string(sha1_buf *out, StringPiece string) {
+    SHA_CTX ctx;
+    SHA1_Init(&ctx);
+    SHA1_Update(&ctx, string.data(), string.size());
+    SHA1_Final(out->hash, &ctx);
+}
+
+
+size_t hash_sha1::operator()(const sha1_buf& hash) const {
     /*
      * We could hash the entire oid together, but since the oid is the
      * output of a cryptographic hash anyways, just taking the first N
      * bytes should work just well.
      */
     union {
-        git_oid oid;
-        size_t size;
-    } u = {oid};
-    return u.size;
+        sha1_buf sha1;
+        size_t trunc;
+    } u = {hash};
+    return u.trunc;
 }
 
 const StringPiece empty_string(NULL, 0);
@@ -394,7 +403,8 @@ void code_searcher::walk_root(git_repository *repo, const string *ref, git_tree 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
             walk_tree(repo, ref, path + "/", obj);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
-            update_stats(ref, path, obj);
+            const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
+            index_file(ref, path, StringPiece(data, git_blob_rawsize(obj)));
         }
     }
 }
@@ -427,15 +437,17 @@ void code_searcher::walk_tree(git_repository *repo,
         if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
             walk_tree(repo, ref, path + "/", obj);
         } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
-            update_stats(ref, path, obj);
+            const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
+            index_file(ref, path, StringPiece(data, git_blob_rawsize(obj)));
         }
     }
 }
 
-void code_searcher::update_stats(const string *repo_ref,
-                                 const string& path, git_blob *blob) {
-    size_t len = git_blob_rawsize(blob);
-    const char *p = static_cast<const char*>(git_blob_rawcontent(blob));
+void code_searcher::index_file(const string *repo_ref,
+                               const string& path,
+                               StringPiece contents) {
+    size_t len = contents.size();
+    const char *p = contents.data();
     const char *end = p + len;
     const char *f;
     chunk *c;
@@ -447,8 +459,10 @@ void code_searcher::update_stats(const string *repo_ref,
     stats_.bytes += len;
     stats_.files++;
 
-    const git_oid *oid = git_object_id(reinterpret_cast<git_object*>(blob));
-    auto sit = file_map_.find(*oid);
+    sha1_buf sha1;
+    sha1_string(&sha1, contents);
+
+    auto sit = file_map_.find(sha1);
     if (sit != file_map_.end()) {
         search_file *sf = sit->second;
         sf->paths.push_back((git_path){repo_ref, path});
@@ -459,10 +473,10 @@ void code_searcher::update_stats(const string *repo_ref,
 
     search_file *sf = new search_file;
     sf->paths.push_back((git_path){repo_ref, path});
-    git_oid_cpy(&sf->oid, oid);
+    sf->hash = sha1;
     sf->no  = files_.size();
     files_.push_back(sf);
-    file_map_[*oid] = sf;
+    file_map_[sha1] = sf;
 
     uint32_t lines = count(p, end, '\n');
 

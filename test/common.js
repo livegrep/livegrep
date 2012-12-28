@@ -38,7 +38,7 @@ var parser = new parseopt.OptionParser(
         default: false,
         type: 'flag',
         help: 'Do not search for the empty string'
-      }
+      },
     ]
   });
 var opts;

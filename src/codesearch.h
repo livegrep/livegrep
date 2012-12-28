@@ -20,7 +20,6 @@
 #include <re2/re2.h>
 #include <locale>
 
-#include "smart_git.h"
 #include "mutex.h"
 #include "thread_pool.h"
 #include "content.h"
@@ -38,6 +37,9 @@ using std::vector;
 using std::map;
 using std::pair;
 
+class git_repository;
+class git_tree;
+
 /*
  * We special-case data() == NULL to provide an "empty" element for
  * dense_hash_set.
@@ -54,12 +56,17 @@ struct hashstr {
     size_t operator()(const StringPiece &str) const;
 };
 
-
-bool operator==(const git_oid &lhs, const git_oid &rhs);
-
-struct hashoid {
-    size_t operator()(const git_oid &oid) const;
+struct sha1_buf {
+    unsigned char hash[20];
 };
+
+bool operator==(const sha1_buf &lhs, const sha1_buf &rhs);
+
+struct hash_sha1 {
+    size_t operator()(const sha1_buf &hash) const;
+};
+
+void sha1_string(sha1_buf *out, StringPiece string);
 
 #ifdef USE_DENSE_HASH_SET
 typedef google::dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
@@ -94,7 +101,7 @@ struct git_path {
 
 struct search_file {
     vector<git_path> paths;
-    git_oid oid;
+    sha1_buf hash;
     file_contents *content;
     int no;
 };
@@ -122,6 +129,9 @@ public:
     void dump_index(const string& path);
     void load_index(const string& path);
 
+    void index_file(const string *repo_ref,
+                    const string& path,
+                    StringPiece contents);
     void finalize();
 
     void set_alloc(chunk_allocator *alloc);
@@ -166,10 +176,9 @@ protected:
     void walk_root(git_repository *repo, const string *ref, git_tree *tree);
     void walk_tree(git_repository *repo, const string *ref,
                    const string& pfx, git_tree *tree);
-    void update_stats(const string *ref, const string& path, git_blob *blob);
 
     string_hash lines_;
-    google::sparse_hash_map<git_oid, search_file*, hashoid> file_map_;
+    google::sparse_hash_map<sha1_buf, search_file*, hash_sha1> file_map_;
     struct {
         unsigned long bytes, dedup_bytes;
         unsigned long lines, dedup_lines;
