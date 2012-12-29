@@ -13,7 +13,6 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include <sstream>
 #include <limits>
 
 #include <re2/re2.h>
@@ -31,7 +30,6 @@
 #include "indexer.h"
 #include "per_thread.h"
 #include "debug.h"
-#include "smart_git.h"
 
 #include "utf8.h"
 
@@ -48,10 +46,8 @@ const int kMaxScan        = (1 << 20);
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(drop_cache, false, "Drop caches before each search");
 DEFINE_bool(search, true, "Actually do the search.");
-DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided");
 DEFINE_int32(max_matches, 50, "The maximum number of results to return for a single query.");
 DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
-DEFINE_string(order_root, "", "Walk top-level directories in this order.");
 DECLARE_int32(threads);
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
@@ -77,7 +73,6 @@ void sha1_string(sha1_buf *out, StringPiece string) {
     SHA1_Update(&ctx, string.data(), string.size());
     SHA1_Final(out->hash, &ctx);
 }
-
 
 size_t hash_sha1::operator()(const sha1_buf& hash) const {
     /*
@@ -349,66 +344,6 @@ code_searcher::~code_searcher() {
     delete alloc_;
 }
 
-namespace {
-    void resolve_ref(git_repository *repo,
-                     smart_object<git_commit>& out,
-                     const char *refname) {
-        git_revparse_single(out, repo, (string(refname) + "^0").c_str());
-    }
-};
-
-void code_searcher::walk_ref(git_repository *repo, const char *ref) {
-    assert(alloc_);
-    assert(!finalized_);
-    smart_object<git_commit> commit;
-    smart_object<git_tree> tree;
-    resolve_ref(repo, commit, ref);
-    git_commit_tree(tree, commit);
-
-    char oidstr[GIT_OID_HEXSZ+1];
-    string name = FLAGS_revparse ?
-        strdup(git_oid_tostr(oidstr, sizeof(oidstr), git_commit_id(commit))) : ref;
-    refs_.push_back(name);
-
-    walk_root(repo, &(refs_.back()), tree);
-}
-
-void code_searcher::walk_root(git_repository *repo, const string *ref, git_tree *tree) {
-    map<string, const git_tree_entry *> root;
-    vector<const git_tree_entry *> ordered;
-    int entries = git_tree_entrycount(tree);
-    for (int i = 0; i < entries; ++i) {
-        const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
-        root[git_tree_entry_name(ent)] = ent;
-    }
-
-    istringstream stream(FLAGS_order_root);
-    string dir;
-    while(stream >> dir) {
-        map<string, const git_tree_entry *>::iterator it = root.find(dir);
-        if (it == root.end())
-            continue;
-        ordered.push_back(it->second);
-        root.erase(it);
-    }
-    for (map<string, const git_tree_entry *>::iterator it = root.begin();
-         it != root.end(); ++it)
-        ordered.push_back(it->second);
-    for (vector<const git_tree_entry *>::iterator it = ordered.begin();
-         it != ordered.end(); ++it) {
-        smart_object<git_object> obj;
-        git_tree_entry_to_object(obj, repo, *it);
-        string path = string(git_tree_entry_name(*it));
-
-        if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
-            walk_tree(repo, ref, path + "/", obj);
-        } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
-            const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
-            index_file(ref, path, StringPiece(data, git_blob_rawsize(obj)));
-        }
-    }
-}
-
 void code_searcher::dump_stats() {
     debug(kDebugProfile, "chunk_files: %d", chunk::chunk_files);
     printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
@@ -422,30 +357,11 @@ void code_searcher::finalize() {
     alloc_->finalize();
 }
 
-void code_searcher::walk_tree(git_repository *repo,
-                              const string *ref,
-                              const string& pfx,
-                              git_tree *tree) {
-    string path;
-    int entries = git_tree_entrycount(tree);
-    int i;
-    for (i = 0; i < entries; i++) {
-        const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
-        path = pfx + git_tree_entry_name(ent);
-        smart_object<git_object> obj;
-        git_tree_entry_to_object(obj, repo, ent);
-        if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
-            walk_tree(repo, ref, path + "/", obj);
-        } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
-            const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
-            index_file(ref, path, StringPiece(data, git_blob_rawsize(obj)));
-        }
-    }
-}
-
-void code_searcher::index_file(const string *repo_ref,
+void code_searcher::index_file(const string& tree_name,
                                const string& path,
                                StringPiece contents) {
+    assert(!finalized_);
+    assert(alloc_);
     size_t len = contents.size();
     const char *p = contents.data();
     const char *end = p + len;
@@ -456,6 +372,20 @@ void code_searcher::index_file(const string *repo_ref,
     if (memchr(p, 0, len) != NULL)
         return;
 
+    indexed_tree *tree;
+    {
+        auto it = tree_map_.find(tree_name);
+        if (it == tree_map_.end()) {
+            tree = new indexed_tree;
+            tree->name = tree_name;
+            tree->id = trees_.size();
+            trees_.push_back(tree);
+            tree_map_[tree_name] = tree;
+        } else {
+            tree = it->second;
+        }
+    }
+
     stats_.bytes += len;
     stats_.files++;
 
@@ -465,14 +395,14 @@ void code_searcher::index_file(const string *repo_ref,
     auto sit = file_map_.find(sha1);
     if (sit != file_map_.end()) {
         indexed_file *sf = sit->second;
-        sf->paths.push_back((indexed_path){repo_ref, path});
+        sf->paths.push_back((indexed_path){tree, path});
         return;
     }
 
     stats_.dedup_files++;
 
     indexed_file *sf = new indexed_file;
-    sf->paths.push_back((indexed_path){repo_ref, path});
+    sf->paths.push_back((indexed_path){tree, path});
     sf->hash = sha1;
     sf->no  = files_.size();
     files_.push_back(sf);

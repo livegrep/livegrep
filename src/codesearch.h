@@ -10,6 +10,7 @@
 #include <string>
 #include <map>
 #include <fstream>
+#include <boost/intrusive_ptr.hpp>
 
 #ifdef USE_DENSE_HASH_SET
 #include <google/dense_hash_set>
@@ -36,9 +37,6 @@ using std::locale;
 using std::vector;
 using std::map;
 using std::pair;
-
-class git_repository;
-class git_tree;
 
 /*
  * We special-case data() == NULL to provide an "empty" element for
@@ -94,8 +92,13 @@ struct match_stats {
 struct chunk;
 struct chunk_file;
 
+struct indexed_tree {
+    string name;
+    int id;
+};
+
 struct indexed_path {
-    const string *repo_ref;
+    indexed_tree *tree;
     string path;
 };
 
@@ -124,12 +127,11 @@ class code_searcher {
 public:
     code_searcher();
     ~code_searcher();
-    void walk_ref(git_repository *repo, const char *ref);
     void dump_stats();
     void dump_index(const string& path);
     void load_index(const string& path);
 
-    void index_file(const string *repo_ref,
+    void index_file(const string& tree,
                     const string& path,
                     StringPiece contents);
     void finalize();
@@ -173,12 +175,7 @@ public:
     };
 
 protected:
-    void walk_root(git_repository *repo, const string *ref, git_tree *tree);
-    void walk_tree(git_repository *repo, const string *ref,
-                   const string& pfx, git_tree *tree);
-
     string_hash lines_;
-    google::sparse_hash_map<sha1_buf, indexed_file*, hash_sha1> file_map_;
     struct {
         unsigned long bytes, dedup_bytes;
         unsigned long lines, dedup_lines;
@@ -186,8 +183,10 @@ protected:
     } stats_;
     chunk_allocator *alloc_;
     bool finalized_;
-    std::vector<string>  refs_;
-    std::vector<indexed_file*> files_;
+    vector<indexed_tree*> trees_;
+    map<string, indexed_tree*> tree_map_;
+    vector<indexed_file*> files_;
+    google::sparse_hash_map<sha1_buf, indexed_file*, hash_sha1> file_map_;
 
     friend class search_thread;
     friend class searcher;

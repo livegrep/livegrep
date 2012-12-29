@@ -4,7 +4,7 @@
  * All Rights Reserved
  ********************************************************************/
 #include "codesearch.h"
-#include "smart_git.h"
+#include "git_indexer.h"
 #include "timer.h"
 #include "re_width.h"
 
@@ -73,7 +73,7 @@ json_object *to_json(vector<T> vec) {
 
 static json_object *to_json(const indexed_path &path) {
     json_object *out = json_object_new_object();
-    json_object_object_add(out, "ref",  to_json(*path.repo_ref));
+    json_object_object_add(out, "ref",  to_json(path.tree->name));
     json_object_object_add(out, "path", to_json(path.path));
     return out;
 }
@@ -87,7 +87,7 @@ struct print_match {
             for (auto it = ctx->paths.begin(); it != ctx->paths.end(); ++it) {
                 fprintf(out_,
                         "%s:%s:%d:%d-%d: %.*s\n",
-                        it->repo_ref->c_str(),
+                        it->tree->name.c_str(),
                         it->path.c_str(),
                         ctx->lno,
                         m->matchleft, m->matchright,
@@ -99,7 +99,7 @@ struct print_match {
     void print_json(const match_result *m) const {
         json_object *obj = json_object_new_object();
         json_object_object_add(obj, "ref",
-                               to_json(*m->context[0].paths[0].repo_ref));
+                               to_json(m->context[0].paths[0].tree->name));
         json_object_object_add(obj, "file",
                                to_json(m->context[0].paths[0].path));
         json_object *contexts = json_object_new_array();
@@ -320,8 +320,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
 
 void initialize_search(code_searcher *search, int argc, char **argv) {
     if (FLAGS_load_index.size() == 0) {
-        git_repository *repo;
-        git_repository_open(&repo, FLAGS_git_dir.c_str());
+        git_indexer indexer(search, FLAGS_git_dir);
 
         if (FLAGS_dump_index.size())
             search->set_alloc(make_dump_allocator(search, FLAGS_dump_index));
@@ -335,7 +334,7 @@ void initialize_search(code_searcher *search, int argc, char **argv) {
             if (!FLAGS_json)
                 printf("Walking %s...", argv[i]);
             fflush(stdout);
-            search->walk_ref(repo, argv[i]);
+            indexer.walk(argv[i]);
             elapsed = tm.elapsed();
             if (!FLAGS_json)
                 printf(" done.\n");

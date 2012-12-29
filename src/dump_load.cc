@@ -25,7 +25,7 @@ struct index_header {
     uint32_t version;
     uint32_t chunk_size;
 
-    uint32_t nrefs;
+    uint32_t ntrees;
     uint64_t refs_off;
 
     uint32_t nfiles;
@@ -268,9 +268,7 @@ void codesearch_index::dump_file(indexed_file *sf) {
     dump(&sf->hash);
     dump_int32(sf->paths.size());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        dump_int32(find(cs_->refs_.begin(), cs_->refs_.end(),
-                        *it->repo_ref) -
-                   cs_->refs_.begin());
+        dump_int32(it->tree->id);
         dump_string(it->path.c_str());
     }
 }
@@ -312,15 +310,15 @@ void codesearch_index::dump_chunk_data(chunk *chunk) {
 }
 
 void codesearch_index::dump_metadata() {
-    hdr_.nrefs   = cs_->refs_.size();
-    hdr_.nfiles  = cs_->files_.size();
-    hdr_.nchunks = cs_->alloc_->size();
+    hdr_.ntrees   = cs_->trees_.size();
+    hdr_.nfiles   = cs_->files_.size();
+    hdr_.nchunks  = cs_->alloc_->size();
     hdr_.ncontent = content_.size();
 
     hdr_.refs_off = stream_.tellp();
-    for (auto it = cs_->refs_.begin();
-         it != cs_->refs_.end(); ++it)
-        dump_string(*it);
+    for (auto it = cs_->trees_.begin();
+         it != cs_->trees_.end(); ++it)
+        dump_string((*it)->name);
 
     hdr_.files_off = stream_.tellp();
     for (vector<indexed_file*>::iterator it = cs_->files_.begin();
@@ -406,7 +404,7 @@ indexed_file *load_allocator::load_file(code_searcher *cs) {
     memcpy(&sf->hash.hash, consume<sha1_buf>(), sizeof(sf->hash.hash));
     sf->paths.resize(load_int32());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        it->repo_ref = &cs->refs_[load_int32()];
+        it->tree = cs->trees_[load_int32()];
         it->path = load_string();
     }
     sf->no = cs->files_.size();
@@ -437,7 +435,7 @@ void load_allocator::load_chunk(code_searcher *cs) {
 
 void load_allocator::load(code_searcher *cs) {
     assert(!cs->finalized_);
-    assert(!cs->refs_.size());
+    assert(!cs->trees_.size());
 
     assert(hdr_->magic == kIndexMagic);
     assert(hdr_->version == kIndexVersion);
@@ -446,8 +444,11 @@ void load_allocator::load(code_searcher *cs) {
     set_chunk_size(hdr_->chunk_size);
 
     p_ = ptr<uint8_t>(hdr_->refs_off);
-    for (int i = 0; i < hdr_->nrefs; i++) {
-        cs->refs_.push_back(load_string());
+    for (int i = 0; i < hdr_->ntrees; i++) {
+        indexed_tree *tree = new indexed_tree;
+        tree->name = load_string();
+        tree->id = i;
+        cs->trees_.push_back(tree);
     }
 
     p_ = ptr<uint8_t>(hdr_->files_off);
