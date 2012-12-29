@@ -265,7 +265,7 @@ chunk_allocator *make_dump_allocator(code_searcher *search, const string& path) 
 }
 
 void codesearch_index::dump_file(search_file *sf) {
-    dump(&sf->oid);
+    dump(&sf->hash);
     dump_int32(sf->paths.size());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
         dump_int32(find(cs_->refs_.begin(), cs_->refs_.end(),
@@ -403,7 +403,7 @@ chunk *load_allocator::alloc_chunk() {
 
 search_file *load_allocator::load_file(code_searcher *cs) {
     search_file *sf = new search_file;
-    memcpy(&sf->oid, consume<git_oid>(), sizeof(sf->oid));
+    memcpy(&sf->hash.hash, consume<sha1_buf>(), sizeof(sf->hash.hash));
     sf->paths.resize(load_int32());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
         it->repo_ref = &cs->refs_[load_int32()];

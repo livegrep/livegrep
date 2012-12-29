@@ -4,13 +4,13 @@ MAKEVARS := .makevars
 .%.d: %.cc $(MAKEVARS)/CXX $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/CXXFLAGS
 	@set -e; rm -f $@; \
 	 $(CXX) -M $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
-	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 sed 's,\($(notdir $*)\)\.o[ :]*,$*.o $@ : ,g' < $@.$$$$ > $@; \
 	 rm -f $@.$$$$
 
 .%.d: %.c $(MAKEVARS)/CC $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/CFLAGS
 	@set -e; rm -f $@; \
 	 $(CC) -M $(CPPFLAGS) $(CFLAGS) $< > $@.$$$$; \
-	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 sed 's,\($(notdir $*)\)\.o[ :]*,$*.o $@ : ,g' < $@.$$$$ > $@; \
 	 rm -f $@.$$$$
 
 $(MAKEVARS):
