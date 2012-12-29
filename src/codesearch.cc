@@ -165,14 +165,14 @@ protected:
     void filtered_search(const chunk *chunk);
     void search_lines(uint32_t *left, int count, const chunk *chunk);
 
-    bool accept(const git_path &path) {
+    bool accept(const indexed_path &path) {
         if (!file_pat_)
             return true;
         return file_pat_->Match(path.path, 0, path.path.size(),
                                 RE2::UNANCHORED, 0, 0);
     }
 
-    bool accept(search_file *sf) {
+    bool accept(indexed_file *sf) {
         if (!file_pat_)
             return true;
 
@@ -192,8 +192,8 @@ protected:
         return files_[sf->no];
     }
 
-    bool accept(const list<search_file *> &sfs) {
-        for (list<search_file *>::const_iterator it = sfs.begin();
+    bool accept(const list<indexed_file *> &sfs) {
+        for (list<indexed_file *>::const_iterator it = sfs.begin();
              it != sfs.end(); ++it) {
             if (accept(*it))
                 return true;
@@ -241,7 +241,7 @@ protected:
     void try_match(match_group *,
                    const StringPiece&,
                    const StringPiece&,
-                   search_file *);
+                   indexed_file *);
 
     void finish_group(match_group *);
 
@@ -464,15 +464,15 @@ void code_searcher::index_file(const string *repo_ref,
 
     auto sit = file_map_.find(sha1);
     if (sit != file_map_.end()) {
-        search_file *sf = sit->second;
-        sf->paths.push_back((git_path){repo_ref, path});
+        indexed_file *sf = sit->second;
+        sf->paths.push_back((indexed_path){repo_ref, path});
         return;
     }
 
     stats_.dedup_files++;
 
-    search_file *sf = new search_file;
-    sf->paths.push_back((git_path){repo_ref, path});
+    indexed_file *sf = new indexed_file;
+    sf->paths.push_back((indexed_path){repo_ref, path});
     sf->hash = sha1;
     sf->no  = files_.size();
     files_.push_back(sf);
@@ -790,7 +790,7 @@ void searcher::find_match_brute(const chunk *chunk,
     for(vector<chunk_file>::const_iterator it = chunk->files.begin();
         it != chunk->files.end(); it++) {
         if (off >= it->left && off <= it->right) {
-            for (list<search_file *>::const_iterator fit = it->files.begin();
+            for (list<indexed_file *>::const_iterator fit = it->files.begin();
                  fit != it->files.end(); ++fit) {
                 if (!accept(*fit))
                     continue;
@@ -862,7 +862,7 @@ void searcher::find_match(const chunk *chunk,
         if (f.visit) {
             debug(kDebugSearch, "visit <%d-%d>", n->chunk->left, n->chunk->right);
             assert(loff >= n->chunk->left && loff <= n->chunk->right);
-            for (list<search_file *>::const_iterator it = n->chunk->files.begin();
+            for (list<indexed_file *>::const_iterator it = n->chunk->files.begin();
                  it != n->chunk->files.end(); ++it) {
                 if (!accept(*it))
                     continue;
@@ -895,7 +895,7 @@ void searcher::find_match(const chunk *chunk,
 void searcher::try_match(match_group *group,
                          const StringPiece& line,
                          const StringPiece& match,
-                         search_file *sf) {
+                         indexed_file *sf) {
 
     int lno = 1;
     auto it = sf->content->begin(cc_->alloc_);

@@ -73,7 +73,7 @@ public:
 protected:
     void dump_chunk_data();
     void dump_metadata();
-    void dump_file(search_file *);
+    void dump_file(indexed_file *);
     void dump_chunk_file(chunk_file *cf);
     void dump_chunk_files(chunk *, chunk_header *);
     void dump_chunk_data(chunk *);
@@ -236,7 +236,7 @@ protected:
         p_ = static_cast<uint8_t*>(map_) + off;
     }
 
-    search_file *load_file(code_searcher *cs);
+    indexed_file *load_file(code_searcher *cs);
     void load_chunk(code_searcher *);
 
     uint32_t load_int32() {
@@ -264,7 +264,7 @@ chunk_allocator *make_dump_allocator(code_searcher *search, const string& path) 
     return new dump_allocator(search, path.c_str());
 }
 
-void codesearch_index::dump_file(search_file *sf) {
+void codesearch_index::dump_file(indexed_file *sf) {
     dump(&sf->hash);
     dump_int32(sf->paths.size());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
@@ -277,7 +277,7 @@ void codesearch_index::dump_file(search_file *sf) {
 
 void codesearch_index::dump_chunk_file(chunk_file *cf) {
     dump_int32(cf->files.size());
-    for (list<search_file*>::iterator it = cf->files.begin();
+    for (list<indexed_file*>::iterator it = cf->files.begin();
          it != cf->files.end(); ++it)
         dump_int32((*it)->no);
 
@@ -323,7 +323,7 @@ void codesearch_index::dump_metadata() {
         dump_string(*it);
 
     hdr_.files_off = stream_.tellp();
-    for (vector<search_file*>::iterator it = cs_->files_.begin();
+    for (vector<indexed_file*>::iterator it = cs_->files_.begin();
          it != cs_->files_.end(); ++it)
         dump_file(*it);
 
@@ -401,8 +401,8 @@ chunk *load_allocator::alloc_chunk() {
     return new chunk(data, indexes);
 }
 
-search_file *load_allocator::load_file(code_searcher *cs) {
-    search_file *sf = new search_file;
+indexed_file *load_allocator::load_file(code_searcher *cs) {
+    indexed_file *sf = new indexed_file;
     memcpy(&sf->hash.hash, consume<sha1_buf>(), sizeof(sf->hash.hash));
     sf->paths.resize(load_int32());
     for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {

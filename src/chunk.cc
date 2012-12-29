@@ -63,7 +63,7 @@ private:
     radix_sorter operator=(const radix_sorter&);
 };
 
-void chunk::add_chunk_file(search_file *sf, const StringPiece& line)
+void chunk::add_chunk_file(indexed_file *sf, const StringPiece& line)
 {
     int l = (unsigned char*)line.data() - data;
     int r = l + line.size();

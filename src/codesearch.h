@@ -94,21 +94,21 @@ struct match_stats {
 struct chunk;
 struct chunk_file;
 
-struct git_path {
+struct indexed_path {
     const string *repo_ref;
     string path;
 };
 
-struct search_file {
-    vector<git_path> paths;
+struct indexed_file {
+    vector<indexed_path> paths;
     sha1_buf hash;
     file_contents *content;
     int no;
 };
 
 struct match_context {
-    search_file *file;
-    vector<git_path> paths;
+    indexed_file *file;
+    vector<indexed_path> paths;
     int lno;
     vector<StringPiece> context_before;
     vector<StringPiece> context_after;
@@ -178,7 +178,7 @@ protected:
                    const string& pfx, git_tree *tree);
 
     string_hash lines_;
-    google::sparse_hash_map<sha1_buf, search_file*, hash_sha1> file_map_;
+    google::sparse_hash_map<sha1_buf, indexed_file*, hash_sha1> file_map_;
     struct {
         unsigned long bytes, dedup_bytes;
         unsigned long lines, dedup_lines;
@@ -187,7 +187,7 @@ protected:
     chunk_allocator *alloc_;
     bool finalized_;
     std::vector<string>  refs_;
-    std::vector<search_file*> files_;
+    std::vector<indexed_file*> files_;
 
     friend class search_thread;
     friend class searcher;

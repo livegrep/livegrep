@@ -71,7 +71,7 @@ json_object *to_json(vector<T> vec) {
     return out;
 }
 
-static json_object *to_json(const git_path &path) {
+static json_object *to_json(const indexed_path &path) {
     json_object *out = json_object_new_object();
     json_object_object_add(out, "ref",  to_json(*path.repo_ref));
     json_object_object_add(out, "path", to_json(path.path));

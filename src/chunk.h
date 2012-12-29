@@ -17,7 +17,7 @@
 
 #include <stdint.h>
 
-struct search_file;
+struct indexed_file;
 namespace re2 {
     class StringPiece;
 }
@@ -31,7 +31,7 @@ using re2::StringPiece;
  * chunk->data are present in each of chunk->files.
  */
 struct chunk_file {
-    list<search_file *> files;
+    list<indexed_file *> files;
     int left;
     int right;
     void expand(int l, int r) {
@@ -71,7 +71,7 @@ struct chunk {
     ~chunk() {
     }
 
-    void add_chunk_file(search_file *sf, const StringPiece& line);
+    void add_chunk_file(indexed_file *sf, const StringPiece& line);
     void finish_file();
     void finalize();
     void finalize_files();
