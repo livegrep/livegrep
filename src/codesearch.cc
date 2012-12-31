@@ -447,6 +447,12 @@ void code_searcher::index_file(const string& tree_name,
     }
 
     sf->content = content.build(alloc_);
+    if (sf->content == 0) {
+        fprintf(stderr, "WARN: %s:%s is too large to be indexed.\n",
+                tree_name.c_str(), path.c_str());
+        file_contents_builder dummy;
+        sf->content = dummy.build(alloc_);
+    }
     assert(sf->content->end() - sf->content->begin() <= 3*lines);
 
     for (auto it = alloc_->begin();

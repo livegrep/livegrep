@@ -63,6 +63,8 @@ unsigned char *chunk_allocator::alloc(size_t len) {
 }
 
 uint8_t *chunk_allocator::alloc_content_data(size_t len) {
+    if (len >= kContentChunkSize)
+        return 0;
     if (content_finger_ == 0 || (content_finger_ + len > content_chunks_.back().end)) {
         if (content_finger_)
             content_chunks_.back().end = content_finger_;
