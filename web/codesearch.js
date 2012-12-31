@@ -19,10 +19,11 @@ function Codesearch(repo, refs, opts) {
   var socket = path.join(temp.mkdirSync('codesearch'), 'socket');
 
   this.socket = socket;
+  refs = refs || ['HEAD'];
+  var spec = repo + ":" + refs.join(",");
   this.child = spawn(path.join(__dirname, '..', 'codesearch'),
-                     ['--git_dir', path.join(repo, ".git"), '--json',
-                      '--listen', socket].concat(
-                       opts.args||[]).concat(refs || ['HEAD']),
+                     ['--json', '--listen', socket].concat(
+                       opts.args||[]).concat(spec),
                      {
                        customFds: [-1, 1, 2]
                      });
