@@ -23,10 +23,10 @@
 
 #include "mutex.h"
 #include "thread_pool.h"
-#include "content.h"
 
 class searcher;
 class chunk_allocator;
+class file_contents;
 struct match_result;
 
 using re2::RE2;
@@ -94,6 +94,7 @@ struct index_stats {
     unsigned long lines, dedup_lines;
     unsigned long files, dedup_files;
     unsigned long chunks, content_chunks;
+    unsigned long content_ranges;
 };
 
 struct chunk;

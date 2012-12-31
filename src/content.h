@@ -81,6 +81,10 @@ public:
         return buf_ + 3*npieces_;
     }
 
+    size_t size() {
+        return npieces_;
+    }
+
     friend class codesearch_index;
     friend class load_allocator;
     friend class file_contents_builder;

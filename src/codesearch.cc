@@ -30,6 +30,7 @@
 #include "indexer.h"
 #include "per_thread.h"
 #include "debug.h"
+#include "content.h"
 
 #include "utf8.h"
 
@@ -349,10 +350,13 @@ void code_searcher::dump_stats() {
     printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
     printf("Files: %ld (dedup: %ld)\n", stats_.files, stats_.dedup_files);
-    printf("Data chunks: %ld @%ldM\n", stats_.chunks,
-           alloc_->chunk_size() >> 20);
-    printf("Content chunks: %ld @%ldM\n",
-           stats_.content_chunks, kContentChunkSize >> 20);
+    printf("Content ranges: %ld\n", stats_.content_ranges);
+    printf("Data chunks: %ld @%ldM = %0.2fM\n", stats_.chunks,
+           alloc_->chunk_size() >> 20,
+           (alloc_->chunk_size() * stats_.chunks) / double(1 << 20));
+    printf("Content chunks: %ld @%ldM = %0.2fM\n",
+           stats_.content_chunks, kContentChunkSize >> 20,
+           (stats_.content_chunks * kContentChunkSize) / double(1 << 20));
 }
 
 void code_searcher::finalize() {
@@ -453,7 +457,8 @@ void code_searcher::index_file(const string& tree_name,
         file_contents_builder dummy;
         sf->content = dummy.build(alloc_);
     }
-    assert(sf->content->end() - sf->content->begin() <= 3*lines);
+    stats_.content_ranges += sf->content->size();
+    assert(sf->content->size() <= 3*lines);
 
     for (auto it = alloc_->begin();
          it != alloc_->end(); it++)

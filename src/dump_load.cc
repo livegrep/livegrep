@@ -6,6 +6,7 @@
 #include "codesearch.h"
 #include "chunk.h"
 #include "chunk_allocator.h"
+#include "content.h"
 
 #include <map>
 #include <string>
