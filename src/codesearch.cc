@@ -349,12 +349,18 @@ void code_searcher::dump_stats() {
     printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
     printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
     printf("Files: %ld (dedup: %ld)\n", stats_.files, stats_.dedup_files);
+    printf("Data chunks: %ld @%ldM\n", stats_.chunks,
+           alloc_->chunk_size() >> 20);
+    printf("Content chunks: %ld @%ldM\n",
+           stats_.content_chunks, kContentChunkSize >> 20);
 }
 
 void code_searcher::finalize() {
     assert(!finalized_);
     finalized_ = true;
     alloc_->finalize();
+    stats_.chunks = alloc_->end() - alloc_->begin();
+    stats_.content_chunks = alloc_->end_content() - alloc_->begin_content();
 }
 
 void code_searcher::index_file(const string& tree_name,

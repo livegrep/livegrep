@@ -89,6 +89,13 @@ struct match_stats {
     exit_reason why;
 };
 
+struct index_stats {
+    unsigned long bytes, dedup_bytes;
+    unsigned long lines, dedup_lines;
+    unsigned long files, dedup_files;
+    unsigned long chunks, content_chunks;
+};
+
 struct chunk;
 struct chunk_file;
 
@@ -176,11 +183,7 @@ public:
 
 protected:
     string_hash lines_;
-    struct {
-        unsigned long bytes, dedup_bytes;
-        unsigned long lines, dedup_lines;
-        unsigned long files, dedup_files;
-    } stats_;
+    index_stats stats_;
     chunk_allocator *alloc_;
     bool finalized_;
     vector<indexed_tree*> trees_;
