@@ -29,7 +29,6 @@ DEFINE_int32(threads, 4, "Number of threads to use.");
 DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
-DEFINE_string(git_dir, ".git", "The git directory to read from");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_string(listen, "", "Listen on a UNIX socket for connections");
 DEFINE_string(file, "", "Only match files matching the provided regex");
@@ -318,10 +317,58 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
     }
 }
 
+struct parse_spec {
+    string path;
+    string name;
+    vector<string> revs;
+};
+
+parse_spec parse_walk_spec(string spec) {
+    /* [name@]path[:rev1,rev2,rev3] */
+    parse_spec out;
+    int idx;
+    if ((idx = spec.find('@')) != -1) {
+        out.name = spec.substr(0, idx);
+        spec = spec.substr(idx + 1);
+    }
+    if ((idx = spec.find(':')) != -1) {
+        string revs = spec.substr(idx + 1);
+        spec = spec.substr(0, idx);
+        while ((idx = revs.find(',')) != -1) {
+            out.revs.push_back(revs.substr(0, idx));
+            revs = revs.substr(idx + 1);
+        }
+        if (revs.size())
+            out.revs.push_back(revs);
+    }
+    if (out.revs.empty()) {
+        out.revs.push_back("HEAD");
+    }
+    out.path = spec;
+    return out;
+}
+
+void walk_one(code_searcher *search, string spec) {
+    parse_spec parsed = parse_walk_spec(spec);
+    if (!FLAGS_json)
+        printf("Walking `%s' (name: %s, path: %s)...\n",
+               spec.c_str(),
+               parsed.name.c_str(),
+               parsed.path.c_str());
+    git_indexer indexer(search, parsed.path, parsed.name);
+    for (auto it = parsed.revs.begin(); it != parsed.revs.end(); ++it) {
+        if (!FLAGS_json) {
+            printf("  %s...", it->c_str());
+            fflush(stdout);
+        }
+        indexer.walk(*it);
+        if (!FLAGS_json)
+            printf("done\n");
+    }
+}
+
 void initialize_search(code_searcher *search, int argc, char **argv) {
     if (FLAGS_load_index.size() == 0) {
-        git_indexer indexer(search, FLAGS_git_dir);
-
         if (FLAGS_dump_index.size())
             search->set_alloc(make_dump_allocator(search, FLAGS_dump_index));
         else
@@ -329,16 +376,11 @@ void initialize_search(code_searcher *search, int argc, char **argv) {
 
         timer tm;
         struct timeval elapsed;
-
         for (int i = 1; i < argc; i++) {
-            if (!FLAGS_json)
-                printf("Walking %s...", argv[i]);
-            fflush(stdout);
-            indexer.walk(argv[i]);
-            elapsed = tm.elapsed();
-            if (!FLAGS_json)
-                printf(" done.\n");
+            walk_one(search, argv[i]);
         }
+        if (!FLAGS_json)
+            printf("Finalizing...\n");
         search->finalize();
         elapsed = tm.elapsed();
         if (!FLAGS_json)

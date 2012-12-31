@@ -14,7 +14,9 @@ class git_tree;
 
 class git_indexer {
 public:
-    git_indexer(code_searcher *cs, const std::string& repopath);
+    git_indexer(code_searcher *cs,
+                const std::string& repopath,
+                const std::string& name);
     ~git_indexer();
     void walk(const std::string& ref);
 protected:
@@ -24,6 +26,7 @@ protected:
 
     code_searcher *cs_;
     git_repository *repo_;
+    std::string name_;
 };
 
 #endif

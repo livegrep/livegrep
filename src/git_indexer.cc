@@ -10,8 +10,10 @@ using namespace std;
 DEFINE_string(order_root, "", "Walk top-level directories in this order.");
 DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided");
 
-git_indexer::git_indexer(code_searcher *cs, const string& repopath)
-    : cs_(cs), repo_(0) {
+git_indexer::git_indexer(code_searcher *cs,
+                         const string& repopath,
+                         const string& name)
+    : cs_(cs), repo_(0), name_(name) {
     git_repository_open(&repo_, repopath.c_str());
     assert(repo_);
 }
@@ -29,6 +31,8 @@ void git_indexer::walk(const string& ref) {
     char oidstr[GIT_OID_HEXSZ+1];
     string name = FLAGS_revparse ?
         strdup(git_oid_tostr(oidstr, sizeof(oidstr), git_commit_id(commit))) : ref;
+    if (name_.size())
+        name = name_ + ":" + name;
 
     walk_root(name, tree);
 }
