@@ -28,19 +28,24 @@ ifneq ($(tcmalloc),)
 override LDLIBS+=-ltcmalloc
 endif
 
-DIRS := src src/lib src/3party
+DIRS := src src/lib src/3party src/tools
 override CPPFLAGS += $(patsubst %,-I%, $(DIRS))
 OBJECTS :=
+TOOLS :=
 include $(patsubst %, %/Makefrag, $(DIRS))
 DEPFILES := $(foreach obj,$(OBJECTS), $(dir $(obj)).$(notdir $(obj:.o=)).d)
+TOOL_OBJECTS := $(patsubst %,src/tools/%.o, $(TOOLS))
 
-all: codesearch $(DEPFILES)
+all: $(TOOLS) $(DEPFILES)
 
-codesearch: $(OBJECTS) $(MAKEVARS)/LDFLAGS
-	$(CXX) -o $@ $(LDFLAGS) $(filter-out $(MAKEVARS)/%,$^) $(LDLIBS)
+define build_tool
+$(1): $$(OBJECTS) src/tools/$(1).o $$(MAKEVARS)/LDFLAGS
+	$$(CXX) -o $$@ $$(LDFLAGS) $$(filter-out $$(MAKEVARS)/%,$$^) $$(LDLIBS)
+endef
+$(foreach tool,$(TOOLS),$(eval $(call build_tool,$(tool))))
 
 clean:
-	rm -f codesearch $(OBJECTS) $(DEPFILES)
+	rm -f $(TOOLS) $(TOOL_OBJECTS) $(OBJECTS) $(DEPFILES)
 
 $(OBJECTS): $(MAKEVARS)/CXX $(MAKEVARS)/CXXFLAGS
 
