@@ -8,12 +8,13 @@
 
 #include <algorithm>
 
-const size_t kRadixCutoff = 128;
+const size_t kRadixCutoff   = 128;
+const size_t kRadixMaxLevel = 80;
 
 template <typename Index, typename Compare>
 void msd_radix_sort(uint32_t *left, uint32_t *right, int level,
                     Index index, Compare cmp) {
-    if (right - left < kRadixCutoff) {
+    if (right - left < kRadixCutoff || level > kRadixMaxLevel) {
         std::sort(left, right, cmp);
         return;
     }
