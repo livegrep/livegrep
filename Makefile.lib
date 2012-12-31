@@ -2,16 +2,14 @@ comma:=,
 MAKEVARS := .makevars
 
 .%.d: %.cc $(MAKEVARS)/CXX $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/CXXFLAGS
-	@set -e; rm -f $@; \
+	@set -e; trap 'rm -f $@.$$$$' EXIT; rm -f $@; \
 	 $(CXX) -M $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
-	 sed 's,\($(notdir $*)\)\.o[ :]*,$*.o $@ : ,g' < $@.$$$$ > $@; \
-	 rm -f $@.$$$$
+	 sed 's,\($(notdir $*)\)\.o[ :]*,$*.o $@ : ,g' < $@.$$$$ > $@
 
 .%.d: %.c $(MAKEVARS)/CC $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/CFLAGS
-	@set -e; rm -f $@; \
+	@set -e; trap 'rm -f $@.$$$$' EXIT; rm -f $@; \
 	 $(CC) -M $(CPPFLAGS) $(CFLAGS) $< > $@.$$$$; \
-	 sed 's,\($(notdir $*)\)\.o[ :]*,$*.o $@ : ,g' < $@.$$$$ > $@; \
-	 rm -f $@.$$$$
+	 sed 's,\($(notdir $*)\)\.o[ :]*,$*.o $@ : ,g' < $@.$$$$ > $@
 
 $(MAKEVARS):
 	@mkdir -p $@
