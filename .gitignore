@@ -1,4 +1,5 @@
 /codesearch
+/inspect-index
 /Makefile.config
 *.o
 .*.d

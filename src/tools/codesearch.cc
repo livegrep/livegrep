@@ -25,7 +25,6 @@
 #include "re2/walker-inl.h"
 
 DEFINE_bool(json, false, "Use JSON output.");
-DEFINE_int32(threads, 4, "Number of threads to use.");
 DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
