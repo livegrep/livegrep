@@ -11,6 +11,7 @@
 #include <string>
 
 #include "dump_load.h"
+#include "codesearch.h"
 
 using std::string;
 
@@ -55,6 +56,7 @@ int main(int argc, char **argv) {
     }
     printf(" Trees: %d\n", idx->ntrees);
     printf(" Files: %d\n", idx->nfiles);
+    printf(" File size: %ld (%0.2fM)\n", st.st_size, st.st_size / double(1 << 20));
     printf(" Chunks: %d (%dM)\n", idx->nchunks,
            (idx->nchunks * idx->chunk_size) >> 20);
     unsigned long content_size = 0;
@@ -65,5 +67,15 @@ int main(int argc, char **argv) {
     }
     printf(" Content chunks: %d (%ldM)\n",
            idx->ncontent, content_size >> 20);
+    uint8_t *p = map + idx->files_off;
+    for (int i = 0; i < idx->nfiles; i++) {
+        p += sizeof(sha1_buf);
+        p += 4;
+        p += strlen(reinterpret_cast<char*>(p));
+    }
+    printf(" Filename data: %ld (%0.2fM)\n",
+           (p - (map + idx->files_off)),
+           (p - (map + idx->files_off))/double(1<<20));
+
     return 0;
 }
