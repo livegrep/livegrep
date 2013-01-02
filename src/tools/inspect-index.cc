@@ -77,5 +77,19 @@ int main(int argc, char **argv) {
            (p - (map + idx->files_off)),
            (p - (map + idx->files_off))/double(1<<20));
 
+    unsigned long chunk_file_size = 0;
+    chunk_header *chunks = reinterpret_cast<chunk_header*>
+        (map + idx->chunks_off);
+    for (int i = 0; i < idx->nchunks; i++) {
+        p = map + chunks[i].files_off;
+        p += 4;
+        p += 4 * chunks[i].nfiles;
+        p += 8;
+        chunk_file_size += p - (map + chunks[i].files_off);
+    }
+    printf(" chunk_file data: %ld (%0.2fM)\n",
+           chunk_file_size,
+           chunk_file_size / double(1 << 20));
+
     return 0;
 }
