@@ -117,19 +117,6 @@ void IndexKey::concat(intrusive_ptr<IndexKey> rhs) {
     rhs->collect_tails(tails_);
 }
 
-static string strprintf(const char *fmt, ...)
-    __attribute__((format (printf, 1, 2)));
-
-static string strprintf(const char *fmt, ...) {
-    char buf[4096];
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(buf, sizeof buf, fmt, ap);
-    va_end(ap);
-
-    return string(buf);
-}
-
 static string StrChar(uchar c) {
     if (c > ' ' && c <= '~')
         return strprintf("%c", c);

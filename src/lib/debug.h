@@ -6,6 +6,8 @@
 #ifndef CODESEARCH_DEBUG_H
 #define CODESEARCH_DEBUG_H
 
+#include <string>
+
 enum debug_mode {
     kDebugSearch        = 0x0001,
     kDebugProfile       = 0x0002,
@@ -22,5 +24,8 @@ extern debug_mode debug_enabled;
 
 void cs_debug(const char *file, int lno, const char *fmt, ...)
     __attribute__((format (printf, 3, 4)));
+
+std::string strprintf(const char *fmt, ...)
+    __attribute__((format (printf, 1, 2)));
 
 #endif

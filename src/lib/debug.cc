@@ -61,7 +61,7 @@ static const bool dummy = google::RegisterFlagValidator(&FLAGS_debug,
                                                         validate_debug);
 
 
-static string vstrprintf(const char *fmt, va_list ap) {
+string vstrprintf(const char *fmt, va_list ap) {
     char *buf = NULL;
     assert(vasprintf(&buf, fmt, ap) > 0);
 
@@ -70,10 +70,7 @@ static string vstrprintf(const char *fmt, va_list ap) {
     return out;
 }
 
-static string strprintf(const char *fmt, ...)
-    __attribute__((format (printf, 1, 2)));
-
-static string strprintf(const char *fmt, ...) {
+string strprintf(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     return vstrprintf(fmt, ap);
