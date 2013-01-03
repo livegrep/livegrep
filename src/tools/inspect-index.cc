@@ -120,13 +120,16 @@ int main(int argc, char **argv) {
                     chunks[i].data_off + (1 + sizeof(uint32_t)) * idx->chunk_size,
                     strprintf("chunk %d indexes", i)});
         p = map + chunks[i].files_off;
-        p += 4;
-        p += 4 * chunks[i].nfiles;
-        p += 8;
+        for (int j = 0; j < chunks[i].nfiles; ++j) {
+            uint32_t files = *reinterpret_cast<uint32_t*>(p);
+            p += 4;
+            p += files * 4;
+            p += 8;
+        }
+        chunk_file_size += p - (map + chunks[i].files_off);
         spans.push_back({ chunks[i].files_off,
                     (unsigned long)(p - map),
                     strprintf("chunk %d file map", i)});
-        chunk_file_size += p - (map + chunks[i].files_off);
     }
     printf(" chunk_file data: %ld (%0.2fM)\n",
            chunk_file_size,
