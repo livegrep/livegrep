@@ -7,13 +7,27 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <algorithm>
 
 #include <string>
 
 #include "dump_load.h"
 #include "codesearch.h"
+#include "debug.h"
 
 using std::string;
+
+struct index_span {
+    unsigned long left;
+    unsigned long right;
+    string name;
+};
+
+bool operator<(const index_span& left, const index_span& right) {
+    return left.left < right.left;
+}
+
+DEFINE_bool(dump_spans, false, "Dump detailed index span information.");
 
 int main(int argc, char **argv) {
     google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> INDEX.idx");
@@ -27,6 +41,8 @@ int main(int argc, char **argv) {
     int fd;
     struct stat st;
     uint8_t *map;
+
+    vector<index_span> spans;
 
     fd = open(argv[1], O_RDONLY);
     assert(fd > 0);
@@ -47,6 +63,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    spans.push_back({0, sizeof(index_header), "global header"});
+
     printf("Index: %s\n", argv[1]);
     printf(" Chunk size: %d ", idx->chunk_size);
     if ((idx->chunk_size & (idx->chunk_size - 1)) == 0) {
@@ -57,13 +75,20 @@ int main(int argc, char **argv) {
     printf(" Trees: %d\n", idx->ntrees);
     printf(" Files: %d\n", idx->nfiles);
     printf(" File size: %ld (%0.2fM)\n", st.st_size, st.st_size / double(1 << 20));
-    printf(" Chunks: %d (%dM)\n", idx->nchunks,
-           (idx->nchunks * idx->chunk_size) >> 20);
+    printf(" Chunks: %d (%dM) (%dM indexes)\n", idx->nchunks,
+           (idx->nchunks * idx->chunk_size) >> 20,
+           (idx->nchunks * idx->chunk_size) >> 18);
     unsigned long content_size = 0;
     content_chunk_header *chdrs = reinterpret_cast<content_chunk_header*>
         (map + idx->content_off);
+    spans.push_back({idx->content_off,
+                idx->content_off + idx->ncontent * sizeof(content_chunk_header),
+                "content chunk headers"});
     for (int i = 0; i < idx->ncontent; i++) {
         content_size += (chdrs[i].size + ((1<<20) - 1)) & ~((1<<20) - 1);
+        spans.push_back({chdrs[i].file_off,
+                    chdrs[i].file_off + chdrs[i].size,
+                    strprintf("content chunk %d", i)});
     }
     printf(" Content chunks: %d (%ldM)\n",
            idx->ncontent, content_size >> 20);
@@ -73,6 +98,10 @@ int main(int argc, char **argv) {
         p += 4;
         p += strlen(reinterpret_cast<char*>(p));
     }
+    spans.push_back({ idx->files_off,
+                (unsigned long)(p - map),
+                "file list" });
+
     printf(" Filename data: %ld (%0.2fM)\n",
            (p - (map + idx->files_off)),
            (p - (map + idx->files_off))/double(1<<20));
@@ -80,16 +109,40 @@ int main(int argc, char **argv) {
     unsigned long chunk_file_size = 0;
     chunk_header *chunks = reinterpret_cast<chunk_header*>
         (map + idx->chunks_off);
+    spans.push_back({ idx->chunks_off,
+                idx->chunks_off + idx->nchunks * sizeof(chunk_header),
+                "chunk headers" });
     for (int i = 0; i < idx->nchunks; i++) {
+        spans.push_back({ chunks[i].data_off,
+                    chunks[i].data_off + idx->chunk_size,
+                    strprintf("chunk %d", i)});
+        spans.push_back({ chunks[i].data_off + idx->chunk_size,
+                    chunks[i].data_off + (1 + sizeof(uint32_t)) * idx->chunk_size,
+                    strprintf("chunk %d indexes", i)});
         p = map + chunks[i].files_off;
         p += 4;
         p += 4 * chunks[i].nfiles;
         p += 8;
+        spans.push_back({ chunks[i].files_off,
+                    (unsigned long)(p - map),
+                    strprintf("chunk %d file map", i)});
         chunk_file_size += p - (map + chunks[i].files_off);
     }
     printf(" chunk_file data: %ld (%0.2fM)\n",
            chunk_file_size,
            chunk_file_size / double(1 << 20));
+
+    if (FLAGS_dump_spans) {
+        printf("Span table:\n");
+        sort(spans.begin(), spans.end());
+        unsigned long prev = 0;
+        for (auto it = spans.begin(); it != spans.end(); ++it) {
+            assert(prev <= it->left);
+            assert(it->left < it->right);
+            printf("%016lx-%016lx %s\n", it->left, it->right, it->name.c_str());
+            prev = it->right;
+        }
+    }
 
     return 0;
 }
