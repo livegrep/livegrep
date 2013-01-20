@@ -2,8 +2,9 @@ var Codesearch = require('../web/codesearch.js'),
     fs         = require('fs'),
     path       = require('path'),
     parseopt   = require('parseopt'),
-    log4js     = require('log4js'),
-    config     = require('../web/config.js');
+    log4js     = require('log4js');
+
+var config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json")));
 
 log4js.configure({
                    levels: {
@@ -23,13 +24,13 @@ var parser = new parseopt.OptionParser(
       },
       {
         name: "--repo",
-        default: config.SEARCH_REPO,
+        default: config.repo,
         type: 'string',
         help: 'Git repository to search'
       },
       {
         name: "--ref",
-        default: config.SEARCH_REF,
+        default: config.ref,
         type: 'string',
         help: 'Git ref to search.'
       },
@@ -57,8 +58,7 @@ function get_codesearch(args) {
     args = [];
   return new Codesearch(
     opts.options.repo, [opts.options.ref], {
-      args: config.SEARCH_ARGS.concat(
-        ['--load_index', config.SEARCH_INDEX]).concat(args).concat(extra_args)
+      args: ['--load_index', config.index].concat(args).concat(extra_args)
     });
 }
 module.exports.get_codesearch = get_codesearch;
