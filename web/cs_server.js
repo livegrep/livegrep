@@ -56,9 +56,8 @@ function Server(config) {
   var parent = this;
   this.clients = [];
 
-  this.codesearch = new Codesearch(config.SEARCH_REPO, [config.SEARCH_REF], {
-                                     args: config.SEARCH_ARGS.concat(
-                                       ['--load_index', config.SEARCH_INDEX])
+  this.codesearch = new Codesearch(config.BACKEND.repo, [], {
+                                     args: ['--load_index', config.BACKEND.index]
                                    });
   this.Server = function (remote, conn) {
     parent.clients[conn.id] = new Client(parent, remote);
@@ -90,5 +89,5 @@ if (Einhorn.is_worker()) {
   srv.listen({fd: fd});
 } else {
   var server = dnode(new Server(config).Server);
-  server.listen(config.DNODE_PORT);
+  server.listen(config.BACKEND.port);
 }

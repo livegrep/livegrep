@@ -3,25 +3,30 @@ var path   = require('path'),
     log4js = require('log4js');
 
 var config = {
-  DNODE_PORT: 0xC5EA,
   WEB_PORT: 8910,
-  SEARCH_REPO_NAME: "Linux",
-  SEARCH_REPO: path.join(__dirname, "../../linux"),
-  SEARCH_REF:  "v3.6",
-  SEARCH_INDEX: path.join(__dirname, "../../linux/codesearch.idx"),
-  GITHUB_REPO: "torvalds/linux",
-  SEARCH_ARGS: [],
-  BACKEND_CONNECTIONS: 4,
-  BACKENDS: [
-    ["localhost", 0xC5EA]
-  ],
-  LOG4JS_CONFIG: path.join(__dirname, "log4js.json"),
+  BACKEND: {
+    host: "localhost",
+    port: 0xC5EA,
+    connections: 4,
+    index: path.join(__dirname, "../../linux/codesearch.idx"),
+    name: "linux",
+    pretty_name: "Linux v3.7",
+    repos: [
+      {
+        path: path.join(__dirname, "../../linux"),
+        name: "",
+        refs: ["v3.7"],
+        github: "torvalds/linux",
+      }
+    ],
+    sort: 'include kernel mm fs arch'.split(/\s+/),
+  },
+  LOG4JS_CONFIG:   path.join(__dirname, "log4js.json"),
   SLOW_THRESHOLD:  300,
   MIN_SLOW_TIME:   2000,
   MAX_SLOW_TIME:   10000,
   QUERY_STREAK:    5,
   SMTP_CONFIG:     null,
-  ORDER_DIRS:      'include kernel mm fs arch'.split(/\s+/),
 };
 
 try {
@@ -32,6 +37,15 @@ try {
       config[k] = local[k]
     })
 } catch (e) {
+}
+
+if (config.BACKEND.repos.length > 1) {
+  var seen = {};
+  config.BACKEND.repos.forEach(function (repo) {
+    console.assert(repo.name);
+    console.assert(!seen.hasOwnProperty(repo.name));
+    seen[repo.name] = true;
+  });
 }
 
 log4js.configure(config.LOG4JS_CONFIG);

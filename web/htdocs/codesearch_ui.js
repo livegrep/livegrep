@@ -53,7 +53,16 @@ var Match = Backbone.Model.extend({
              });
   },
   url: function() {
-    return "https://github.com/" + CodesearchUI.github_repo + "/blob/" + shorten(this.get('path').ref) +
+    var tree = this.get('path').ref;
+    var pieces, name = '', ref;
+    pieces = tree.split(":");
+    if (pieces.length == 1) {
+      ref = tree;
+    } else {
+      name = pieces[0];
+      ref = pieces[1];
+    }
+    return "https://github.com/" + CodesearchUI.github_repos[name] + "/blob/" + shorten(ref) +
       "/" + this.get('path').path + "#L" + this.get('context').lno;
   }
 });
@@ -349,7 +358,7 @@ var CodesearchUI = function() {
     search_done: function(search, time, why) {
       CodesearchUI.state.handle_done(search, time, why);
     },
-    github_repo: ""
+    github_repos: {}
   };
 }();
 CodesearchUI.onload();

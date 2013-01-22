@@ -1,5 +1,5 @@
 <script type="text/javascript">
-  $(function(){CodesearchUI.github_repo = {{github_repo}};});
+  $(function(){CodesearchUI.github_repos = {{json github_repos}};});
 </script>
 <div id='searcharea'>
   <table id='searchinput'>
@@ -13,7 +13,7 @@
     </tr>
   </table>
   <div id='errorbox'>
-    <div class='what'> Now searching: {{repo_name}} {{ref}} </div>
+    <div class='what'> Now searching: {{repo_name}} </div>
     <div id='regex-error'>
       <span class='label'> Error: </span>
       <span id='errortext'>

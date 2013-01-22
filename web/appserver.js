@@ -5,7 +5,6 @@ var dnode  = require('dnode'),
     util   = require('util'),
     path   = require('path'),
     _      = require('underscore'),
-    config = require('./config.js'),
     Batch  = require('./batch.js'),
     QueryStats  = require('./lib/query-stats.js');
 var logger  = log4js.getLogger('appserver');
@@ -81,8 +80,8 @@ Client.prototype.fast_query = function() {
 
 Client.prototype.sort_matches = function(matches) {
   var order =  {};
-  for (var i = 0; i < this.parent.config.ORDER_DIRS.length; i++)
-    order[this.parent.config.ORDER_DIRS[i]] = i;
+  for (var i = 0; i < this.parent.config.BACKEND.sort.length; i++)
+    order[this.parent.config.BACKEND.sort[i]] = i;
   function sort_order(path) {
     var dir = /^[^\/]+/.exec(path)[0];
     if (dir in order)
@@ -173,8 +172,8 @@ Client.prototype.dispatch_search = function() {
   }
 }
 
-function ConnectionPool(server, name, config) {
-  var parent = this;
+function ConnectionPool(server, name, backend) {
+  var self = this;
   this.server  = server
   this.remotes = [];
   this.connections = [];
@@ -182,12 +181,9 @@ function ConnectionPool(server, name, config) {
   this.stats.start();
 
   var id = 0;
-  config.BACKENDS.forEach(
-    function (bk) {
-      for (var i = 0; i < config.BACKEND_CONNECTIONS; i++) {
-        parent.connect_to(bk, id++);
-      }
-    });
+  for (var i = 0; i < backend.connections; i++) {
+    self.connect_to(backend, id++);
+  }
 }
 
 ConnectionPool.prototype.connect_to = function(bk, id) {
@@ -240,8 +236,8 @@ ConnectionPool.prototype.connect_to = function(bk, id) {
     d.on('end',       disconnected);
     d.on('error',     disconnected);
     stream = net.connect({
-                           host: bk[0],
-                           port: bk[1]
+                           host: bk.host,
+                           port: bk.port
                          });
     stream.on('error',   disconnected);
     stream.pipe(d).pipe(stream);
@@ -262,8 +258,8 @@ function SearchServer(config, io) {
   var parent = this;
   this.config  = config;
   this.clients = {};
-  this.fast_pool = new ConnectionPool(this, 'fast', config);
-  this.slow_pool = new ConnectionPool(this, 'slow', config);
+  this.fast_pool = new ConnectionPool(this, 'fast', config.BACKEND);
+  this.slow_pool = new ConnectionPool(this, 'slow', config.BACKEND);
 
   var Server = function (sock) {
     logger.info("New client (%s)[%j]", sock.id, remote_address(sock));

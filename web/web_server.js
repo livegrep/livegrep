@@ -64,7 +64,7 @@ app.configure(
                                      return '' + req.ip + fmt(' [:date] :method :url');
                                    }
                                  }));
-    app.engine('.html', require('hbs').__express);
+    app.engine('.html', hbs.__express);
     app.set('view engine', 'html');
     app.set('view options', {
               production: opts.options.production
@@ -72,17 +72,24 @@ app.configure(
     app.set('views', path.join(__dirname, 'templates'));
     app.use(express.bodyParser());
     app.use(express.static(path.join(__dirname, 'htdocs')));
+    hbs.handlebars.registerHelper('json', function (data) {
+      console.log("json: %j", data);
+      return new hbs.handlebars.SafeString(JSON.stringify(data).replace(/<\/script>/g, '<\\/script>'));
+    });
   });
 
 app.get('/', function (req, res) {res.redirect('/search');});
 app.get('/search', function (req, res) {
+          var repo_map = {};
+          config.BACKEND.repos.forEach(function (repo) {
+            repo_map[repo.name] = repo.github;
+          });
           res.render('index',
                      {
                        js: true,
                        title: 'search',
-                       repo_name: config.SEARCH_REPO_NAME,
-                       github_repo: new hbs.handlebars.SafeString(JSON.stringify(config.GITHUB_REPO)),
-                       ref: shorten(config.SEARCH_REF)
+                       repo_name: config.BACKEND.pretty_name,
+                       github_repos: repo_map,
                      });
         });
 app.get('/about', function (req, res) {
