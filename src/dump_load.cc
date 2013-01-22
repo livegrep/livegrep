@@ -109,7 +109,7 @@ public:
         auto alloc = alloc_mmap((1 + sizeof(uint32_t)) * chunk_size_);
 
         chunk_header chdr = {
-            .data_off = uint64_t(alloc.first)
+            uint64_t(alloc.first)
         };
         index_->chunks_.push_back(chdr);
 
@@ -124,7 +124,7 @@ public:
             alloc.second, alloc.second + kContentChunkSize
         };
         content_chunk_header hdr = {
-            .file_off = uint64_t(alloc.first),
+            uint64_t(alloc.first)
             /* .size will be calculated in finalize */
         };
         index_->content_.push_back(hdr);
