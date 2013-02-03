@@ -320,8 +320,8 @@ SearchServer.prototype.dump_stats = function() {
   var stats = {};
   Object.keys(self.pools).forEach(function (name) {
     var pools = self.pools[name];
-    stats[pools.slow.name] = pools.slow.stats.stats();
-    stats[pools.fast.name] = pools.slow.stats.stats();
+    stats[pools.slow.stats.name] = pools.slow.stats.stats();
+    stats[pools.fast.stats.name] = pools.slow.stats.stats();
   });
   stats.server = {
     clients: clients,
