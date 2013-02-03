@@ -73,7 +73,6 @@ app.configure(
     app.use(express.bodyParser());
     app.use(express.static(path.join(__dirname, 'htdocs')));
     hbs.handlebars.registerHelper('json', function (data) {
-      console.log("json: %j", data);
       return new hbs.handlebars.SafeString(JSON.stringify(data).replace(/<\/script>/g, '<\\/script>'));
     });
   });
