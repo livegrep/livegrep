@@ -23,11 +23,12 @@ function generateIndex(backend, cb) {
                  {
                    customFds: [-1, 1, 2]
                  });
-  cs.on('exit', function(code) {
-          if (code !== 0)
-            console.error("Index process exited with error %d", code);
-          else
+  cs.on('exit', function(code, signal) {
+          if (code !== 0) {
+            console.error("Index process exited with %s", code ? ("error " + code) : "signal " + signal);
+          } else {
             fs.renameSync(tmp, backend.index);
+          }
           cb();
         });
   cs.stdin.end();
