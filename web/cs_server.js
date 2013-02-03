@@ -7,6 +7,8 @@ var dnode   = require('dnode'),
     util       = require('./util.js'),
     Codesearch = require('./codesearch.js'),
     Batch      = require('./batch.js'),
+    parseopt   = require('./lib/parseopt.js'),
+    backend    = require('./backend.js'),
     Einhorn    = require('einhorn');
 
 function Client(parent, remote) {
@@ -52,12 +54,12 @@ Client.prototype.search = function (re, file, cb) {
   search.on('match', batch.send.bind(batch));
 }
 
-function Server(config) {
+function Server(backend) {
   var parent = this;
   this.clients = [];
 
-  this.codesearch = new Codesearch(config.BACKEND.repo, [], {
-                                     args: ['--load_index', config.BACKEND.index]
+  this.codesearch = new Codesearch(backend.repo, [], {
+                                     args: ['--load_index', backend.index]
                                    });
   this.Server = function (remote, conn) {
     parent.clients[conn.id] = new Client(parent, remote);
@@ -78,9 +80,16 @@ function Server(config) {
   }
 }
 
+var parser = new parseopt.OptionParser();
+backend.addBackendOpt(config, parser);
+
+var opts = parser.parse(process.argv);
+
+var backend = backend.selectBackend(config, opts);
+
 if (Einhorn.is_worker()) {
   Einhorn.ack();
-  var app = new Server(config).Server;
+  var app = new Server(backend).Server;
   var srv = net.createServer(function (c) {
     var d = dnode(app);
     c.pipe(d).pipe(c);
@@ -88,6 +97,6 @@ if (Einhorn.is_worker()) {
   var fd = Einhorn.socket();
   srv.listen({fd: fd});
 } else {
-  var server = dnode(new Server(config).Server);
-  server.listen(config.BACKEND.port);
+  var server = dnode(new Server(backend).Server);
+  server.listen(backend.port);
 }

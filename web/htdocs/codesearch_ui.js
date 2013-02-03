@@ -62,8 +62,9 @@ var Match = Backbone.Model.extend({
       name = pieces[0];
       ref = pieces[1];
     }
-    return "https://github.com/" + CodesearchUI.github_repos[name] + "/blob/" + shorten(ref) +
-      "/" + this.get('path').path + "#L" + this.get('context').lno;
+    return "https://github.com/" + CodesearchUI.github_repos[this.get('backend')][name] +
+      "/blob/" + shorten(ref) + "/" + this.get('path').path +
+      "#L" + this.get('context').lno;
   }
 });
 
@@ -183,12 +184,16 @@ var SearchState = Backbone.Model.extend({
     return ++this.search_id;
   },
 
-  dispatch: function (q, file) {
+  dispatch: function (search) {
     var id = this.next_id();
-    this.search_map[id] = {q: q, file: file};
-    if (!q.length)
+    search.id = id;
+    this.search_map[id] = {
+      q: search.line,
+      file: search.file,
+      backend: search.backend
+    };
+    if (!search.line.length)
       this.set('displaying', id);
-    return id;
   },
 
   url: function() {
@@ -197,8 +202,10 @@ var SearchState = Backbone.Model.extend({
     if (!current)
       return '/search';
 
-    if (current.q)    q.q = current.q;
-    if (current.file) q.file = current.file;
+    ['q','file','backend'].forEach(function (key) {
+      if(current[key])
+        q[key] = current[key];
+    });
     return '/search?' + $.param(q);
   },
 
@@ -214,6 +221,7 @@ var SearchState = Backbone.Model.extend({
       return false;
     this.set('displaying', search);
     this.matches.add({
+                       backend: match.backend,
                        line: match.line,
                        bounds: match.bounds,
                        contexts: match.contexts
@@ -309,17 +317,21 @@ var CodesearchUI = function() {
 
       CodesearchUI.input      = $('#searchbox');
       CodesearchUI.input_file = $('#filebox');
+      CodesearchUI.input_backend = $('#backend');
       var parms = CodesearchUI.parse_query_params();
       if (parms.q)
         CodesearchUI.input.val(parms.q);
       if (parms.file)
         CodesearchUI.input_file.val(parms.file);
+      if (parms.backend)
+        CodesearchUI.input_backend.val(parms.backend);
 
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input_file.keydown(CodesearchUI.keypress);
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input_file.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input.focus();
+      CodesearchUI.input_backend.change(CodesearchUI.keypress);
 
       Codesearch.connect(CodesearchUI);
     },
@@ -342,12 +354,13 @@ var CodesearchUI = function() {
       setTimeout(CodesearchUI.newsearch, 0);
     },
     newsearch: function() {
-      var id = CodesearchUI.state.dispatch(CodesearchUI.input.val(),
-                                           CodesearchUI.input_file.val());
-      Codesearch.new_search(
-        CodesearchUI.input.val(),
-        CodesearchUI.input_file.val(),
-        id);
+      var search = {
+        line: CodesearchUI.input.val(),
+        file: CodesearchUI.input_file.val(),
+        backend: CodesearchUI.input_backend.val(),
+      };
+      CodesearchUI.state.dispatch(search);
+      Codesearch.new_search(search);
     },
     error: function(search, error) {
       CodesearchUI.state.handle_error(search, error);

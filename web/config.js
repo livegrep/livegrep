@@ -4,7 +4,7 @@ var path   = require('path'),
 
 var config = {
   WEB_PORT: 8910,
-  BACKEND: {
+  BACKENDS: {"": {
     host: "localhost",
     port: 0xC5EA,
     connections: 4,
@@ -20,7 +20,7 @@ var config = {
       }
     ],
     sort: 'include kernel mm fs arch'.split(/\s+/),
-  },
+  }},
   LOG4JS_CONFIG:   path.join(__dirname, "log4js.json"),
   SLOW_THRESHOLD:  300,
   MIN_SLOW_TIME:   2000,
@@ -39,14 +39,17 @@ try {
 } catch (e) {
 }
 
-if (config.BACKEND.repos.length > 1) {
-  var seen = {};
-  config.BACKEND.repos.forEach(function (repo) {
-    console.assert(repo.name);
-    console.assert(!seen.hasOwnProperty(repo.name));
-    seen[repo.name] = true;
-  });
-}
+Object.keys(config.BACKENDS).forEach(function (k) {
+  var backend = config.BACKENDS[k];
+  if (backend.repos.length > 1) {
+    var seen = {};
+    backend.repos.forEach(function (repo) {
+      console.assert(repo.name);
+      console.assert(!seen.hasOwnProperty(repo.name));
+      seen[repo.name] = true;
+    });
+  }
+});
 
 log4js.configure(config.LOG4JS_CONFIG);
 

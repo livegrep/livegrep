@@ -13,7 +13,13 @@
     </tr>
   </table>
   <div id='errorbox'>
-    <div class='what'> Now searching: {{repo_name}} </div>
+    <div class='what'> Search:
+    <select id='backend'>
+    {{#each repos}}
+     <option value="{{name}}">{{pretty}}</option>
+    {{/each}}
+    </select>
+    </div>
     <div id='regex-error'>
       <span class='label'> Error: </span>
       <span id='errortext'>

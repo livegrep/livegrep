@@ -15,9 +15,9 @@ function remote_address(sock) {
   return {};
 }
 
-function Client(parent, pool, sock) {
+function Client(parent, sock) {
   this.parent = parent;
-  this.pool   = pool;
+  this.is_fast = true;
   this.socket = sock;
   this.pending_search = null;
   this.last_search = null;
@@ -27,6 +27,12 @@ function Client(parent, pool, sock) {
   this.last_slow   = null;
 }
 
+var DEFAULT_BACKEND = 'livegrep';
+
+Client.prototype.pool = function(search) {
+  return this.parent.pools[search.backend][this.is_fast ? "fast" : "slow"];
+}
+
 Client.prototype.debug = function() {
   logger.debug("[%s:%d] %s",
                this.remote_address.address,
@@ -34,21 +40,19 @@ Client.prototype.debug = function() {
                util.format.apply(null, arguments));
 }
 
-Client.prototype.new_search = function (line, file, id) {
-  this.debug('new search: (%s) (%j)', id, {line:line, file:file});
+Client.prototype.new_search = function (opts) {
+  opts.backend = opts.backend || DEFAULT_BACKEND;
+  this.debug('new search: %j', opts);
   if (this.last_search &&
-      line === this.last_search.line &&
-      file === this.last_search.file)
+      opts.line === this.last_search.line &&
+      opts.file === this.last_search.file &&
+      opts.backend === this.last_search.backend)
     return;
-  if (line === '') {
+  if (opts.line === '') {
     this.last_search = null;
     return;
   }
-  this.pending_search = {
-    line: line,
-    file: file,
-    id: id
-  };
+  this.pending_search = opts;
   this.dispatch_search();
 }
 
@@ -57,17 +61,17 @@ Client.prototype.search_done = function() {
   process.nextTick(this.dispatch_search.bind(this));
 }
 
-Client.prototype.switch_pool = function(pool) {
-  if (this.pool === pool)
+Client.prototype.mark_fast = function(fast) {
+  if (this.is_fast === fast)
     return;
-  this.debug("Switching to %s pool", pool.stats.name);
-  this.pool = pool;
+  this.debug("Switching to %s pools", fast ? "fast" : "slow");
+  this.is_fast = fast;
 }
 
 Client.prototype.slow_query = function() {
   this.last_slow = new Date();
   this.fast_streak = 0;
-  this.switch_pool(this.parent.slow_pool);
+  this.mark_fast(false);
 }
 
 Client.prototype.fast_query = function() {
@@ -75,13 +79,13 @@ Client.prototype.fast_query = function() {
   if ((new Date() - this.last_slow) < this.parent.config.MIN_SLOW_TIME)
     return;
   if (this.fast_streak >= this.parent.config.QUERY_STREAK)
-    this.switch_pool(this.parent.fast_pool);
+    this.mark_fast(true);
 }
 
-Client.prototype.sort_matches = function(matches) {
+Client.prototype.sort_matches = function(pool, matches) {
   var order =  {};
-  for (var i = 0; i < this.parent.config.BACKEND.sort.length; i++)
-    order[this.parent.config.BACKEND.sort[i]] = i;
+  for (var i = 0; i < pool.backend.sort.length; i++)
+    order[pool.backend.sort[i]] = i;
   function sort_order(path) {
     var dir = /^[^\/]+/.exec(path)[0];
     if (dir in order)
@@ -105,71 +109,74 @@ Client.prototype.sort_matches = function(matches) {
 }
 
 Client.prototype.dispatch_search = function() {
-  if (this.pending_search !== null &&
-      !this.active_search &&
-      this.pool.remotes.length) {
-    if (this.last_slow &&
-        (new Date() - this.last_slow) >= this.parent.config.MAX_SLOW_TIME)
-      this.switch_pool(this.parent.fast_pool);
+  if (this.pending_search === null || this.active_search)
+    return;
+  var pool = this.pool(this.pending_search);
+  if (!pool.remotes)
+    return;
 
-    var codesearch = this.pool.remotes.pop();
-    console.assert(codesearch.cs_ready);
-    var start = new Date();
-    this.last_search = this.pending_search;
-    this.debug('dispatching: (%j) to %s-%d...',
-      this.pending_search,
-      this.pool.stats.name,
-      codesearch.__id);
+  if (this.last_slow &&
+      (new Date() - this.last_slow) >= this.parent.config.MAX_SLOW_TIME)
+    this.mark_fast(true);
 
-    var search = this.pending_search;
-    this.pending_search = null;
-    this.active_search  = search;
-    var self   = this;
-    var sock   = this.socket;
-    var batch  = new Batch(function (m) {
-                             sock.emit('match', search.id, m);
-                           }, 50,
-                           function (matches) {
-                             return self.sort_matches(matches)
-                           });
-    var cbs = {
-      not_ready: function() {
-        logger.info('Remote reports not ready for %j', search);
-        if (self.pending_search === null)
-          self.pending_search = search;
-        self.search_done();
-        codesearch.cs_client = null;
-      },
-      error: function (err) {
-        sock.emit('regex_error', search.id, err);
-        self.search_done();
-        codesearch.cs_client = null;
-      },
-      match: function (match) {
-        match = JSON.parse(match);
-        logger.trace("Reporting match %j for %j.", match, search);
-        batch.send(match);
-      },
-      done: function (stats) {
-        stats = JSON.parse(stats);
-        var time = (new Date()) - start;
-        self.pool.stats.done(search.id, start, time);
-        batch.flush();
-        sock.emit('search_done', search.id, time, stats.why);
-        self.debug("Search done: (%j): %s", search, time);
-        if (time > self.parent.config.SLOW_THRESHOLD) {
-          self.slow_query();
-        } else {
-          self.fast_query();
-        }
-        self.search_done();
-        codesearch.cs_client = null;
+  var codesearch = pool.remotes.pop();
+  console.assert(codesearch.cs_ready);
+  var start = new Date();
+  this.last_search = this.pending_search;
+  this.debug('dispatching: (%j) to %s-%d...',
+    this.pending_search,
+    pool.stats.name,
+    codesearch.__id);
+
+  var search = this.pending_search;
+  this.pending_search = null;
+  this.active_search  = search;
+  var self   = this;
+  var sock   = this.socket;
+  var batch  = new Batch(function (m) {
+                           sock.emit('match', search.id, m);
+                         }, 50,
+                         function (matches) {
+                           return self.sort_matches(pool, matches)
+                         });
+  var cbs = {
+    not_ready: function() {
+      logger.info('Remote reports not ready for %j', search);
+      if (self.pending_search === null)
+        self.pending_search = search;
+      self.search_done();
+      codesearch.cs_client = null;
+    },
+    error: function (err) {
+      sock.emit('regex_error', search.id, err);
+      self.search_done();
+      codesearch.cs_client = null;
+    },
+    match: function (match) {
+      match = JSON.parse(match);
+      match.backend = search.backend;
+      logger.trace("Reporting match %j for %j.", match, search);
+      batch.send(match);
+    },
+    done: function (stats) {
+      stats = JSON.parse(stats);
+      var time = (new Date()) - start;
+      pool.stats.done(search.id, start, time);
+      batch.flush();
+      sock.emit('search_done', search.id, time, stats.why);
+      self.debug("Search done: (%j): %s", search, time);
+      if (time > self.parent.config.SLOW_THRESHOLD) {
+        self.slow_query();
+      } else {
+        self.fast_query();
       }
+      self.search_done();
+      codesearch.cs_client = null;
     }
-    codesearch.try_search(search.line, search.file, cbs);
-    codesearch.cs_ready = false;
-    codesearch.cs_client = this;
   }
+  codesearch.try_search(search.line, search.file, cbs);
+  codesearch.cs_ready = false;
+  codesearch.cs_client = this;
 }
 
 function ConnectionPool(server, name, backend) {
@@ -179,6 +186,7 @@ function ConnectionPool(server, name, backend) {
   this.connections = [];
   this.stats       = new QueryStats(name, {timeout: 5*60*1000});
   this.stats.start();
+  this.backend = backend;
 
   var id = 0;
   for (var i = 0; i < backend.connections; i++) {
@@ -255,23 +263,37 @@ ConnectionPool.prototype.dispatch = function () {
 }
 
 function SearchServer(config, io) {
-  var parent = this;
+  var self = this;
   this.config  = config;
   this.clients = {};
-  this.fast_pool = new ConnectionPool(this, 'fast', config.BACKEND);
-  this.slow_pool = new ConnectionPool(this, 'slow', config.BACKEND);
+  this.pools   = {};
+  Object.keys(config.BACKENDS).forEach(function (name) {
+    var backend = config.BACKENDS[name];
+    self.pools[name] = {
+      fast: new ConnectionPool(self, 'fast-' + name, backend),
+      slow: new ConnectionPool(self, 'slow-' + name, backend),
+    }
+  });
 
   var Server = function (sock) {
     logger.info("New client (%s)[%j]", sock.id, remote_address(sock));
-    parent.clients[sock.id] = new Client(parent, parent.fast_pool, sock);
-    sock.on('new_search', function(line, file, id) {
-              if (id == null)
-                id = line;
-              parent.clients[sock.id].new_search(line, file, id);
+    self.clients[sock.id] = new Client(self, sock);
+    sock.on('new_search', function(opts, file, id) {
+              if (typeof(opts) == 'string') {
+                // Compatibility with the old API
+                opts = {
+                  line: opts,
+                  file: file,
+                  id: id
+                }
+              }
+              if (opts.id == null)
+                opts.id = opts.line;
+              self.clients[sock.id].new_search(opts);
     });
     sock.on('disconnect', function() {
               logger.info("Disconnected (%s)[%j]", sock.id, remote_address(sock));
-              delete parent.clients[sock.id];
+              delete self.clients[sock.id];
             });
   };
 
@@ -279,7 +301,7 @@ function SearchServer(config, io) {
     new Server(sock);
   });
   setInterval(function() {
-                parent.dump_stats();
+                self.dump_stats();
               }, 30*1000);
 }
 
@@ -289,17 +311,18 @@ SearchServer.prototype.dump_stats = function() {
   _.values(this.clients).forEach(
     function (c){
       clients++;
-      if (c.pool === self.slow_pool)
-        slow++;
-      else if (c.pool === self.fast_pool)
+      if (c.is_fast)
         fast++;
       else
-        console.log("WTF pool %j", c);
+        slow++;
     });
   logger.info("Clients/slow/fast: %d %d %d", clients, slow, fast);
   var stats = {};
-  stats.slow = this.slow_pool.stats.stats();
-  stats.fast = this.fast_pool.stats.stats();
+  Object.keys(self.pools).forEach(function (name) {
+    var pools = self.pools[name];
+    stats[pools.slow.name] = pools.slow.stats.stats();
+    stats[pools.fast.name] = pools.slow.stats.stats();
+  });
   stats.server = {
     clients: clients,
     slow: slow,
