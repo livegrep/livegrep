@@ -98,6 +98,8 @@ function searchHandler (req, res) {
                    pretty: backend.pretty_name
                  };
                }),
+               multi_repo: Object.keys(config.BACKENDS).length > 1,
+               repo_name: (config.BACKENDS['']||{}).pretty_name,
                github_repos: repo_map,
              });
 }

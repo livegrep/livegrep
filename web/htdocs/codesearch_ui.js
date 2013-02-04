@@ -326,6 +326,8 @@ var CodesearchUI = function() {
       CodesearchUI.input      = $('#searchbox');
       CodesearchUI.input_file = $('#filebox');
       CodesearchUI.input_backend = $('#backend');
+      if (CodesearchUI.input_backend.length == 0)
+        CodesearchUI.input_backend = null;
       CodesearchUI.parse_url();
 
       CodesearchUI.input.keydown(CodesearchUI.keypress);
@@ -333,7 +335,8 @@ var CodesearchUI = function() {
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input_file.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input.focus();
-      CodesearchUI.input_backend.change(CodesearchUI.keypress);
+      if (CodesearchUI.input_backend)
+        CodesearchUI.input_backend.change(CodesearchUI.keypress);
 
       Codesearch.connect(CodesearchUI);
     },
@@ -350,7 +353,7 @@ var CodesearchUI = function() {
       if (m = (new RegExp("/search/(\\w+)/?").exec(window.location.pathname))) {
         backend = m[1];
       }
-      if (backend)
+      if (backend && CodesearchUI.input_backend)
         CodesearchUI.input_backend.val(backend);
     },
     parse_query_params: function() {
@@ -375,8 +378,9 @@ var CodesearchUI = function() {
       var search = {
         line: CodesearchUI.input.val(),
         file: CodesearchUI.input_file.val(),
-        backend: CodesearchUI.input_backend.val(),
       };
+      if(CodesearchUI.input_backend)
+        search.backend = CodesearchUI.input_backend.val();
       CodesearchUI.state.dispatch(search);
       Codesearch.new_search(search);
     },

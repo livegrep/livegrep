@@ -27,8 +27,6 @@ function Client(parent, sock) {
   this.last_slow   = null;
 }
 
-var DEFAULT_BACKEND = 'livegrep';
-
 Client.prototype.pool = function(search) {
   return this.parent.pools[search.backend][this.is_fast ? "fast" : "slow"];
 }
@@ -41,7 +39,9 @@ Client.prototype.debug = function() {
 }
 
 Client.prototype.new_search = function (opts) {
-  opts.backend = opts.backend || DEFAULT_BACKEND;
+  if (!this.parent.pools[opts.backend]) {
+    opts.backend = Object.keys(this.parent.pools)[0];
+  }
   this.debug('new search: %j', opts);
   if (this.last_search &&
       opts.line === this.last_search.line &&
