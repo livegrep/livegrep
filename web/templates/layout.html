@@ -3,16 +3,16 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <title>code search ⋅ {{title}}</title>
-    <link rel="stylesheet" href='css/codesearch.css' />
-    <script language="javascript" type="text/javascript" src="js/jquery.js"></script>
-    <script language="javascript" type="text/javascript" src="feedback.js"></script>
+    <link rel="stylesheet" href='/css/codesearch.css' />
+    <script language="javascript" type="text/javascript" src="/js/jquery.js"></script>
+    <script language="javascript" type="text/javascript" src="/feedback.js"></script>
     {{#if js}}
-    <script language="javascript" type="text/javascript" src="js/underscore.js"></script>
-    <script language="javascript" type="text/javascript" src="js/backbone.js"></script>
+    <script language="javascript" type="text/javascript" src="/js/underscore.js"></script>
+    <script language="javascript" type="text/javascript" src="/js/backbone.js"></script>
     <script language="javascript" type="text/javascript" src="/socket.io/socket.io.js"></script>
-    <script language="javascript" type="text/javascript" src="js/html.js"></script>
-    <script language="javascript" type="text/javascript" src="codesearch.js"></script>
-    <script language="javascript" type="text/javascript" src="codesearch_ui.js"></script>
+    <script language="javascript" type="text/javascript" src="/js/html.js"></script>
+    <script language="javascript" type="text/javascript" src="/codesearch.js"></script>
+    <script language="javascript" type="text/javascript" src="/codesearch_ui.js"></script>
     {{/if}}
     {{#if production}}
     <script type="text/javascript">
@@ -49,7 +49,7 @@
         <div class='clear'> </div>
         <span class='submit'>
           <span class='result'> </span>
-          <img class='spinner' src='ajax-loader.gif' alt='…'> </img>
+          <img class='spinner' src='/ajax-loader.gif' alt='…'> </img>
           <button>Send It</button>
         </span>
       </form>

@@ -78,29 +78,31 @@ app.configure(
   });
 
 app.get('/', function (req, res) {res.redirect('/search');});
-app.get('/search', function (req, res) {
-          var repo_map = {};
-          Object.keys(config.BACKENDS).forEach(function (name) {
-            var backend = config.BACKENDS[name];
-            repo_map[name] = {};
-            backend.repos.forEach(function (repo) {
-              repo_map[name][repo.name] = repo.github;
-            });
-          });
-          res.render('index',
-                     {
-                       js: true,
-                       title: 'search',
-                       repos: Object.keys(config.BACKENDS).map(function (name) {
-                         var backend = config.BACKENDS[name];
-                         return {
-                           name: name,
-                           pretty: backend.pretty_name
-                         };
-                       }),
-                       github_repos: repo_map,
-                     });
-        });
+function searchHandler (req, res) {
+  var repo_map = {};
+  Object.keys(config.BACKENDS).forEach(function (name) {
+    var backend = config.BACKENDS[name];
+    repo_map[name] = {};
+    backend.repos.forEach(function (repo) {
+      repo_map[name][repo.name] = repo.github;
+    });
+  });
+  res.render('index',
+             {
+               js: true,
+               title: 'search',
+               repos: Object.keys(config.BACKENDS).map(function (name) {
+                 var backend = config.BACKENDS[name];
+                 return {
+                   name: name,
+                   pretty: backend.pretty_name
+                 };
+               }),
+               github_repos: repo_map,
+             });
+}
+app.get('/search', searchHandler);
+app.get('/search/:backend', searchHandler);
 app.get('/about', function (req, res) {
           res.render('about',
                      {

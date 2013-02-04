@@ -201,12 +201,20 @@ var SearchState = Backbone.Model.extend({
     var current = this.search_map[this.get('displaying')];
     if (!current)
       return '/search';
+    var base = '/search';
 
-    ['q','file','backend'].forEach(function (key) {
+    ['q','file'].forEach(function (key) {
       if(current[key])
         q[key] = current[key];
     });
-    return '/search?' + $.param(q);
+
+    if (q.backend) {
+      base += "/" + q.backend
+    } else if (CodesearchUI.input_backend) {
+      base += "/" + CodesearchUI.input_backend.val();
+    }
+    var qs = $.param(q);
+    return base + (qs ? "?" + qs : "");
   },
 
   handle_error: function (search, error) {
@@ -318,13 +326,7 @@ var CodesearchUI = function() {
       CodesearchUI.input      = $('#searchbox');
       CodesearchUI.input_file = $('#filebox');
       CodesearchUI.input_backend = $('#backend');
-      var parms = CodesearchUI.parse_query_params();
-      if (parms.q)
-        CodesearchUI.input.val(parms.q);
-      if (parms.file)
-        CodesearchUI.input_file.val(parms.file);
-      if (parms.backend)
-        CodesearchUI.input_backend.val(parms.backend);
+      CodesearchUI.parse_url();
 
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input_file.keydown(CodesearchUI.keypress);
@@ -334,6 +336,22 @@ var CodesearchUI = function() {
       CodesearchUI.input_backend.change(CodesearchUI.keypress);
 
       Codesearch.connect(CodesearchUI);
+    },
+    parse_url: function() {
+      var parms = CodesearchUI.parse_query_params();
+      if (parms.q)
+        CodesearchUI.input.val(parms.q);
+      if (parms.file)
+        CodesearchUI.input_file.val(parms.file);
+      var backend = null;
+      if (parms.backend)
+        backend = parms.backend;
+      var m;
+      if (m = (new RegExp("/search/(\\w+)/?").exec(window.location.pathname))) {
+        backend = m[1];
+      }
+      if (backend)
+        CodesearchUI.input_backend.val(backend);
     },
     parse_query_params: function() {
       var urlParams = {};
