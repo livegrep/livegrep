@@ -101,6 +101,7 @@ function searchHandler (req, res) {
                multi_repo: Object.keys(config.BACKENDS).length > 1,
                repo_name: (config.BACKENDS['']||{}).pretty_name,
                github_repos: repo_map,
+               production: opts.options.production
              });
 }
 app.get('/search', searchHandler);
@@ -108,7 +109,8 @@ app.get('/search/:backend', searchHandler);
 app.get('/about', function (req, res) {
           res.render('about',
                      {
-                       title: 'about'
+                       title: 'about',
+                       production: opts.options.production
                      });
         });
 function send_feedback(data, cb) {
