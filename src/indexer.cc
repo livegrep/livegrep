@@ -1,7 +1,9 @@
 /********************************************************************
  * livegrep -- indexer.cc
- * Copyright (c) 2011-2012 Nelson Elhage
- * All Rights Reserved
+ * Copyright (c) 2011-2013 Nelson Elhage
+ *
+ * This program is free software. You may use, redistribute, and/or
+ * modify it under the terms listed in the COPYING file.
  ********************************************************************/
 #include "indexer.h"
 #include "recursion.h"
