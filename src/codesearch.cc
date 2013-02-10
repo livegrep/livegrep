@@ -50,7 +50,7 @@ DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(drop_cache, false, "Drop caches before each search");
 DEFINE_bool(search, true, "Actually do the search.");
 DEFINE_int32(max_matches, 50, "The maximum number of results to return for a single query.");
-DEFINE_int32(timeout, 1, "The number of seconds a single search may run for.");
+DEFINE_int32(timeout, 1000, "The number of milliseconds a single search may run for.");
 DEFINE_int32(threads, 4, "Number of threads to use.");
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
@@ -115,8 +115,11 @@ public:
         if (FLAGS_timeout <= 0) {
             limit_.tv_sec = numeric_limits<time_t>::max();
         } else {
-            gettimeofday(&limit_, NULL);
-            limit_.tv_sec += FLAGS_timeout;
+            timeval timeout = {
+                0, FLAGS_timeout * 1000
+            }, now;
+            gettimeofday(&now, NULL);
+            timeval_add(&limit_, &now, &timeout);
         }
     }
 
