@@ -11,6 +11,7 @@ var config = {
     index: path.join(__dirname, "../../linux/codesearch.idx"),
     name: "linux",
     pretty_name: "Linux v3.7",
+    search_args: [],
     repos: [
       {
         path: path.join(__dirname, "../../linux"),

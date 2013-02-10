@@ -59,7 +59,7 @@ function Server(backend) {
   this.clients = [];
 
   this.codesearch = new Codesearch(backend.repo, [], {
-                                     args: ['--load_index', backend.index]
+                                     args: ['--load_index', backend.index].concat(backend.search_args || [])
                                    });
   this.Server = function (remote, conn) {
     parent.clients[conn.id] = new Client(parent, remote);
