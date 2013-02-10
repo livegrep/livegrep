@@ -9,7 +9,7 @@ Dependencies
 
 Livegrep has several dependencies, including:
 
- - [libgit2][lg]
+ - [libgit2][libgit2]
  - [RE2][re2]
  - [gflags][gflags]
 
@@ -39,8 +39,8 @@ on several [npm][npm] modules. They should all be listed in
 Components
 ----------
 
-Run 'make to build the `codesearch` binary. This binary can be used by
-hand, but is intended to be driven by the node.js helpers in the
+Run `make` to build the `codesearch` binary. This binary can be used
+by hand, but is intended to be driven by the node.js helpers in the
 `web/` directory.
 
 The frontend programs can be configured in `web/config.local.js`. See
@@ -57,5 +57,4 @@ communicates with `cs_server` over a local socket.
 LICENSE
 -------
 
-Livegrep is released under the terms of the GNU General Public
-License, version 2 or newer. See COPYING for more information.
+Livegrep open source. See COPYING for more information.
