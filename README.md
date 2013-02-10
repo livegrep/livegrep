@@ -57,4 +57,4 @@ communicates with `cs_server` over a local socket.
 LICENSE
 -------
 
-Livegrep open source. See COPYING for more information.
+Livegrep is open source. See COPYING for more information.
