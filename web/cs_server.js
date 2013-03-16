@@ -21,7 +21,7 @@ function Client(parent, remote) {
                  var q;
                  if (self.queue.length) {
                    q = self.queue.shift();
-                   self.search(q.re, q.file, q.cb);
+                   self.search(q.search, q.cb);
                  } else {
                    self.ready();
                  }
@@ -33,16 +33,15 @@ Client.prototype.ready = function() {
     util.remote_call(this.remote, 'ready');
 }
 
-Client.prototype.search = function (re, file, cb) {
+Client.prototype.search = function (search, cb) {
   if (this.conn.readyState !== 'ready') {
     this.queue.push({
-                      re: re,
-                      file: file,
+                      search: search,
                       cb: cb
                     });
     return;
   }
-  var search = this.conn.search(re, file);
+  var search = this.conn.search(search.line, search.file, search.repo);
   var batch  = new Batch(function (m) {
                            util.remote_call(cb, 'match', m);
                          }, 50);
@@ -67,15 +66,15 @@ function Server(backend) {
               var client = parent.clients[conn.id];
               delete parent.clients[conn.id];
             });
-    this.try_search = function(re, file, cb) {
+    this.try_search = function(search, cb) {
       if (parent.clients[conn.id].conn.readyState !== 'ready') {
         util.remote_call(cb, 'not_ready');
         return;
       }
-      parent.clients[conn.id].search(re, file, cb);
+      parent.clients[conn.id].search(search, cb);
     }
-    this.search = function(re, file, cb) {
-      parent.clients[conn.id].search(re, file, cb);
+    this.search = function(search, cb) {
+      parent.clients[conn.id].search(search, cb);
     }
   }
 }

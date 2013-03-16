@@ -189,7 +189,10 @@ bool getline(FILE *stream, string &out) {
     return r != -1;
 }
 
-bool parse_input(FILE *out, string in, string& line_re, string& file_re)
+bool parse_input(FILE *out, string in,
+                 string& line_re,
+                 string& file_re,
+                 string& tree_re)
 {
     json_object *js = json_tokener_parse(in.c_str());
     if (is_error(js)) {
@@ -214,6 +217,10 @@ bool parse_input(FILE *out, string in, string& line_re, string& file_re)
         file_re = json_object_get_string(file_js);
     else
         file_re = FLAGS_file;
+
+    json_object *tree_js = json_object_object_get(js, "repo");
+    if (tree_js && json_object_get_type(tree_js) == json_type_string)
+        tree_re = json_object_get_string(tree_js);
 
     json_object_put(js);
 
@@ -254,23 +261,28 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
             break;
         }
 
-        string line, file;
+        string line, file, tree;
         if (!FLAGS_json) {
             line = input;
             file = FLAGS_file;
         } else {
-            if (!parse_input(out, input, line, file))
+            if (!parse_input(out, input, line, file, tree))
                 continue;
         }
 
         RE2 re(line, opts);
         RE2 file_re(file, opts);
+        RE2 tree_re(tree, opts);
         if (!re.ok()) {
             print_error(out, re.error());
             continue;
         }
         if (!file_re.ok()) {
             print_error(out, file_re.error());
+            continue;
+        }
+        if (!tree_re.ok()) {
+            print_error(out, tree_re.error());
             continue;
         }
         if (re.ProgramSize() > kMaxProgramSize) {
@@ -292,7 +304,10 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
 
             {
                 sem_wait(&interact_sem);
-                search.match(re, file.size() ? &file_re : 0, print_match(out), &stats);
+                search.match(re,
+                             file.size() ? &file_re : 0,
+                             tree.size() ? &tree_re : 0,
+                             print_match(out), &stats);
                 sem_post(&interact_sem);
             }
             elapsed = tm.elapsed();

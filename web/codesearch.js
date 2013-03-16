@@ -73,11 +73,11 @@ function Connection(parent) {
 }
 util.inherits(Connection, events.EventEmitter);
 
-Connection.prototype.search = function(str, file) {
+Connection.prototype.search = function(str, file, repo) {
   var evt;
-  logger.debug("[cs %s] search(%j)", this.id, {line: str, file: file});
+  logger.debug("[cs %s] search(%j)", this.id, {line: str, file: file, repo: repo});
   console.assert(this.readyState == 'ready');
-  this.socket.write(JSON.stringify({line: str, file: file}) + "\n");
+  this.socket.write(JSON.stringify({line: str, file: file, repo: repo}) + "\n");
   this.setState('searching');
 
   evt = new events.EventEmitter();

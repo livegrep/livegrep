@@ -46,6 +46,7 @@ Client.prototype.new_search = function (opts) {
   if (this.last_search &&
       opts.line === this.last_search.line &&
       opts.file === this.last_search.file &&
+      opts.repo === this.last_search.repo &&
       opts.backend === this.last_search.backend)
     return;
   if (opts.line === '') {
@@ -174,7 +175,7 @@ Client.prototype.dispatch_search = function() {
       codesearch.cs_client = null;
     }
   }
-  codesearch.try_search(search.line, search.file, cbs);
+  codesearch.try_search(search, cbs);
   codesearch.cs_ready = false;
   codesearch.cs_client = this;
 }

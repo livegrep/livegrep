@@ -190,7 +190,8 @@ var SearchState = Backbone.Model.extend({
     this.search_map[id] = {
       q: search.line,
       file: search.file,
-      backend: search.backend
+      backend: search.backend,
+      repo: search.repo
     };
     if (!search.line.length)
       this.set('displaying', id);
@@ -203,7 +204,7 @@ var SearchState = Backbone.Model.extend({
       return '/search';
     var base = '/search';
 
-    ['q','file'].forEach(function (key) {
+    ['q','file', 'repo'].forEach(function (key) {
       if(current[key])
         q[key] = current[key];
     });
@@ -325,6 +326,7 @@ var CodesearchUI = function() {
 
       CodesearchUI.input      = $('#searchbox');
       CodesearchUI.input_file = $('#filebox');
+      CodesearchUI.input_repo = $('#repobox');
       CodesearchUI.input_backend = $('#backend');
       if (CodesearchUI.input_backend.length == 0)
         CodesearchUI.input_backend = null;
@@ -332,11 +334,13 @@ var CodesearchUI = function() {
 
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input_file.keydown(CodesearchUI.keypress);
+      CodesearchUI.input_repo.keydown(CodesearchUI.keypress);
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input_file.bind('paste', CodesearchUI.keypress);
+      CodesearchUI.input_repo.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input.focus();
       if (CodesearchUI.input_backend)
-        CodesearchUI.input_backend.change(CodesearchUI.keypress);
+        CodesearchUI.input_backend.change(CodesearchUI.select_backend);
 
       Codesearch.connect(CodesearchUI);
     },
@@ -346,6 +350,8 @@ var CodesearchUI = function() {
         CodesearchUI.input.val(parms.q);
       if (parms.file)
         CodesearchUI.input_file.val(parms.file);
+      if (parms.repo)
+        CodesearchUI.input_repo.val(parms.repo);
       var backend = null;
       if (parms.backend)
         backend = parms.backend;
@@ -355,6 +361,7 @@ var CodesearchUI = function() {
       }
       if (backend && CodesearchUI.input_backend)
         CodesearchUI.input_backend.val(backend);
+      setTimeout(CodesearchUI.select_backend, 0);
     },
     parse_query_params: function() {
       var urlParams = {};
@@ -371,6 +378,16 @@ var CodesearchUI = function() {
     on_connect: function() {
       CodesearchUI.newsearch();
     },
+    select_backend: function() {
+      var backend = CodesearchUI.input_backend.val();
+      if (Object.keys(CodesearchUI.github_repos[backend]).length == 1) {
+        CodesearchUI.input_repo.val('');
+        $('#reposel').hide();
+      } else {
+        $('#reposel').show();
+      }
+      CodesearchUI.keypress();
+    },
     keypress: function() {
       setTimeout(CodesearchUI.newsearch, 0);
     },
@@ -378,6 +395,7 @@ var CodesearchUI = function() {
       var search = {
         line: CodesearchUI.input.val(),
         file: CodesearchUI.input_file.val(),
+        repo: CodesearchUI.input_repo.val(),
       };
       if(CodesearchUI.input_backend)
         search.backend = CodesearchUI.input_backend.val();
