@@ -1006,3 +1006,13 @@ bool code_searcher::search_thread::search_one(const pair<searcher*, chunk*>& pai
     pair.first->queue_.push(NULL);
     return false;
 }
+
+void default_re2_options(RE2::Options &opts) {
+    opts.set_never_nl(true);
+    opts.set_one_line(false);
+    opts.set_perl_classes(true);
+    opts.set_word_boundary(true);
+    opts.set_posix_syntax(true);
+    opts.set_word_boundary(true);
+    opts.set_log_errors(false);
+}

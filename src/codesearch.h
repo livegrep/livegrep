@@ -206,4 +206,6 @@ chunk_allocator *make_dump_allocator(code_searcher *search, const string& path);
 // chunk_allocator.cc
 chunk_allocator *make_mem_allocator();
 
+void default_re2_options(RE2::Options&);
+
 #endif /* CODESEARCH_H */

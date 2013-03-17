@@ -1,5 +1,6 @@
 /codesearch
 /inspect-index
+/analyze-re
 /Makefile.config
 *.o
 .*.d

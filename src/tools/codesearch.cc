@@ -238,13 +238,7 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
     assert(!setvbuf(out, NULL, _IONBF, 0));
 
     RE2::Options opts;
-    opts.set_never_nl(true);
-    opts.set_one_line(false);
-    opts.set_perl_classes(true);
-    opts.set_word_boundary(true);
-    opts.set_posix_syntax(true);
-    opts.set_word_boundary(true);
-    opts.set_log_errors(false);
+    default_re2_options(opts);
 
     while (true) {
         if (FLAGS_json)

@@ -1,1 +1,1 @@
-TOOLS := codesearch inspect-index
+TOOLS := codesearch inspect-index analyze-re
