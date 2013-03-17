@@ -40,10 +40,17 @@ protected:
         if (names_.find(key.get()) != names_.end())
             return;
         names_[key.get()] = strprintf("node%d", ct_++);
+        string flags;
+        if (key->anchor & kAnchorLeft)
+            flags += "^";
+        if (key->anchor & kAnchorRepeat)
+            flags += "*";
+        if (key->anchor & kAnchorRight)
+            flags += "$";
+
         out_ << strprintf("%s [label=\"%s\"]\n",
                           names_[key.get()].c_str(),
-                          (key->anchor & kAnchorLeft) ? "^" :
-                          (key->anchor & kAnchorRight) ? "$" : "").c_str();
+                          flags.c_str());
         for (auto it = key->begin(); it != key->end(); it++) {
             if (!it->second)
                 continue;
@@ -56,8 +63,13 @@ protected:
             return;
         seen_.insert(key.get());
         for (auto it = key->begin(); it != key->end(); it++) {
-            if (!it->second)
-                continue;
+            string dst;
+            if (!it->second) {
+                out_ << strprintf("node%d [shape=point,label=\"\"]\n",
+                                  ct_);
+                dst = strprintf("node%d", ct_++);
+            } else
+                dst = names_[it->second.get()];
             string label;
             if (it->first.first == it->first.second)
                 label = escape(it->first.first);
@@ -67,9 +79,10 @@ protected:
                                   escape(it->first.second).c_str());
             out_ << strprintf("%s -> %s [label=\"%s\"]\n",
                               names_[key.get()].c_str(),
-                              names_[it->second.get()].c_str(),
+                              dst.c_str(),
                               label.c_str());
-            dump(it->second);
+            if (it->second)
+                dump(it->second);
         }
     }
 
