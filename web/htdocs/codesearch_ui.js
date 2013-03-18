@@ -379,6 +379,8 @@ var CodesearchUI = function() {
       CodesearchUI.newsearch();
     },
     select_backend: function() {
+      if (!CodesearchUI.input_backend)
+        return;
       var backend = CodesearchUI.input_backend.val();
       if (Object.keys(CodesearchUI.github_repos[backend]).length == 1) {
         CodesearchUI.input_repo.val('');
