@@ -20,6 +20,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// static_assert(sizeof(btree_node) <= kPageSize);
+
 class codesearch_index {
 public:
     codesearch_index(code_searcher *cs, string path) :
@@ -108,16 +110,14 @@ public:
     }
 
     virtual chunk *alloc_chunk() {
-        auto alloc = alloc_mmap((1 + sizeof(uint32_t)) * chunk_size_);
+        auto alloc = alloc_mmap(chunk_size_);
 
         chunk_header chdr = {
             uint64_t(alloc.first)
         };
         index_->chunks_.push_back(chdr);
 
-        return new chunk(static_cast<unsigned char*>(alloc.second),
-                         reinterpret_cast<uint32_t*>
-                         (static_cast<unsigned char*>(alloc.second) + chunk_size_));
+        return new chunk(static_cast<unsigned char*>(alloc.second));
     }
 
     virtual buffer alloc_content_chunk() {
@@ -147,7 +147,7 @@ public:
     }
 
     virtual void free_chunk(chunk *chunk) {
-        munmap(chunk->data, 5*chunk_size_);
+        munmap(chunk->data, chunk_size_);
         delete chunk;
     }
 protected:
@@ -180,11 +180,10 @@ public:
     virtual void drop_caches() {
         for (auto it = begin(); it != end(); ++it) {
             madvise((*it)->data, (*it)->size, MADV_DONTNEED);
-            madvise((*it)->suffixes, (*it)->size * sizeof(*(*it)->suffixes), MADV_DONTNEED);
         }
-        posix_fadvise(fd_, hdr_->chunks_off,
-                      chunks_.size() * chunk_size_ * (1 + sizeof(uint32_t)),
-                      POSIX_FADV_DONTNEED);
+        struct stat st;
+        fstat(fd_, &st);
+        posix_fadvise(fd_, 0, st.st_size, POSIX_FADV_DONTNEED);
     }
 
     void load(code_searcher *cs);
@@ -272,11 +271,9 @@ void codesearch_index::dump_chunk_data(chunk *chunk) {
     chdr.size = chunk->size;
     chunks_.push_back(chdr);
 
-    assert(ftruncate(fd_, off + 5 * hdr_.chunk_size) == 0);
+    assert(ftruncate(fd_, off + hdr_.chunk_size) == 0);
     stream_.write(reinterpret_cast<char*>(chunk->data), hdr_.chunk_size);
-    stream_.write(reinterpret_cast<char*>(chunk->suffixes),
-                  sizeof(uint32_t) * chunk->size);
-    stream_.seekp(off + 5 * hdr_.chunk_size);
+    stream_.seekp(off + hdr_.chunk_size);
 }
 
 void codesearch_index::dump_metadata() {
@@ -364,9 +361,8 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
 
 chunk *load_allocator::alloc_chunk() {
     unsigned char *data = ptr<unsigned char>(next_chunk_->data_off);
-    uint32_t *indexes = reinterpret_cast<uint32_t*>(data + chunk_size_);
 
-    return new chunk(data, indexes);
+    return new chunk(data);
 }
 
 indexed_file *load_allocator::load_file(code_searcher *cs) {

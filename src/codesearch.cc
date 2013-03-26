@@ -523,61 +523,12 @@ void searcher::filtered_search(const chunk *chunk)
     if (!indexes.get()) {
         indexes.put(new vector<uint32_t>(cc_->alloc_->chunk_size() / kMinFilterRatio));
     }
-    int count = 0;
+    // int count = 0;
     {
         run_timer run(index_time_);
-        vector<walk_state> stack;
-        stack.push_back((walk_state){
-                chunk->suffixes, chunk->suffixes + chunk->size, index_, 0});
 
-        while (!stack.empty()) {
-            walk_state st = stack.back();
-            stack.pop_back();
-            if (!st.key || st.key->empty() || (st.right - st.left) <= 100) {
-                if ((count + st.right - st.left) > indexes->size()) {
-                    count = indexes->size() + 1;
-                    break;
-                }
-                memcpy(&(*indexes)[count], st.left,
-                       (st.right - st.left) * sizeof(uint32_t));
-                count += (st.right - st.left);
-                continue;
-            }
-            lt_index lt = {chunk, st.depth};
-            for (IndexKey::iterator it = st.key->begin();
-                 it != st.key->end(); ++it) {
-                uint32_t *l, *r;
-                l = lower_bound(st.left, st.right, it->first.first, lt);
-                uint32_t *right = lower_bound(l, st.right,
-                                              (unsigned char)(it->first.second + 1),
-                                              lt);
-                if (l == right)
-                    continue;
-
-                if (st.depth)
-                    assert(chunk->data[*l + st.depth - 1] ==
-                           chunk->data[*(right - 1) + st.depth - 1]);
-
-                assert(l == st.left ||
-                       chunk->data[*(l-1) + st.depth] == '\n' ||
-                       chunk->data[*(l-1) + st.depth] < it->first.first);
-                assert(chunk->data[*l + st.depth] >= it->first.first);
-                assert(right == st.right ||
-                       chunk->data[*right + st.depth] > it->first.second);
-
-                for (unsigned char ch = it->first.first; ch <= it->first.second;
-                     ch++, l = r) {
-                    r = lower_bound(l, right, (unsigned char)(ch + 1), lt);
-
-                    if (r != l) {
-                        stack.push_back((walk_state){l, r, it->second, st.depth + 1});
-                    }
-                }
-            }
-        }
+        
     }
-
-    search_lines(&(*indexes)[0], count, chunk);
 }
 
 struct match_finger {

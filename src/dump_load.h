@@ -10,7 +10,6 @@
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
 const uint32_t kIndexVersion = 10;
-const uint32_t kPageSize     = (1 << 12);
 
 struct index_header {
     uint32_t magic;

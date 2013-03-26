@@ -6,7 +6,7 @@
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
 #include "chunk.h"
-#include "radix_sort.h"
+#include "chunk_allocator.h"
 
 #include <re2/re2.h>
 #include <gflags/gflags.h>
@@ -16,54 +16,6 @@
 using re2::StringPiece;
 
 DECLARE_bool(index);
-
-class radix_sorter {
-public:
-    radix_sorter(chunk *chunk) : chunk_(chunk) { }
-
-    ~radix_sorter() { }
-
-    void sort();
-
-    struct cmp_suffix {
-        radix_sorter &sort;
-        cmp_suffix(radix_sorter &s) : sort(s) {}
-        bool operator()(uint32_t lhs, uint32_t rhs) {
-            unsigned char *l = &sort.chunk_->data[lhs];
-            unsigned char *r = &sort.chunk_->data[rhs];
-            unsigned ll = static_cast<unsigned char*>
-                (memchr(l, '\n', sort.chunk_->size - lhs)) - l;
-            unsigned rl = static_cast<unsigned char*>
-                (memchr(r, '\n', sort.chunk_->size - rhs)) - r;
-            int cmp = memcmp(l, r, min(ll, rl));
-            if (cmp < 0)
-                return true;
-            if (cmp > 0)
-                return false;
-            return ll < rl;
-        }
-    };
-
-    struct indexer {
-        radix_sorter &sort;
-        indexer(radix_sorter &s) : sort(s) {}
-        unsigned operator()(uint32_t off, int i) {
-            return sort.index(off, i);
-        }
-    };
-
-private:
-    unsigned index(uint32_t off, int i) {
-        if (chunk_->data[off + i] == '\n')
-            return 0;
-        return (unsigned)(unsigned char)chunk_->data[off + i];
-    }
-
-    chunk *chunk_;
-
-    radix_sorter(const radix_sorter&);
-    radix_sorter operator=(const radix_sorter&);
-};
 
 void chunk::add_chunk_file(indexed_file *sf, const StringPiece& line)
 {
@@ -111,20 +63,9 @@ void chunk::finish_file() {
 
 int chunk::chunk_files = 0;
 
-void radix_sorter::sort() {
-    cmp_suffix cmp(*this);
-    indexer idx(*this);
-    msd_radix_sort(chunk_->suffixes, chunk_->suffixes + chunk_->size, 0,
-                   idx, cmp);
-    assert(is_sorted(chunk_->suffixes, chunk_->suffixes + chunk_->size, cmp));
-}
-
-void chunk::finalize() {
-    if (FLAGS_index) {
-        for (int i = 0; i < size; i++)
-            suffixes[i] = i;
-        radix_sorter sorter(this);
-        sorter.sort();
+void chunk::finalize(chunk_allocator *alloc) {
+    for (int i = 0; i < size; i++) {
+        alloc->btree_insert(alloc->text_to_pos(&data[i]));
     }
 }
 

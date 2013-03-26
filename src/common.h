@@ -9,5 +9,6 @@
 #define CODESEARCH_COMMON_H
 
 typedef unsigned char uchar;
+const uint32_t kPageSize     = (1 << 12);
 
 #endif

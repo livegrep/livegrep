@@ -31,14 +31,13 @@ static const bool dummy = google::RegisterFlagValidator(&FLAGS_chunk_power,
 bool chunk_allocator::finalizer::operator()(chunk *chunk) {
     if (!chunk)
         return true;
-    chunk->finalize();
+    // chunk->finalize();
     return false;
 }
 
 chunk_allocator::chunk_allocator()  :
     chunk_size_(kChunkSize), content_finger_(0), current_(0),
     finalizer_(), finalize_pool_(0) {
-    //    new_chunk();
 }
 
 chunk_allocator::~chunk_allocator() {
@@ -80,20 +79,24 @@ uint8_t *chunk_allocator::alloc_content_data(size_t len) {
     return out;
 }
 
+btree_node *chunk_allocator::alloc_node() {
+    return 0;
+}
+
 void chunk_allocator::finish_chunk()  {
     if (current_) {
         if (!finalize_pool_) {
             finalize_pool_ = new thread_pool<chunk*, finalizer>(FLAGS_threads, finalizer_);
         }
-        finalize_pool_->queue(current_);
+        // finalize_pool_->queue(current_);
+        current_->finalize(this);
     }
 }
 
 void chunk_allocator::new_chunk()  {
     finish_chunk();
     current_ = alloc_chunk();
-    madvise(current_->data,     chunk_size_,                               MADV_RANDOM);
-    madvise(current_->suffixes, chunk_size_ * sizeof(*current_->suffixes), MADV_RANDOM);
+    madvise(current_->data, chunk_size_, MADV_RANDOM);
     current_->id = chunks_.size();
     by_data_[current_->data] = current_;
     chunks_.push_back(current_);
@@ -132,11 +135,17 @@ chunk *chunk_allocator::chunk_from_string(const unsigned char *p) {
 }
 
 class mem_allocator : public chunk_allocator {
+protected:
+    btree_node *root_;
 public:
+    mem_allocator() {
+        root_ = alloc_node();
+        prepare_root(root_);
+    }
+
     virtual chunk *alloc_chunk() {
         unsigned char *buf = new unsigned char[chunk_size_];
-        uint32_t *idx = FLAGS_index ? new uint32_t[chunk_size_] : 0;
-        return new chunk(buf, idx);
+        return new chunk(buf);
     }
 
     virtual buffer alloc_content_chunk() {
@@ -146,8 +155,18 @@ public:
 
     virtual void free_chunk(chunk *chunk) {
         delete[] chunk->data;
-        delete[] chunk->suffixes;
         delete chunk;
+    }
+
+    virtual btree_node *alloc_node() {
+        return new btree_node();
+    }
+
+    virtual btree_node *btree_root() {
+        return root_;
+    }
+    virtual void btree_set_root(btree_node *node) {
+        root_ = node;
     }
 };
 
