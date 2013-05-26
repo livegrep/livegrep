@@ -52,6 +52,16 @@ struct object_traits<git_blob> { const static git_otype git_type = GIT_OBJ_BLOB;
 template <>
 struct object_traits<git_tag> { const static git_otype git_type = GIT_OBJ_TAG; };
 
+template <>
+struct object_traits<const git_tree> { const static git_otype git_type = GIT_OBJ_TREE; };
+template <>
+struct object_traits<const git_commit> { const static git_otype git_type = GIT_OBJ_COMMIT; };
+template <>
+struct object_traits<const git_blob> { const static git_otype git_type = GIT_OBJ_BLOB; };
+template <>
+struct object_traits<const git_tag> { const static git_otype git_type = GIT_OBJ_TAG; };
+
+
 template <class T>
 class smart_object : public smart_object_base {
 public:
