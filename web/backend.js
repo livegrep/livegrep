@@ -12,6 +12,8 @@ function addBackendOpt(config, parser) {
 module.exports.addBackendOpt = addBackendOpt;
 
 function selectBackend(config, opts) {
+  if(Object.keys(config.BACKENDS).length == 1)
+    return config.BACKENDS[Object.keys(config.BACKENDS)[0]];
   var backend = config.BACKENDS[opts.options.backend || ''];
   if (!backend) {
     throw new Error("No such backend: " + opts.options.backend);
