@@ -21,5 +21,34 @@ $(MAKEVARS)/%: $(MAKEVARS)/%.tmp
 	@cmp -s $< $@ || cp -f $< $@
 	@rm $<
 
+override CPPFLAGS += $(patsubst %,-I%, $(DIRS))
+SRC :=
+TOOLS :=
+
+include $(patsubst %, %/Makefrag, $(DIRS))
+
+LIBOBJS := $(foreach src,$(SRC),$(basename $(src)).o)
+
+define BUILD_tool
+$(1)_OBJS := $$(if $$($(1)_SRC),$$(foreach obj,$$($(1)_SRC),$$(basename $$(obj)).o),$(1).o)
+OBJECTS += $$($(1)_OBJS)
+$(1): $$(LIBOBJS) $$($(1)_OBJS) $$(MAKEVARS)/LDFLAGS
+	$$(CXX) -o $$@ $$(LDFLAGS) $$(filter-out $$(MAKEVARS)/%,$$^) $$(LDLIBS)
+endef
+$(foreach tool,$(TOOLS),$(eval $(call BUILD_tool,$(tool))))
+
+OBJECTS := $(LIBOBJS) $(foreach tool,$(TOOLS),$(call $(tool)_OBJS))
+DEPFILES = $(foreach obj,$(OBJECTS),$(dir $(obj)).$(notdir $(obj:.o=)).d)
+
+all: $(TOOLS) $(DEPFILES)
+
+clean:
+	rm -f $(TOOLS) $(OBJECTS) $(DEPFILES)
+
+$(OBJECTS): $(MAKEVARS)/CXX $(MAKEVARS)/CXXFLAGS
+
+-include $(DEPFILES)
+
 .PHONY: FORCE
 .PRECIOUS: $(MAKEVARS)/%
+.DEFAULT_GOAL: all

@@ -1,1 +1,4 @@
 TOOLS := codesearch inspect-index analyze-re
+codesearch_SRC := src/tools/codesearch.cc
+inspect-index_SRC := src/tools/inspect-index.cc
+analyze-re_SRC := src/tools/analyze-re.cc
