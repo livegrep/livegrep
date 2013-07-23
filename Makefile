@@ -28,6 +28,4 @@ override LDLIBS+=-ltcmalloc
 endif
 
 DIRS := src src/lib src/3party src/tools
-TOOLDIR := .
 include Makefile.lib
-

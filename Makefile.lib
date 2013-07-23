@@ -38,7 +38,7 @@ endef
 $(foreach tool,$(TOOLS),$(eval $(call BUILD_tool,$(tool))))
 
 OBJECTS := $(LIBOBJS) $(foreach tool,$(TOOLS),$(call $(tool)_OBJS))
-DEPFILES = $(foreach obj,$(OBJECTS),$(dir $(obj)).$(notdir $(obj:.o=)).d)
+DEPFILES := $(foreach obj,$(OBJECTS),$(dir $(obj)).$(notdir $(obj:.o=)).d)
 
 all: $(TOOLS) $(DEPFILES)
 
