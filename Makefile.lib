@@ -1,15 +1,18 @@
 comma:=,
-MAKEVARS := .makevars
+MAKEVARS:=.makevars
 
-.%.d: %.cc $(MAKEVARS)/CXX $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/CXXFLAGS
-	@set -e; trap 'rm -f $@.$$$$' EXIT; rm -f $@; \
-	 $(CXX) -M $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
-	 sed 's,\($(notdir $*)\)\.o[ :]*,$*.o $@ : ,g' < $@.$$$$ > $@
+define BUILD_d_file
+.%.d: %.$(1) $(MAKEVARS)/$(2) $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/$(2)FLAGS
+	@set -e; trap 'rm -f $$@.$$$$$$$$' EXIT; rm -f $$@; \
+	 $($(2)) -MM $$(CPPFLAGS) $($(2)FLAGS) $$< > $$@.$$$$$$$$; \
+	 sed 's,\($(notdir $$*)\)\.o[ :]*,$$*.o $@ : ,g' < $$@.$$$$$$$$ > $$@
+endef
 
-.%.d: %.c $(MAKEVARS)/CC $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/CFLAGS
-	@set -e; trap 'rm -f $@.$$$$' EXIT; rm -f $@; \
-	 $(CC) -M $(CPPFLAGS) $(CFLAGS) $< > $@.$$$$; \
-	 sed 's,\($(notdir $*)\)\.o[ :]*,$*.o $@ : ,g' < $@.$$$$ > $@
+$(eval $(call BUILD_d_file,cc,CXX))
+$(eval $(call BUILD_d_file,cpp,CXX))
+$(eval $(call BUILD_d_file,C,CXX))
+$(eval $(call BUILD_d_file,c,CC))
+$(eval $(call BUILD_d_file,S,CC))
 
 $(MAKEVARS):
 	@mkdir -p $@
@@ -43,7 +46,7 @@ DEPFILES := $(foreach obj,$(OBJECTS),$(dir $(obj)).$(notdir $(obj:.o=)).d)
 all: $(TOOLS) $(DEPFILES)
 
 clean:
-	rm -f $(TOOLS) $(OBJECTS) $(DEPFILES)
+	rm -f $(TOOLS) $(OBJECTS) $(DEPFILES) $(EXTRA_CLEAN)
 
 $(OBJECTS): $(MAKEVARS)/CXX $(MAKEVARS)/CXXFLAGS
 
