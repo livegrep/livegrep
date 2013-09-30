@@ -41,16 +41,16 @@ Components
 
 Run `make` to build the `codesearch` binary. This binary can be used
 by hand, but is intended to be driven by the node.js helpers in the
-`web/` directory.
+`bin/` directory.
 
-The frontend programs can be configured in `web/config.local.js`. See
-`web/config.js` for the configuration options. Once configuration is
-established, `web/index.js` can be used to build a codesearch index.
+The frontend programs can be configured in `js/config.local.js`. See
+`js/config.js` for the configuration options. Once configuration is
+established, `bin/index.js` can be used to build a codesearch index.
 
 The livegrep frontend then consists of two separate
-programs. `web/cs_servers.js` runs a `codesearch` process, which it
+programs. `bin/cs_servers.js` runs a `codesearch` process, which it
 communicates with via a pipe, and listens on a local
-port. `web/web_server.js` runs the web server frontend, and
+port. `bin/web_server.js` runs the web server frontend, and
 communicates with `cs_server` over a local socket.
 
 Resource Usage

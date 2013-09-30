@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 var path    = require('path'),
     fs      = require('fs'),
-    config  = require('./config.js'),
-    backend = require('./backend.js'),
-    parseopt= require('./lib/parseopt.js'),
+    config  = require('../js/config.js'),
+    backend = require('../js/backend.js'),
+    parseopt= require('../js/lib/parseopt.js'),
     spawn   = require('child_process').spawn;
 
 function generateIndex(backend, cb) {

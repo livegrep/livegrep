@@ -2,13 +2,13 @@
 var dnode   = require('dnode'),
     path    = require('path'),
     net     = require('net'),
-    config  = require('./config.js'),
-    git_util   = require('./git_util.js'),
-    util       = require('./util.js'),
-    Codesearch = require('./codesearch.js'),
-    Batch      = require('./batch.js'),
-    parseopt   = require('./lib/parseopt.js'),
-    backend    = require('./backend.js'),
+    config  = require('../js/config.js'),
+    git_util   = require('../js/git_util.js'),
+    util       = require('../js/util.js'),
+    Codesearch = require('../js/codesearch.js'),
+    Batch      = require('../js/batch.js'),
+    parseopt   = require('../js/lib/parseopt.js'),
+    backend    = require('../js/backend.js'),
     Einhorn    = require('einhorn');
 
 function Client(parent, remote) {

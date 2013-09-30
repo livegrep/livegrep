@@ -8,8 +8,8 @@ var express = require('express'),
     log4js  = require('log4js'),
     email   = require('emailjs'),
     util    = require('util'),
-    Server  = require('./appserver.js'),
-    config  = require('./config.js'),
+    Server  = require('../js/appserver.js'),
+    config  = require('../js/config.js'),
     Einhorn = require('einhorn');
 
 function shorten(ref) {
@@ -69,9 +69,9 @@ app.configure(
     app.set('view options', {
               production: opts.options.production
             });
-    app.set('views', path.join(__dirname, 'templates'));
+    app.set('views', path.join(__dirname, '../web/templates'));
     app.use(express.bodyParser());
-    app.use(express.static(path.join(__dirname, 'htdocs')));
+    app.use(express.static(path.join(__dirname, '../web/htdocs')));
     hbs.handlebars.registerHelper('json', function (data) {
       return new hbs.handlebars.SafeString(JSON.stringify(data).replace(/<\/script>/g, '<\\/script>'));
     });

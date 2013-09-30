@@ -1,7 +1,7 @@
-var Codesearch = require('../web/codesearch.js'),
+var Codesearch = require('../js/codesearch.js'),
     fs         = require('fs'),
     path       = require('path'),
-    parseopt   = require('../web/lib/parseopt.js'),
+    parseopt   = require('../js/lib/parseopt.js'),
     log4js     = require('log4js');
 
 var config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json")));
