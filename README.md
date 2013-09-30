@@ -36,6 +36,10 @@ on several [npm][npm] modules. They should all be listed in
 [node]: http://nodejs.org/
 [npm]: https://npmjs.org/
 
+Livegrep has only been tested on Linux x86_64 systems. It is unlikely
+to work well (or potentially at all) on 32-bit systems because of the
+large virtual memory footprint it requires.
+
 Components
 ----------
 
