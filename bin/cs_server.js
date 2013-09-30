@@ -8,8 +8,7 @@ var dnode   = require('dnode'),
     Codesearch = require('../js/codesearch.js'),
     Batch      = require('../js/batch.js'),
     parseopt   = require('../js/lib/parseopt.js'),
-    backend    = require('../js/backend.js'),
-    Einhorn    = require('einhorn');
+    backend    = require('../js/backend.js')
 
 function Client(parent, remote) {
   var self = this;
@@ -86,16 +85,5 @@ var opts = parser.parse(process.argv);
 
 var backend = backend.selectBackend(config, opts);
 
-if (Einhorn.is_worker()) {
-  Einhorn.ack();
-  var app = new Server(backend).Server;
-  var srv = net.createServer(function (c) {
-    var d = dnode(app);
-    c.pipe(d).pipe(c);
-  });
-  var fd = Einhorn.socket();
-  srv.listen({fd: fd});
-} else {
-  var server = dnode(new Server(backend).Server);
-  server.listen(backend.port);
-}
+var server = dnode(new Server(backend).Server);
+server.listen(backend.port);
