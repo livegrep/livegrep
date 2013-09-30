@@ -329,7 +329,7 @@ SearchServer.prototype.dump_stats = function() {
     slow: slow,
     fast: fast
   };
-  fs.writeFile(path.join(__dirname, "log/stats.json"),
+  fs.writeFile(path.join(__dirname, "../web/log/stats.json"),
                JSON.stringify(stats) + "\n",
                "utf8");
 }
