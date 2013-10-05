@@ -12,6 +12,7 @@ Livegrep has several dependencies, including:
  - [libgit2][libgit2]
  - [RE2][re2]
  - [gflags][gflags]
+ - [libjson][libjson]
 
 
 I have packaged these for Ubuntu in my [ppa][lg-ppa], or you can
@@ -27,6 +28,7 @@ might have:
 [libgit2]: http://libgit2.github.com/
 [re2]: http://code.google.com/p/re2/
 [gflags]: https://code.google.com/p/gflags/?redir=1
+[libjson]: http://oss.metaparadigm.com/json-c/
 [lg-ppa]: https://launchpad.net/~nelhage/+archive/livegrep
 
 The livegrep web interface is written in [node.js][node], and depends
