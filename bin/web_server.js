@@ -64,6 +64,7 @@ app.configure(
                                    }
                                  }));
     app.engine('.html', hbs.__express);
+    app.engine('.xml', hbs.__express);
     app.set('view engine', 'html');
     app.set('view options', {
               production: opts.options.production
@@ -71,6 +72,9 @@ app.configure(
     app.set('views', path.join(__dirname, '../web/templates'));
     app.use(express.bodyParser());
     app.use(express.static(path.join(__dirname, '../web/htdocs')));
+    if (opts.options.production) {
+      app.enable('trust proxy');
+    }
     hbs.handlebars.registerHelper('json', function (data) {
       return new hbs.handlebars.SafeString(JSON.stringify(data).replace(/<\/script>/g, '<\\/script>'));
     });
@@ -112,6 +116,14 @@ app.get('/about', function (req, res) {
                        production: opts.options.production
                      });
         });
+app.get('/opensearch.xml', function (req, res) {
+          var backend = config.BACKENDS[Object.keys(config.BACKENDS)[0]];
+          res.render('opensearch.xml', {
+              'layout': false,
+              'baseURL': req.protocol + "://" + req.get('Host') + "/",
+              'backend': backend
+          });
+});
 function send_feedback(data, cb) {
   if (smtp) {
     smtp.send({
