@@ -27,5 +27,5 @@ ifneq ($(tcmalloc),)
 override LDLIBS+=-ltcmalloc
 endif
 
-DIRS := src src/lib src/3party src/tools
+DIRS := src src/lib src/3party src/tools test
 include Makefile.lib

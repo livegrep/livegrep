@@ -1,0 +1,5 @@
+override CPPFLAGS += -Itest/gtest/include -Itest/gtest
+
+TOOLS += test/test
+
+test/test_SRC := test/test.cc test/gtest/src/gtest-all.o test/gtest/src/gtest_main.o
