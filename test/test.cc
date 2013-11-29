@@ -28,20 +28,30 @@ protected:
     }
 
     const char *data_;
-    std::vector<int> lines_;
+    std::vector<uint32_t> lines_;
     radix_sorter sort_;
 };
 
 TEST_F(radix_sorter_test, test_cmp) {
     radix_sorter::cmp_suffix cmp(sort_);
-    EXPECT_EQ(cmp(lines_[0], lines_[0]), false);
-    EXPECT_EQ(cmp(lines_[0], lines_[1]), true);
-    EXPECT_EQ(cmp(lines_[1], lines_[0]), false);
-    EXPECT_EQ(cmp(lines_[7], lines_[8]), true);
-    EXPECT_EQ(cmp(lines_[7], lines_[9]), true);
-    EXPECT_EQ(cmp(lines_[8], lines_[9]), true);
+    struct {
+        uint32_t lhs, rhs;
+        int cmp;
+    } tests[] = {
+        { lines_[0], lines_[0], 0 },
+        { lines_[0], lines_[1], -1 },
+        { lines_[7], lines_[8], -1 },
+        { lines_[7], lines_[9], -1 },
+        { lines_[8], lines_[9], -1 },
+        { lines_[5], lines_[9], -1 },
+        { lines_[5], lines_[5], 0 },
+        { lines_[0] + 6, lines_[5], 0 },
+    };
 
-    EXPECT_EQ(cmp(lines_[5], lines_[9]), true);
-    EXPECT_EQ(cmp(lines_[9], lines_[5]), false);
-    EXPECT_EQ(cmp(lines_[5], lines_[5]), false);
+    for (auto it = &tests[0]; it != &(tests + 1)[0]; ++it) {
+        EXPECT_EQ(cmp(it->lhs, it->rhs), it->cmp < 0) <<
+            "Expected " << it->lhs << " " << (it->cmp < 0 ? "<" : ">") << " " << it->rhs;
+        EXPECT_EQ(cmp(it->rhs, it->lhs), it->cmp > 0) <<
+            "Expected " << it->rhs << " " << (it->cmp > 0 ? "<" : ">") << " " << it->lhs;
+    }
 }
