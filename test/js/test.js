@@ -1,4 +1,4 @@
-var Codesearch = require('../js/codesearch.js'),
+var Codesearch = require('../../js/codesearch.js'),
     fs         = require('fs'),
     assert     = require('assert'),
     path       = require('path'),

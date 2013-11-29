@@ -1,9 +1,9 @@
-var Codesearch = require('../js/codesearch.js'),
+var Codesearch = require('../../js/codesearch.js'),
     fs         = require('fs'),
     path       = require('path'),
     printf     = require('printf'),
     common     = require('./common.js'),
-    stats      = require('../js/lib/stats.js');
+    stats      = require('../../js/lib/stats.js');
 
 common.parser.add('--dump-stats', {type: 'string', target: 'dump_stats'});
 common.parser.add('--load-stats', {type: 'string', target: 'load_stats'});
