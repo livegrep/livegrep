@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <sys/socket.h>
+#include <netdb.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
@@ -421,22 +422,70 @@ void *handle_client(void *data) {
     return 0;
 }
 
-void listen(code_searcher *search, string path) {
-    int server = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (server < 0)
-        die_errno("socket(AF_UNIX)");
+int bind_to_address(string spec) {
+    int off = spec.find("://");
+    string proto, address;
 
-    struct sockaddr_un addr;
+    if (off == string::npos) {
+        proto = "unix";
+        address = spec;
+    } else {
+        proto = spec.substr(0, off);
+        address = spec.substr(off + 3);
+    }
 
-    memset(&addr, 0, sizeof addr);
-    addr.sun_family = AF_UNIX;
-    memcpy(addr.sun_path, path.c_str(), path.size());
+    int server;
 
-    if (::bind(server, reinterpret_cast<sockaddr*>(&addr), sizeof addr) < 0)
-        die_errno("Unable to bind socket");
+    if (proto == "unix") {
+        server = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (server < 0)
+            die_errno("socket(AF_UNIX)");
+
+        struct sockaddr_un addr;
+
+        memset(&addr, 0, sizeof addr);
+        addr.sun_family = AF_UNIX;
+        memcpy(addr.sun_path, address.c_str(), min(address.size(), sizeof(addr.sun_path) - 1));
+
+        if (::bind(server, reinterpret_cast<sockaddr*>(&addr), sizeof addr) < 0)
+            die_errno("Unable to bind socket");
+    } else if (proto == "tcp") {
+        int colon = address.find(':');
+        if (colon == string::npos) {
+            fprintf(stderr, "-listen: TCP addresses must be HOST:PORT.\n");
+            exit(1);
+        }
+        string host = address.substr(0, colon);
+        struct addrinfo hint = {};
+        hint.ai_family = AF_INET;
+        hint.ai_socktype = SOCK_STREAM;
+
+        struct addrinfo *addrs = NULL;
+        int err;
+        if ((err = getaddrinfo(host.c_str(), address.c_str() + colon + 1,
+                               &hint, &addrs)) != 0) {
+            fprintf(stderr, "Error resolving %s: %s\n", host.c_str(), gai_strerror(err));
+        }
+
+        server = socket(addrs->ai_family, addrs->ai_socktype, addrs->ai_protocol);
+        if (server < 0)
+            die_errno("Creating socket");
+        if (::bind(server, addrs->ai_addr, addrs->ai_addrlen) != 0)
+            die_errno("Binding to address");
+        freeaddrinfo(addrs);
+    } else {
+        fprintf(stderr, "Unknown protocol: %s\n", proto.c_str());
+        exit(1);
+    }
 
     if (listen(server, 4) < 0)
         die_errno("listen()");
+
+    return server;
+}
+
+void listen(code_searcher *search, string path) {
+    int server = bind_to_address(path);
 
     while(1) {
         int fd = accept(server, NULL, NULL);
