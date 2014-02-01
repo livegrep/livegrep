@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 )
@@ -12,6 +13,7 @@ type Client struct {
 	conn    net.Conn
 	queries chan doQuery
 	errors  chan error
+	error   error
 }
 
 type Query struct {
@@ -58,7 +60,7 @@ func Dial(network, address string) (*Client, error) {
 	cl := &Client{
 		conn:    conn,
 		queries: make(chan doQuery),
-		errors:  make(chan error),
+		errors:  make(chan error, 1),
 	}
 
 	go cl.loop()
@@ -73,7 +75,24 @@ func (c *Client) Query(q *Query) (chan *Result, chan error) {
 	return results, errors
 }
 
+func (c *Client) Close() {
+	close(c.queries)
+}
+
+func (c *Client) Err() error {
+	if c.error != nil {
+		return c.error
+	}
+	select {
+	case c.error = <-c.errors:
+	default:
+	}
+	return c.error
+}
+
 func (c *Client) loop() {
+	defer c.conn.Close()
+	defer close(c.errors)
 	scan := bufio.NewScanner(c.conn)
 	if !scan.Scan() {
 		c.errors <- scan.Err()
@@ -113,9 +132,11 @@ func (c *Client) loop() {
 		close(q.errors)
 		close(q.results)
 
-		if e := scan.Err(); e != nil {
-			c.errors <- e
-			return
+		if scan.Err() != nil {
+			break
 		}
+	}
+	if e := scan.Err(); e != nil && e != io.EOF {
+		c.errors <- e
 	}
 }
