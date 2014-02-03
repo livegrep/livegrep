@@ -1,5 +1,5 @@
 <script type="text/javascript">
-  $(function(){CodesearchUI.github_repos = {{json github_repos}};});
+  $(function(){CodesearchUI.github_repos = {{.GithubRepos}};});
 </script>
 <div id='searcharea'>
   <table id='searchinput'>
@@ -17,17 +17,17 @@
     </tr>
   </table>
   <div id='errorbox'>
-    {{#if multi_repo}}
+    {{if gt (.Repos | len) 1 }}
     <div class='what'> Search:
     <select id='backend'>
-    {{#each repos}}
-     <option value="{{name}}">{{pretty}}</option>
-    {{/each}}
+    {{range .Repos}}
+     <option value="{{.Name}}">{{.Pretty}}</option>
+    {{end}}
     </select>
     </div>
     {{else}}
-    <div class='what'> Now searching: {{ repo_name }}</div>
-    {{/if}}
+    <div class='what'> Now searching: {{ (index .Repos 0).Pretty }}</div>
+    {{end}}
     <div id='regex-error'>
       <span class='label'> Error: </span>
       <span id='errortext'>

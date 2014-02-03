@@ -2,19 +2,18 @@
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <title>code search ⋅ {{title}}</title>
-    <link rel="stylesheet" href='/css/codesearch.css' />
-    <script language="javascript" type="text/javascript" src="/js/jquery.js"></script>
-    <script language="javascript" type="text/javascript" src="/feedback.js"></script>
-    {{#if js}}
-    <script language="javascript" type="text/javascript" src="/js/underscore.js"></script>
-    <script language="javascript" type="text/javascript" src="/js/backbone.js"></script>
-    <script language="javascript" type="text/javascript" src="/socket.io/socket.io.js"></script>
-    <script language="javascript" type="text/javascript" src="/js/html.js"></script>
-    <script language="javascript" type="text/javascript" src="/codesearch.js"></script>
-    <script language="javascript" type="text/javascript" src="/codesearch_ui.js"></script>
-    {{/if}}
-    {{#if production}}
+    <title>code search ⋅ {{.Title}}</title>
+    <link rel="stylesheet" href='/assets/css/codesearch.css' />
+    <script language="javascript" type="text/javascript" src="/assets/js/3d/jquery.js"></script>
+    <script language="javascript" type="text/javascript" src="/assets/js/feedback.js"></script>
+    {{if .IncludeJS}}
+    <script language="javascript" type="text/javascript" src="/assets/js/3d/underscore.js"></script>
+    <script language="javascript" type="text/javascript" src="/assets/js/3d/backbone.js"></script>
+    <script language="javascript" type="text/javascript" src="/assets/js/3d/html.js"></script>
+    <script language="javascript" type="text/javascript" src="/assets/js/codesearch.js"></script>
+    <script language="javascript" type="text/javascript" src="/assets/js/codesearch_ui.js"></script>
+    {{end}}
+    {{if .Production}}
     <script type="text/javascript">
     
       var _gaq = _gaq || [];
@@ -28,7 +27,7 @@
       })();
     
     </script>
-    {{/if}}
+    {{end}}
     <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Stripe Code Search" />
   </head>
   <body>
@@ -51,11 +50,11 @@
         <div class='clear'> </div>
         <span class='submit'>
           <span class='result'> </span>
-          <img class='spinner' src='/ajax-loader.gif' alt='…'> </img>
+          <img class='spinner' src='/assets/img/ajax-loader.gif' alt='…'> </img>
           <button>Send It</button>
         </span>
       </form>
     </div>
-    {{{body}}}
+    {{ .Body}}
   </body>
 </html>

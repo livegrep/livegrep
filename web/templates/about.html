@@ -1,3 +1,4 @@
+{{define "body"}}
 <div id='searcharea'>
   <p>
     This live-grep project was an experiment in scaling real-time
@@ -6,12 +7,10 @@
   </p>
   <p>
     live-grep uses Russ Cox's excellent <a
-    href="http://code.google.com/p/re2/">RE2</a> regular
-    expression library, underneath a custom indexing and searching
-    backend written in C++ with pthreads. The frontend is
-    implemented in <a href="http://nodejs.org/">node.js</a> using
-    <a href="http://socket.io/">socket.io</a> for the realtime
-    communication with the browser.
+    href="http://code.google.com/p/re2/">RE2</a> regular expression
+    library, underneath a custom indexing and searching backend
+    written in C++ with pthreads. The frontend is implemented in <a
+    href="http://golang.org/">Go</a>.
   </p>
   <p>
     livegrep has been tested on recent Chrome and Firefox, as well as
@@ -20,3 +19,4 @@
     button above, or via <a href="mailto:feedback@livegrep.com">email</a>.
   </p>
 </div>
+{{end}}
