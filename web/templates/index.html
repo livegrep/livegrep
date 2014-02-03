@@ -17,16 +17,16 @@
     </tr>
   </table>
   <div id='errorbox'>
-    {{if gt (.Repos | len) 1 }}
+    {{if gt (.Backends | len) 1 }}
     <div class='what'> Search:
     <select id='backend'>
-    {{range .Repos}}
-     <option value="{{.Name}}">{{.Pretty}}</option>
+    {{range .Backends}}
+     <option value="{{.Id}}">{{.Name}}</option>
     {{end}}
     </select>
     </div>
     {{else}}
-    <div class='what'> Now searching: {{ (index .Repos 0).Pretty }}</div>
+    <div class='what'> Now searching: {{ (index .Backends 0).Name }}</div>
     {{end}}
     <div id='regex-error'>
       <span class='label'> Error: </span>

@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"github.com/nelhage/livegrep/config"
 	"html/template"
 	"io"
 	"path"
@@ -26,20 +27,15 @@ type opensearchContext struct {
 	BaseURL     string
 }
 
-type repo struct {
-	Name   string
-	Pretty string
-}
-
 type searchContext struct {
 	GithubRepos interface{}
-	Repos       []repo
+	Backends    []config.Backend
 }
 
-func readTemplates(files ...string) *template.Template {
+func (s *server) readTemplates(files ...string) *template.Template {
 	filenames := make([]string, 0, len(files))
 	for _, f := range files {
-		filenames = append(filenames, path.Join(*docRoot, "templates", f))
+		filenames = append(filenames, path.Join(s.config.DocRoot, "templates", f))
 	}
 	return template.Must(template.ParseFiles(filenames...))
 }
@@ -53,7 +49,7 @@ func (s *server) executeTemplate(t *template.Template, context interface{}) ([]b
 }
 
 func (s *server) renderPage(w io.Writer, p *page) {
-	// p.production = true
+	p.Production = s.config.Production
 	s.t.layout.Execute(w, p)
 
 }
