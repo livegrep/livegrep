@@ -53,9 +53,35 @@ func (s *server) ServeSearch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) ServeAbout(w http.ResponseWriter, r *http.Request) {
+	body, err := s.executeTemplate(s.t.aboutPage, nil)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	s.renderPage(w, &page{
+		Title:     "about",
+		IncludeJS: true,
+		Body:      template.HTML(body),
+	})
 }
 
 func (s *server) ServeOpensearch(w http.ResponseWriter, r *http.Request) {
+	var baseURL string
+	if r.TLS != nil {
+		baseURL = "https://"
+	} else {
+		baseURL = "http://"
+	}
+	baseURL += r.Host + "/"
+	body, err := s.executeTemplate(s.t.opensearchXML, &opensearchContext{
+		BackendName: "Linux",
+		BaseURL:     baseURL,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Write(body)
 }
 
 func (s *server) ServeFeedback(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +96,7 @@ func Handler(proto, addr string) (http.Handler, error) {
 	m.Add("GET", "/search", http.HandlerFunc(srv.ServeSearch))
 	m.Add("GET", "/search/:backend", http.HandlerFunc(srv.ServeSearch))
 	m.Add("GET", "/about", http.HandlerFunc(srv.ServeAbout))
-	m.Add("GET", "/about", http.HandlerFunc(srv.ServeOpensearch))
+	m.Add("GET", "/opensearch.xml", http.HandlerFunc(srv.ServeOpensearch))
 	m.Add("POST", "/feedback", http.HandlerFunc(srv.ServeFeedback))
 
 	mux := http.NewServeMux()

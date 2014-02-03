@@ -22,7 +22,8 @@ type page struct {
 }
 
 type opensearchContext struct {
-	backendName string
+	BackendName string
+	BaseURL     string
 }
 
 type repo struct {
