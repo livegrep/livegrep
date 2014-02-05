@@ -2,6 +2,7 @@ package client
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,43 +14,15 @@ type Client struct {
 	conn    net.Conn
 	queries chan doQuery
 	errors  chan error
+	ready   chan *ServerInfo
 	error   error
-}
-
-type Query struct {
-	Line string `json:"line"`
-	File string `json:"file"`
-	Repo string `json:"repo"`
-}
-
-type QueryError struct {
-	Query *Query
-	Err   string
-}
-
-func (q QueryError) Error() string {
-	return fmt.Sprintf("Query Error: %s", q.Err)
+	info    *ServerInfo
 }
 
 type doQuery struct {
 	query   *Query
 	results chan<- *Result
 	errors  chan<- error
-}
-
-type Result struct {
-	Contexts []struct {
-		Paths []struct {
-			Ref  string `json:"ref"`
-			Path string `json:"path"`
-		} `json:"paths"`
-		LineNumber    int      `json:"lno"`
-		ContextBefore []string `json:"context_before"`
-		ContextAfter  []string `json:"context_after"`
-	} `json:"contexts"`
-
-	Bounds [2]int `json:"bounds"`
-	Line   string `json:"line"`
 }
 
 func Dial(network, address string) (*Client, error) {
@@ -61,11 +34,23 @@ func Dial(network, address string) (*Client, error) {
 		conn:    conn,
 		queries: make(chan doQuery),
 		errors:  make(chan error, 1),
+		ready:   make(chan *ServerInfo),
 	}
 
 	go cl.loop()
 
+	select {
+	case cl.info = <-cl.ready:
+	case err = <-cl.errors:
+		close(cl.queries)
+		return nil, err
+	}
+
 	return cl, nil
+}
+
+func (c *Client) Info() *ServerInfo {
+	return c.info
 }
 
 func (c *Client) Query(q *Query) (chan *Result, chan error) {
@@ -98,10 +83,18 @@ func (c *Client) loop() {
 		c.errors <- scan.Err()
 		return
 	}
-	if scan.Text() != "READY" {
+	if !bytes.HasPrefix(scan.Bytes(), []byte("READY ")) {
 		c.errors <- fmt.Errorf("Expected READY, got: %s", scan.Text())
 		return
 	}
+
+	info := &ServerInfo{}
+	if err := json.Unmarshal(scan.Bytes()[len("READY "):], &info); err != nil {
+		c.errors <- err
+		return
+	}
+
+	c.ready <- info
 
 	encoder := json.NewEncoder(c.conn)
 
