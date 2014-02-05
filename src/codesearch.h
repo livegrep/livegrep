@@ -148,7 +148,7 @@ public:
 
     void set_alloc(chunk_allocator *alloc);
 
-    vector<string> tree_names();
+    vector<string> tree_names() const;
 
     class search_thread {
     protected:
