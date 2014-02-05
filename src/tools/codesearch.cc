@@ -34,6 +34,7 @@ DEFINE_string(load_index, "", "Load the index from a file instead of walking the
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_string(listen, "", "Listen on a UNIX socket for connections");
 DEFINE_string(file, "", "Only match files matching the provided regex");
+DEFINE_string(name, "", "The name of this livegrep index");
 
 using namespace std;
 using namespace re2;
@@ -228,6 +229,13 @@ bool parse_input(FILE *out, string in,
     return true;
 }
 
+json_object *json_info(code_searcher *cs) {
+    json_object *obj = json_object_new_object();
+    json_object_object_add(obj, "name", to_json(FLAGS_name));
+    json_object_object_add(obj, "trees", to_json(cs->tree_names()));
+    return obj;
+}
+
 sem_t interact_sem;
 
 void interact(code_searcher *cs, FILE *in, FILE *out) {
@@ -242,9 +250,11 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
     default_re2_options(opts);
 
     while (true) {
-        if (FLAGS_json)
-            fprintf(out, "READY\n");
-        else {
+        if (FLAGS_json) {
+            json_object *info = json_info(cs);
+            fprintf(out, "READY %s\n", json_object_to_json_string(info));
+            json_object_put(info);
+        } else {
             fprintf(out, "regex> ");
             fflush(out);
         }

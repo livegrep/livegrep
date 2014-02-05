@@ -381,6 +381,13 @@ void code_searcher::finalize() {
     stats_.content_chunks = alloc_->end_content() - alloc_->begin_content();
 }
 
+vector<string> code_searcher::tree_names() {
+    vector<string> out;
+    for (auto it = trees_.begin(); it != trees_.end(); ++it)
+        out.push_back((*it)->name);
+    return out;
+}
+
 void code_searcher::index_file(const string& tree_name,
                                const string& path,
                                StringPiece contents) {
