@@ -33,7 +33,6 @@ DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_string(listen, "", "Listen on a UNIX socket for connections");
-DEFINE_string(file, "", "Only match files matching the provided regex");
 DEFINE_string(name, "", "The name of this livegrep index");
 
 using namespace std;
@@ -217,8 +216,6 @@ bool parse_input(FILE *out, string in,
     json_object *file_js = json_object_object_get(js, "file");
     if (file_js && json_object_get_type(file_js) == json_type_string)
         file_re = json_object_get_string(file_js);
-    else
-        file_re = FLAGS_file;
 
     json_object *tree_js = json_object_object_get(js, "repo");
     if (tree_js && json_object_get_type(tree_js) == json_type_string)
@@ -269,7 +266,6 @@ void interact(code_searcher *cs, FILE *in, FILE *out) {
         string line, file, tree;
         if (!FLAGS_json) {
             line = input;
-            file = FLAGS_file;
         } else {
             if (!parse_input(out, input, line, file, tree))
                 continue;
