@@ -12,7 +12,7 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type ClientSuite struct {
-	client *client.Client
+	client client.Client
 }
 
 var _ = Suite(&ClientSuite{})
@@ -26,27 +26,26 @@ func (s *ClientSuite) SetUpTest(c *C) {
 }
 
 func (s *ClientSuite) TestQuery(c *C) {
-	results, errors := s.client.Query(&client.Query{".", "", ""})
+	search := s.client.Query(&client.Query{".", "", ""})
 	var n int
-	for r := range results {
+	for r := range search.Results() {
 		n++
 		c.Assert(r.Line, Not(Equals), "")
 	}
 	c.Assert(n, Not(Equals), 0)
-	select {
-	case err, ok := <-errors:
-		if ok {
-			c.Fatal("client got an error: ", err)
-		}
-	default:
-		c.Fatal("error channel isn't closed")
-	}
+	st, e := search.Close()
+	c.Assert(st, Not(IsNil))
+	c.Assert(e, IsNil)
 }
 
 func (s *ClientSuite) TestBadRegex(c *C) {
-	_, errors := s.client.Query(&client.Query{"(", "", ""})
-	e, ok := <-errors
-	if !ok || e == nil {
+	search := s.client.Query(&client.Query{"(", "", ""})
+	for _ = range search.Results() {
+		c.Fatal("Got back a result from an erroneous query!")
+	}
+	st, e := search.Close()
+	c.Assert(st, IsNil)
+	if e == nil {
 		c.Fatal("Didn't get back an error")
 	}
 	if q, ok := e.(client.QueryError); ok {

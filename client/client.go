@@ -10,29 +10,30 @@ import (
 	"strings"
 )
 
-type Client struct {
+type client struct {
 	conn    net.Conn
-	queries chan doQuery
+	queries chan *search
 	errors  chan error
-	ready   chan *ServerInfo
 	error   error
+	ready   chan *ServerInfo
 	info    *ServerInfo
 }
 
-type doQuery struct {
+type search struct {
 	query   *Query
-	results chan<- *Result
-	errors  chan<- error
+	results chan *Result
+	errors  chan error
+	stats   chan *Stats
 }
 
-func Dial(network, address string) (*Client, error) {
+func Dial(network, address string) (Client, error) {
 	conn, err := net.Dial(network, address)
 	if err != nil {
 		return nil, err
 	}
-	cl := &Client{
+	cl := &client{
 		conn:    conn,
-		queries: make(chan doQuery),
+		queries: make(chan *search),
 		errors:  make(chan error, 1),
 		ready:   make(chan *ServerInfo),
 	}
@@ -49,22 +50,22 @@ func Dial(network, address string) (*Client, error) {
 	return cl, nil
 }
 
-func (c *Client) Info() *ServerInfo {
+func (c *client) Info() *ServerInfo {
 	return c.info
 }
 
-func (c *Client) Query(q *Query) (chan *Result, chan error) {
-	results := make(chan *Result)
-	errors := make(chan error)
-	c.queries <- doQuery{q, results, errors}
-	return results, errors
+func (c *client) Query(q *Query) Search {
+	s := &search{q, make(chan *Result), make(chan error, 1), make(chan *Stats, 1)}
+	c.queries <- s
+	return s
 }
 
-func (c *Client) Close() {
+func (c *client) Close() error {
 	close(c.queries)
+	return c.Err()
 }
 
-func (c *Client) Err() error {
+func (c *client) Err() error {
 	if c.error != nil {
 		return c.error
 	}
@@ -75,10 +76,11 @@ func (c *Client) Err() error {
 	return c.error
 }
 
-func (c *Client) loop() {
+func (c *client) loop() {
 	defer c.conn.Close()
 	defer close(c.errors)
 	scan := bufio.NewScanner(c.conn)
+
 	if !scan.Scan() {
 		c.errors <- scan.Err()
 		return
@@ -103,6 +105,7 @@ func (c *Client) loop() {
 			q.errors <- e
 			close(q.errors)
 			close(q.results)
+			close(q.stats)
 			continue
 		}
 		for scan.Scan() {
@@ -111,6 +114,12 @@ func (c *Client) loop() {
 				q.errors <- QueryError{q.query, strings.TrimPrefix("FATAL ", line)}
 				break
 			} else if strings.HasPrefix(line, "DONE ") {
+				stats := &Stats{}
+				if e := json.Unmarshal(scan.Bytes()[len("DONE "):], stats); e != nil {
+					q.errors <- e
+				} else {
+					q.stats <- stats
+				}
 				break
 			} else {
 				r := &Result{}
@@ -124,6 +133,7 @@ func (c *Client) loop() {
 
 		close(q.errors)
 		close(q.results)
+		close(q.stats)
 
 		if scan.Err() != nil {
 			break
@@ -132,4 +142,14 @@ func (c *Client) loop() {
 	if e := scan.Err(); e != nil && e != io.EOF {
 		c.errors <- e
 	}
+}
+
+func (s *search) Results() <-chan *Result {
+	return s.results
+}
+
+func (s *search) Close() (*Stats, error) {
+	for _ = range s.results {
+	}
+	return <-s.stats, <-s.errors
 }

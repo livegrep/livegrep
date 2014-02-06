@@ -48,7 +48,12 @@ type ServerInfo struct {
 	Trees []string `json:"trees"`
 }
 
+type Client interface {
+	Query(q *Query) Search
+	Close() error
+}
+
 type Search interface {
-	Results() <-chan Result
-	Close() (Stats, error)
+	Results() <-chan *Result
+	Close() (*Stats, error)
 }
