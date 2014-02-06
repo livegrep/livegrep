@@ -80,27 +80,33 @@ func (c *client) loop() {
 	defer c.conn.Close()
 	defer close(c.errors)
 	scan := bufio.NewScanner(c.conn)
-
-	if !scan.Scan() {
-		c.errors <- scan.Err()
-		return
-	}
-	if !bytes.HasPrefix(scan.Bytes(), []byte("READY ")) {
-		c.errors <- fmt.Errorf("Expected READY, got: %s", scan.Text())
-		return
-	}
-
-	info := &ServerInfo{}
-	if err := json.Unmarshal(scan.Bytes()[len("READY "):], &info); err != nil {
-		c.errors <- err
-		return
-	}
-
-	c.ready <- info
-
 	encoder := json.NewEncoder(c.conn)
 
-	for q := range c.queries {
+	for {
+		if !scan.Scan() {
+			c.errors <- scan.Err()
+			return
+		}
+		if !bytes.HasPrefix(scan.Bytes(), []byte("READY ")) {
+			c.errors <- fmt.Errorf("Expected READY, got: %s", scan.Text())
+			return
+		}
+
+		info := &ServerInfo{}
+		if err := json.Unmarshal(scan.Bytes()[len("READY "):], &info); err != nil {
+			c.errors <- err
+			return
+		}
+
+		select {
+		case c.ready <- info:
+		default:
+		}
+
+		q, ok := <-c.queries
+		if !ok {
+			break
+		}
 		if e := encoder.Encode(q.query); e != nil {
 			q.errors <- e
 			close(q.errors)

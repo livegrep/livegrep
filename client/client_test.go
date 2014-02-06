@@ -38,6 +38,23 @@ func (s *ClientSuite) TestQuery(c *C) {
 	c.Assert(e, IsNil)
 }
 
+func (s *ClientSuite) TestTwoQueries(c *C) {
+	search := s.client.Query(&client.Query{".", "", ""})
+	_, err := search.Close()
+	c.Assert(err, IsNil)
+
+	search = s.client.Query(&client.Query{".", "", ""})
+	n := 0
+	for _ = range search.Results() {
+		n++
+	}
+	_, err = search.Close()
+	if err != nil {
+		c.Fatalf("Unexpected error: %s", err.Error())
+	}
+	c.Assert(n, Not(Equals), 0)
+}
+
 func (s *ClientSuite) TestBadRegex(c *C) {
 	search := s.client.Query(&client.Query{"(", "", ""})
 	for _ = range search.Results() {
