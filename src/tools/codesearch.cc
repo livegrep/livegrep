@@ -206,6 +206,8 @@ void *handle_client(void *data) {
     child_state *child = static_cast<child_state*>(data);
     FILE *r = fdopen(child->fd, "r");
     FILE *w = fdopen(dup(child->fd), "w");
+    assert(!setvbuf(r,  NULL, _IOFBF, 4096*4));
+    assert(!setvbuf(w, NULL, _IONBF, 0));
     codesearch_interface *interface;
     if (FLAGS_json)
         interface = make_json_interface(r, w);
