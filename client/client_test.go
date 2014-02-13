@@ -26,7 +26,8 @@ func (s *ClientSuite) SetUpTest(c *C) {
 }
 
 func (s *ClientSuite) TestQuery(c *C) {
-	search := s.client.Query(&client.Query{".", "", ""})
+	search, err := s.client.Query(&client.Query{".", "", ""})
+	c.Assert(err, IsNil)
 	var n int
 	for r := range search.Results() {
 		n++
@@ -39,11 +40,13 @@ func (s *ClientSuite) TestQuery(c *C) {
 }
 
 func (s *ClientSuite) TestTwoQueries(c *C) {
-	search := s.client.Query(&client.Query{".", "", ""})
-	_, err := search.Close()
+	search, err := s.client.Query(&client.Query{".", "", ""})
+	c.Assert(err, IsNil)
+	_, err = search.Close()
 	c.Assert(err, IsNil)
 
-	search = s.client.Query(&client.Query{".", "", ""})
+	search, err = s.client.Query(&client.Query{".", "", ""})
+	c.Assert(err, IsNil)
 	n := 0
 	for _ = range search.Results() {
 		n++
@@ -56,7 +59,8 @@ func (s *ClientSuite) TestTwoQueries(c *C) {
 }
 
 func (s *ClientSuite) TestBadRegex(c *C) {
-	search := s.client.Query(&client.Query{"(", "", ""})
+	search, err := s.client.Query(&client.Query{"(", "", ""})
+	c.Assert(err, IsNil)
 	for _ = range search.Results() {
 		c.Fatal("Got back a result from an erroneous query!")
 	}
