@@ -22,6 +22,8 @@ func (s *searchConnection) recvLoop() {
 		if err := OpCodec.Receive(s.ws, &op); err != nil {
 			log.Printf("Error in receive: %s\n", err.Error())
 			if _, ok := err.(*ProtocolError); ok {
+				// TODO: is this a good idea?
+				// s.outgoing <- &OpError{err.Error()}
 				continue
 			} else {
 				s.errors <- err
