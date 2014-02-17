@@ -109,7 +109,7 @@ func (c *client) loop() {
 		for scan.Scan() {
 			line := scan.Text()
 			if strings.HasPrefix(line, "FATAL ") {
-				q.errors <- QueryError{q.query, strings.TrimPrefix("FATAL ", line)}
+				q.errors <- QueryError{q.query, strings.TrimPrefix(line, "FATAL ")}
 				break
 			} else if strings.HasPrefix(line, "DONE ") {
 				stats := &Stats{}

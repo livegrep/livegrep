@@ -3,6 +3,7 @@ package client_test
 import (
 	"github.com/nelhage/livegrep/client"
 	. "launchpad.net/gocheck"
+	"strings"
 	"testing"
 )
 
@@ -71,6 +72,9 @@ func (s *ClientSuite) TestBadRegex(c *C) {
 	}
 	if q, ok := e.(client.QueryError); ok {
 		c.Assert(q.Query.Line, Equals, "(")
+		if strings.HasPrefix(q.Err, "FATAL") {
+			c.Errorf("Error includes FATAL prefix: %s", q.Err)
+		}
 	} else {
 		c.Fatalf("Error %v wasn't a QueryError", e)
 	}
