@@ -71,7 +71,10 @@ func (s *searchConnection) handle() {
 
 	for {
 		select {
-		case op := <-s.incoming:
+		case op, ok := <-s.incoming:
+			if !ok {
+				break
+			}
 			switch t := op.(type) {
 			case *OpQuery:
 				nextQuery = t
