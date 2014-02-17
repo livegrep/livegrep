@@ -4,23 +4,39 @@ var Codesearch = function() {
     socket: null,
     delegate: null,
     connect: function(delegate) {
+      Codesearch.delegate = delegate;
       if (Codesearch.socket !== null)
         return;
-      Codesearch.remote = null;
-      Codesearch.delegate = delegate;
-      var socket = io.connect();
-      socket.on('connect', function () {
-                  Codesearch.socket = socket;
-                  if (Codesearch.delegate.on_connect)
-                    Codesearch.delegate.on_connect();
-                });
-      socket.on('regex_error', Codesearch.delegate.error);
-      socket.on('match', Codesearch.delegate.match);
-      socket.on('search_done', Codesearch.delegate.search_done);
+
+      var socket = new WebSocket("ws://" + window.location.host + "/socket")
+      socket.onmessage = Codesearch.handle_frame
+      socket.onopen = function() {
+        Codesearch.socket = socket;
+        if (Codesearch.delegate.on_connect)
+          Codesearch.delegate.on_connect();
+      }
+      socket.onerror = Codesearch.socket_error
     },
     new_search: function(opts) {
       if (Codesearch.socket !== null)
-        Codesearch.socket.emit('new_search', opts);
+        Codesearch.socket.send(JSON.stringify({opcode: "query", body: opts}));
+    },
+    handle_frame: function(frame) {
+      var op = JSON.parse(frame.data);
+      if (op.body.opcode == "error") {
+        console.log("in-band error: ", op.error)
+      } else if (op.opcode == 'result') {
+        Codesearch.delegate.match(op.body.id, op.body.result);
+      } else if (op.opcode == 'search_done') {
+        Codesearch.delegate.search_done(op.body.id, 0, op.body.why);
+      } else if (op.opcode == 'query_error') {
+        Codesearch.delegate.error(op.body.id, op.body.error);
+      } else {
+        console.log("unknown opcode: ", op.opcode)
+      }
+    },
+    socket_error: function(err) {
+      console.log("Socket error: ", err);
     }
   };
 }();

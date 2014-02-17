@@ -62,6 +62,7 @@ var Match = Backbone.Model.extend({
       name = pieces[0];
       ref = pieces[1];
     }
+    return ""
     return "https://github.com/" + CodesearchUI.github_repos[this.get('backend')][name] +
       "/blob/" + shorten(ref) + "/" + this.get('path').path +
       "#L" + this.get('context').lno;
@@ -230,7 +231,7 @@ var SearchState = Backbone.Model.extend({
       return false;
     this.set('displaying', search);
     this.matches.add({
-                       backend: match.backend,
+                       backend: this.search_map[search].backend,
                        line: match.line,
                        bounds: match.bounds,
                        contexts: match.contexts
