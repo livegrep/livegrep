@@ -36,6 +36,13 @@ type OpResult struct {
 
 func (o *OpResult) Opcode() string { return "result" }
 
+type OpSearchDone struct {
+	Search int64         `json:"id"`
+	Stats  *client.Stats `json:"stats"`
+}
+
+func (o *OpSearchDone) Opcode() string { return "search_done" }
+
 type OpQueryError struct {
 	Search int64  `json:"id"`
 	Error  string `json:"error"`
@@ -57,6 +64,7 @@ func init() {
 	registerOp(&OpError{})
 	registerOp(&OpQuery{})
 	registerOp(&OpResult{})
+	registerOp(&OpSearchDone{})
 	registerOp(&OpQueryError{})
 }
 
@@ -78,6 +86,14 @@ func marshalOp(v interface{}) (data []byte, payloadType byte, err error) {
 	return
 }
 
+type ProtocolError struct {
+	error string
+}
+
+func (pe *ProtocolError) Error() string {
+	return pe.error
+}
+
 func unmarshalOp(data []byte, payloadType byte, v interface{}) (err error) {
 	val := reflect.ValueOf(v)
 	if val.Type().Kind() != reflect.Ptr {
@@ -86,17 +102,17 @@ func unmarshalOp(data []byte, payloadType byte, v interface{}) (err error) {
 
 	var frame WebsocketFrame
 	if err = json.Unmarshal(data, &frame); err != nil {
-		return
+		return &ProtocolError{fmt.Sprintf("json decode: %s", err.Error())}
 	}
 
 	prototype, ok := opTable[frame.Opcode]
 	if !ok {
-		return fmt.Errorf("Unknown opcode %s", frame.Opcode)
+		return &ProtocolError{fmt.Sprintf("Unknown opcode %s", frame.Opcode)}
 	}
 
 	op := reflect.New(reflect.TypeOf(prototype).Elem()).Interface().(Op)
 	if err = json.Unmarshal(frame.Body, op); err != nil {
-		return err
+		return &ProtocolError{fmt.Sprintf("json decode: %s", err.Error())}
 	}
 
 	val.Elem().Set(reflect.ValueOf(op))

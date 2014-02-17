@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"code.google.com/p/go.net/websocket"
 	"github.com/nelhage/livegrep/server"
 	. "launchpad.net/gocheck"
 	"testing"
@@ -11,6 +12,14 @@ func Test(t *testing.T) { TestingT(t) }
 type ProtocolSuite struct{}
 
 var _ = Suite(&ProtocolSuite{})
+
+func (_ *ProtocolSuite) TestNoOpcode(c *C) {
+	var op server.Op
+	err := server.OpCodec.Unmarshal([]byte(`{"error": "monkeys"}`), websocket.TextFrame, &op)
+	if err == nil {
+		c.Error("Failed to return an error when unparsing with missing opcode.")
+	}
+}
 
 func (_ *ProtocolSuite) TestRoundTrip(c *C) {
 	op := &server.OpError{"error: fhqwgads"}
