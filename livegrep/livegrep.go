@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/config"
 	"github.com/nelhage/livegrep/server"
-	"log"
+	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 var (
@@ -19,30 +22,26 @@ var (
 func main() {
 	flag.Parse()
 
+	if len(flag.Args()) == 0 {
+		glog.Fatalf("Usage: %s CONFIG.json", os.Args[0])
+	}
+
+	data, err := ioutil.ReadFile(flag.Arg(0))
+	if err != nil {
+		glog.Fatalf(err.Error())
+	}
+
 	cfg := &config.Config{
 		DocRoot:    *docRoot,
 		Production: *production,
-		Backends: []config.Backend{
-			{
-				Id:        "linux",
-				Name:      "Linux 3.12",
-				Addr:      "localhost:9999",
-				IndexPath: "/home/nelhage/code/linux/codesearch.idx",
-				Repos: []config.Repo{
-					{
-						Path:   "/home/nelhage/code/linux/",
-						Name:   "",
-						Refs:   []string{"v3.12"},
-						Github: "torvalds/linux",
-					},
-				},
-			},
-		},
+	}
+	if err = json.Unmarshal(data, &cfg.Backends); err != nil {
+		glog.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 	}
 
 	handler, err := server.New(cfg)
 	if err != nil {
 		panic(err.Error())
 	}
-	log.Fatal(http.ListenAndServe(*serveAddr, handler))
+	glog.Fatal(http.ListenAndServe(*serveAddr, handler))
 }

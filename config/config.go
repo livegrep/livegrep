@@ -1,18 +1,18 @@
 package config
 
 type Repo struct {
-	Path   string
-	Name   string
-	Refs   []string
-	Github string
+	Path   string   `json:"path"`
+	Name   string   `json:"name"`
+	Refs   []string `json:"refs"`
+	Github string   `json:"github"`
 }
 
 type Backend struct {
-	Id        string
-	Name      string
-	Addr      string
-	IndexPath string
-	Repos     []Repo
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Addr      string `json:"addr"`
+	IndexPath string `json:"index"`
+	Repos     []Repo `json:"repos"`
 }
 
 type Config struct {

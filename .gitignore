@@ -8,3 +8,4 @@
 /node_modules
 /web/log/
 *.test
+config.json
