@@ -62,8 +62,12 @@ var Match = Backbone.Model.extend({
       name = pieces[0];
       ref = pieces[1];
     }
-    return ""
-    return "https://github.com/" + CodesearchUI.github_repos[this.get('backend')][name] +
+    var repo_map;
+    if (this.get('backend'))
+      repo_map = CodesearchUI.github_repos[this.get('backend')]
+    else
+      repo_map = CodesearchUI.github_repos[Object.keys(CodesearchUI.github_repos)[0]]
+    return "https://github.com/" + repo_map[name] +
       "/blob/" + shorten(ref) + "/" + this.get('path').path +
       "#L" + this.get('context').lno;
   }
@@ -400,7 +404,7 @@ var CodesearchUI = function() {
         file: CodesearchUI.input_file.val(),
         repo: CodesearchUI.input_repo.val(),
       };
-      if(CodesearchUI.input_backend)
+      if (CodesearchUI.input_backend)
         search.backend = CodesearchUI.input_backend.val();
       CodesearchUI.state.dispatch(search);
       if (search.line.length > 0)
