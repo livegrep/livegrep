@@ -403,7 +403,8 @@ var CodesearchUI = function() {
       if(CodesearchUI.input_backend)
         search.backend = CodesearchUI.input_backend.val();
       CodesearchUI.state.dispatch(search);
-      Codesearch.new_search(search);
+      if (search.line.length > 0)
+        Codesearch.new_search(search);
     },
     error: function(search, error) {
       CodesearchUI.state.handle_error(search, error);
