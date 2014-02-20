@@ -30,7 +30,7 @@ func (s *searchConnection) recvLoop() {
 				break
 			}
 		}
-		log.Printf("Incoming: %v", op)
+		log.Printf("Incoming: %+v", op)
 		s.incoming <- op
 		if s.shutdown {
 			break
@@ -41,6 +41,7 @@ func (s *searchConnection) recvLoop() {
 
 func (s *searchConnection) sendLoop() {
 	for op := range s.outgoing {
+		log.Printf("Outgoing: %+v", op)
 		OpCodec.Send(s.ws, op)
 	}
 }
@@ -71,6 +72,7 @@ func (s *searchConnection) handle() {
 	var results <-chan *client.Result
 	var err error
 
+SearchLoop:
 	for {
 		select {
 		case op, ok := <-s.incoming:
@@ -86,8 +88,8 @@ func (s *searchConnection) handle() {
 			}
 
 		case e := <-s.errors:
-			log.Printf("error reading from client: %s", e.Error())
-			break
+			log.Printf("error reading from client: %s\n", e.Error())
+			break SearchLoop
 		case res, ok := <-results:
 			if ok {
 				s.outgoing <- &OpResult{inFlight.Id, res}
