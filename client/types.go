@@ -1,9 +1,5 @@
 package client
 
-import (
-	"fmt"
-)
-
 type Query struct {
 	Line string `json:"line"`
 	File string `json:"file"`
@@ -16,7 +12,7 @@ type QueryError struct {
 }
 
 func (q QueryError) Error() string {
-	return fmt.Sprintf("Query Error: %s", q.Err)
+	return q.Err
 }
 
 type Result struct {
