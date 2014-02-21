@@ -269,6 +269,9 @@ int bind_to_address(string spec) {
         server = socket(addrs->ai_family, addrs->ai_socktype, addrs->ai_protocol);
         if (server < 0)
             die_errno("Creating socket");
+        int one = 1;
+        if (setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) != 0)
+            die_errno("set reuseaddr");
         if (::bind(server, addrs->ai_addr, addrs->ai_addrlen) != 0)
             die_errno("Binding to address");
         freeaddrinfo(addrs);
