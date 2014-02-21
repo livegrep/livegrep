@@ -79,11 +79,11 @@ func (c *client) loop() {
 
 	for {
 		if !scan.Scan() {
-			if scan.Err() != nil {
-				c.errors <- scan.Err()
-			} else {
-				c.errors <- errors.New("connection closed unexpectedly")
+			e := scan.Err()
+			if e == nil {
+				e = errors.New("connection closed unexpectedly")
 			}
+			c.errors <- e
 			return
 		}
 		if !bytes.HasPrefix(scan.Bytes(), []byte("READY ")) {
@@ -140,20 +140,16 @@ func (c *client) loop() {
 		}
 
 		if !done {
-			if scan.Err() != nil {
-				q.errors <- scan.Err()
-			} else {
-				q.errors <- errors.New("connection closed unexpectedly")
+			e := scan.Err()
+			if e == nil {
+				e = errors.New("connection closed unexpectedly")
 			}
+			q.errors <- e
 		}
 
 		close(q.errors)
 		close(q.results)
 		close(q.stats)
-
-		if scan.Err() != nil {
-			break
-		}
 	}
 	if e := scan.Err(); e != nil {
 		c.errors <- e
