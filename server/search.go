@@ -106,7 +106,6 @@ SearchLoop:
 			}
 		}
 		if nextQuery != nil && results == nil {
-			inFlight = nextQuery
 			search, err = cl.Query(query(nextQuery))
 			if err != nil {
 				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
