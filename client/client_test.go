@@ -3,6 +3,7 @@ package client_test
 import (
 	"github.com/nelhage/livegrep/client"
 	. "launchpad.net/gocheck"
+	"net"
 	"strings"
 	"testing"
 )
@@ -78,4 +79,45 @@ func (s *ClientSuite) TestBadRegex(c *C) {
 	} else {
 		c.Fatalf("Error %v wasn't a QueryError", e)
 	}
+}
+
+func shutdownClient(addr string, ready chan<- bool) {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer ln.Close()
+	ready <- true
+	conn, err := ln.Accept()
+	if err != nil {
+		panic(err.Error())
+	}
+	conn.Write([]byte("READY {}\n"))
+	conn.Close()
+}
+
+func (s *ClientSuite) TestShutdown(c *C) {
+	ready := make(chan bool, 1)
+	go shutdownClient("127.0.0.1:10999", ready)
+	<-ready
+
+	cl, err := client.Dial("tcp", "127.0.0.1:10999")
+	c.Assert(err, IsNil)
+
+	search, err := cl.Query(&client.Query{Line: "l"})
+	c.Assert(err, IsNil)
+	c.Assert(search, Not(IsNil))
+
+	results := search.Results()
+	c.Assert(results, Not(IsNil))
+	for r := range results {
+		c.Errorf("Got a result back: %+v", r)
+	}
+	st, err := search.Close()
+	c.Assert(st, IsNil)
+	c.Assert(err, Not(IsNil))
+
+	search, err = cl.Query(&client.Query{Line: "l"})
+	c.Assert(err, Not(IsNil))
+	c.Assert(search, IsNil)
 }

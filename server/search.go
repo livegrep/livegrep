@@ -110,6 +110,9 @@ SearchLoop:
 			if err != nil {
 				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
 			} else {
+				if search == nil {
+					panic("nil search and nil error?")
+				}
 				inFlight = nextQuery
 				results = search.Results()
 			}

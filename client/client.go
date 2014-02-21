@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"net"
 	"strings"
 )
@@ -57,7 +57,10 @@ func (c *client) Info() *ServerInfo {
 func (c *client) Query(q *Query) (Search, error) {
 	s := &search{q, make(chan *Result), make(chan error, 1), make(chan *Stats, 1)}
 	select {
-	case e := <-c.errors:
+	case e, ok := <-c.errors:
+		if !ok {
+			e = errors.New("use of a closed Client")
+		}
 		return nil, e
 	case c.queries <- s:
 		return s, nil
@@ -76,7 +79,11 @@ func (c *client) loop() {
 
 	for {
 		if !scan.Scan() {
-			c.errors <- scan.Err()
+			if scan.Err() != nil {
+				c.errors <- scan.Err()
+			} else {
+				c.errors <- errors.New("connection closed unexpectedly")
+			}
 			return
 		}
 		if !bytes.HasPrefix(scan.Bytes(), []byte("READY ")) {
@@ -106,10 +113,12 @@ func (c *client) loop() {
 			close(q.stats)
 			continue
 		}
+		done := false
 		for scan.Scan() {
 			line := scan.Text()
 			if strings.HasPrefix(line, "FATAL ") {
 				q.errors <- QueryError{q.query, strings.TrimPrefix(line, "FATAL ")}
+				done = true
 				break
 			} else if strings.HasPrefix(line, "DONE ") {
 				stats := &Stats{}
@@ -118,6 +127,7 @@ func (c *client) loop() {
 				} else {
 					q.stats <- stats
 				}
+				done = true
 				break
 			} else {
 				r := &Result{}
@@ -129,6 +139,14 @@ func (c *client) loop() {
 			}
 		}
 
+		if !done {
+			if scan.Err() != nil {
+				q.errors <- scan.Err()
+			} else {
+				q.errors <- errors.New("connection closed unexpectedly")
+			}
+		}
+
 		close(q.errors)
 		close(q.results)
 		close(q.stats)
@@ -137,7 +155,7 @@ func (c *client) loop() {
 			break
 		}
 	}
-	if e := scan.Err(); e != nil && e != io.EOF {
+	if e := scan.Err(); e != nil {
 		c.errors <- e
 	}
 }
