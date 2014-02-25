@@ -10,6 +10,8 @@ import (
 type searchConnection struct {
 	srv      *server
 	ws       *websocket.Conn
+	backend  string
+	client   client.Client
 	errors   chan error
 	incoming chan Op
 	outgoing chan Op
@@ -63,9 +65,6 @@ func (s *searchConnection) handle() {
 	go s.sendLoop()
 	defer close(s.outgoing)
 
-	var backend string
-	var cl client.Client
-
 	var nextQuery *OpQuery
 	var inFlight *OpQuery
 
@@ -107,27 +106,12 @@ SearchLoop:
 			}
 		}
 		if nextQuery != nil && results == nil {
-			if cl == nil || backend != nextQuery.Backend {
-				if cl != nil {
-					cl.Close()
-				}
-				addr := ""
-				for _, bk := range s.srv.config.Backends {
-					if bk.Id == nextQuery.Backend {
-						addr = bk.Addr
-						break
-					}
-				}
-				if addr == "" {
-					s.outgoing <- &OpQueryError{nextQuery.Id, fmt.Sprintf("No such backend: %s", nextQuery.Backend)}
-					nextQuery = nil
-					continue
-				} else {
-					backend = nextQuery.Backend
-					cl = client.ClientWithRetry(func() (client.Client, error) { return client.Dial("tcp", addr) })
-				}
+			if err := s.connectBackend(nextQuery.Backend); err != nil {
+				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
+				nextQuery = nil
+				continue
 			}
-			search, err = cl.Query(query(nextQuery))
+			search, err = s.client.Query(query(nextQuery))
 			if err != nil {
 				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
 			} else {
@@ -142,6 +126,29 @@ SearchLoop:
 	}
 
 	s.shutdown = true
+}
+
+func (s *searchConnection) connectBackend(backend string) error {
+	if s.client == nil || s.backend != backend {
+		if s.client != nil {
+			s.client.Close()
+		}
+		s.backend = backend
+		addr := ""
+		for _, bk := range s.srv.config.Backends {
+			if bk.Id == backend {
+				addr = bk.Addr
+				break
+			}
+		}
+		if addr == "" {
+			return fmt.Errorf("No such backend: %s", backend)
+		}
+		s.client = client.ClientWithRetry(func() (client.Client, error) {
+			return client.Dial("tcp", addr)
+		})
+	}
+	return nil
 }
 
 func (s *server) HandleWebsocket(ws *websocket.Conn) {
