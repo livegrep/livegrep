@@ -63,7 +63,8 @@ func (s *searchConnection) handle() {
 	go s.sendLoop()
 	defer close(s.outgoing)
 
-	cl := client.ClientWithRetry(func() (client.Client, error) { return client.Dial("tcp", s.srv.config.Backends[0].Addr) })
+	var backend string
+	var cl client.Client
 
 	var nextQuery *OpQuery
 	var inFlight *OpQuery
@@ -106,6 +107,26 @@ SearchLoop:
 			}
 		}
 		if nextQuery != nil && results == nil {
+			if cl == nil || backend != nextQuery.Backend {
+				if cl != nil {
+					cl.Close()
+				}
+				addr := ""
+				for _, bk := range s.srv.config.Backends {
+					if bk.Id == nextQuery.Backend {
+						addr = bk.Addr
+						break
+					}
+				}
+				if addr == "" {
+					s.outgoing <- &OpQueryError{nextQuery.Id, fmt.Sprintf("No such backend: %s", nextQuery.Backend)}
+					nextQuery = nil
+					continue
+				} else {
+					backend = nextQuery.Backend
+					cl = client.ClientWithRetry(func() (client.Client, error) { return client.Dial("tcp", addr) })
+				}
+			}
 			search, err = cl.Query(query(nextQuery))
 			if err != nil {
 				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
