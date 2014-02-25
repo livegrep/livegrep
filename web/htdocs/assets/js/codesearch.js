@@ -3,10 +3,13 @@ var Codesearch = function() {
   return {
     socket: null,
     delegate: null,
+    retry_time: 50,
     connect: function(delegate) {
-      Codesearch.delegate = delegate;
+      if (delegate !== undefined)
+        Codesearch.delegate = delegate;
       if (Codesearch.socket !== null)
         return;
+      console.log("Attempting to connect via websocket...");
 
       var socket = new WebSocket("ws://" + window.location.host + "/socket")
       socket.onmessage = Codesearch.handle_frame
@@ -14,8 +17,11 @@ var Codesearch = function() {
         Codesearch.socket = socket;
         if (Codesearch.delegate.on_connect)
           Codesearch.delegate.on_connect();
+        console.log("Connected!")
+        Codesearch.retry_time = 50;
       }
-      socket.onerror = Codesearch.socket_error
+      socket.onerror = Codesearch.socket_error;
+      socket.onclose = Codesearch.socket_close;
     },
     new_search: function(opts) {
       if (Codesearch.socket !== null)
@@ -37,6 +43,12 @@ var Codesearch = function() {
     },
     socket_error: function(err) {
       console.log("Socket error: ", err);
+    },
+    socket_close: function() {
+      Codesearch.socket = null;
+      Codesearch.retry_time = Math.min(600 * 1000, Math.round(Codesearch.retry_time * 1.5));
+      console.log("Socket closed. Retry in " + Codesearch.retry_time + "ms.")
+      setTimeout(Codesearch.connect, Codesearch.retry_time)
     }
   };
 }();
