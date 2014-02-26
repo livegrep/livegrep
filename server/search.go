@@ -8,14 +8,15 @@ import (
 )
 
 type searchConnection struct {
-	srv      *server
-	ws       *websocket.Conn
-	backend  string
-	client   client.Client
-	errors   chan error
-	incoming chan Op
-	outgoing chan Op
-	shutdown bool
+	srv       *server
+	ws        *websocket.Conn
+	backend   string
+	client    client.Client
+	errors    chan error
+	incoming  chan Op
+	outgoing  chan Op
+	shutdown  bool
+	lastQuery *OpQuery
 }
 
 func (s *searchConnection) recvLoop() {
@@ -66,7 +67,6 @@ func (s *searchConnection) handle() {
 	defer close(s.outgoing)
 
 	var nextQuery *OpQuery
-	var inFlight *OpQuery
 
 	var search client.Search
 	var results <-chan *client.Result
@@ -92,20 +92,23 @@ SearchLoop:
 			break SearchLoop
 		case res, ok := <-results:
 			if ok {
-				s.outgoing <- &OpResult{inFlight.Id, res}
+				s.outgoing <- &OpResult{s.lastQuery.Id, res}
 			} else {
 				st, err := search.Close()
 				if err == nil {
-					s.outgoing <- &OpSearchDone{inFlight.Id, st}
+					s.outgoing <- &OpSearchDone{s.lastQuery.Id, st}
 				} else {
-					s.outgoing <- &OpQueryError{inFlight.Id, err.Error()}
+					s.outgoing <- &OpQueryError{s.lastQuery.Id, err.Error()}
 				}
 				results = nil
 				search = nil
-				inFlight = nil
 			}
 		}
 		if nextQuery != nil && results == nil {
+			if !s.shouldDispatch(nextQuery) {
+				nextQuery = nil
+				continue
+			}
 			if err := s.connectBackend(nextQuery.Backend); err != nil {
 				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
 				nextQuery = nil
@@ -118,7 +121,7 @@ SearchLoop:
 				if search == nil {
 					panic("nil search and nil error?")
 				}
-				inFlight = nextQuery
+				s.lastQuery = nextQuery
 				results = search.Results()
 			}
 			nextQuery = nil
@@ -126,6 +129,19 @@ SearchLoop:
 	}
 
 	s.shutdown = true
+}
+
+func (s *searchConnection) shouldDispatch(q *OpQuery) bool {
+	if s.lastQuery == nil {
+		return true
+	}
+	if s.lastQuery.Backend != q.Backend ||
+		s.lastQuery.Line != q.Line ||
+		s.lastQuery.File != q.File ||
+		s.lastQuery.Repo != q.Repo {
+		return true
+	}
+	return false
 }
 
 func (s *searchConnection) connectBackend(backend string) error {
