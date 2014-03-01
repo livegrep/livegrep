@@ -34,7 +34,7 @@ var Codesearch = function() {
       } else if (op.opcode == 'result') {
         Codesearch.delegate.match(op.body.id, op.body.result);
       } else if (op.opcode == 'search_done') {
-        Codesearch.delegate.search_done(op.body.id, 0, op.body.why);
+        Codesearch.delegate.search_done(op.body.id, op.body.time, op.body.why);
       } else if (op.opcode == 'query_error') {
         Codesearch.delegate.error(op.body.id, op.body.error);
       } else {

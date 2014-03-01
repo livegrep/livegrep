@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/client"
+	"time"
 )
 
 type searchConnection struct {
-	srv       *server
-	ws        *websocket.Conn
-	backend   string
-	client    client.Client
-	errors    chan error
-	incoming  chan Op
-	outgoing  chan Op
-	shutdown  bool
-	lastQuery *OpQuery
+	srv        *server
+	ws         *websocket.Conn
+	backend    string
+	client     client.Client
+	errors     chan error
+	incoming   chan Op
+	outgoing   chan Op
+	shutdown   bool
+	lastQuery  *OpQuery
+	dispatched time.Time
 }
 
 func (s *searchConnection) recvLoop() {
@@ -96,7 +98,8 @@ SearchLoop:
 			} else {
 				st, err := search.Close()
 				if err == nil {
-					s.outgoing <- &OpSearchDone{s.lastQuery.Id, st}
+					duration := time.Since(s.dispatched)
+					s.outgoing <- &OpSearchDone{s.lastQuery.Id, int64(duration / time.Millisecond), st}
 				} else {
 					s.outgoing <- &OpQueryError{s.lastQuery.Id, err.Error()}
 				}
@@ -117,6 +120,7 @@ SearchLoop:
 			q := query(nextQuery)
 			glog.Infof("[%s] dispatching: %s", s.ws.Request().RemoteAddr, asJSON{q})
 			search, err = s.client.Query(q)
+			s.dispatched = time.Now()
 			if err != nil {
 				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
 			} else {

@@ -37,8 +37,9 @@ type OpResult struct {
 func (o *OpResult) Opcode() string { return "result" }
 
 type OpSearchDone struct {
-	Search int64         `json:"id"`
-	Stats  *client.Stats `json:"stats"`
+	Search   int64         `json:"id"`
+	Duration int64         `json:"time"`
+	Stats    *client.Stats `json:"stats"`
 }
 
 func (o *OpSearchDone) Opcode() string { return "search_done" }
