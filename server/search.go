@@ -99,6 +99,11 @@ SearchLoop:
 				st, err := search.Close()
 				if err == nil {
 					duration := time.Since(s.dispatched)
+					glog.Infof("search done remote=%s id=%d query=%s millis=%d",
+						s.ws.Request().RemoteAddr,
+						s.lastQuery.Id,
+						asJSON{query(s.lastQuery)},
+						int64(duration/time.Millisecond))
 					s.outgoing <- &OpSearchDone{s.lastQuery.Id, int64(duration / time.Millisecond), st}
 				} else {
 					s.outgoing <- &OpQueryError{s.lastQuery.Id, err.Error()}
@@ -118,7 +123,10 @@ SearchLoop:
 				continue
 			}
 			q := query(nextQuery)
-			glog.Infof("[%s] dispatching: %s", s.ws.Request().RemoteAddr, asJSON{q})
+			glog.Infof("dispatching remote=%s id=%d query=%s",
+				s.ws.Request().RemoteAddr,
+				nextQuery.Id,
+				asJSON{q})
 			search, err = s.client.Query(q)
 			s.dispatched = time.Now()
 			if err != nil {
