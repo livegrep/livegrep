@@ -110,7 +110,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	mux.Handle("/socket", websocket.Handler(srv.HandleWebsocket))
 	mux.Handle("/", m)
 
-	srv.inner = mux
+	srv.inner = &requestLogger{mux}
 
 	return srv, nil
 }

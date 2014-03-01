@@ -3,8 +3,8 @@ package server
 import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/client"
-	"log"
 )
 
 type searchConnection struct {
@@ -23,7 +23,7 @@ func (s *searchConnection) recvLoop() {
 	var op Op
 	for {
 		if err := OpCodec.Receive(s.ws, &op); err != nil {
-			log.Printf("Error in receive: %s\n", err.Error())
+			glog.V(1).Infof("Error in receive: %s\n", err.Error())
 			if _, ok := err.(*ProtocolError); ok {
 				// TODO: is this a good idea?
 				// s.outgoing <- &OpError{err.Error()}
@@ -33,7 +33,7 @@ func (s *searchConnection) recvLoop() {
 				break
 			}
 		}
-		log.Printf("Incoming: %+v", op)
+		glog.V(2).Infof("Incoming: %s", asJSON{op})
 		s.incoming <- op
 		if s.shutdown {
 			break
@@ -44,7 +44,7 @@ func (s *searchConnection) recvLoop() {
 
 func (s *searchConnection) sendLoop() {
 	for op := range s.outgoing {
-		log.Printf("Outgoing: %+v", op)
+		glog.V(2).Infof("Outgoing: %s", asJSON{op})
 		OpCodec.Send(s.ws, op)
 	}
 }
@@ -88,7 +88,7 @@ SearchLoop:
 			}
 
 		case e := <-s.errors:
-			log.Printf("error reading from client: %s\n", e.Error())
+			glog.Infof("error reading from client: %s\n", e.Error())
 			break SearchLoop
 		case res, ok := <-results:
 			if ok {
@@ -114,7 +114,9 @@ SearchLoop:
 				nextQuery = nil
 				continue
 			}
-			search, err = s.client.Query(query(nextQuery))
+			q := query(nextQuery)
+			glog.Infof("[%s] dispatching: %s", s.ws.Request().RemoteAddr, asJSON{q})
+			search, err = s.client.Query(q)
 			if err != nil {
 				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
 			} else {
