@@ -13,6 +13,8 @@
 class code_searcher;
 class git_repository;
 class git_tree;
+struct indexed_repo;
+struct indexed_tree;
 
 class git_indexer {
 public:
@@ -28,6 +30,8 @@ protected:
 
     code_searcher *cs_;
     git_repository *repo_;
+    const indexed_repo *idx_repo_;
+    const indexed_tree *idx_tree_;
     std::string name_;
 };
 

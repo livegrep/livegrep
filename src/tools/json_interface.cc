@@ -25,7 +25,8 @@ json_object *to_json(int i) {
 
 static json_object *to_json(const indexed_path &path) {
     json_object *out = json_object_new_object();
-    json_object_object_add(out, "ref",  to_json(path.tree->name));
+    std::string name = path.tree->repo->name + ":" + path.tree->revision;
+    json_object_object_add(out, "ref",  to_json(name));
     json_object_object_add(out, "path", to_json(path.path));
     return out;
 }
@@ -55,10 +56,6 @@ public:
 
     virtual void print_match(const match_result *m) {
         json_object *obj = json_object_new_object();
-        json_object_object_add(obj, "ref",
-                               to_json(m->context[0].paths[0].tree->name));
-        json_object_object_add(obj, "file",
-                               to_json(m->context[0].paths[0].path));
         json_object *contexts = json_object_new_array();
         for (auto ctx = m->context.begin();
              ctx != m->context.end(); ++ctx) {
@@ -72,16 +69,11 @@ public:
             json_object_array_add(contexts, jctx);
         }
         json_object_object_add(obj, "contexts", contexts);
-        json_object_object_add(obj, "lno",  json_object_new_int(m->context[0].lno));
         json_object *bounds = json_object_new_array();
         json_object_array_add(bounds, to_json(m->matchleft));
         json_object_array_add(bounds, to_json(m->matchright));
         json_object_object_add(obj, "bounds", bounds);
         json_object_object_add(obj, "line", to_json(m->line));
-        json_object_object_add(obj, "context_before",
-                               to_json(m->context[0].context_before));
-        json_object_object_add(obj, "context_after",
-                               to_json(m->context[0].context_after));
         fprintf(out_, "%s\n", json_object_to_json_string(obj));
         json_object_put(obj);
     }

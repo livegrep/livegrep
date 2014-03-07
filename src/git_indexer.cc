@@ -16,6 +16,7 @@ git_indexer::git_indexer(code_searcher *cs,
     : cs_(cs), repo_(0), name_(name) {
     git_repository_open(&repo_, repopath.c_str());
     assert(repo_);
+    idx_repo_ = cs_->open_repo(name, 0);
 }
 
 git_indexer::~git_indexer() {
@@ -34,6 +35,7 @@ void git_indexer::walk(const string& ref) {
     if (name_.size())
         name = name_ + ":" + name;
 
+    idx_tree_ = cs_->open_revision(idx_repo_, ref);
     walk_root(name, tree);
 }
 
@@ -68,7 +70,7 @@ void git_indexer::walk_root(const string& ref, git_tree *tree) {
             walk_tree(ref, path + "/", obj);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
             const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
-            cs_->index_file(ref, path, StringPiece(data, git_blob_rawsize(obj)));
+            cs_->index_file(idx_tree_, path, StringPiece(data, git_blob_rawsize(obj)));
         }
     }
 }
@@ -88,7 +90,7 @@ void git_indexer::walk_tree(const string& ref,
             walk_tree(ref, path + "/", obj);
         } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
             const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
-            cs_->index_file(ref, path, StringPiece(data, git_blob_rawsize(obj)));
+            cs_->index_file(idx_tree_, path, StringPiece(data, git_blob_rawsize(obj)));
         }
     }
 }

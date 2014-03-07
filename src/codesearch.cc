@@ -174,7 +174,8 @@ protected:
                                            RE2::UNANCHORED, 0, 0))
             return false;
 
-        if (tree_pat_ && !tree_pat_->Match(path.tree->name, 0, path.tree->name.size(),
+        if (tree_pat_ && !tree_pat_->Match(path.tree->repo->name, 0,
+                                           path.tree->repo->name.size(),
                                            RE2::UNANCHORED, 0, 0))
             return false;
 
@@ -384,11 +385,28 @@ void code_searcher::finalize() {
 vector<string> code_searcher::tree_names() const {
     vector<string> out;
     for (auto it = trees_.begin(); it != trees_.end(); ++it)
-        out.push_back((*it)->name);
+        out.push_back((*it)->repo->name + ":" + (*it)->revision);
     return out;
 }
 
-void code_searcher::index_file(const string& tree_name,
+const indexed_repo* code_searcher::open_repo(const string &name, json_object *metadata) {
+    indexed_repo *repo = new indexed_repo;
+    repo->name = name;
+    repo->metadata = metadata;
+    repos_.push_back(repo);
+    return repo;
+}
+
+const indexed_tree* code_searcher::open_revision(const indexed_repo *repo,
+                                                 const string &rev) {
+    indexed_tree *tree = new indexed_tree;
+    tree->repo = repo;
+    tree->revision = rev;
+    trees_.push_back(tree);
+    return tree;
+}
+
+void code_searcher::index_file(const indexed_tree *tree,
                                const string& path,
                                StringPiece contents) {
     assert(!finalized_);
@@ -402,20 +420,6 @@ void code_searcher::index_file(const string& tree_name,
 
     if (memchr(p, 0, len) != NULL)
         return;
-
-    indexed_tree *tree;
-    {
-        auto it = tree_map_.find(tree_name);
-        if (it == tree_map_.end()) {
-            tree = new indexed_tree;
-            tree->name = tree_name;
-            tree->id = trees_.size();
-            trees_.push_back(tree);
-            tree_map_[tree_name] = tree;
-        } else {
-            tree = it->second;
-        }
-    }
 
     stats_.bytes += len;
     stats_.files++;
@@ -473,8 +477,8 @@ void code_searcher::index_file(const string& tree_name,
 
     sf->content = content.build(alloc_);
     if (sf->content == 0) {
-        fprintf(stderr, "WARN: %s:%s is too large to be indexed.\n",
-                tree_name.c_str(), path.c_str());
+        fprintf(stderr, "WARN: %s:%s:%s is too large to be indexed.\n",
+                tree->repo->name.c_str(), tree->revision.c_str(), path.c_str());
         file_contents_builder dummy;
         sf->content = dummy.build(alloc_);
     }

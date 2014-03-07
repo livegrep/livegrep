@@ -29,8 +29,9 @@ public:
              ctx != m->context.end(); ++ctx) {
             for (auto it = ctx->paths.begin(); it != ctx->paths.end(); ++it) {
                 fprintf(out_,
-                        "%s:%s:%d:%d-%d: %.*s\n",
-                        it->tree->name.c_str(),
+                        "%s:%s:%s:%d:%d-%d: %.*s\n",
+                        it->tree->repo->name.c_str(),
+                        it->tree->revision.c_str(),
                         it->path.c_str(),
                         ctx->lno,
                         m->matchleft, m->matchright,

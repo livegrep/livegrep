@@ -101,14 +101,20 @@ struct index_stats {
 
 struct chunk;
 struct chunk_file;
+struct json_object;
+
+struct indexed_repo {
+    string name;
+    json_object *metadata;
+};
 
 struct indexed_tree {
-    string name;
-    int id;
+    const indexed_repo *repo;
+    string revision;
 };
 
 struct indexed_path {
-    indexed_tree *tree;
+    const indexed_tree *tree;
     string path;
 };
 
@@ -141,7 +147,9 @@ public:
     void dump_index(const string& path);
     void load_index(const string& path);
 
-    void index_file(const string& tree,
+    const indexed_repo *open_repo(const string &name, json_object *meta);
+    const indexed_tree *open_revision(const indexed_repo *repo, const string& rev);
+    void index_file(const indexed_tree *tree,
                     const string& path,
                     StringPiece contents);
     void finalize();
@@ -192,8 +200,8 @@ protected:
     index_stats stats_;
     chunk_allocator *alloc_;
     bool finalized_;
+    vector<indexed_repo*> repos_;
     vector<indexed_tree*> trees_;
-    map<string, indexed_tree*> tree_map_;
     vector<indexed_file*> files_;
     google::sparse_hash_map<sha1_buf, indexed_file*, hash_sha1> file_map_;
 
