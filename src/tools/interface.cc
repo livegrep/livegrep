@@ -1,4 +1,5 @@
 #include "codesearch.h"
+#include "git_indexer.h"
 #include "interface.h"
 #include "interface-impl.h"
 
@@ -21,9 +22,62 @@ codesearch_interface::~codesearch_interface() {}
 
 namespace {
 
+struct parse_spec {
+    string path;
+    string name;
+    vector<string> revs;
+};
+
+parse_spec parse_walk_spec(string spec) {
+    /* [name@]path[:rev1,rev2,rev3] */
+    parse_spec out;
+    int idx;
+    if ((idx = spec.find('@')) != -1) {
+        out.name = spec.substr(0, idx);
+        spec = spec.substr(idx + 1);
+    }
+    if ((idx = spec.find(':')) != -1) {
+        string revs = spec.substr(idx + 1);
+        spec = spec.substr(0, idx);
+        while ((idx = revs.find(',')) != -1) {
+            out.revs.push_back(revs.substr(0, idx));
+            revs = revs.substr(idx + 1);
+        }
+        if (revs.size())
+            out.revs.push_back(revs);
+    }
+    if (out.revs.empty()) {
+        out.revs.push_back("HEAD");
+    }
+    out.path = spec;
+    return out;
+}
+
 class cli_interface : public codesearch_interface {
 public:
     cli_interface(FILE *in, FILE *out) : in_(in), out_(out) { }
+
+    virtual void build_index(code_searcher *cs, const vector<std::string> &argv) {
+        if (argv.size() < 2) {
+            print_error("Usage: " + argv[0] + " [OPTIONS] REPOSPEC...");
+            exit(1);
+        }
+        for (auto it = argv.begin(); it != argv.end(); ++it) {
+            const std::string &arg = *it;
+            parse_spec parsed = parse_walk_spec(arg);
+            this->info("Walking `%s' (name: %s, path: %s)...\n",
+                       arg.c_str(),
+                       parsed.name.c_str(),
+                       parsed.path.c_str());
+            git_indexer indexer(cs, parsed.path, parsed.name);
+            for (auto it = parsed.revs.begin(); it != parsed.revs.end(); ++it) {
+                this->info("  %s...", it->c_str());
+                indexer.walk(*it);
+                this->info("done\n");
+            }
+        }
+    }
+
     virtual void print_match(const match_result *m) {
         for (auto ctx = m->context.begin();
              ctx != m->context.end(); ++ctx) {

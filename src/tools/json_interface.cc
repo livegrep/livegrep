@@ -1,5 +1,7 @@
 #include "codesearch.h"
 #include "interface.h"
+#include "debug.h"
+#include "git_indexer.h"
 #include "interface-impl.h"
 
 #include <json/json.h>
@@ -53,6 +55,60 @@ json_object *json_info(const code_searcher *cs) {
 
 long timeval_ms (struct timeval tv) {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+struct repo_spec {
+    string path;
+    string name;
+    vector<string> revisions;
+    json_object *metadata;
+};
+
+repo_spec parse_repo_spec(json_object *js) {
+    debug(kDebugUI, "Parsing: %s", json_object_to_json_string(js));
+    if (!json_object_is_type(js, json_type_object)) {
+        fprintf(stderr, "Repo spec is not an object!\n");
+        exit(1);
+    }
+
+    repo_spec spec;
+    json_object *js_path = json_object_object_get(js, "path");
+    if (json_object_is_type(js_path, json_type_string))
+        spec.path = json_object_get_string(js_path);
+    json_object *js_name = json_object_object_get(js, "name");
+    if (json_object_is_type(js_name, json_type_string))
+        spec.name = json_object_get_string(js_name);
+    spec.metadata = json_object_get(json_object_object_get(js, "metadata"));
+
+    json_object *js_revs = json_object_object_get(js, "revisions");
+    if (json_object_is_type(js_revs, json_type_array)) {
+        for (int i = 0; i < json_object_array_length(js_revs); ++i) {
+            json_object *elt = json_object_array_get_idx(js_revs, i);
+            if (json_object_is_type(elt, json_type_string))
+                spec.revisions.push_back(json_object_get_string(elt));
+        }
+    }
+
+    return spec;
+}
+
+void extract_repo_specs(vector<repo_spec> &out, json_object *js) {
+    switch(json_object_get_type(js)) {
+    case json_type_object:
+        debug(kDebugUI, "Parsing a single repo");
+        out.push_back(parse_repo_spec(js));
+        break;
+    case json_type_array:
+        debug(kDebugUI, "Parsing an array of repos...");
+        for (int i = 0; i < json_object_array_length(js); ++i) {
+            out.push_back(parse_repo_spec(json_object_array_get_idx(js, i)));
+        }
+        break;
+    default:
+        fprintf(stderr, "Error: unrecognized object type: %s\n",
+                json_type_to_name(json_object_get_type(js)));
+        exit(1);
+    }
 }
 
 class json_interface : public codesearch_interface {
@@ -155,6 +211,33 @@ public:
         }
         fprintf(out_, "DONE %s\n", json_object_to_json_string(obj));
         json_object_put(obj);
+    }
+
+    virtual void build_index(code_searcher *cs, const vector<std::string> &argv) {
+        if (argv.size() != 2) {
+            print_error("Usage: " + argv[0] + " --json [OPTIONS] config.json");
+            exit(1);
+        }
+        json_object *obj = json_object_from_file(argv[1].c_str());
+        if (is_error(obj)) {
+            print_error(string("Error parsing `") + argv[1] + string("': ") +
+                        string(json_tokener_errors[-(unsigned long)obj]));
+            exit(1);
+        }
+        vector<repo_spec> repos;
+        extract_repo_specs(repos, json_object_object_get(obj, "repositories"));
+        json_object_put(obj);
+
+        for (auto it = repos.begin(); it != repos.end(); ++it) {
+            debug(kDebugUI, "Walking name=%s, path=%s",
+                  it->name.c_str(), it->path.c_str());
+            git_indexer indexer(cs, it->path, it->name);
+            for (auto rev = it->revisions.begin();
+                 rev != it->revisions.end(); ++rev) {
+                debug(kDebugUI, "  walking %s..", rev->c_str());
+                indexer.walk(*rev);
+            }
+        }
     }
 
     virtual void info(const char *msg, ...) {}

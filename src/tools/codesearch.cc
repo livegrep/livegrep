@@ -6,7 +6,6 @@
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
 #include "codesearch.h"
-#include "git_indexer.h"
 #include "timer.h"
 #include "re_width.h"
 
@@ -121,53 +120,6 @@ void interact(code_searcher *cs, codesearch_interface *ui) {
     }
 }
 
-struct parse_spec {
-    string path;
-    string name;
-    vector<string> revs;
-};
-
-parse_spec parse_walk_spec(string spec) {
-    /* [name@]path[:rev1,rev2,rev3] */
-    parse_spec out;
-    int idx;
-    if ((idx = spec.find('@')) != -1) {
-        out.name = spec.substr(0, idx);
-        spec = spec.substr(idx + 1);
-    }
-    if ((idx = spec.find(':')) != -1) {
-        string revs = spec.substr(idx + 1);
-        spec = spec.substr(0, idx);
-        while ((idx = revs.find(',')) != -1) {
-            out.revs.push_back(revs.substr(0, idx));
-            revs = revs.substr(idx + 1);
-        }
-        if (revs.size())
-            out.revs.push_back(revs);
-    }
-    if (out.revs.empty()) {
-        out.revs.push_back("HEAD");
-    }
-    out.path = spec;
-    return out;
-}
-
-void walk_one(code_searcher *search,
-              codesearch_interface *ui,
-              string spec) {
-    parse_spec parsed = parse_walk_spec(spec);
-    ui->info("Walking `%s' (name: %s, path: %s)...\n",
-             spec.c_str(),
-             parsed.name.c_str(),
-             parsed.path.c_str());
-    git_indexer indexer(search, parsed.path, parsed.name);
-    for (auto it = parsed.revs.begin(); it != parsed.revs.end(); ++it) {
-        ui->info("  %s...", it->c_str());
-        indexer.walk(*it);
-        ui->info("done\n");
-    }
-}
-
 void initialize_search(code_searcher *search,
                        codesearch_interface *ui,
                        int argc, char **argv) {
@@ -177,11 +129,13 @@ void initialize_search(code_searcher *search,
         else
             search->set_alloc(make_mem_allocator());
 
+        vector<std::string> args;
+        for (int i = 0; i < argc; ++i)
+            args.push_back(argv[i]);
+
         timer tm;
         struct timeval elapsed;
-        for (int i = 1; i < argc; i++) {
-            walk_one(search, ui, argv[i]);
-        }
+        ui->build_index(search, args);
         ui->info("Finalizing...\n");
         search->finalize();
         elapsed = tm.elapsed();

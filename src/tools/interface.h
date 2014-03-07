@@ -9,6 +9,7 @@
 #define CODESEARCH_INTERFACE_H
 
 #include <string>
+#include <vector>
 #include <stdlib.h>
 #include <sys/time.h>
 
@@ -18,6 +19,7 @@ class code_searcher;
 
 class codesearch_interface {
 public:
+    virtual void build_index(code_searcher *cs, const std::vector<std::string> &argv) = 0;
     virtual void print_match(const match_result *m) = 0;
     virtual void print_error(const std::string &err) = 0;
     virtual void print_prompt(const code_searcher *cs) = 0;

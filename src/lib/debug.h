@@ -15,6 +15,7 @@ enum debug_mode {
     kDebugProfile       = 0x0002,
     kDebugIndex         = 0x0004,
     kDebugIndexAll      = 0x0008,
+    kDebugUI            = 0x0010,
 };
 
 extern debug_mode debug_enabled;

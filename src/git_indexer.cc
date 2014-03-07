@@ -12,11 +12,12 @@ DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided"
 
 git_indexer::git_indexer(code_searcher *cs,
                          const string& repopath,
-                         const string& name)
-    : cs_(cs), repo_(0), name_(name) {
+                         const string& name,
+                         json_object *metadata)
+    : cs_(cs), repo_(0), name_(name), metadata_(metadata) {
     git_repository_open(&repo_, repopath.c_str());
     assert(repo_);
-    idx_repo_ = cs_->open_repo(name, 0);
+    idx_repo_ = cs_->open_repo(name, metadata);
 }
 
 git_indexer::~git_indexer() {

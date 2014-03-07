@@ -15,12 +15,14 @@ class git_repository;
 class git_tree;
 struct indexed_repo;
 struct indexed_tree;
+struct json_object;
 
 class git_indexer {
 public:
     git_indexer(code_searcher *cs,
                 const std::string& repopath,
-                const std::string& name);
+                const std::string& name,
+                json_object *metadata = 0);
     ~git_indexer();
     void walk(const std::string& ref);
 protected:
@@ -33,6 +35,7 @@ protected:
     const indexed_repo *idx_repo_;
     const indexed_tree *idx_tree_;
     std::string name_;
+    json_object *metadata_;
 };
 
 #endif
