@@ -9,16 +9,20 @@ import (
 )
 
 type searchConnection struct {
-	srv        *server
-	ws         *websocket.Conn
-	backend    string
-	client     client.Client
-	errors     chan error
-	incoming   chan Op
-	outgoing   chan Op
-	shutdown   bool
-	lastQuery  *OpQuery
-	dispatched time.Time
+	srv      *server
+	ws       *websocket.Conn
+	backend  string
+	client   client.Client
+	errors   chan error
+	incoming chan Op
+	outgoing chan Op
+	shutdown bool
+	q        struct {
+		last *OpQuery
+		// The time we dispatched 'last'
+		t    time.Time
+		next *OpQuery
+	}
 }
 
 func (s *searchConnection) recvLoop() {
@@ -68,8 +72,6 @@ func (s *searchConnection) handle() {
 	go s.sendLoop()
 	defer close(s.outgoing)
 
-	var nextQuery *OpQuery
-
 	var search client.Search
 	var results <-chan *client.Result
 	var err error
@@ -83,7 +85,7 @@ SearchLoop:
 			}
 			switch t := op.(type) {
 			case *OpQuery:
-				nextQuery = t
+				s.q.next = t
 			default:
 				s.outgoing <- &OpError{fmt.Sprintf("Invalid opcode %s", op.Opcode())}
 				break
@@ -94,51 +96,51 @@ SearchLoop:
 			break SearchLoop
 		case res, ok := <-results:
 			if ok {
-				s.outgoing <- &OpResult{s.lastQuery.Id, res}
+				s.outgoing <- &OpResult{s.q.last.Id, res}
 			} else {
 				st, err := search.Close()
 				if err == nil {
-					duration := time.Since(s.dispatched)
+					duration := time.Since(s.q.t)
 					glog.Infof("search done remote=%s id=%d query=%s millis=%d",
 						s.ws.Request().RemoteAddr,
-						s.lastQuery.Id,
-						asJSON{query(s.lastQuery)},
+						s.q.last.Id,
+						asJSON{query(s.q.last)},
 						int64(duration/time.Millisecond))
-					s.outgoing <- &OpSearchDone{s.lastQuery.Id, int64(duration / time.Millisecond), st}
+					s.outgoing <- &OpSearchDone{s.q.last.Id, int64(duration / time.Millisecond), st}
 				} else {
-					s.outgoing <- &OpQueryError{s.lastQuery.Id, err.Error()}
+					s.outgoing <- &OpQueryError{s.q.last.Id, err.Error()}
 				}
 				results = nil
 				search = nil
 			}
 		}
-		if nextQuery != nil && results == nil {
-			if !s.shouldDispatch(nextQuery) {
-				nextQuery = nil
+		if s.q.next != nil && results == nil {
+			if !s.shouldDispatch(s.q.next) {
+				s.q.next = nil
 				continue
 			}
-			if err := s.connectBackend(nextQuery.Backend); err != nil {
-				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
-				nextQuery = nil
+			if err := s.connectBackend(s.q.next.Backend); err != nil {
+				s.outgoing <- &OpQueryError{s.q.next.Id, err.Error()}
+				s.q.next = nil
 				continue
 			}
-			q := query(nextQuery)
+			q := query(s.q.next)
 			glog.Infof("dispatching remote=%s id=%d query=%s",
 				s.ws.Request().RemoteAddr,
-				nextQuery.Id,
+				s.q.next.Id,
 				asJSON{q})
 			search, err = s.client.Query(q)
-			s.dispatched = time.Now()
+			s.q.t = time.Now()
 			if err != nil {
-				s.outgoing <- &OpQueryError{nextQuery.Id, err.Error()}
+				s.outgoing <- &OpQueryError{s.q.next.Id, err.Error()}
 			} else {
 				if search == nil {
 					panic("nil search and nil error?")
 				}
-				s.lastQuery = nextQuery
+				s.q.last = s.q.next
 				results = search.Results()
 			}
-			nextQuery = nil
+			s.q.next = nil
 		}
 	}
 
@@ -146,13 +148,13 @@ SearchLoop:
 }
 
 func (s *searchConnection) shouldDispatch(q *OpQuery) bool {
-	if s.lastQuery == nil {
+	if s.q.last == nil {
 		return true
 	}
-	if s.lastQuery.Backend != q.Backend ||
-		s.lastQuery.Line != q.Line ||
-		s.lastQuery.File != q.File ||
-		s.lastQuery.Repo != q.Repo {
+	if s.q.last.Backend != q.Backend ||
+		s.q.last.Line != q.Line ||
+		s.q.last.File != q.File ||
+		s.q.last.Repo != q.Repo {
 		return true
 	}
 	return false
