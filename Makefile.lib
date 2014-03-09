@@ -5,7 +5,7 @@ define BUILD_d_file
 .%.d: %.$(1) $(MAKEVARS)/$(2) $(MAKEVARS)/CPPFLAGS $(MAKEVARS)/$(2)FLAGS
 	@set -e; trap 'rm -f $$@.$$$$$$$$' EXIT; rm -f $$@; \
 	 $($(2)) -MM $$(CPPFLAGS) $($(2)FLAGS) $$< > $$@.$$$$$$$$; \
-	 sed 's,\($(notdir $$*)\)\.o[ :]*,$$*.o $@ : ,g' < $$@.$$$$$$$$ > $$@
+	 sed 's,\($$(notdir $$*)\)\.o[ :]*,$$*.o $@ : ,g' < $$@.$$$$$$$$ > $$@
 endef
 
 $(eval $(call BUILD_d_file,cc,CXX))
