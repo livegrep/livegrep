@@ -156,7 +156,7 @@ public:
 
     void set_alloc(chunk_allocator *alloc);
 
-    vector<string> tree_names() const;
+    vector<indexed_repo> repos() const;
 
     class search_thread {
     protected:

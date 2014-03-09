@@ -382,10 +382,11 @@ void code_searcher::finalize() {
     stats_.content_chunks = alloc_->end_content() - alloc_->begin_content();
 }
 
-vector<string> code_searcher::tree_names() const {
-    vector<string> out;
-    for (auto it = trees_.begin(); it != trees_.end(); ++it)
-        out.push_back((*it)->repo->name + ":" + (*it)->revision);
+vector<indexed_repo> code_searcher::repos() const {
+    vector<indexed_repo> out;
+    out.reserve(repos_.size());
+    for (auto it = repos_.begin(); it != repos_.end(); ++it)
+        out.push_back(**it);
     return out;
 }
 

@@ -33,7 +33,6 @@ DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_string(listen, "", "Listen on a UNIX socket for connections");
-DEFINE_string(name, "", "The name of this livegrep index");
 
 using namespace std;
 using namespace re2;

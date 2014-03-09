@@ -6,8 +6,6 @@
 
 #include <gflags/gflags.h>
 
-DECLARE_string(name);
-
 namespace {
 
 json_object *to_json(const string &str) {
@@ -31,6 +29,14 @@ static json_object *to_json(const indexed_path &path) {
     return out;
 }
 
+json_object *to_json(const indexed_repo &repo) {
+    json_object *out = json_object_new_object();
+    json_object_object_add(out, "name", to_json(repo.name));
+    if (repo.metadata)
+        json_object_object_add(out, "metadata", json_object_get(repo.metadata));
+    return out;
+}
+
 template <class T>
 json_object *to_json(vector<T> vec) {
     json_object *out = json_object_new_array();
@@ -41,8 +47,7 @@ json_object *to_json(vector<T> vec) {
 
 json_object *json_info(const code_searcher *cs) {
     json_object *obj = json_object_new_object();
-    json_object_object_add(obj, "name", to_json(FLAGS_name));
-    json_object_object_add(obj, "trees", to_json(cs->tree_names()));
+    json_object_object_add(obj, "repos", to_json(cs->repos()));
     return obj;
 }
 
