@@ -40,8 +40,11 @@ type Stats struct {
 }
 
 type ServerInfo struct {
-	Name  string   `json:"name"`
-	Trees []string `json:"trees"`
+	Name  string `json:"name"`
+	Repos []struct {
+		Name     string                 `json:"name"`
+		Metadata map[string]interface{} `json:"metadata"`
+	} `json:"repos"`
 }
 
 type Client interface {
