@@ -157,6 +157,12 @@ public:
     void set_alloc(chunk_allocator *alloc);
 
     vector<indexed_repo> repos() const;
+    string name() const {
+        return name_;
+    };
+    void set_name(const string& name) {
+        name_ = name;
+    }
 
     class search_thread {
     protected:
@@ -196,6 +202,7 @@ public:
     };
 
 protected:
+    string name_;
     string_hash lines_;
     index_stats stats_;
     chunk_allocator *alloc_;

@@ -50,6 +50,7 @@ json_object *to_json(vector<T> vec) {
 json_object *json_info(const code_searcher *cs) {
     json_object *obj = json_object_new_object();
     json_object_object_add(obj, "repos", to_json(cs->repos()));
+    json_object_object_add(obj, "name", to_json(cs->name()));
     return obj;
 }
 
@@ -224,6 +225,11 @@ public:
                         string(json_tokener_errors[-(unsigned long)obj]));
             exit(1);
         }
+
+        json_object *name = json_object_object_get(obj, "name");
+        if (json_object_is_type(name, json_type_string))
+            cs->set_name(json_object_get_string(name));
+
         vector<repo_spec> repos;
         extract_repo_specs(repos, json_object_object_get(obj, "repositories"));
         json_object_put(obj);

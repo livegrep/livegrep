@@ -288,6 +288,9 @@ void codesearch_index::dump_metadata() {
     hdr_.nchunks  = cs_->alloc_->size();
     hdr_.ncontent = content_.size();
 
+    hdr_.name_off = stream_.tellp();
+    dump_string(cs_->name());
+
     map<const indexed_repo*, int> repo_ids;
     map<const indexed_tree*, int> tree_ids;
 
@@ -377,6 +380,9 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
     hdr_ = consume<index_header>();
     set_chunk_size(hdr_->chunk_size);
     chunks_hdr_ = next_chunk_ = ptr<chunk_header>(hdr_->chunks_off);
+
+    p_ = ptr<unsigned char>(hdr_->name_off);
+    cs->set_name(load_string());
 }
 
 

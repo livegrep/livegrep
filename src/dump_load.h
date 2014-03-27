@@ -9,13 +9,15 @@
 #define CODESEARCH_DUMP_LOAD_H
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 11;
+const uint32_t kIndexVersion = 12;
 const uint32_t kPageSize     = (1 << 12);
 
 struct index_header {
     uint32_t magic;
     uint32_t version;
     uint32_t chunk_size;
+
+    uint64_t name_off;
 
     uint32_t nrepos;
     uint64_t repos_off;
