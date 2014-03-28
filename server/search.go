@@ -164,11 +164,12 @@ func (s *searchConnection) shouldDispatch(q *OpQuery) bool {
 }
 
 func (s *searchConnection) connectBackend(backend string) (client.Client, error) {
-	bk, ok := s.srv.bk[backend]
+	var ok bool
+	s.backend, ok = s.srv.bk[backend]
 	if !ok {
 		return nil, fmt.Errorf("No such backend: %s", backend)
 	}
-	return bk.connect()
+	return s.backend.connect()
 }
 
 func (s *server) HandleWebsocket(ws *websocket.Conn) {

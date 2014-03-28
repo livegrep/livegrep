@@ -11,11 +11,20 @@ type backend struct {
 }
 
 func (bk *backend) connect() (client.Client, error) {
-	return client.ClientWithRetry(func() (client.Client, error) {
-		return client.Dial("tcp", bk.config.Addr)
-	}), nil
+	select {
+	case cl := <-bk.clients:
+		return cl, nil
+	default:
+		return client.ClientWithRetry(func() (client.Client, error) {
+			return client.Dial("tcp", bk.config.Addr)
+		}), nil
+	}
 }
 
-func (b *backend) checkIn(c client.Client) {
-	c.Close()
+func (bk *backend) checkIn(c client.Client) {
+	select {
+	case bk.clients <- c:
+	default:
+		c.Close()
+	}
 }

@@ -16,7 +16,7 @@ const (
 
 type server struct {
 	config *config.Config
-	bk     map[string]backend
+	bk     map[string]*backend
 	inner  http.Handler
 	t      templates
 }
@@ -100,11 +100,11 @@ func (s *server) ServeFeedback(w http.ResponseWriter, r *http.Request) {
 }
 
 func New(cfg *config.Config) (http.Handler, error) {
-	srv := &server{config: cfg, bk: make(map[string]backend)}
+	srv := &server{config: cfg, bk: make(map[string]*backend)}
 	srv.loadTemplates()
 
 	for _, bk := range srv.config.Backends {
-		srv.bk[bk.Id] = backend{
+		srv.bk[bk.Id] = &backend{
 			config:  &bk,
 			clients: make(chan client.Client, ClientPoolSize),
 		}
