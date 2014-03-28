@@ -3,14 +3,20 @@ package server
 import (
 	"code.google.com/p/go.net/websocket"
 	"github.com/bmizerany/pat"
+	"github.com/nelhage/livegrep/client"
 	"github.com/nelhage/livegrep/config"
 	"html/template"
 	"net/http"
 	"path"
 )
 
+const (
+	ClientPoolSize = 4
+)
+
 type server struct {
 	config *config.Config
+	bk     map[string]backend
 	inner  http.Handler
 	t      templates
 }
@@ -94,8 +100,15 @@ func (s *server) ServeFeedback(w http.ResponseWriter, r *http.Request) {
 }
 
 func New(cfg *config.Config) (http.Handler, error) {
-	srv := &server{config: cfg}
+	srv := &server{config: cfg, bk: make(map[string]backend)}
 	srv.loadTemplates()
+
+	for _, bk := range srv.config.Backends {
+		srv.bk[bk.Id] = backend{
+			config:  &bk,
+			clients: make(chan client.Client, ClientPoolSize),
+		}
+	}
 
 	m := pat.New()
 	m.Add("GET", "/", http.HandlerFunc(srv.ServeRoot))

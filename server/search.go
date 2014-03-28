@@ -11,7 +11,7 @@ import (
 type searchConnection struct {
 	srv      *server
 	ws       *websocket.Conn
-	backend  string
+	backend  *backend
 	client   client.Client
 	errors   chan error
 	incoming chan Op
@@ -99,6 +99,9 @@ SearchLoop:
 				s.outgoing <- &OpResult{s.q.last.Id, res}
 			} else {
 				st, err := search.Close()
+				s.backend.checkIn(s.client)
+				s.client = nil
+				s.backend = nil
 				if err == nil {
 					duration := time.Since(s.q.t)
 					glog.Infof("search done remote=%s id=%d query=%s millis=%d",
@@ -119,7 +122,7 @@ SearchLoop:
 				s.q.next = nil
 				continue
 			}
-			if err := s.connectBackend(s.q.next.Backend); err != nil {
+			if s.client, err = s.connectBackend(s.q.next.Backend); err != nil {
 				s.outgoing <- &OpQueryError{s.q.next.Id, err.Error()}
 				s.q.next = nil
 				continue
@@ -160,27 +163,12 @@ func (s *searchConnection) shouldDispatch(q *OpQuery) bool {
 	return false
 }
 
-func (s *searchConnection) connectBackend(backend string) error {
-	if s.client == nil || s.backend != backend {
-		if s.client != nil {
-			s.client.Close()
-		}
-		s.backend = backend
-		addr := ""
-		for _, bk := range s.srv.config.Backends {
-			if bk.Id == backend {
-				addr = bk.Addr
-				break
-			}
-		}
-		if addr == "" {
-			return fmt.Errorf("No such backend: %s", backend)
-		}
-		s.client = client.ClientWithRetry(func() (client.Client, error) {
-			return client.Dial("tcp", addr)
-		})
+func (s *searchConnection) connectBackend(backend string) (client.Client, error) {
+	bk, ok := s.srv.bk[backend]
+	if !ok {
+		return nil, fmt.Errorf("No such backend: %s", backend)
 	}
-	return nil
+	return bk.connect()
 }
 
 func (s *server) HandleWebsocket(ws *websocket.Conn) {
