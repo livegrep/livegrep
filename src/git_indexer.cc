@@ -16,7 +16,10 @@ git_indexer::git_indexer(code_searcher *cs,
                          json_object *metadata)
     : cs_(cs), repo_(0), name_(name), metadata_(metadata) {
     git_repository_open(&repo_, repopath.c_str());
-    assert(repo_);
+    if (repo_ == NULL) {
+        fprintf(stderr, "Unable to open repo: %s\n", repopath.c_str());
+        exit(1);
+    }
     idx_repo_ = cs_->open_repo(name, metadata);
 }
 
