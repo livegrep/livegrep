@@ -53,20 +53,16 @@ var Match = Backbone.Model.extend({
              });
   },
   url: function() {
-    var tree = this.get('path').ref;
-    var pieces, name = '', ref;
-    pieces = tree.split(":");
-    if (pieces.length == 1) {
-      ref = tree;
-    } else {
-      name = pieces[0];
-      ref = pieces[1];
-    }
+    var name = this.get('path').repo;
+    var ref = this.get('path').ref;
+
     var repo_map;
     if (this.get('backend'))
       repo_map = CodesearchUI.github_repos[this.get('backend')]
     else
       repo_map = CodesearchUI.github_repos[Object.keys(CodesearchUI.github_repos)[0]]
+    if (!repo_map[name])
+      return null;
     return "https://github.com/" + repo_map[name] +
       "/blob/" + shorten(ref) + "/" + this.get('path').path +
       "#L" + this.get('context').lno;
@@ -108,14 +104,18 @@ var MatchView = Backbone.View.extend({
                   line.substring(bounds[1])];
 
     var path = this.model.get('path');
+    var repoLabel = [
+      path.repo ? (path.repo + ":") : "",
+      shorten(path.ref),
+      ":",
+      path.path];
+    var url = this.model.url();
+    if (url !== null) {
+      repoLabel = [ h.a({href: this.model.url()}, repoLabel) ];
+    }
     return h.div({cls: 'match'}, [
         h.div({}, [
-          h.span({cls: 'label'}, [
-            h.a({href: this.model.url()}, [
-                  path.repo ? (path.repo + ":") : "",
-                  shorten(path.ref),
-                  ":",
-                  path.path])])]),
+          h.span({cls: 'label'}, repoLabel)]),
         h.div({cls: 'contents'}, [
                 ctx_before,
                 h.div({cls: 'matchline'}, [
