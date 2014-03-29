@@ -2,7 +2,7 @@ package server
 
 import (
 	"bytes"
-	"github.com/nelhage/livegrep/config"
+	"github.com/nelhage/livegrep/server/backend"
 	"html/template"
 	"io"
 	"path"
@@ -29,7 +29,7 @@ type opensearchContext struct {
 
 type searchContext struct {
 	GithubRepos interface{}
-	Backends    []config.Backend
+	Backends    []*backend.Backend
 }
 
 func (s *server) readTemplates(files ...string) *template.Template {

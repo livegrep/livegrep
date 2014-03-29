@@ -18,5 +18,5 @@ type Backend struct {
 type Config struct {
 	DocRoot    string
 	Production bool
-	Backends   []Backend
+	Backends   []Backend `json:"backends"`
 }

@@ -35,7 +35,7 @@ func main() {
 		DocRoot:    *docRoot,
 		Production: *production,
 	}
-	if err = json.Unmarshal(data, &cfg.Backends); err != nil {
+	if err = json.Unmarshal(data, &cfg); err != nil {
 		glog.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 	}
 

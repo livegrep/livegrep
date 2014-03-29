@@ -50,6 +50,8 @@ type ServerInfo struct {
 type Client interface {
 	Query(q *Query) (Search, error)
 	Close()
+	Info() *ServerInfo
+	Err() error
 }
 
 type Search interface {

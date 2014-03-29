@@ -34,6 +34,17 @@ func (c *retryClient) Query(q *Query) (Search, error) {
 	return s, e
 }
 
+func (c *retryClient) Err() error {
+	return nil
+}
+
+func (c *retryClient) Info() *ServerInfo {
+	if err := c.ensureClient(); err != nil {
+		return nil
+	}
+	return c.client.Info()
+}
+
 func (c *retryClient) Close() {
 	if c.client != nil {
 		c.client.Close()

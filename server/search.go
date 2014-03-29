@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/client"
+	"github.com/nelhage/livegrep/server/backend"
 	"time"
 )
 
 type searchConnection struct {
 	srv      *server
 	ws       *websocket.Conn
-	backend  *backend
+	backend  *backend.Backend
 	client   client.Client
 	errors   chan error
 	incoming chan Op
@@ -76,6 +77,8 @@ func (s *searchConnection) handle() {
 	var results <-chan *client.Result
 	var err error
 
+	var clients <-chan client.Client
+
 SearchLoop:
 	for {
 		select {
@@ -99,7 +102,7 @@ SearchLoop:
 				s.outgoing <- &OpResult{s.q.last.Id, res}
 			} else {
 				st, err := search.Close()
-				s.backend.checkIn(s.client)
+				s.backend.CheckIn(s.client)
 				s.client = nil
 				s.backend = nil
 				if err == nil {
@@ -116,17 +119,8 @@ SearchLoop:
 				results = nil
 				search = nil
 			}
-		}
-		if s.q.next != nil && results == nil {
-			if !s.shouldDispatch(s.q.next) {
-				s.q.next = nil
-				continue
-			}
-			if s.client, err = s.connectBackend(s.q.next.Backend); err != nil {
-				s.outgoing <- &OpQueryError{s.q.next.Id, err.Error()}
-				s.q.next = nil
-				continue
-			}
+		case s.client = <-clients:
+			clients = nil
 			q := query(s.q.next)
 			glog.Infof("dispatching remote=%s id=%d query=%s",
 				s.ws.Request().RemoteAddr,
@@ -144,6 +138,18 @@ SearchLoop:
 				results = search.Results()
 			}
 			s.q.next = nil
+		}
+		if s.q.next != nil && results == nil {
+			if !s.shouldDispatch(s.q.next) {
+				s.q.next = nil
+				continue
+			}
+			if err = s.connectBackend(s.q.next.Backend); err != nil {
+				s.outgoing <- &OpQueryError{s.q.next.Id, err.Error()}
+				s.q.next = nil
+				continue
+			}
+			clients = s.backend.Clients
 		}
 	}
 
@@ -163,13 +169,13 @@ func (s *searchConnection) shouldDispatch(q *OpQuery) bool {
 	return false
 }
 
-func (s *searchConnection) connectBackend(backend string) (client.Client, error) {
+func (s *searchConnection) connectBackend(backend string) error {
 	var ok bool
 	s.backend, ok = s.srv.bk[backend]
 	if !ok {
-		return nil, fmt.Errorf("No such backend: %s", backend)
+		return fmt.Errorf("No such backend: %s", backend)
 	}
-	return s.backend.connect()
+	return nil
 }
 
 func (s *server) HandleWebsocket(ws *websocket.Conn) {

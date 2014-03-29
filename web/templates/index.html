@@ -21,12 +21,12 @@
     <div class='what'> Search:
     <select id='backend'>
     {{range .Backends}}
-     <option value="{{.Id}}">{{.Name}}</option>
+     <option value="{{.Id}}">{{.I.Name}}</option>
     {{end}}
     </select>
     </div>
     {{else}}
-    <div class='what'> Now searching: {{ (index .Backends 0).Name }}</div>
+    <div class='what'> Now searching: {{ (index .Backends 0).I.Name }}</div>
     {{end}}
     <div id='regex-error'>
       <span class='label'> Error: </span>

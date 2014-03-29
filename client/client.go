@@ -54,6 +54,17 @@ func (c *client) Info() *ServerInfo {
 	return c.info
 }
 
+func (c *client) Err() error {
+	if c.error != nil {
+		return c.error
+	}
+	select {
+	case c.error = <-c.errors:
+	default:
+	}
+	return c.error
+}
+
 func (c *client) Query(q *Query) (Search, error) {
 	s := &search{q, make(chan *Result), make(chan error, 1), make(chan *Stats, 1)}
 	select {
@@ -61,6 +72,7 @@ func (c *client) Query(q *Query) (Search, error) {
 		if !ok {
 			e = errors.New("use of a closed Client")
 		}
+		c.error = e
 		return nil, e
 	case c.queries <- s:
 		return s, nil

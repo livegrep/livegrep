@@ -3,20 +3,17 @@ package server
 import (
 	"code.google.com/p/go.net/websocket"
 	"github.com/bmizerany/pat"
-	"github.com/nelhage/livegrep/client"
+	//	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/config"
+	"github.com/nelhage/livegrep/server/backend"
 	"html/template"
 	"net/http"
 	"path"
 )
 
-const (
-	ClientPoolSize = 4
-)
-
 type server struct {
 	config *config.Config
-	bk     map[string]*backend
+	bk     map[string]*backend.Backend
 	inner  http.Handler
 	t      templates
 }
@@ -37,19 +34,23 @@ func (s *server) ServeRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) ServeSearch(w http.ResponseWriter, r *http.Request) {
-	gh := make(map[string]map[string]string, len(s.config.Backends))
-	for _, bk := range s.config.Backends {
-		m := make(map[string]string, len(bk.Repos))
+	gh := make(map[string]map[string]string, len(s.bk))
+	backends := make([]*backend.Backend, 0, len(s.bk))
+	for _, bk := range s.bk {
+		backends = append(backends, bk)
+		bk.I.Lock()
+		m := make(map[string]string, len(bk.I.Repos))
 		gh[bk.Id] = m
-		for _, r := range bk.Repos {
+		for _, r := range bk.I.Repos {
 			if r.Github != "" {
 				m[r.Name] = r.Github
 			}
 		}
+		bk.I.Unlock()
 	}
 	ctx := &searchContext{
 		GithubRepos: gh,
-		Backends:    s.config.Backends,
+		Backends:    backends,
 	}
 	body, err := s.executeTemplate(s.t.searchPage, ctx)
 	if err != nil {
@@ -100,14 +101,11 @@ func (s *server) ServeFeedback(w http.ResponseWriter, r *http.Request) {
 }
 
 func New(cfg *config.Config) (http.Handler, error) {
-	srv := &server{config: cfg, bk: make(map[string]*backend)}
+	srv := &server{config: cfg, bk: make(map[string]*backend.Backend)}
 	srv.loadTemplates()
 
 	for _, bk := range srv.config.Backends {
-		srv.bk[bk.Id] = &backend{
-			config:  &bk,
-			clients: make(chan client.Client, ClientPoolSize),
-		}
+		srv.bk[bk.Id] = backend.New(&bk)
 	}
 
 	m := pat.New()
