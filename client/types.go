@@ -18,6 +18,7 @@ func (q QueryError) Error() string {
 type Result struct {
 	Contexts []struct {
 		Paths []struct {
+			Repo string `json:"repo"`
 			Ref  string `json:"ref"`
 			Path string `json:"path"`
 		} `json:"paths"`

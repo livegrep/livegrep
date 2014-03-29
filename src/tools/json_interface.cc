@@ -25,8 +25,8 @@ json_object *to_json(int i) {
 
 static json_object *to_json(const indexed_path &path) {
     json_object *out = json_object_new_object();
-    std::string name = path.tree->repo->name + ":" + path.tree->revision;
-    json_object_object_add(out, "ref",  to_json(name));
+    json_object_object_add(out, "repo", to_json(path.tree->repo->name));
+    json_object_object_add(out, "ref",  to_json(path.tree->revision));
     json_object_object_add(out, "path", to_json(path.path));
     return out;
 }

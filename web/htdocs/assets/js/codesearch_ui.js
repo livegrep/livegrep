@@ -107,13 +107,15 @@ var MatchView = Backbone.View.extend({
                   line.substring(bounds[0], bounds[1]),
                   line.substring(bounds[1])];
 
+    var path = this.model.get('path');
     return h.div({cls: 'match'}, [
         h.div({}, [
           h.span({cls: 'label'}, [
             h.a({href: this.model.url()}, [
-                  shorten(this.model.get('path').ref),
+                  path.repo ? (path.repo + ":") : "",
+                  shorten(path.ref),
                   ":",
-                  this.model.get('path').path])])]),
+                  path.path])])]),
         h.div({cls: 'contents'}, [
                 ctx_before,
                 h.div({cls: 'matchline'}, [
