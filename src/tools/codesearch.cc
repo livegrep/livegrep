@@ -43,9 +43,9 @@ void die_errno(const char *str) {
 
 codesearch_interface *build_interface(FILE *in, FILE *out) {
     if (FLAGS_cli)
-        return make_json_interface(in, out);
-    else
         return make_cli_interface(in, out);
+    else
+        return make_json_interface(in, out);
 }
 
 struct print_match {
