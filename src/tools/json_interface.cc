@@ -237,7 +237,7 @@ public:
         for (auto it = repos.begin(); it != repos.end(); ++it) {
             debug(kDebugUI, "Walking name=%s, path=%s",
                   it->name.c_str(), it->path.c_str());
-            git_indexer indexer(cs, it->path, it->name);
+            git_indexer indexer(cs, it->path, it->name, it->metadata);
             for (auto rev = it->revisions.begin();
                  rev != it->revisions.end(); ++rev) {
                 debug(kDebugUI, "  walking %s..", rev->c_str());
