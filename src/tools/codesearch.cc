@@ -26,7 +26,7 @@
 #include <re2/regexp.h>
 #include "re2/walker-inl.h"
 
-DEFINE_bool(json, false, "Use JSON output.");
+DEFINE_bool(cli, false, "Use an interactive CLI format instead of JSON.");
 DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
@@ -39,6 +39,13 @@ using namespace re2;
 void die_errno(const char *str) {
     perror(str);
     exit(1);
+}
+
+codesearch_interface *build_interface(FILE *in, FILE *out) {
+    if (FLAGS_cli)
+        return make_json_interface(in, out);
+    else
+        return make_cli_interface(in, out);
 }
 
 struct print_match {
@@ -144,7 +151,7 @@ void initialize_search(code_searcher *search,
     } else {
         search->load_index(FLAGS_load_index);
     }
-    if (!FLAGS_json && !FLAGS_load_index.size())
+    if (FLAGS_cli && !FLAGS_load_index.size())
         search->dump_stats();
     if (FLAGS_dump_index.size() && FLAGS_load_index.size())
         search->dump_index(FLAGS_dump_index);
@@ -161,11 +168,7 @@ void *handle_client(void *data) {
     FILE *w = fdopen(dup(child->fd), "w");
     assert(!setvbuf(r,  NULL, _IOFBF, 4096*4));
     assert(!setvbuf(w, NULL, _IONBF, 0));
-    codesearch_interface *interface;
-    if (FLAGS_json)
-        interface = make_json_interface(r, w);
-    else
-        interface = make_cli_interface(r, w);
+    codesearch_interface *interface = build_interface(r, w);
     interact(child->search, interface);
     delete interface;
     delete child;
@@ -263,11 +266,7 @@ int main(int argc, char **argv) {
     prctl(PR_SET_PDEATHSIG, SIGINT);
 
     code_searcher search;
-    codesearch_interface *interface = 0;
-    if (FLAGS_json)
-        interface = make_json_interface(stdin, stdout);
-    else
-        interface = make_cli_interface(stdin, stdout);
+    codesearch_interface *interface = build_interface(stdin, stdout);
 
     signal(SIGPIPE, SIG_IGN);
 
