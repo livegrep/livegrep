@@ -113,8 +113,16 @@ SearchLoop:
 						asJSON{query(s.q.last)},
 						int64(duration/time.Millisecond))
 					s.outgoing <- &OpSearchDone{s.q.last.Id, int64(duration / time.Millisecond), st}
-				} else {
+				} else if _, ok := err.(client.QueryError); ok {
 					s.outgoing <- &OpQueryError{s.q.last.Id, err.Error()}
+				} else {
+					glog.Infof("internal error doing search id=%d error=%s",
+						s.q.last.Id, asJSON{err.Error()})
+					if s.q.next == nil {
+						// retry the search
+						s.q.next = s.q.last
+						s.q.last = nil
+					}
 				}
 				results = nil
 				search = nil
