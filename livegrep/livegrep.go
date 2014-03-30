@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/config"
 	"github.com/nelhage/livegrep/server"
+	"github.com/nelhage/livegrep/server/middleware"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -43,5 +44,10 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
+
+	if *production {
+		handler = middleware.UnwrapRealIP(handler)
+	}
+
 	glog.Fatal(http.ListenAndServe(*serveAddr, handler))
 }
