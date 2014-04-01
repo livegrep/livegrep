@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"github.com/nelhage/livegrep/config"
 	"github.com/nelhage/livegrep/server/backend"
 	"html/template"
 	"io"
@@ -16,10 +17,10 @@ type templates struct {
 }
 
 type page struct {
-	IncludeJS  bool
-	Production bool
-	Title      string
-	Body       template.HTML
+	IncludeJS bool
+	Title     string
+	Body      template.HTML
+	Config    *config.Config
 }
 
 type opensearchContext struct {
@@ -49,7 +50,7 @@ func (s *server) executeTemplate(t *template.Template, context interface{}) ([]b
 }
 
 func (s *server) renderPage(w io.Writer, p *page) {
-	p.Production = s.config.Production
+	p.Config = s.config
 	s.t.layout.Execute(w, p)
 
 }

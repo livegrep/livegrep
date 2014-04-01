@@ -13,11 +13,11 @@
     <script language="javascript" type="text/javascript" src="/assets/js/codesearch.js"></script>
     <script language="javascript" type="text/javascript" src="/assets/js/codesearch_ui.js"></script>
     {{end}}
-    {{if .Production}}
+    {{if .Config.GoogleAnalyticsId}}
     <script type="text/javascript">
     
       var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-10353960-3']);
+      _gaq.push(['_setAccount', '{{.Config.GoogleAnalyticsId}}']);
       _gaq.push(['_trackPageview']);
     
       (function() {

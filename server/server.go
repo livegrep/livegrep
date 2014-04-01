@@ -2,12 +2,16 @@ package server
 
 import (
 	"code.google.com/p/go.net/websocket"
+	"encoding/json"
+	"fmt"
 	"github.com/bmizerany/pat"
-	//	"github.com/golang/glog"
+	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/config"
 	"github.com/nelhage/livegrep/server/backend"
 	"html/template"
+	"io"
 	"net/http"
+	"net/smtp"
 	"path"
 )
 
@@ -96,8 +100,44 @@ func (s *server) ServeOpensearch(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
+type FeedbackPost struct {
+	Email string `json:"email"`
+	Text  string `json:"text"`
+}
+
+func (s *server) sendFeedback(r *http.Request, fb *FeedbackPost) error {
+	if s.config.Feedback.MailTo != "" {
+		text := fmt.Sprintf(`Codesearch feedback from %s
+IP: %s
+--------
+%s
+`, fb.Email, r.RemoteAddr, fb.Text)
+		return smtp.SendMail("localhost:25", nil,
+			"Codesearch <feedback@livegrep.com>",
+			[]string{s.config.Feedback.MailTo},
+			[]byte(text))
+
+	} else {
+		glog.Infof("feedback post=%s",
+			asJSON{fb})
+	}
+	return nil
+}
+
 func (s *server) ServeFeedback(w http.ResponseWriter, r *http.Request) {
-	// TODO
+	body := r.FormValue("data")
+	var msg FeedbackPost
+	if err := json.Unmarshal([]byte(body), &msg); err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	if err := s.sendFeedback(r, &msg); err != nil {
+		glog.Infof("while sending feedback: %s", err.Error())
+		http.Error(w, err.Error(), 500)
+	} else {
+		io.WriteString(w, "OK")
+	}
+
 }
 
 func New(cfg *config.Config) (http.Handler, error) {

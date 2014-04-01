@@ -16,7 +16,11 @@ type Backend struct {
 }
 
 type Config struct {
-	DocRoot    string
-	Production bool
-	Backends   []Backend `json:"backends"`
+	DocRoot           string
+	Production        bool
+	GoogleAnalyticsId string `json:"google_analytics_id"`
+	Feedback          struct {
+		MailTo string `json:"mailto"`
+	} `json:"feedback"`
+	Backends []Backend `json:"backends"`
 }
