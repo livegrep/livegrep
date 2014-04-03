@@ -3,7 +3,7 @@ package backend
 import (
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/client"
-	"github.com/nelhage/livegrep/config"
+	"github.com/nelhage/livegrep/server/config"
 	"sync"
 	"time"
 )

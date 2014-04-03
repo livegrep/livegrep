@@ -3,8 +3,8 @@ package server
 import (
 	"code.google.com/p/go.net/websocket"
 	"github.com/bmizerany/pat"
-	"github.com/nelhage/livegrep/config"
 	"github.com/nelhage/livegrep/server/backend"
+	"github.com/nelhage/livegrep/server/config"
 	"html/template"
 	"net/http"
 	"path"

@@ -2,8 +2,8 @@ package server
 
 import (
 	"bytes"
-	"github.com/nelhage/livegrep/config"
 	"github.com/nelhage/livegrep/server/backend"
+	"github.com/nelhage/livegrep/server/config"
 	"html/template"
 	"io"
 	"path"
