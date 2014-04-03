@@ -46,7 +46,7 @@ func main() {
 	}
 
 	if *production {
-		handler = middleware.UnwrapRealIP(handler)
+		handler = middleware.UnwrapProxyHeaders(handler)
 	}
 
 	glog.Fatal(http.ListenAndServe(*serveAddr, handler))

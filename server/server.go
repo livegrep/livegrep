@@ -76,14 +76,22 @@ func (s *server) ServeAbout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *server) requestProtocol(r *http.Request) string {
+	if s.config.Production {
+		if proto := r.Header.Get("X-Real-Proto"); len(proto) > 0 {
+			return proto
+		}
+	}
+	if r.TLS != nil {
+		return "https"
+	} else {
+		return "http"
+	}
+}
+
 func (s *server) ServeOpensearch(w http.ResponseWriter, r *http.Request) {
 	ctx := &opensearchContext{}
-	if r.TLS != nil {
-		ctx.BaseURL = "https://"
-	} else {
-		ctx.BaseURL = "http://"
-	}
-	ctx.BaseURL += r.Host + "/"
+	ctx.BaseURL += s.requestProtocol(r) + "://" + r.Host + "/"
 
 	for _, bk := range s.bk {
 		if bk.I.Name != "" {
