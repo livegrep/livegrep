@@ -5,17 +5,9 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/client"
+	"github.com/nelhage/livegrep/server/api"
 	"net/http"
 )
-
-type innerError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-
-type replyError struct {
-	Err innerError `json:"error"`
-}
 
 func replyJson(w http.ResponseWriter, status int, obj interface{}) {
 	w.WriteHeader(status)
@@ -28,7 +20,7 @@ func replyJson(w http.ResponseWriter, status int, obj interface{}) {
 }
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
-	replyJson(w, status, &replyError{Err: innerError{code, message}})
+	replyJson(w, status, &api.ReplyError{Err: api.InnerError{code, message}})
 }
 
 func parseQuery(r *http.Request) client.Query {
@@ -38,11 +30,6 @@ func parseQuery(r *http.Request) client.Query {
 		params.Get("file"),
 		params.Get("repo"),
 	}
-}
-
-type replySearch struct {
-	Info    *client.Stats    `json:"info"`
-	Results []*client.Result `json:"results"`
 }
 
 func (s *server) ServeAPISearch(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +57,7 @@ func (s *server) ServeAPISearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reply := &replySearch{}
+	reply := &api.ReplySearch{}
 
 	for r := range search.Results() {
 		reply.Results = append(reply.Results, r)
