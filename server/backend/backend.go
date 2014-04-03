@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	PoolSize = 4
+	PoolSize = 8
 )
 
 type Repo struct {
