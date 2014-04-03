@@ -106,8 +106,8 @@ void extract_repo_specs(vector<repo_spec> &out, json_object *js) {
         }
         break;
     default:
-        fprintf(stderr, "Error: unrecognized object type: %s\n",
-                json_type_to_name(json_object_get_type(js)));
+        fprintf(stderr, "Error: unrecognized type for repo spec: %s\n",
+                json_object_to_json_string(js));
         exit(1);
     }
 }
@@ -219,7 +219,7 @@ public:
             print_error("Usage: " + argv[0] + " --json [OPTIONS] config.json");
             exit(1);
         }
-        json_object *obj = json_object_from_file(argv[1].c_str());
+        json_object *obj = json_object_from_file(const_cast<char*>(argv[1].c_str()));
         if (is_error(obj)) {
             print_error(string("Error parsing `") + argv[1] + string("': ") +
                         string(json_tokener_errors[-(unsigned long)obj]));
