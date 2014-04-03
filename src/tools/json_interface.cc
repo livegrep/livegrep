@@ -74,15 +74,15 @@ repo_spec parse_repo_spec(json_object *js) {
 
     repo_spec spec;
     json_object *js_path = json_object_object_get(js, "path");
-    if (json_object_is_type(js_path, json_type_string))
+    if (js_path && json_object_is_type(js_path, json_type_string))
         spec.path = json_object_get_string(js_path);
     json_object *js_name = json_object_object_get(js, "name");
-    if (json_object_is_type(js_name, json_type_string))
+    if (js_name && json_object_is_type(js_name, json_type_string))
         spec.name = json_object_get_string(js_name);
     spec.metadata = json_object_get(json_object_object_get(js, "metadata"));
 
     json_object *js_revs = json_object_object_get(js, "revisions");
-    if (json_object_is_type(js_revs, json_type_array)) {
+    if (js_revs && json_object_is_type(js_revs, json_type_array)) {
         for (int i = 0; i < json_object_array_length(js_revs); ++i) {
             json_object *elt = json_object_array_get_idx(js_revs, i);
             if (json_object_is_type(elt, json_type_string))
