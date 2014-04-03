@@ -110,6 +110,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/about", http.HandlerFunc(srv.ServeAbout))
 	m.Add("GET", "/opensearch.xml", http.HandlerFunc(srv.ServeOpensearch))
 
+	m.Add("GET", "/api/1/search/:backend", http.HandlerFunc(srv.ServeAPISearch))
+
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))))
 	mux.Handle("/socket", websocket.Handler(srv.HandleWebsocket))
