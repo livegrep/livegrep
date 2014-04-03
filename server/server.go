@@ -77,17 +77,22 @@ func (s *server) ServeAbout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) ServeOpensearch(w http.ResponseWriter, r *http.Request) {
-	var baseURL string
+	ctx := &opensearchContext{}
 	if r.TLS != nil {
-		baseURL = "https://"
+		ctx.BaseURL = "https://"
 	} else {
-		baseURL = "http://"
+		ctx.BaseURL = "http://"
 	}
-	baseURL += r.Host + "/"
-	body, err := s.executeTemplate(s.t.opensearchXML, &opensearchContext{
-		BackendName: "Linux",
-		BaseURL:     baseURL,
-	})
+	ctx.BaseURL += r.Host + "/"
+
+	for _, bk := range s.bk {
+		if bk.I.Name != "" {
+			ctx.BackendName = bk.I.Name
+			break
+		}
+	}
+
+	body, err := s.executeTemplate(s.t.opensearchXML, ctx)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
