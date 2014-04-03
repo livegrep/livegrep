@@ -100,10 +100,3 @@ func (bk *Backend) refresh(info *client.ServerInfo) {
 		}
 	}
 }
-
-/*
-		&backend{
-		config:  &bk,
-		clients: make(chan client.Client, ClientPoolSize),
-	}
-*/
