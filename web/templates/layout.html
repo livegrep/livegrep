@@ -5,7 +5,6 @@
     <title>code search ⋅ {{.Title}}</title>
     <link rel="stylesheet" href='/assets/css/codesearch.css' />
     <script language="javascript" type="text/javascript" src="/assets/js/3d/jquery.js"></script>
-    <script language="javascript" type="text/javascript" src="/assets/js/feedback.js"></script>
     {{if .IncludeJS}}
     <script language="javascript" type="text/javascript" src="/assets/js/3d/underscore.js"></script>
     <script language="javascript" type="text/javascript" src="/assets/js/3d/backbone.js"></script>
@@ -36,7 +35,9 @@
         <li><a href="/">search</a></li>
         <li><a href="/about">about</a></li>
         <li><a href="https://github.com/nelhage/livegrep">source</a></li>
-        <li><a id='feedbacklink' href="mailto:feedback@livegrep.com">feedback</a></li>
+        {{if .Config.Feedback.MailTo}}
+        <li><a id='feedbacklink' href="mailto:{{.Config.Feedback.MailTo}}">feedback</a></li>
+        {{end}}
         <li class='first'>livegrep is a project by <a href="http://blog.nelhage.com/">Nelson Elhage</a></li>
       </ul>
     </div>
