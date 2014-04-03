@@ -13,9 +13,8 @@ import (
 )
 
 var (
-	serveAddr  *string = flag.String("listen", "127.0.0.1:8910", "The address to listen on")
-	docRoot    *string = flag.String("docroot", "./web", "The livegrep document root (web/ directory)")
-	production *bool   = flag.Bool("production", false, "Is livegrep running in production?")
+	serveAddr *string = flag.String("listen", "127.0.0.1:8910", "The address to listen on")
+	docRoot   *string = flag.String("docroot", "./web", "The livegrep document root (web/ directory)")
 )
 
 // var backendAddr *string = flag.String("connect", "localhost:9999", "The address to connect to")
@@ -33,8 +32,7 @@ func main() {
 	}
 
 	cfg := &config.Config{
-		DocRoot:    *docRoot,
-		Production: *production,
+		DocRoot: *docRoot,
 	}
 	if err = json.Unmarshal(data, &cfg); err != nil {
 		glog.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
@@ -45,7 +43,7 @@ func main() {
 		panic(err.Error())
 	}
 
-	if *production {
+	if cfg.ReverseProxy {
 		handler = middleware.UnwrapProxyHeaders(handler)
 	}
 

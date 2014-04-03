@@ -16,11 +16,14 @@ type Backend struct {
 }
 
 type Config struct {
-	DocRoot           string
-	Production        bool
-	GoogleAnalyticsId string `json:"google_analytics_id"`
-	Feedback          struct {
+	DocRoot  string
+	Feedback struct {
 		MailTo string `json:"mailto"`
 	} `json:"feedback"`
+
+	GoogleAnalyticsId string `json:"google_analytics_id"`
+	// Should we respect X-Real-Ip, X-Real-Proto, and X-Forwarded-Host?
+	ReverseProxy bool `json:"reverse_proxy"`
+
 	Backends []Backend `json:"backends"`
 }

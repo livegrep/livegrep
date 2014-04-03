@@ -77,7 +77,7 @@ func (s *server) ServeAbout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) requestProtocol(r *http.Request) string {
-	if s.config.Production {
+	if s.config.ReverseProxy {
 		if proto := r.Header.Get("X-Real-Proto"); len(proto) > 0 {
 			return proto
 		}
