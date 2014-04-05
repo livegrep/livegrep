@@ -19,15 +19,19 @@ type ClientSuite struct {
 
 var _ = Suite(&ClientSuite{})
 
-func (s *ClientSuite) SetUpTest(c *C) {
+type MockServer struct {
+}
+
+func (s *ClientSuite) connect(c *C, addr string) {
 	var err error
-	s.client, err = client.Dial("tcp", "localhost:9999")
+	s.client, err = client.Dial("tcp", addr)
 	if err != nil {
-		panic(err.Error())
+		c.Fatalf("connecting to %s: %s", addr, err.Error())
 	}
 }
 
 func (s *ClientSuite) TestQuery(c *C) {
+	s.connect(c, "localhost:9999")
 	search, err := s.client.Query(&client.Query{".", "", ""})
 	c.Assert(err, IsNil)
 	var n int
@@ -42,6 +46,7 @@ func (s *ClientSuite) TestQuery(c *C) {
 }
 
 func (s *ClientSuite) TestTwoQueries(c *C) {
+	s.connect(c, "localhost:9999")
 	search, err := s.client.Query(&client.Query{".", "", ""})
 	c.Assert(err, IsNil)
 	_, err = search.Close()
@@ -61,6 +66,7 @@ func (s *ClientSuite) TestTwoQueries(c *C) {
 }
 
 func (s *ClientSuite) TestBadRegex(c *C) {
+	s.connect(c, "localhost:9999")
 	search, err := s.client.Query(&client.Query{"(", "", ""})
 	c.Assert(err, IsNil)
 	for _ = range search.Results() {
@@ -101,13 +107,11 @@ func mockServerShutdown() <-chan string {
 }
 
 func (s *ClientSuite) TestShutdown(c *C) {
-	ready := mockServerShutdown()
-	addr := <-ready
+	addr := <-mockServerShutdown()
 
-	cl, err := client.Dial("tcp", addr)
-	c.Assert(err, IsNil)
+	s.connect(c, addr)
 
-	search, err := cl.Query(&client.Query{Line: "l"})
+	search, err := s.client.Query(&client.Query{Line: "l"})
 	c.Assert(err, IsNil)
 	c.Assert(search, Not(IsNil))
 
@@ -120,7 +124,7 @@ func (s *ClientSuite) TestShutdown(c *C) {
 	c.Assert(st, IsNil)
 	c.Assert(err, Not(IsNil))
 
-	search, err = cl.Query(&client.Query{Line: "l"})
+	search, err = s.client.Query(&client.Query{Line: "l"})
 	c.Assert(err, Not(IsNil))
 	c.Assert(search, IsNil)
 }
