@@ -81,27 +81,30 @@ func (s *ClientSuite) TestBadRegex(c *C) {
 	}
 }
 
-func shutdownClient(addr string, ready chan<- bool) {
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer ln.Close()
-	ready <- true
-	conn, err := ln.Accept()
-	if err != nil {
-		panic(err.Error())
-	}
-	conn.Write([]byte("READY {}\n"))
-	conn.Close()
+func mockServerShutdown() <-chan string {
+	ready := make(chan string, 1)
+	go func() {
+		ln, err := net.Listen("tcp", ":0")
+		if err != nil {
+			panic(err.Error())
+		}
+		defer ln.Close()
+		ready <- ln.Addr().String()
+		conn, err := ln.Accept()
+		if err != nil {
+			panic(err.Error())
+		}
+		conn.Write([]byte("READY {}\n"))
+		conn.Close()
+	}()
+	return ready
 }
 
 func (s *ClientSuite) TestShutdown(c *C) {
-	ready := make(chan bool, 1)
-	go shutdownClient("127.0.0.1:10999", ready)
-	<-ready
+	ready := mockServerShutdown()
+	addr := <-ready
 
-	cl, err := client.Dial("tcp", "127.0.0.1:10999")
+	cl, err := client.Dial("tcp", addr)
 	c.Assert(err, IsNil)
 
 	search, err := cl.Query(&client.Query{Line: "l"})
