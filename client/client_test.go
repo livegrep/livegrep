@@ -6,11 +6,9 @@ import (
 	"io"
 	. "launchpad.net/gocheck"
 	"net"
+	"strings"
 	"testing"
 )
-
-// We assume a codesearch running on localhost:9999. This could be
-// improved.
 
 func Test(t *testing.T) { TestingT(t) }
 
@@ -124,6 +122,24 @@ func (s *ClientSuite) TestTwoQueries(c *C) {
 		c.Fatalf("Unexpected error: %s", err.Error())
 	}
 	c.Assert(n, Not(Equals), 0)
+}
+
+func (s *ClientSuite) TestLongLine(c *C) {
+	longLine := strings.Repeat("X", 1<<16)
+	s.connect(c, <-runMockServer((&MockServer{
+		Results: []*client.Result{
+			{Line: longLine},
+		},
+	}).handle))
+	search, err := s.client.Query(&client.Query{".", "", ""})
+	c.Assert(err, IsNil)
+	var rs []*client.Result
+	for r := range search.Results() {
+		rs = append(rs, r)
+	}
+
+	c.Assert(len(rs), Equals, 1)
+	c.Assert(rs[0].Line, Equals, longLine)
 }
 
 type MockServerQueryError struct {
