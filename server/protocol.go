@@ -2,16 +2,9 @@ package server
 
 import (
 	"code.google.com/p/go.net/websocket"
-	"encoding/json"
-	"fmt"
 	"github.com/nelhage/livegrep/client"
-	"reflect"
+	"github.com/nelhage/livegrep/jsonframe"
 )
-
-type WebsocketFrame struct {
-	Opcode string          `json:"opcode"`
-	Body   json.RawMessage `json:"body"`
-}
 
 type OpError struct {
 	Error string `json:"error"`
@@ -51,17 +44,12 @@ type OpQueryError struct {
 
 func (o *OpQueryError) Opcode() string { return "query_error" }
 
-type Op interface {
-	Opcode() string
-}
+var websocketOps jsonframe.Marshaler
 
-var opTable map[string]Op
-
-func registerOp(o Op) {
-	opTable[o.Opcode()] = o
+func registerOp(o jsonframe.Op) {
+	websocketOps.Register(o)
 }
 func init() {
-	opTable = make(map[string]Op)
 	registerOp(&OpError{})
 	registerOp(&OpQuery{})
 	registerOp(&OpResult{})
@@ -70,53 +58,32 @@ func init() {
 }
 
 func marshalOp(v interface{}) (data []byte, payloadType byte, err error) {
-	op, ok := v.(Op)
+	op, ok := v.(jsonframe.Op)
 	if !ok {
 		panic("marshalOp: Must provide an implementation of Op.")
 	}
-	inner, err := json.Marshal(op)
-	if err != nil {
-		return
-	}
-	frame := &WebsocketFrame{
-		Opcode: op.Opcode(),
-		Body:   json.RawMessage(inner),
-	}
-	data, err = json.Marshal(frame)
+	data, err = websocketOps.Marshal(op)
 	payloadType = websocket.TextFrame
 	return
 }
 
 type ProtocolError struct {
-	error string
+	Inner error
 }
 
 func (pe *ProtocolError) Error() string {
-	return pe.error
+	return pe.Inner.Error()
 }
 
 func unmarshalOp(data []byte, payloadType byte, v interface{}) (err error) {
-	val := reflect.ValueOf(v)
-	if val.Type().Kind() != reflect.Ptr {
-		panic("unmarshalOp: Must provide a pointer type")
+	op := v.(*jsonframe.Op)
+	if op == nil {
+		panic("unmarshalOp: Must provide a non-nil Op*")
 	}
 
-	var frame WebsocketFrame
-	if err = json.Unmarshal(data, &frame); err != nil {
-		return &ProtocolError{fmt.Sprintf("json decode: %s", err.Error())}
+	if e := websocketOps.Unmarshal(data, op); e != nil {
+		return &ProtocolError{e}
 	}
-
-	prototype, ok := opTable[frame.Opcode]
-	if !ok {
-		return &ProtocolError{fmt.Sprintf("Unknown opcode %s", frame.Opcode)}
-	}
-
-	op := reflect.New(reflect.TypeOf(prototype).Elem()).Interface().(Op)
-	if err = json.Unmarshal(frame.Body, op); err != nil {
-		return &ProtocolError{fmt.Sprintf("json decode: %s", err.Error())}
-	}
-
-	val.Elem().Set(reflect.ValueOf(op))
 	return nil
 }
 

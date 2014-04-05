@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/client"
+	"github.com/nelhage/livegrep/jsonframe"
 	"github.com/nelhage/livegrep/server/backend"
 	"time"
 )
@@ -15,8 +16,8 @@ type searchConnection struct {
 	backend  *backend.Backend
 	client   client.Client
 	errors   chan error
-	incoming chan Op
-	outgoing chan Op
+	incoming chan jsonframe.Op
+	outgoing chan jsonframe.Op
 	shutdown bool
 	q        struct {
 		last *OpQuery
@@ -27,7 +28,7 @@ type searchConnection struct {
 }
 
 func (s *searchConnection) recvLoop() {
-	var op Op
+	var op jsonframe.Op
 	for {
 		if err := OpCodec.Receive(s.ws, &op); err != nil {
 			glog.V(1).Infof("Error in receive: %s\n", err.Error())
@@ -65,8 +66,8 @@ func query(q *OpQuery) *client.Query {
 }
 
 func (s *searchConnection) handle() {
-	s.incoming = make(chan Op, 1)
-	s.outgoing = make(chan Op, 1)
+	s.incoming = make(chan jsonframe.Op, 1)
+	s.outgoing = make(chan jsonframe.Op, 1)
 	s.errors = make(chan error, 1)
 
 	go s.recvLoop()

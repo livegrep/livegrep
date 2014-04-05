@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"code.google.com/p/go.net/websocket"
+	"github.com/nelhage/livegrep/jsonframe"
 	"github.com/nelhage/livegrep/server"
 	. "launchpad.net/gocheck"
 	"testing"
@@ -14,7 +15,7 @@ type ProtocolSuite struct{}
 var _ = Suite(&ProtocolSuite{})
 
 func (_ *ProtocolSuite) TestNoOpcode(c *C) {
-	var op server.Op
+	var op jsonframe.Op
 	err := server.OpCodec.Unmarshal([]byte(`{"error": "monkeys"}`), websocket.TextFrame, &op)
 	if err == nil {
 		c.Error("Failed to return an error when unparsing with missing opcode.")
@@ -30,7 +31,7 @@ func (_ *ProtocolSuite) TestRoundTrip(c *C) {
 
 	c.Logf("Marshalled: %s", data)
 
-	var out server.Op
+	var out jsonframe.Op
 	err = server.OpCodec.Unmarshal(data, payloadType, &out)
 	if err != nil {
 		c.Fatalf("unmarshal: %s", err.Error())
