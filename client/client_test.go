@@ -1,10 +1,11 @@
 package client_test
 
 import (
+	"encoding/json"
 	"github.com/nelhage/livegrep/client"
+	"io"
 	. "launchpad.net/gocheck"
 	"net"
-	"strings"
 	"testing"
 )
 
@@ -17,9 +18,60 @@ type ClientSuite struct {
 	client client.Client
 }
 
+func (c *ClientSuite) TearDownTest(*C) {
+	if c.client != nil {
+		c.client.Close()
+	}
+}
+
 var _ = Suite(&ClientSuite{})
 
 type MockServer struct {
+	Info    *client.ServerInfo
+	Results []*client.Result
+}
+
+func (m *MockServer) handle(conn net.Conn) {
+	defer conn.Close()
+
+	encoder := json.NewEncoder(conn)
+	reader := json.NewDecoder(conn)
+	for {
+		io.WriteString(conn, "READY ")
+		encoder.Encode(m.Info)
+
+		var q client.Query
+		if err := reader.Decode(&q); err != nil {
+			if err == io.EOF {
+				return
+			}
+			panic(err.Error())
+		}
+
+		for _, r := range m.Results {
+			encoder.Encode(r)
+		}
+		io.WriteString(conn, "DONE ")
+		encoder.Encode(&client.Stats{})
+	}
+}
+
+func runMockServer(handle func(net.Conn)) <-chan string {
+	ready := make(chan string, 1)
+	go func() {
+		ln, err := net.Listen("tcp", ":0")
+		if err != nil {
+			panic(err.Error())
+		}
+		defer ln.Close()
+		ready <- ln.Addr().String()
+		conn, err := ln.Accept()
+		if err != nil {
+			panic(err.Error())
+		}
+		handle(conn)
+	}()
+	return ready
 }
 
 func (s *ClientSuite) connect(c *C, addr string) {
@@ -31,7 +83,11 @@ func (s *ClientSuite) connect(c *C, addr string) {
 }
 
 func (s *ClientSuite) TestQuery(c *C) {
-	s.connect(c, "localhost:9999")
+	s.connect(c, <-runMockServer((&MockServer{
+		Results: []*client.Result{
+			{Line: "match line 1"},
+		},
+	}).handle))
 	search, err := s.client.Query(&client.Query{".", "", ""})
 	c.Assert(err, IsNil)
 	var n int
@@ -39,14 +95,19 @@ func (s *ClientSuite) TestQuery(c *C) {
 		n++
 		c.Assert(r.Line, Not(Equals), "")
 	}
-	c.Assert(n, Not(Equals), 0)
+	c.Assert(n, Equals, 1)
 	st, e := search.Close()
-	c.Assert(st, Not(IsNil))
 	c.Assert(e, IsNil)
+	c.Assert(st, Not(IsNil))
 }
 
 func (s *ClientSuite) TestTwoQueries(c *C) {
-	s.connect(c, "localhost:9999")
+	s.connect(c, <-runMockServer((&MockServer{
+		Results: []*client.Result{
+			{Line: "match line 1"},
+		},
+	}).handle))
+
 	search, err := s.client.Query(&client.Query{".", "", ""})
 	c.Assert(err, IsNil)
 	_, err = search.Close()
@@ -65,8 +126,39 @@ func (s *ClientSuite) TestTwoQueries(c *C) {
 	c.Assert(n, Not(Equals), 0)
 }
 
+type MockServerQueryError struct {
+	Info *client.ServerInfo
+	Err  string
+}
+
+func (m *MockServerQueryError) handle(conn net.Conn) {
+	defer conn.Close()
+	encoder := json.NewEncoder(conn)
+	reader := json.NewDecoder(conn)
+	for {
+		io.WriteString(conn, "READY ")
+		encoder.Encode(m.Info)
+
+		var q client.Query
+		if err := reader.Decode(&q); err != nil {
+			if err == io.EOF {
+				return
+			}
+			panic(err.Error())
+		}
+
+		io.WriteString(conn, "FATAL ")
+		io.WriteString(conn, m.Err)
+		io.WriteString(conn, "\n")
+	}
+}
+
 func (s *ClientSuite) TestBadRegex(c *C) {
-	s.connect(c, "localhost:9999")
+	errStr := "Invalid query: ("
+	s.connect(c, <-runMockServer((&MockServerQueryError{
+		Err: errStr,
+	}).handle))
+
 	search, err := s.client.Query(&client.Query{"(", "", ""})
 	c.Assert(err, IsNil)
 	for _ = range search.Results() {
@@ -79,31 +171,17 @@ func (s *ClientSuite) TestBadRegex(c *C) {
 	}
 	if q, ok := e.(client.QueryError); ok {
 		c.Assert(q.Query.Line, Equals, "(")
-		if strings.HasPrefix(q.Err, "FATAL") {
-			c.Errorf("Error includes FATAL prefix: %s", q.Err)
-		}
+		c.Assert(q.Err, Equals, errStr)
 	} else {
 		c.Fatalf("Error %v wasn't a QueryError", e)
 	}
 }
 
 func mockServerShutdown() <-chan string {
-	ready := make(chan string, 1)
-	go func() {
-		ln, err := net.Listen("tcp", ":0")
-		if err != nil {
-			panic(err.Error())
-		}
-		defer ln.Close()
-		ready <- ln.Addr().String()
-		conn, err := ln.Accept()
-		if err != nil {
-			panic(err.Error())
-		}
+	return runMockServer(func(conn net.Conn) {
 		conn.Write([]byte("READY {}\n"))
 		conn.Close()
-	}()
-	return ready
+	})
 }
 
 func (s *ClientSuite) TestShutdown(c *C) {
