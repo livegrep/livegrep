@@ -1,14 +1,22 @@
 package client
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nelhage/livegrep/jsonframe"
 	"net"
-	"strings"
 )
+
+var ops jsonframe.Marshaler
+
+func init() {
+	ops.Register(new(Result))
+	ops.Register(new(ReplyError))
+	ops.Register(new(ServerInfo))
+	ops.Register(new(Stats))
+	ops.Register(new(Query))
+}
 
 type client struct {
 	conn    net.Conn
@@ -86,39 +94,31 @@ func (c *client) Close() {
 func (c *client) loop() {
 	defer c.conn.Close()
 	defer close(c.errors)
-	scan := bufio.NewScanner(c.conn)
 	encoder := json.NewEncoder(c.conn)
+	decoder := json.NewDecoder(c.conn)
 
 	for {
-		if !scan.Scan() {
-			e := scan.Err()
-			if e == nil {
-				e = errors.New("connection closed unexpectedly")
-			}
-			c.errors <- e
-			return
-		}
-		if !bytes.HasPrefix(scan.Bytes(), []byte("READY ")) {
-			c.errors <- fmt.Errorf("Expected READY, got: %s", scan.Text())
-			return
-		}
-
-		info := &ServerInfo{}
-		if err := json.Unmarshal(scan.Bytes()[len("READY "):], &info); err != nil {
+		op, err := ops.Decode(decoder)
+		if err != nil {
 			c.errors <- err
 			return
 		}
-
-		select {
-		case c.ready <- info:
-		default:
+		if info, ok := op.(*ServerInfo); !ok {
+			c.errors <- fmt.Errorf("Expected op: '%s', got: %s",
+				new(ServerInfo).Opcode(), op.Opcode())
+			return
+		} else {
+			select {
+			case c.ready <- info:
+			default:
+			}
 		}
 
 		q, ok := <-c.queries
 		if !ok {
 			break
 		}
-		if e := encoder.Encode(q.query); e != nil {
+		if e := ops.Encode(encoder, q.query); e != nil {
 			q.errors <- e
 			close(q.errors)
 			close(q.results)
@@ -126,45 +126,35 @@ func (c *client) loop() {
 			continue
 		}
 		done := false
-		for scan.Scan() {
-			line := scan.Text()
-			if strings.HasPrefix(line, "FATAL ") {
-				q.errors <- QueryError{q.query, strings.TrimPrefix(line, "FATAL ")}
-				done = true
+	ResultLoop:
+		for {
+			op, err = ops.Decode(decoder)
+			if err != nil {
 				break
-			} else if strings.HasPrefix(line, "DONE ") {
-				stats := &Stats{}
-				if e := json.Unmarshal(scan.Bytes()[len("DONE "):], stats); e != nil {
-					q.errors <- e
-				} else {
-					q.stats <- stats
-				}
+			}
+			switch concrete := op.(type) {
+			case *ReplyError:
+				q.errors <- QueryError{q.query, string(*concrete)}
 				done = true
-				break
-			} else {
-				r := &Result{}
-				if e := json.Unmarshal(scan.Bytes(), r); e != nil {
-					q.errors <- e
-					break
-				}
-				q.results <- r
+				break ResultLoop
+			case *Stats:
+				q.stats <- concrete
+				done = true
+				break ResultLoop
+			case *Result:
+				q.results <- concrete
 			}
 		}
 
-		if !done {
-			e := scan.Err()
-			if e == nil {
-				e = errors.New("connection closed unexpectedly")
-			}
-			q.errors <- e
+		if err != nil {
+			q.errors <- err
+		} else if !done {
+			q.errors <- errors.New("connection closed unexpectedly")
 		}
 
 		close(q.errors)
 		close(q.results)
 		close(q.stats)
-	}
-	if e := scan.Err(); e != nil {
-		c.errors <- e
 	}
 }
 

@@ -6,6 +6,10 @@ type Query struct {
 	Repo string `json:"repo"`
 }
 
+func (q *Query) Opcode() string {
+	return "query"
+}
+
 type QueryError struct {
 	Query *Query
 	Err   string
@@ -31,6 +35,10 @@ type Result struct {
 	Line   string `json:"line"`
 }
 
+func (r *Result) Opcode() string {
+	return "match"
+}
+
 type Stats struct {
 	RE2Time     int64  `json:"re2_time"`
 	GitTime     int64  `json:"git_time"`
@@ -40,12 +48,26 @@ type Stats struct {
 	ExitReason  string `json:"why"`
 }
 
+func (s *Stats) Opcode() string {
+	return "done"
+}
+
 type ServerInfo struct {
 	Name  string `json:"name"`
 	Repos []struct {
 		Name     string                 `json:"name"`
 		Metadata map[string]interface{} `json:"metadata"`
 	} `json:"repos"`
+}
+
+func (s *ServerInfo) Opcode() string {
+	return "ready"
+}
+
+type ReplyError string
+
+func (r *ReplyError) Opcode() string {
+	return "error"
 }
 
 type Client interface {

@@ -1,56 +1,63 @@
-package client_test
+package client
 
 import (
 	"encoding/json"
-	"github.com/nelhage/livegrep/client"
 	"io"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net"
 	"strings"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type ClientSuite struct {
-	client client.Client
+	client Client
 }
 
-func (c *ClientSuite) TearDownTest(*C) {
+func (c *ClientSuite) TearDownTest(*gocheck.C) {
 	if c.client != nil {
 		c.client.Close()
 	}
 }
 
-var _ = Suite(&ClientSuite{})
+var _ = gocheck.Suite(&ClientSuite{})
+
+var (
+	Equals = gocheck.Equals
+	IsNil  = gocheck.IsNil
+	Not    = gocheck.Not
+)
 
 type MockServer struct {
-	Info    *client.ServerInfo
-	Results []*client.Result
+	Info    *ServerInfo
+	Results []*Result
 }
 
 func (m *MockServer) handle(conn net.Conn) {
 	defer conn.Close()
 
 	encoder := json.NewEncoder(conn)
-	reader := json.NewDecoder(conn)
+	decoder := json.NewDecoder(conn)
 	for {
-		io.WriteString(conn, "READY ")
-		encoder.Encode(m.Info)
+		ops.Encode(encoder, m.Info)
 
-		var q client.Query
-		if err := reader.Decode(&q); err != nil {
+		if op, err := ops.Decode(decoder); err != nil {
 			if err == io.EOF {
 				return
 			}
 			panic(err.Error())
+		} else {
+			if op.(*Query) == nil {
+				panic("expected query")
+			}
 		}
 
 		for _, r := range m.Results {
-			encoder.Encode(r)
+			ops.Encode(encoder, r)
 		}
-		io.WriteString(conn, "DONE ")
-		encoder.Encode(&client.Stats{})
+
+		ops.Encode(encoder, &Stats{})
 	}
 }
 
@@ -72,26 +79,26 @@ func runMockServer(handle func(net.Conn)) <-chan string {
 	return ready
 }
 
-func (s *ClientSuite) connect(c *C, addr string) {
+func (s *ClientSuite) connect(c *gocheck.C, addr string) {
 	var err error
-	s.client, err = client.Dial("tcp", addr)
+	s.client, err = Dial("tcp", addr)
 	if err != nil {
 		c.Fatalf("connecting to %s: %s", addr, err.Error())
 	}
 }
 
-func (s *ClientSuite) TestQuery(c *C) {
+func (s *ClientSuite) TestQuery(c *gocheck.C) {
 	s.connect(c, <-runMockServer((&MockServer{
-		Results: []*client.Result{
+		Results: []*Result{
 			{Line: "match line 1"},
 		},
 	}).handle))
-	search, err := s.client.Query(&client.Query{".", "", ""})
-	c.Assert(err, IsNil)
+	search, err := s.client.Query(&Query{".", "", ""})
+	c.Assert(err, gocheck.IsNil)
 	var n int
 	for r := range search.Results() {
 		n++
-		c.Assert(r.Line, Not(Equals), "")
+		c.Assert(r.Line, gocheck.Not(Equals), "")
 	}
 	c.Assert(n, Equals, 1)
 	st, e := search.Close()
@@ -99,19 +106,19 @@ func (s *ClientSuite) TestQuery(c *C) {
 	c.Assert(st, Not(IsNil))
 }
 
-func (s *ClientSuite) TestTwoQueries(c *C) {
+func (s *ClientSuite) TestTwoQueries(c *gocheck.C) {
 	s.connect(c, <-runMockServer((&MockServer{
-		Results: []*client.Result{
+		Results: []*Result{
 			{Line: "match line 1"},
 		},
 	}).handle))
 
-	search, err := s.client.Query(&client.Query{".", "", ""})
+	search, err := s.client.Query(&Query{".", "", ""})
 	c.Assert(err, IsNil)
 	_, err = search.Close()
 	c.Assert(err, IsNil)
 
-	search, err = s.client.Query(&client.Query{".", "", ""})
+	search, err = s.client.Query(&Query{".", "", ""})
 	c.Assert(err, IsNil)
 	n := 0
 	for _ = range search.Results() {
@@ -124,16 +131,16 @@ func (s *ClientSuite) TestTwoQueries(c *C) {
 	c.Assert(n, Not(Equals), 0)
 }
 
-func (s *ClientSuite) TestLongLine(c *C) {
+func (s *ClientSuite) TestLongLine(c *gocheck.C) {
 	longLine := strings.Repeat("X", 1<<16)
 	s.connect(c, <-runMockServer((&MockServer{
-		Results: []*client.Result{
+		Results: []*Result{
 			{Line: longLine},
 		},
 	}).handle))
-	search, err := s.client.Query(&client.Query{".", "", ""})
+	search, err := s.client.Query(&Query{".", "", ""})
 	c.Assert(err, IsNil)
-	var rs []*client.Result
+	var rs []*Result
 	for r := range search.Results() {
 		rs = append(rs, r)
 	}
@@ -143,39 +150,40 @@ func (s *ClientSuite) TestLongLine(c *C) {
 }
 
 type MockServerQueryError struct {
-	Info *client.ServerInfo
+	Info *ServerInfo
 	Err  string
 }
 
 func (m *MockServerQueryError) handle(conn net.Conn) {
 	defer conn.Close()
 	encoder := json.NewEncoder(conn)
-	reader := json.NewDecoder(conn)
+	decoder := json.NewDecoder(conn)
 	for {
-		io.WriteString(conn, "READY ")
-		encoder.Encode(m.Info)
+		ops.Encode(encoder, m.Info)
 
-		var q client.Query
-		if err := reader.Decode(&q); err != nil {
+		if op, err := ops.Decode(decoder); err != nil {
 			if err == io.EOF {
 				return
 			}
 			panic(err.Error())
+		} else {
+			if op.(*Query) == nil {
+				panic("expected query")
+			}
 		}
 
-		io.WriteString(conn, "FATAL ")
-		io.WriteString(conn, m.Err)
-		io.WriteString(conn, "\n")
+		re := ReplyError(m.Err)
+		ops.Encode(encoder, &re)
 	}
 }
 
-func (s *ClientSuite) TestBadRegex(c *C) {
+func (s *ClientSuite) TestBadRegex(c *gocheck.C) {
 	errStr := "Invalid query: ("
 	s.connect(c, <-runMockServer((&MockServerQueryError{
 		Err: errStr,
 	}).handle))
 
-	search, err := s.client.Query(&client.Query{"(", "", ""})
+	search, err := s.client.Query(&Query{"(", "", ""})
 	c.Assert(err, IsNil)
 	for _ = range search.Results() {
 		c.Fatal("Got back a result from an erroneous query!")
@@ -185,7 +193,7 @@ func (s *ClientSuite) TestBadRegex(c *C) {
 	if e == nil {
 		c.Fatal("Didn't get back an error")
 	}
-	if q, ok := e.(client.QueryError); ok {
+	if q, ok := e.(QueryError); ok {
 		c.Assert(q.Query.Line, Equals, "(")
 		c.Assert(q.Err, Equals, errStr)
 	} else {
@@ -195,17 +203,17 @@ func (s *ClientSuite) TestBadRegex(c *C) {
 
 func mockServerShutdown() <-chan string {
 	return runMockServer(func(conn net.Conn) {
-		conn.Write([]byte("READY {}\n"))
+		ops.Encode(json.NewEncoder(conn), &ServerInfo{})
 		conn.Close()
 	})
 }
 
-func (s *ClientSuite) TestShutdown(c *C) {
+func (s *ClientSuite) TestShutdown(c *gocheck.C) {
 	addr := <-mockServerShutdown()
 
 	s.connect(c, addr)
 
-	search, err := s.client.Query(&client.Query{Line: "l"})
+	search, err := s.client.Query(&Query{Line: "l"})
 	c.Assert(err, IsNil)
 	c.Assert(search, Not(IsNil))
 
@@ -218,7 +226,7 @@ func (s *ClientSuite) TestShutdown(c *C) {
 	c.Assert(st, IsNil)
 	c.Assert(err, Not(IsNil))
 
-	search, err = s.client.Query(&client.Query{Line: "l"})
+	search, err = s.client.Query(&Query{Line: "l"})
 	c.Assert(err, Not(IsNil))
 	c.Assert(search, IsNil)
 }

@@ -2,13 +2,17 @@ package jsonframe
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"reflect"
 )
 
-var (
-	ErrBadOpcode = errors.New("unknown opcode")
-)
+type UnknownOpcode struct {
+	Opcode string
+}
+
+func (u *UnknownOpcode) Error() string {
+	return fmt.Sprintf("unknown opcode '%s'", u.Opcode)
+}
 
 type Frame struct {
 	Opcode string          `json:"opcode"`
@@ -32,10 +36,13 @@ func (m *Marshaler) Register(o Op) {
 	if m.ops == nil {
 		m.ops = make(map[string]Op)
 	}
+	if _, ok := m.ops[o.Opcode()]; ok {
+		panic(fmt.Sprintf("Register: duplicate opcode: %s", o.Opcode()))
+	}
 	m.ops[o.Opcode()] = o
 }
 
-func (m *Marshaler) Encode(e json.Encoder, op Op) error {
+func (m *Marshaler) Encode(e *json.Encoder, op Op) error {
 	frame := &wFrame{op.Opcode(), op}
 	return e.Encode(frame)
 }
@@ -48,7 +55,7 @@ func (m *Marshaler) Marshal(op Op) ([]byte, error) {
 func (m *Marshaler) unpack(f *Frame, out *Op) error {
 	prototype, ok := m.ops[f.Opcode]
 	if !ok {
-		return ErrBadOpcode
+		return &UnknownOpcode{f.Opcode}
 	}
 
 	op := reflect.New(reflect.TypeOf(prototype).Elem()).Interface().(Op)
@@ -60,7 +67,7 @@ func (m *Marshaler) unpack(f *Frame, out *Op) error {
 	return nil
 }
 
-func (m *Marshaler) Decode(d json.Decoder) (Op, error) {
+func (m *Marshaler) Decode(d *json.Decoder) (Op, error) {
 	var f Frame
 	if err := d.Decode(&f); err != nil {
 		return nil, err

@@ -47,6 +47,14 @@ json_object *to_json(vector<T> vec) {
     return out;
 }
 
+
+json_object *json_frame(const std::string op, json_object *body) {
+    json_object *frame = json_object_new_object();
+    json_object_object_add(frame, "opcode", to_json(op));
+    json_object_object_add(frame, "body", body);
+    return frame;
+}
+
 json_object *json_info(const code_searcher *cs) {
     json_object *obj = json_object_new_object();
     json_object_object_add(obj, "repos", to_json(cs->repos()));
@@ -116,6 +124,12 @@ class json_interface : public codesearch_interface {
 public:
     json_interface(FILE *in, FILE *out) : in_(in), out_(out) { }
 
+    void write_frame(const std::string &opcode, json_object *body) {
+        json_object *frame = json_frame(opcode, body);
+        fprintf(out_, "%s\n", json_object_to_json_string(frame));
+        json_object_put(frame);
+    }
+
     virtual void print_match(const match_result *m) {
         json_object *obj = json_object_new_object();
         json_object *contexts = json_object_new_array();
@@ -136,18 +150,15 @@ public:
         json_object_array_add(bounds, to_json(m->matchright));
         json_object_object_add(obj, "bounds", bounds);
         json_object_object_add(obj, "line", to_json(m->line));
-        fprintf(out_, "%s\n", json_object_to_json_string(obj));
-        json_object_put(obj);
+        write_frame("match", obj);
     }
 
     virtual void print_error(const std::string &err) {
-        fprintf(out_, "FATAL %s\n", err.c_str());
+        write_frame("error", to_json(err));
     }
 
     virtual void print_prompt(const code_searcher *cs) {
-        json_object *info = json_info(cs);
-        fprintf(out_, "READY %s\n", json_object_to_json_string(info));
-        json_object_put(info);
+        write_frame("ready", json_info(cs));
     }
 
     virtual bool getline(std::string &input) {
@@ -168,19 +179,24 @@ public:
             print_error("Expected a JSON object");
             return false;
         }
+        json_object *q = json_object_object_get(js, "body");
+        if (q == NULL || json_object_get_type(q) != json_type_object) {
+            print_error("Expected a JSON object");
+            return false;
+        }
 
-        json_object *line_js = json_object_object_get(js, "line");
+        json_object *line_js = json_object_object_get(q, "line");
         if (!line_js || json_object_get_type(line_js) != json_type_string) {
             print_error("No regex specified!");
             return false;
         }
         line_re = json_object_get_string(line_js);
 
-        json_object *file_js = json_object_object_get(js, "file");
+        json_object *file_js = json_object_object_get(q, "file");
         if (file_js && json_object_get_type(file_js) == json_type_string)
             file_re = json_object_get_string(file_js);
 
-        json_object *tree_js = json_object_object_get(js, "repo");
+        json_object *tree_js = json_object_object_get(q, "repo");
         if (tree_js && json_object_get_type(tree_js) == json_type_string)
             tree_re = json_object_get_string(tree_js);
 
@@ -210,8 +226,7 @@ public:
             json_object_object_add(obj, "why", json_object_new_string("timeout"));
             break;
         }
-        fprintf(out_, "DONE %s\n", json_object_to_json_string(obj));
-        json_object_put(obj);
+        write_frame("done", obj);
     }
 
     virtual void build_index(code_searcher *cs, const vector<std::string> &argv) {
