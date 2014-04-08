@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/client"
 	"github.com/nelhage/livegrep/server/api"
+	"github.com/nelhage/livegrep/server/backend"
 	"net/http"
 )
 
@@ -34,10 +35,17 @@ func parseQuery(r *http.Request) client.Query {
 
 func (s *server) ServeAPISearch(w http.ResponseWriter, r *http.Request) {
 	backendName := r.URL.Query().Get(":backend")
-	backend := s.bk[backendName]
-	if backend == nil {
-		writeError(w, 400, "bad_backend", fmt.Sprintf("Unknown backend: %s", backendName))
-		return
+	var backend *backend.Backend
+	if backendName != "" {
+		backend = s.bk[backendName]
+		if backend == nil {
+			writeError(w, 400, "bad_backend", fmt.Sprintf("Unknown backend: %s", backendName))
+			return
+		}
+	} else {
+		for _, backend = range s.bk {
+			break
+		}
 	}
 
 	q := parseQuery(r)

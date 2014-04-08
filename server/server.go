@@ -123,6 +123,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/about", http.HandlerFunc(srv.ServeAbout))
 	m.Add("GET", "/opensearch.xml", http.HandlerFunc(srv.ServeOpensearch))
 
+	m.Add("GET", "/api/v1/search/", http.HandlerFunc(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/:backend", http.HandlerFunc(srv.ServeAPISearch))
 
 	mux := http.NewServeMux()
