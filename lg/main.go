@@ -16,7 +16,7 @@ var (
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [flags] REGEX", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [flags] REGEX\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.Parse()
