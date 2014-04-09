@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/nelhage/go.cli/config"
 	"github.com/nelhage/livegrep/server/api"
 	"net/http"
 	"net/url"
@@ -19,6 +20,10 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [flags] REGEX\n", os.Args[0])
 		flag.PrintDefaults()
+	}
+	if err := config.LoadConfig(flag.CommandLine, "lgrc"); err != nil {
+		fmt.Fprintf(os.Stderr, "Loading config: %s\n", err)
+		os.Exit(1)
 	}
 	flag.Parse()
 
