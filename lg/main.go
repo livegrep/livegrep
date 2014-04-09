@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 var (
@@ -26,10 +27,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	uri, err := url.Parse(*server)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Parsing server %s: %s\n", *server, err.Error())
-		os.Exit(1)
+	var uri *url.URL
+	var err error
+
+	if strings.Contains(*server, ":") {
+		if uri, err = url.Parse(*server); err != nil {
+			fmt.Fprintf(os.Stderr, "Parsing server %s: %s\n", *server, err.Error())
+			os.Exit(1)
+		}
+	} else {
+		uri = &url.URL{Scheme: "http", Host: *server}
 	}
 
 	uri.Path = "/api/v1/search/"
