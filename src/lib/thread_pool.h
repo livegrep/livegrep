@@ -27,8 +27,13 @@ public:
         queue_.push(job);
     }
 
+    void close() {
+        queue_.close();
+    }
+
     ~thread_pool () {
         int i;
+        queue_.close();
         for (i = 0; i < nthreads_; i++) {
             pthread_join(threads_[i], NULL);
         }
@@ -43,10 +48,9 @@ protected:
 
     static void *worker(void *arg) {
         thread_pool *pool = static_cast<thread_pool*>(arg);
-        while (true) {
-            J job = pool->queue_.pop();
-            if (pool->fn_(job))
-                break;
+        J job;
+        while (pool->queue_.pop(&job)) {
+            pool->fn_(job);
         }
         return NULL;
     }

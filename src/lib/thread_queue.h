@@ -23,29 +23,28 @@ public:
         cond_.signal();
     }
 
-    T pop() {
+    void close() {
         mutex_locker locked(mutex_);
-        while (queue_.empty())
-            cond_.wait(&mutex_);
-        T rv = queue_.front();
-        queue_.pop_front();
-        return rv;
+        closed_ = true;
+        cond_.broadcast();
     }
 
-    bool try_pop(T &ret) {
+    bool pop(T *out) {
         mutex_locker locked(mutex_);
-        if (queue_.empty())
+        while (queue_.empty() && !closed_)
+            cond_.wait(&mutex_);
+        if (queue_.empty() && closed_)
             return false;
-        ret = queue_.front();
+        *out = queue_.front();
         queue_.pop_front();
         return true;
     }
-
  protected:
     thread_queue(const thread_queue&);
     thread_queue operator=(const thread_queue &);
     cs_mutex mutex_;
     cond_var cond_;
+    bool closed_;
     std::list<T> queue_;
 };
 

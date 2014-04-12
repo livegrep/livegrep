@@ -957,7 +957,7 @@ void searcher::finish_group(match_group *group) {
 }
 
 code_searcher::search_thread::search_thread(code_searcher *cs)
-    : cs_(cs), pool_(FLAGS_threads, &search_one) {
+    : cs_(cs), threads_(new pthread_t[FLAGS_threads]), pending_(0) {
 }
 
 void code_searcher::search_thread::match_internal(RE2& pat, RE2 *file_pat, RE2 *tree_pat,
@@ -965,8 +965,10 @@ void code_searcher::search_thread::match_internal(RE2& pat, RE2 *file_pat, RE2 *
                                                  match_stats *stats) {
     match_result *m;
     int matches = 0;
-    int pending = cs_->alloc_->size();
 
+    if (!FLAGS_search) {
+        return;
+    }
 
     if (FLAGS_drop_cache) {
         cs_->alloc_->drop_caches();
@@ -974,49 +976,56 @@ void code_searcher::search_thread::match_internal(RE2& pat, RE2 *file_pat, RE2 *
 
     assert(cs_->finalized_);
 
-    thread_queue<match_result*> results;
-    searcher search(cs_, results, pat, file_pat, tree_pat);
-
-    memset(stats, 0, sizeof *stats);
-    stats->why = kExitNone;
-
     if (!FLAGS_search) {
         return;
     }
 
+    thread_queue<match_result*> results;
+    search_ = new searcher(cs_, results, pat, file_pat, tree_pat);
+
+    memset(stats, 0, sizeof *stats);
+    stats->why = kExitNone;
+
+
+    for (int i = 0; i < FLAGS_threads; ++i)
+        pthread_create(&threads_[i], NULL, search_one, this);
 
     for (auto it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
-        pool_.queue(pair<searcher*, chunk*>(&search, *it));
+        queue_.push(*it);
     }
+    queue_.close();
 
-    while (pending) {
-        m = results.pop();
-        if (!m) {
-            pending--;
-            continue;
-        }
+    while (results.pop(&m)) {
         matches++;
         cb(m);
         delete m;
     }
 
-    search.get_stats(stats);
-    stats->why = search.why();
+    search_->get_stats(stats);
+    stats->why = search_->why();
     stats->matches = matches;
 }
 
 
 code_searcher::search_thread::~search_thread() {
-    for (int i = 0; i < FLAGS_threads; i++)
-        pool_.queue(pair<searcher*, chunk*>((searcher*)0, (chunk*)0));
+    if (threads_) {
+        for (int i = 0; i < FLAGS_threads; ++i)
+            pthread_join(threads_[i], 0);
+    }
+    delete[] threads_;
+    delete search_;
 }
 
-bool code_searcher::search_thread::search_one(const pair<searcher*, chunk*>& pair) {
-    if (!pair.first)
-        return true;
-    (*pair.first)(pair.second);
-    pair.first->queue_.push(NULL);
-    return false;
+void* code_searcher::search_thread::search_one(void *p) {
+    search_thread *me = static_cast<search_thread*>(p);
+    chunk *c;
+    while (me->queue_.pop(&c)) {
+        (*me->search_)(c);
+    }
+
+    if (--me->pending_ == 0)
+        me->search_->queue_.close();
+    return NULL;
 }
 
 void default_re2_options(RE2::Options &opts) {
