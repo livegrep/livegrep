@@ -1,29 +1,35 @@
 Livegrep
 ========
 
-"livegrep" is a tool, partially inspired by Google Code Search, for
-interactive regex search of ~gigabyte-scale source repositories.
+Livegrep is a tool, partially inspired by Google Code Search, for
+interactive regex search of ~gigabyte-scale source repositories. You
+can see a running instance at
+[http://livegrep.com/](http://livegrep.com).
 
-Dependencies
-------------
+Building
+--------
 
-Livegrep has several dependencies, including:
+This respository contains three separate components: The indexing and
+search backend (written in C++), the web interface (server in golang,
+UI, obviously, in Javascript), and a CLI that talks to the web
+interface. These each need to be built separately.
+
+### `codesearch` -- the search backend
+
+The C++ backend had a number of dependencies, including:
 
  - [libgit2][libgit2]
  - [RE2][re2]
  - [gflags][gflags]
  - [libjson][libjson]
 
+On a sufficiently recent Ubuntu, these are all available via `apt-get`:
 
-I have packaged these for Ubuntu in my [ppa][lg-ppa], or you can
-install them from source or from other packages. If they are installed
-in non-default paths, create a `Makefile.config` file in the top level
-of the repository the defines `re2` and/or `libgit2` variables
-pointing at the install prefix for those libraries. For example, you
-might have:
+    sudo apt-get install libgit2-dev re2-dev libgflags-dev libjson0-dev
 
-    libgit2=/home/nelhage/sw/libgit2
-    re2=/home/nelhage/sw/re2
+I have also made packages available in a [PPA](lg-ppa), but they are
+largely unmaintained since I no longer deploy livegrep on any older
+distributions.
 
 [libgit2]: http://libgit2.github.com/
 [re2]: http://code.google.com/p/re2/
@@ -31,33 +37,20 @@ might have:
 [libjson]: http://oss.metaparadigm.com/json-c/
 [lg-ppa]: https://launchpad.net/~nelhage/+archive/livegrep
 
-The livegrep web interface is written in [node.js][node], and depends
-on several [npm][npm] modules. They should all be listed in
-`package.json`, can be installed via `npm install .`
+Once all the dependencies are installed, a simple `make` should build
+the `codesearch` binary.
 
-[node]: http://nodejs.org/
-[npm]: https://npmjs.org/
+### `livegrep` -- the web interface
 
-Livegrep has only been tested on Linux x86_64 systems. It is unlikely
-to work well (or potentially at all) on 32-bit systems because of the
-large virtual memory footprint it requires.
+    go install github.com/nelhage/livegrep/livegrep
 
-Components
-----------
+should suffice to install the livegrep web UI into `$GOPATH/bin`
 
-Run `make` to build the `codesearch` binary. This binary can be used
-by hand, but is intended to be driven by the node.js helpers in the
-`bin/` directory.
+### `lg` -- the CLI
 
-The frontend programs can be configured in `js/config.local.js`. See
-`js/config.js` for the configuration options. Once configuration is
-established, `bin/index.js` can be used to build a codesearch index.
+Similarly,
 
-The livegrep frontend then consists of two separate
-programs. `bin/cs_servers.js` runs a `codesearch` process, which it
-communicates with via a pipe, and listens on a local
-port. `bin/web_server.js` runs the web server frontend, and
-communicates with `cs_server` over a local socket.
+    go install github.com/nelhage/livegrep/lg
 
 Resource Usage
 --------------
