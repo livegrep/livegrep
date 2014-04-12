@@ -16,14 +16,23 @@ type Backend struct {
 }
 
 type Config struct {
-	DocRoot  string
+	// Location of the directory containing templates and static
+	// assets. This should point at the "web" directory of the
+	// repository.
+	DocRoot string `json:"docroot"`
+
 	Feedback struct {
-		MailTo string `json:"mailto"`
+		// The mailto address for the "feedback" url.
+		Mailto string `json:"mailto"`
 	} `json:"feedback"`
 
 	GoogleAnalyticsId string `json:"google_analytics_id"`
 	// Should we respect X-Real-Ip, X-Real-Proto, and X-Forwarded-Host?
 	ReverseProxy bool `json:"reverse_proxy"`
 
+	// List of backends to connect to. Each backend must minimally
+	// include the "id" and "addr" fields; All other fields are
+	// optional and will be replaced by values reported by the
+	// backend server once we successfully connect.
 	Backends []Backend `json:"backends"`
 }
