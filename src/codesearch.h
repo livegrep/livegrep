@@ -24,6 +24,7 @@
 #include <locale>
 
 #include "mutex.h"
+#include "atomic.h"
 #include "thread_pool.h"
 
 class searcher;
@@ -209,11 +210,17 @@ public:
             match_internal(q, match_cb<T>(cb), stats);
         }
     protected:
-        const code_searcher *cs_;
-        thread_pool<pair<searcher*, chunk*>,
-                    bool(*)(const pair<searcher*, chunk*>&)> pool_;
+        struct job {
+            atomic_int pending;
+            searcher *search;
+            thread_queue<chunk*> chunks;
+        };
 
-        static bool search_one(const pair<searcher*, chunk*>& pair);
+        const code_searcher *cs_;
+        pthread_t *threads_;
+        thread_queue<job*> queue_;
+
+        static void* search_one(void *);
     private:
         search_thread(const search_thread&);
         void operator=(const search_thread&);

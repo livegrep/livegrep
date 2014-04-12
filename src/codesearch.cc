@@ -99,9 +99,8 @@ struct match_group;
 
 class searcher {
 public:
-    searcher(const code_searcher *cc, thread_queue<match_result*>& queue,
-             const query &q) :
-        cc_(cc), query_(&q), queue_(queue),
+    searcher(const code_searcher *cc, const query &q) :
+        cc_(cc), query_(&q), queue_(),
         matches_(0), re2_time_(false), git_time_(false),
         index_time_(false), sort_time_(false), analyze_time_(false),
         exit_reason_(kExitNone), files_(new uint8_t[cc->files_.size()]),
@@ -319,7 +318,7 @@ protected:
 
     const code_searcher *cc_;
     const query *query_;
-    thread_queue<match_result*>& queue_;
+    thread_queue<match_result*> queue_;
     atomic_int matches_;
     intrusive_ptr<IndexKey> index_;
     timer re2_time_;
@@ -959,7 +958,13 @@ void searcher::finish_group(match_group *group) {
 }
 
 code_searcher::search_thread::search_thread(code_searcher *cs)
-    : cs_(cs), pool_(FLAGS_threads, &search_one) {
+    : cs_(cs), threads_(new pthread_t[FLAGS_threads]) {
+    if (FLAGS_search) {
+        int err;
+        for (int i = 0; i < FLAGS_threads; ++i)
+            if ((err = pthread_create(&threads_[i], NULL, search_one, this)) != 0)
+                die("pthread_create: %s", strerror(err));
+    }
 }
 
 void code_searcher::search_thread::match_internal(const query &q,
@@ -967,36 +972,35 @@ void code_searcher::search_thread::match_internal(const query &q,
                                                  match_stats *stats) {
     match_result *m;
     int matches = 0;
-    int pending = cs_->alloc_->size();
-
-
-    if (FLAGS_drop_cache) {
-        cs_->alloc_->drop_caches();
-    }
 
     assert(cs_->finalized_);
-
-    thread_queue<match_result*> results;
-    searcher search(cs_, results, q);
-
-    memset(stats, 0, sizeof *stats);
-    stats->why = kExitNone;
 
     if (!FLAGS_search) {
         return;
     }
 
-
-    for (auto it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
-        pool_.queue(pair<searcher*, chunk*>(&search, *it));
+    if (FLAGS_drop_cache) {
+        cs_->alloc_->drop_caches();
     }
 
-    while (pending) {
-        m = results.pop();
-        if (!m) {
-            pending--;
-            continue;
-        }
+    searcher search(cs_, q);
+    job j;
+    j.search = &search;
+    j.pending = 0;
+
+    for (int i = 0; i < FLAGS_threads; ++i) {
+        ++j.pending;
+        queue_.push(&j);
+    }
+
+    for (auto it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
+        j.chunks.push(*it);
+    }
+    j.chunks.close();
+
+    memset(stats, 0, sizeof *stats);
+
+    while (search.queue_.pop(&m)) {
         matches++;
         cb(m);
         delete m;
@@ -1009,16 +1013,28 @@ void code_searcher::search_thread::match_internal(const query &q,
 
 
 code_searcher::search_thread::~search_thread() {
-    for (int i = 0; i < FLAGS_threads; i++)
-        pool_.queue(pair<searcher*, chunk*>((searcher*)0, (chunk*)0));
+    queue_.close();
+    if (threads_) {
+        for (int i = 0; i < FLAGS_threads; ++i)
+            pthread_join(threads_[i], 0);
+    }
+    delete[] threads_;
 }
 
-bool code_searcher::search_thread::search_one(const pair<searcher*, chunk*>& pair) {
-    if (!pair.first)
-        return true;
-    (*pair.first)(pair.second);
-    pair.first->queue_.push(NULL);
-    return false;
+void* code_searcher::search_thread::search_one(void *p) {
+    search_thread *me = static_cast<search_thread*>(p);
+
+    job *j;
+    while (me->queue_.pop(&j)) {
+        chunk *c;
+        while (j->chunks.pop(&c)) {
+            (*j->search)(c);
+        }
+
+        if (--j->pending == 0)
+            j->search->queue_.close();
+    }
+    return NULL;
 }
 
 void default_re2_options(RE2::Options &opts) {

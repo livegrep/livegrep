@@ -12,6 +12,7 @@
 
 class atomic_int {
 public:
+    atomic_int() : val_(0) { }
     atomic_int(int x) : val_(x) { }
 
     int load() {
@@ -19,11 +20,11 @@ public:
     }
 
     int operator++() {
-        return __sync_fetch_and_add(&val_, 1);
+        return __sync_fetch_and_add(&val_, 1) + 1;
     }
 
     int operator--() {
-        return __sync_fetch_and_add(&val_, -1);
+        return __sync_fetch_and_add(&val_, -1) - 1;
     }
 
 private:
