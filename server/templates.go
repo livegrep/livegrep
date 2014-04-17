@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/server/backend"
 	"github.com/nelhage/livegrep/server/config"
 	"html/template"
@@ -51,6 +52,7 @@ func (s *server) executeTemplate(t *template.Template, context interface{}) ([]b
 
 func (s *server) renderPage(w io.Writer, p *page) {
 	p.Config = s.config
-	s.t.layout.Execute(w, p)
-
+	if e := s.t.layout.Execute(w, p); e != nil {
+		glog.Errorf("While rendering: %s", e.Error())
+	}
 }
