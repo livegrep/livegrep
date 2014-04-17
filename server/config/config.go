@@ -23,7 +23,7 @@ type Config struct {
 
 	Feedback struct {
 		// The mailto address for the "feedback" url.
-		Mailto string `json:"mailto"`
+		MailTo string `json:"mailto"`
 	} `json:"feedback"`
 
 	GoogleAnalyticsId string `json:"google_analytics_id"`
