@@ -192,6 +192,14 @@ var SearchState = Backbone.Model.extend({
   },
 
   dispatch: function (search) {
+    var cur = this.search_map[this.get('displaying')];
+    if (cur &&
+        cur.q === search.line &&
+        cur.file === search.file &&
+        cur.backend === search.backend &&
+        cur.repo === search.repo) {
+      return false;
+    }
     var id = this.next_id();
     search.id = id;
     this.search_map[id] = {
@@ -200,8 +208,11 @@ var SearchState = Backbone.Model.extend({
       backend: search.backend,
       repo: search.repo
     };
-    if (!search.line.length)
+    if (!search.line.length) {
       this.set('displaying', id);
+      return false;
+    }
+    return true;
   },
 
   url: function() {
@@ -408,8 +419,7 @@ var CodesearchUI = function() {
       };
       if (CodesearchUI.input_backend)
         search.backend = CodesearchUI.input_backend.val();
-      CodesearchUI.state.dispatch(search);
-      if (search.line.length > 0)
+      if (CodesearchUI.state.dispatch(search))
         Codesearch.new_search(search);
     },
     error: function(search, error) {
