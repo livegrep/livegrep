@@ -2,6 +2,7 @@
 #include "interface.h"
 #include "debug.h"
 #include "git_indexer.h"
+#include "fs_indexer.h"
 #include "interface-impl.h"
 
 #include <json/json.h>
@@ -245,18 +246,37 @@ public:
         if (json_object_is_type(name, json_type_string))
             cs->set_name(json_object_get_string(name));
 
-        vector<repo_spec> repos;
-        extract_repo_specs(repos, json_object_object_get(obj, "repositories"));
-        json_object_put(obj);
+        string path;
+        json_object *js_paths = json_object_object_get(obj, "fs_paths");
+        if (js_paths && json_object_is_type(js_paths, json_type_array)) {
+            for (int i = 0; i < json_object_array_length(js_paths); ++i) {
+                json_object *elt = json_object_array_get_idx(js_paths, i);
+                if (json_object_is_type(elt, json_type_string)) {
+                    path = json_object_get_string(elt);
+                    debug(kDebugUI, "Walking `%s'...\n",
+                        path.c_str());
+                    fs_indexer indexer(cs, path);
+                    indexer.walk(path);
+                    debug(kDebugUI, "done\n");
+                }
+            }
+        }
 
-        for (auto it = repos.begin(); it != repos.end(); ++it) {
-            debug(kDebugUI, "Walking name=%s, path=%s",
-                  it->name.c_str(), it->path.c_str());
-            git_indexer indexer(cs, it->path, it->name, it->metadata);
-            for (auto rev = it->revisions.begin();
-                 rev != it->revisions.end(); ++rev) {
-                debug(kDebugUI, "  walking %s..", rev->c_str());
-                indexer.walk(*rev);
+        vector<repo_spec> repos;
+        json_object *repo_spec = json_object_object_get(obj, "repositories");
+        if (repo_spec) {
+            extract_repo_specs(repos, repo_spec);
+            json_object_put(obj);
+
+            for (auto it = repos.begin(); it != repos.end(); ++it) {
+                debug(kDebugUI, "Walking name=%s, path=%s",
+                      it->name.c_str(), it->path.c_str());
+                git_indexer indexer(cs, it->path, it->name, it->metadata);
+                for (auto rev = it->revisions.begin();
+                     rev != it->revisions.end(); ++rev) {
+                    debug(kDebugUI, "  walking %s..", rev->c_str());
+                    indexer.walk(*rev);
+                }
             }
         }
     }

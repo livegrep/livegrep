@@ -1,9 +1,13 @@
 #include "codesearch.h"
 #include "git_indexer.h"
+#include "fs_indexer.h"
 #include "interface.h"
 #include "interface-impl.h"
 
 #include <stdarg.h>
+#include <gflags/gflags.h>
+
+DEFINE_bool(filesystem, false, "Analyze a filesystem tree instead of a git repo.");
 
 bool getline(std::string &out, FILE *in) {
     char *line = 0;
@@ -59,21 +63,29 @@ public:
 
     virtual void build_index(code_searcher *cs, const vector<std::string> &argv) {
         if (argv.size() < 2) {
-            print_error("Usage: " + argv[0] + " [OPTIONS] REPOSPEC...");
+            print_error("Usage: " + argv[0] + " [OPTIONS] <REPOSPEC [...] | -filesystem PATH [...]>");
             exit(1);
         }
-        for (auto it = argv.begin(); it != argv.end(); ++it) {
+        for (auto it = ++argv.begin(); it != argv.end(); ++it) {
             const std::string &arg = *it;
-            parse_spec parsed = parse_walk_spec(arg);
-            this->info("Walking `%s' (name: %s, path: %s)...\n",
-                       arg.c_str(),
-                       parsed.name.c_str(),
-                       parsed.path.c_str());
-            git_indexer indexer(cs, parsed.path, parsed.name);
-            for (auto it = parsed.revs.begin(); it != parsed.revs.end(); ++it) {
-                this->info("  %s...", it->c_str());
-                indexer.walk(*it);
+            if (FLAGS_filesystem) {
+                this->info("Walking `%s'...\n",
+                           arg.c_str());
+                fs_indexer indexer(cs, arg.c_str());
+                indexer.walk(arg);
                 this->info("done\n");
+            } else {
+                parse_spec parsed = parse_walk_spec(arg);
+                this->info("Walking `%s' (name: %s, path: %s)...\n",
+                           arg.c_str(),
+                           parsed.name.c_str(),
+                           parsed.path.c_str());
+                git_indexer indexer(cs, parsed.path, parsed.name);
+                for (auto it = parsed.revs.begin(); it != parsed.revs.end(); ++it) {
+                    this->info("  %s...", it->c_str());
+                    indexer.walk(*it);
+                    this->info("done\n");
+                }
             }
         }
     }
