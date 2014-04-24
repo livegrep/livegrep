@@ -1,3 +1,3 @@
 SRC += src/chunk_allocator.cc src/chunk.cc src/codesearch.cc \
            src/content.cc src/dump_load.cc src/indexer.cc \
-           src/re_width.cc src/git_indexer.cc
+           src/re_width.cc src/git_indexer.cc src/fs_indexer.cc

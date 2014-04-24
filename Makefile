@@ -12,7 +12,7 @@ override LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
 override CXXFLAGS+=-g -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
 override LDFLAGS+=-pthread
-LDLIBS=-lgit2 -ljson -lgflags $(libre2)/lib/libre2.a -lz -lssl -lcrypto -ldl
+LDLIBS=-lgit2 -ljson -lgflags $(libre2)/lib/libre2.a -lz -lssl -lcrypto -ldl -lboost_system -lboost_filesystem
 
 ifeq ($(noopt),)
 override CXXFLAGS+=-O2
