@@ -96,7 +96,9 @@ SearchLoop:
 			}
 
 		case e := <-s.errors:
-			glog.Infof("error reading from client: %s\n", e.Error())
+			glog.Infof("error reading from client remote=%s error=%s\n",
+				s.ws.Request().RemoteAddr,
+				e.Error())
 			break SearchLoop
 		case res, ok := <-results:
 			if ok {
@@ -117,7 +119,8 @@ SearchLoop:
 				} else if _, ok := err.(client.QueryError); ok {
 					s.outgoing <- &OpQueryError{s.q.last.Id, err.Error()}
 				} else {
-					glog.Infof("internal error doing search id=%d error=%s",
+					glog.Infof("internal error doing search remote=%s id=%d error=%s",
+						s.ws.Request().RemoteAddr,
 						s.q.last.Id, asJSON{err.Error()})
 					if s.q.next == nil {
 						// retry the search
