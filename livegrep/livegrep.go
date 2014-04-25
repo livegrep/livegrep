@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	_ "expvar"
 	"flag"
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/server"
@@ -9,6 +10,7 @@ import (
 	"github.com/nelhage/livegrep/server/middleware"
 	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 )
 
@@ -47,5 +49,7 @@ func main() {
 		handler = middleware.UnwrapProxyHeaders(handler)
 	}
 
-	glog.Fatal(http.ListenAndServe(*serveAddr, handler))
+	http.DefaultServeMux.Handle("/", handler)
+
+	glog.Fatal(http.ListenAndServe(*serveAddr, nil))
 }
