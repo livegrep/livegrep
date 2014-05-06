@@ -1,0 +1,13 @@
+{
+    "name": "livegrep",
+    "repositories": [
+        {
+            "name": "livegrep",
+            "path": ".",
+            "revisions": [ "HEAD" ],
+            "metadata": {
+                "github": "nelhage/livegrep"
+            }
+        }
+    ]
+}

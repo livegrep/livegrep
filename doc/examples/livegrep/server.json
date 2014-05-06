@@ -1,0 +1,12 @@
+{
+    "backends":
+    [
+        {
+            "id": "livegrep",
+            "addr": "localhost:9999"
+        }
+    ],
+    "feedback": {
+        "mailto": "nelhage@nelhage.com"
+    }
+}
