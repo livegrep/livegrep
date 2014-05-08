@@ -84,9 +84,8 @@ func (s *server) requestProtocol(r *http.Request) string {
 	}
 	if r.TLS != nil {
 		return "https"
-	} else {
-		return "http"
 	}
+	return "http"
 }
 
 func (s *server) ServeOpensearch(w http.ResponseWriter, r *http.Request) {

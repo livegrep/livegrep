@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	serveAddr *string = flag.String("listen", "127.0.0.1:8910", "The address to listen on")
-	docRoot   *string = flag.String("docroot", "./web", "The livegrep document root (web/ directory)")
+	serveAddr = flag.String("listen", "127.0.0.1:8910", "The address to listen on")
+	docRoot   = flag.String("docroot", "./web", "The livegrep document root (web/ directory)")
 )
 
 // var backendAddr *string = flag.String("connect", "localhost:9999", "The address to connect to")

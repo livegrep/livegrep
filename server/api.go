@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-func replyJson(w http.ResponseWriter, status int, obj interface{}) {
+func replyJSON(w http.ResponseWriter, status int, obj interface{}) {
 	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(obj); err != nil {
@@ -21,15 +21,15 @@ func replyJson(w http.ResponseWriter, status int, obj interface{}) {
 }
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
-	replyJson(w, status, &api.ReplyError{Err: api.InnerError{code, message}})
+	replyJSON(w, status, &api.ReplyError{Err: api.InnerError{Code: code, Message: message}})
 }
 
 func parseQuery(r *http.Request) client.Query {
 	params := r.URL.Query()
 	return client.Query{
-		params.Get("line"),
-		params.Get("file"),
-		params.Get("repo"),
+		Line: params.Get("line"),
+		File: params.Get("file"),
+		Repo: params.Get("repo"),
 	}
 }
 
@@ -78,5 +78,5 @@ func (s *server) ServeAPISearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	replyJson(w, 200, reply)
+	replyJSON(w, 200, reply)
 }

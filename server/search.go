@@ -185,7 +185,7 @@ func (s *searchConnection) connectBackend(backend string) error {
 	var ok bool
 	s.backend, ok = s.srv.bk[backend]
 	if !ok {
-		return fmt.Errorf("No such backend: %s", backend)
+		return fmt.Errorf("no such backend: %s", backend)
 	}
 	return nil
 }
