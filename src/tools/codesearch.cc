@@ -31,7 +31,7 @@ DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
-DEFINE_string(listen, "", "Listen on a UNIX socket for connections");
+DEFINE_string(listen, "", "Listen on a socket for connections. example: -listen tcp://localhost:9999");
 
 using namespace std;
 using namespace re2;
