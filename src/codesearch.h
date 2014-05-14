@@ -139,6 +139,15 @@ struct match_result {
     int matchleft, matchright;
 };
 
+// A query specification passed to match(). line_pat is required to be
+// non-NULL; line_pat and tree_pat may be NULL to specify "no
+// constraint"
+struct query {
+    RE2 *line_pat;
+    RE2 *file_pat;
+    RE2 *tree_pat;
+};
+
 class code_searcher {
 public:
     code_searcher();
@@ -179,16 +188,17 @@ public:
             T cb_;
         };
 
-        void match_internal(RE2& pat, RE2 *file_pat, RE2 *tree_pat,
-                            const base_cb& cb, match_stats *stats);
+        void match_internal(const query &q,
+                            const base_cb& cb,
+                            match_stats *stats);
     public:
         search_thread(code_searcher *cs);
         ~search_thread();
 
         /* file_pat may be NULL */
         template <class T>
-        void match(RE2& pat, RE2 *file_pat, RE2 *tree_pat, T cb, match_stats *stats) {
-            match_internal(pat, file_pat, tree_pat, match_cb<T>(cb), stats);
+        void match(const query& q, T cb, match_stats *stats) {
+            match_internal(q, match_cb<T>(cb), stats);
         }
     protected:
         const code_searcher *cs_;

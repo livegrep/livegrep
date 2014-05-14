@@ -115,10 +115,11 @@ void interact(code_searcher *cs, codesearch_interface *ui) {
 
             {
                 sem_wait(&interact_sem);
-                search.match(re,
-                             file.size() ? &file_re : 0,
-                             tree.size() ? &tree_re : 0,
-                             print_match(ui), &stats);
+                query q = { &re,
+                            file.size() ? &file_re : 0,
+                            tree.size() ? &tree_re : 0,
+                };
+                search.match(q, print_match(ui), &stats);
                 sem_post(&interact_sem);
             }
             elapsed = tm.elapsed();
