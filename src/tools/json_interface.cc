@@ -9,6 +9,10 @@
 
 #include <gflags/gflags.h>
 
+#include <re2/re2.h>
+using re2::RE2;
+using std::unique_ptr;
+
 namespace {
 
 json_object *to_json(const string &str) {
@@ -166,10 +170,29 @@ public:
         return ::getline(input, in_);
     }
 
+    bool extract_regex(json_object *js, const std::string &key,
+                       const RE2::Options &opts, unique_ptr<RE2> *out) {
+        out->reset(0);
+        json_object *re_js = json_object_object_get(js, key.c_str());
+        if (re_js == NULL)
+            return true;
+
+        if (json_object_get_type(re_js) != json_type_string) {
+            print_error(std::string("Expected a JSON object: ") + key);
+            return false;
+        }
+        unique_ptr<RE2> re(new RE2(json_object_get_string(re_js), opts));
+        if (!re->ok()) {
+            print_error(re->error());
+            return false;
+        }
+
+        *out = std::move(re);
+        return true;
+    }
+
     virtual bool parse_query(const std::string &input,
-                             std::string &line_re,
-                             std::string &file_re,
-                             std::string &tree_re) {
+                             query *out) {
         json_object *js = json_tokener_parse(input.c_str());
         if (is_error(js)) {
             print_error("Parse error: " +
@@ -186,20 +209,19 @@ public:
             return false;
         }
 
-        json_object *line_js = json_object_object_get(q, "line");
-        if (!line_js || json_object_get_type(line_js) != json_type_string) {
+        RE2::Options opts;
+        default_re2_options(opts);
+
+        if (!extract_regex(q, "line", opts, &out->line_pat) ||
+            !extract_regex(q, "file", opts, &out->file_pat) ||
+            !extract_regex(q, "repo", opts, &out->tree_pat)) {
+            return false;
+        }
+
+        if (out->line_pat.get() == 0) {
             print_error("No regex specified!");
             return false;
         }
-        line_re = json_object_get_string(line_js);
-
-        json_object *file_js = json_object_object_get(q, "file");
-        if (file_js && json_object_get_type(file_js) == json_type_string)
-            file_re = json_object_get_string(file_js);
-
-        json_object *tree_js = json_object_object_get(q, "repo");
-        if (tree_js && json_object_get_type(tree_js) == json_type_string)
-            tree_re = json_object_get_string(tree_js);
 
         json_object_put(js);
 

@@ -143,9 +143,9 @@ struct match_result {
 // non-NULL; line_pat and tree_pat may be NULL to specify "no
 // constraint"
 struct query {
-    RE2 *line_pat;
-    RE2 *file_pat;
-    RE2 *tree_pat;
+    std::unique_ptr<RE2> line_pat;
+    std::unique_ptr<RE2> file_pat;
+    std::unique_ptr<RE2> tree_pat;
 };
 
 class code_searcher {

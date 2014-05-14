@@ -6,6 +6,10 @@
 
 #include <stdarg.h>
 #include <gflags/gflags.h>
+#include <re2/re2.h>
+
+using re2::RE2;
+using std::unique_ptr;
 
 DEFINE_bool(filesystem, false, "Analyze a filesystem tree instead of a git repo.");
 
@@ -120,12 +124,20 @@ public:
     }
 
     virtual bool parse_query(const std::string &input,
-                             std::string &line,
-                             std::string &file,
-                             std::string &tree) {
-        line = input;
-        file.clear();
-        tree.clear();
+                             query *out) {
+        RE2::Options opts;
+        default_re2_options(opts);
+
+        out->line_pat.reset(new RE2(input, opts));
+
+        if (!out->line_pat->ok()) {
+            print_error(out->line_pat->error());
+            return false;
+        }
+
+        out->file_pat.reset(0);
+        out->tree_pat.reset(0);
+
         return true;
     }
 

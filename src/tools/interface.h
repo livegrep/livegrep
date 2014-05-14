@@ -16,6 +16,7 @@
 struct match_result;
 struct match_stats;
 class code_searcher;
+struct query;
 
 class codesearch_interface {
 public:
@@ -25,9 +26,7 @@ public:
     virtual void print_prompt(const code_searcher *cs) = 0;
     virtual bool getline(std::string &input) = 0;
     virtual bool parse_query(const std::string &input,
-                             std::string &line,
-                             std::string &file,
-                             std::string &tree) = 0;
+                             query *out) = 0;
     virtual void print_stats(timeval elapsed, const match_stats *stats) = 0;
     virtual void info(const char *msg, ...) = 0;
     virtual ~codesearch_interface();

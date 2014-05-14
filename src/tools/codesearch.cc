@@ -69,39 +69,21 @@ void interact(code_searcher *cs, codesearch_interface *ui) {
     code_searcher::search_thread search(cs);
     WidthWalker width;
 
-    RE2::Options opts;
-    default_re2_options(opts);
-
     while (true) {
         ui->print_prompt(cs);
         string input;
         if (!ui->getline(input))
             break;
 
-        string line, file, tree;
-        if (!ui->parse_query(input, line, file, tree))
+        query q;
+        if (!ui->parse_query(input, &q))
             continue;
 
-        RE2 re(line, opts);
-        RE2 file_re(file, opts);
-        RE2 tree_re(tree, opts);
-        if (!re.ok()) {
-            ui->print_error(re.error());
-            continue;
-        }
-        if (!file_re.ok()) {
-            ui->print_error(file_re.error());
-            continue;
-        }
-        if (!tree_re.ok()) {
-            ui->print_error(tree_re.error());
-            continue;
-        }
-        if (re.ProgramSize() > kMaxProgramSize) {
+        if (q.line_pat->ProgramSize() > kMaxProgramSize) {
             ui->print_error("Parse error.");
             continue;
         }
-        int w = width.Walk(re.Regexp(), 0);
+        int w = width.Walk(q.line_pat->Regexp(), 0);
         if (w > kMaxWidth) {
             ui->print_error("Parse error.");
             continue;
@@ -111,14 +93,10 @@ void interact(code_searcher *cs, codesearch_interface *ui) {
             struct timeval elapsed;
             match_stats stats;
 
-            ui->info("ProgramSize: %d\n", re.ProgramSize());
+            ui->info("ProgramSize: %d\n", q.line_pat->ProgramSize());
 
             {
                 sem_wait(&interact_sem);
-                query q = { &re,
-                            file.size() ? &file_re : 0,
-                            tree.size() ? &tree_re : 0,
-                };
                 search.match(q, print_match(ui), &stats);
                 sem_post(&interact_sem);
             }

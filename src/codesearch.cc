@@ -100,7 +100,7 @@ class searcher {
 public:
     searcher(const code_searcher *cc, thread_queue<match_result*>& queue,
              const query &q) :
-        cc_(cc), query_(q), queue_(queue),
+        cc_(cc), query_(&q), queue_(queue),
         matches_(0), re2_time_(false), git_time_(false),
         index_time_(false), sort_time_(false), analyze_time_(false),
         exit_reason_(kExitNone), files_(new uint8_t[cc->files_.size()]),
@@ -109,7 +109,7 @@ public:
         memset(files_, 0xff, cc->files_.size());
         {
             run_timer run(analyze_time_);
-            index_ = indexRE(*query_.line_pat);
+            index_ = indexRE(*query_->line_pat);
         }
 
         if (FLAGS_timeout <= 0) {
@@ -167,16 +167,16 @@ protected:
     void search_lines(uint32_t *left, int count, const chunk *chunk);
 
     bool accept(const indexed_path &path) {
-        if (!query_.file_pat && !query_.tree_pat)
+        if (!query_->file_pat && !query_->tree_pat)
             return true;
 
-        if (query_.file_pat &&
-            !query_.file_pat->Match(path.path, 0, path.path.size(),
-                                    RE2::UNANCHORED, 0, 0))
+        if (query_->file_pat &&
+            !query_->file_pat->Match(path.path, 0, path.path.size(),
+                                     RE2::UNANCHORED, 0, 0))
             return false;
 
-        if (query_.tree_pat &&
-            !query_.tree_pat->Match(path.tree->repo->name, 0,
+        if (query_->tree_pat &&
+            !query_->tree_pat->Match(path.tree->repo->name, 0,
                                     path.tree->repo->name.size(),
                                     RE2::UNANCHORED, 0, 0))
             return false;
@@ -185,7 +185,7 @@ protected:
     }
 
     bool accept(indexed_file *sf) {
-        if (!query_.file_pat && !query_.tree_pat)
+        if (!query_->file_pat && !query_->tree_pat)
             return true;
 
         assert(cc_->files_[sf->no] == sf);
@@ -317,7 +317,7 @@ protected:
     }
 
     const code_searcher *cc_;
-    query query_;
+    const query *query_;
     thread_queue<match_result*>& queue_;
     atomic_int matches_;
     intrusive_ptr<IndexKey> index_;
@@ -612,7 +612,7 @@ void searcher::search_lines(uint32_t *indexes, int count,
         return;
     }
 
-    if ((query_.file_pat || query_.tree_pat) &&
+    if ((query_->file_pat || query_->tree_pat) &&
         double(count * 30) / chunk->size > files_density()) {
         full_search(chunk);
         return;
@@ -656,7 +656,7 @@ void searcher::full_search(const chunk *chunk)
 void searcher::next_range(match_finger *finger,
                           int& pos, int& endpos, int maxpos)
 {
-    if ((!query_.file_pat && !query_.tree_pat) || !FLAGS_index)
+    if ((!query_->file_pat && !query_->tree_pat) || !FLAGS_index)
         return;
 
     debug(kDebugSearch, "next_range(%d, %d, %d)", pos, endpos, maxpos);
@@ -724,7 +724,7 @@ void searcher::full_search(match_finger *finger,
             if (limit - pos > kMaxScan)
                 limit = line_end(chunk, pos + kMaxScan);
             run_timer run(re2_time_);
-            if (!query_.line_pat->Match(str, pos, limit, RE2::UNANCHORED, &match, 1)) {
+            if (!query_->line_pat->Match(str, pos, limit, RE2::UNANCHORED, &match, 1)) {
                 pos = limit + 1;
                 continue;
             }
