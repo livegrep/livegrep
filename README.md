@@ -19,22 +19,22 @@ interface. These each need to be built separately.
 The C++ backend had a number of dependencies, including:
 
  - [libgit2][libgit2]
- - [RE2][re2]
  - [gflags][gflags]
  - [libjson][libjson]
+ - [boost][boost] (in particular, `boost::system` and `boost:filesystem`)
 
 On a sufficiently recent Ubuntu, these are all available via `apt-get`:
 
-    sudo apt-get install libgit2-dev re2-dev libgflags-dev libjson0-dev
+    sudo apt-get install libgflags-dev libjson0-dev libboost-system-dev libboost-filesystem-dev
 
 I have also made packages available in a [PPA](lg-ppa), but they are
 largely unmaintained since I no longer deploy livegrep on any older
 distributions.
 
 [libgit2]: http://libgit2.github.com/
-[re2]: http://code.google.com/p/re2/
 [gflags]: https://code.google.com/p/gflags/?redir=1
 [libjson]: http://oss.metaparadigm.com/json-c/
+[boost]: http://www.boost.org/
 [lg-ppa]: https://launchpad.net/~nelhage/+archive/livegrep
 
 Once all the dependencies are installed, a simple `make` should build

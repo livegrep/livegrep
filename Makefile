@@ -1,18 +1,16 @@
 -include Makefile.config
 
-ifeq ($(libre2),)
-libre2=/usr
-endif
+extradirs=$(filter-out /usr,$(sort $(libgit2) $(gflags)))
 
-extradirs=$(filter-out /usr,$(sort $(libgit2) $(gflags) $(libre2)))
-
-override CPPFLAGS += $(patsubst %,-I%/include, $(extradirs))
+override CPPFLAGS += $(patsubst %,-I%/include, $(extradirs)) -I vendor/re2/
 override LDFLAGS += $(patsubst %, -L%/lib, $(extradirs))
 override LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
 override CXXFLAGS+=-g -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
 override LDFLAGS+=-pthread
-LDLIBS=-lgit2 -ljson -lgflags $(libre2)/lib/libre2.a -lz -lssl -lcrypto -ldl -lboost_system -lboost_filesystem
+LDLIBS=-lgit2 -ljson -lgflags $(re2) -lz -lssl -lcrypto -ldl -lboost_system -lboost_filesystem
+
+re2 := vendor/re2/obj/libre2.a
 
 ifeq ($(noopt),)
 override CXXFLAGS+=-O2
@@ -29,3 +27,8 @@ endif
 
 DIRS := src src/lib src/3party src/tools
 include Makefile.lib
+
+$(TOOLS): $(re2)
+
+$(re2): FORCE
+	$(MAKE) -C vendor/re2 obj/libre2.a
