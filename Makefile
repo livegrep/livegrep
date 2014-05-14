@@ -2,7 +2,7 @@
 
 extradirs=$(filter-out /usr,$(sort $(libgit2) $(gflags)))
 
-override CPPFLAGS += $(patsubst %,-I%/include, $(extradirs)) -I vendor/re2/
+override CPPFLAGS += $(patsubst %,-I%/include, $(extradirs)) -I vendor/re2/ -I vendor/utf8cpp/source
 override LDFLAGS += $(patsubst %, -L%/lib, $(extradirs))
 override LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
@@ -25,7 +25,7 @@ ifneq ($(tcmalloc),)
 override LDLIBS+=-ltcmalloc
 endif
 
-DIRS := src src/lib src/3party src/tools
+DIRS := src src/lib src/tools
 include Makefile.lib
 
 $(TOOLS): $(re2)
