@@ -22,6 +22,7 @@
 using namespace std;
 
 DEFINE_string(dot_index, "", "Write a graph of the index key as a dot graph.");
+DEFINE_bool(casefold, false, "Treat the regex as case-insensitive.");
 
 class IndexKeyDotOutputter {
 protected:
@@ -118,6 +119,8 @@ int main(int argc, char **argv) {
 
     RE2::Options opts;
     default_re2_options(opts);
+    if (FLAGS_casefold)
+        opts.set_case_sensitive(false);
 
     RE2 re(argv[1], opts);
     if (!re.ok()) {
