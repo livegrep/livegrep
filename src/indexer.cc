@@ -41,7 +41,11 @@ IndexKey::Stats IndexKey::Stats::insert(const value_type& val) const {
 
     const Stats& rstats = val.second ? val.second->stats() : null_stats;
 
-    out.selectivity_ += (val.first.second - val.first.first + 1)/128. * rstats.selectivity_;
+    // There are 100 printable ASCII characters. As a zeroth-order
+    // approximation, assume our corpus is random strings of printable
+    // ASCII characters.  The exact computation of selectivity turn
+    // out not to matter all that much in most cases.
+    out.selectivity_ += (val.first.second - val.first.first + 1)/100. * rstats.selectivity_;
     out.depth_ = max(depth_, rstats.depth_ + 1);
     out.nodes_ += (val.first.second - val.first.first + 1) * rstats.nodes_;
     if (!val.second)
