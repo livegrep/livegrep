@@ -1,13 +1,14 @@
 package server
 
 import (
-	"code.google.com/p/go.net/websocket"
 	"fmt"
+	"time"
+
+	"code.google.com/p/go.net/websocket"
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/client"
 	"github.com/nelhage/livegrep/jsonframe"
 	"github.com/nelhage/livegrep/server/backend"
-	"time"
 )
 
 type searchConnection struct {
@@ -59,9 +60,10 @@ func (s *searchConnection) sendLoop() {
 
 func query(q *OpQuery) *client.Query {
 	return &client.Query{
-		Line: q.Line,
-		File: q.File,
-		Repo: q.Repo,
+		Line:     q.Line,
+		File:     q.File,
+		Repo:     q.Repo,
+		FoldCase: q.FoldCase,
 	}
 }
 
@@ -175,7 +177,8 @@ func (s *searchConnection) shouldDispatch(q *OpQuery) bool {
 	if s.q.last.Backend != q.Backend ||
 		s.q.last.Line != q.Line ||
 		s.q.last.File != q.File ||
-		s.q.last.Repo != q.Repo {
+		s.q.last.Repo != q.Repo ||
+		s.q.last.FoldCase != q.FoldCase {
 		return true
 	}
 	return false

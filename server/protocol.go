@@ -13,11 +13,12 @@ type OpError struct {
 func (o *OpError) Opcode() string { return "error" }
 
 type OpQuery struct {
-	Id      int64  `json:"id"`
-	Line    string `json:"line"`
-	File    string `json:"file"`
-	Repo    string `json:"repo"`
-	Backend string `json:"backend"`
+	Id       int64  `json:"id"`
+	Line     string `json:"line"`
+	File     string `json:"file"`
+	Repo     string `json:"repo"`
+	Backend  string `json:"backend"`
+	FoldCase bool   `json:"fold_case"`
 }
 
 func (o *OpQuery) Opcode() string { return "query" }

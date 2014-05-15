@@ -22,6 +22,15 @@ body {
     float: right;
 }
 
+#casefold {
+    float: right;
+    clear: right;
+}
+
+#casefold label {
+    font-weight: bold;
+}
+
 #regex-error {
     display: none;
 }

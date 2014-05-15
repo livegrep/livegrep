@@ -1,9 +1,10 @@
 package client
 
 type Query struct {
-	Line string `json:"line"`
-	File string `json:"file"`
-	Repo string `json:"repo"`
+	Line     string `json:"line"`
+	File     string `json:"file"`
+	Repo     string `json:"repo"`
+	FoldCase bool   `json:"fold_case"`
 }
 
 func (q *Query) Opcode() string {

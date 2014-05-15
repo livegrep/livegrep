@@ -197,7 +197,8 @@ var SearchState = Backbone.Model.extend({
         cur.q === search.line &&
         cur.file === search.file &&
         cur.backend === search.backend &&
-        cur.repo === search.repo) {
+        cur.repo === search.repo &&
+        cur.fold_case === search.fold_case) {
       return false;
     }
     var id = this.next_id();
@@ -206,7 +207,8 @@ var SearchState = Backbone.Model.extend({
       q: search.line,
       file: search.file,
       backend: search.backend,
-      repo: search.repo
+      repo: search.repo,
+      fold_case: search.fold_case
     };
     if (!search.line.length) {
       this.set('displaying', id);
@@ -222,7 +224,7 @@ var SearchState = Backbone.Model.extend({
       return '/search';
     var base = '/search';
 
-    ['q','file', 'repo'].forEach(function (key) {
+    ['q','file', 'repo', 'fold_case'].forEach(function (key) {
       if(current[key])
         q[key] = current[key];
     });
@@ -345,6 +347,7 @@ var CodesearchUI = function() {
       CodesearchUI.input      = $('#searchbox');
       CodesearchUI.input_file = $('#filebox');
       CodesearchUI.input_repo = $('#repobox');
+      CodesearchUI.input_fold_case = $('#fold-case');
       CodesearchUI.input_backend = $('#backend');
       if (CodesearchUI.input_backend.length == 0)
         CodesearchUI.input_backend = null;
@@ -356,6 +359,7 @@ var CodesearchUI = function() {
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input_file.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input_repo.bind('paste', CodesearchUI.keypress);
+      CodesearchUI.input_fold_case.bind('click', CodesearchUI.keypress);
       CodesearchUI.input.focus();
       if (CodesearchUI.input_backend)
         CodesearchUI.input_backend.change(CodesearchUI.select_backend);
@@ -370,6 +374,8 @@ var CodesearchUI = function() {
         CodesearchUI.input_file.val(parms.file);
       if (parms.repo)
         CodesearchUI.input_repo.val(parms.repo);
+      if (parms.fold_case === 'true')
+        CodesearchUI.input_fold_case.attr('checked', true);
       var backend = null;
       if (parms.backend)
         backend = parms.backend;
@@ -416,6 +422,7 @@ var CodesearchUI = function() {
         line: CodesearchUI.input.val(),
         file: CodesearchUI.input_file.val(),
         repo: CodesearchUI.input_repo.val(),
+        fold_case: !!CodesearchUI.input_fold_case.attr('checked')
       };
       if (CodesearchUI.input_backend)
         search.backend = CodesearchUI.input_backend.val();

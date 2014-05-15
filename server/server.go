@@ -1,13 +1,14 @@
 package server
 
 import (
+	"html/template"
+	"net/http"
+	"path"
+
 	"code.google.com/p/go.net/websocket"
 	"github.com/bmizerany/pat"
 	"github.com/nelhage/livegrep/server/backend"
 	"github.com/nelhage/livegrep/server/config"
-	"html/template"
-	"net/http"
-	"path"
 )
 
 type server struct {
@@ -117,7 +118,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m := pat.New()
 	m.Add("GET", "/", http.HandlerFunc(srv.ServeRoot))
-	m.Add("GET", "/search", http.HandlerFunc(srv.ServeSearch))
+	m.Add("GET", "/search/", http.HandlerFunc(srv.ServeSearch))
 	m.Add("GET", "/search/:backend", http.HandlerFunc(srv.ServeSearch))
 	m.Add("GET", "/about", http.HandlerFunc(srv.ServeAbout))
 	m.Add("GET", "/opensearch.xml", http.HandlerFunc(srv.ServeOpensearch))

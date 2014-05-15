@@ -212,16 +212,26 @@ public:
         RE2::Options opts;
         default_re2_options(opts);
 
-        if (!extract_regex(q, "line", opts, &out->line_pat) ||
-            !extract_regex(q, "file", opts, &out->file_pat) ||
-            !extract_regex(q, "repo", opts, &out->tree_pat)) {
-            return false;
-        }
+        json_object *fold_case = json_object_object_get(q, "fold_case");
+        if (fold_case &&
+            json_object_get_type(fold_case) == json_type_boolean &&
+            json_object_get_boolean(fold_case))
+            opts.set_case_sensitive(false);
 
+        if (!extract_regex(q, "line", opts, &out->line_pat))
+            return false;
         if (out->line_pat.get() == 0) {
             print_error("No regex specified!");
             return false;
         }
+
+        opts.set_case_sensitive(true);
+
+        if (!extract_regex(q, "file", opts, &out->file_pat) ||
+            !extract_regex(q, "repo", opts, &out->tree_pat)) {
+            return false;
+        }
+
 
         json_object_put(js);
 
