@@ -35,4 +35,7 @@ type Config struct {
 	// optional and will be replaced by values reported by the
 	// backend server once we successfully connect.
 	Backends []Backend `json:"backends"`
+
+	// The address to listen on, as HOST:PORT.
+	Listen string `json:"listen"`
 }

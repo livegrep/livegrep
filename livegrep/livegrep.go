@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	_ "expvar"
 	"flag"
-	"github.com/golang/glog"
-	"github.com/nelhage/livegrep/server"
-	"github.com/nelhage/livegrep/server/config"
-	"github.com/nelhage/livegrep/server/middleware"
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+
+	"github.com/golang/glog"
+	"github.com/nelhage/livegrep/server"
+	"github.com/nelhage/livegrep/server/config"
+	"github.com/nelhage/livegrep/server/middleware"
 )
 
 var (
@@ -35,6 +36,7 @@ func main() {
 
 	cfg := &config.Config{
 		DocRoot: *docRoot,
+		Listen:  *serveAddr,
 	}
 	if err = json.Unmarshal(data, &cfg); err != nil {
 		glog.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
@@ -51,5 +53,6 @@ func main() {
 
 	http.DefaultServeMux.Handle("/", handler)
 
-	glog.Fatal(http.ListenAndServe(*serveAddr, nil))
+	glog.Infof("Listening on %s.", cfg.Listen)
+	glog.Fatal(http.ListenAndServe(cfg.Listen, nil))
 }
