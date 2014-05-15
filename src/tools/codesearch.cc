@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/un.h>
 #include <sys/wait.h>
@@ -147,6 +148,25 @@ void *handle_client(void *data) {
     FILE *w = fdopen(dup(child->fd), "w");
     assert(!setvbuf(r,  NULL, _IOFBF, 4096*4));
     assert(!setvbuf(w, NULL, _IONBF, 0));
+
+    union {
+        struct sockaddr addr;
+        struct sockaddr_in addr_in;
+        struct sockaddr_un addr_un;
+    } addr;
+    socklen_t socklen = sizeof(addr);
+
+    if (getpeername(child->fd, &addr.addr, &socklen) == 0) {
+        if (addr.addr.sa_family == AF_INET) {
+            char name[256];
+            printf("connection received from %s:%d\n",
+                   inet_ntop(addr.addr.sa_family, &addr.addr_in.sin_addr,
+                             name, sizeof(name)),
+                   int(addr.addr_in.sin_port));
+        }
+    }
+
+
     codesearch_interface *interface = build_interface(r, w);
     interact(child->search, interface);
     delete interface;
@@ -223,6 +243,8 @@ int bind_to_address(string spec) {
 
 void listen(code_searcher *search, string path) {
     int server = bind_to_address(path);
+
+    printf("codesearch: listening on %s.\n", path.c_str());
 
     while(1) {
         int fd = accept(server, NULL, NULL);
