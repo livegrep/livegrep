@@ -52,6 +52,79 @@ Similarly,
 
     go install github.com/nelhage/livegrep/lg
 
+
+Invoking
+--------
+
+## `codesearch`
+
+The simplest way to invoke livegrep is to use the `codeseach` binary
+directly, in "CLI" mode, for interactive use on the command line. To
+start searching a repository:
+
+    ./codesearch -cli .
+
+In order to index a repository once and save the index for fast
+startup later, you can use the `-load_index` and `-dump_index` flags.
+
+    ./codesearch -cli -dump_index livegrep.idx .
+
+Will index this repository and save the index into `livegrep.idx`. You
+can then re-use that index file later:
+
+    ./codesearch -cli -load_index livegrep.idx
+
+With `-load_index`, only the index file is looked at -- the original
+git repositories need not even be present on the filesystem, and any
+positional arguments to the command are discarded.
+
+For programmatic use, leaving off `-cli` runs in a JSON interface
+mode. In this mode, a single position argument is expected, which is a
+JSON configuration file specifying which repositories and revisions to
+index. You can find a trivial example at
+[doc/examples/livegrep/index.json][index.json].
+
+You can also provide `-listen proto://host:port` to make `codesearch`
+start a server and listen on a port for incoming connections. This is
+needed to run `codesearch` as a backend for the `livegrep` frontend.
+
+[index.json]: https://github.com/nelhage/livegrep/blob/master/doc/examples/livegrep/index.json
+
+## `livegrep`
+
+In order to run the `livegrep` web interface, you need one or more
+`codesearch` backends listening on TCP ports for `livegrep` to connect
+to. `livegrep` expects a JSON configuration file as a single
+positional argument; See
+[doc/examples/livegrep/server.json][server.json] for an example, and
+[server/config/config.go][config.go] for documentation of available
+options.
+
+Livegrep uses [glog][glog] for logging. You can consult its
+documentation for the full set of logging options. During development,
+`-logtostderr` will send all logs to standard out for easy viewing.
+
+[server.json]: https://github.com/nelhage/livegrep/blob/master/doc/examples/livegrep/server.json
+[config.go]: https://github.com/nelhage/livegrep/blob/master/server/config/config.go
+[glog]: https://github.com/golang/glog
+
+## Example
+
+To run the sample web interface over livegrep itself, once you have
+built both `codesearch` and `livegrep`:
+
+In one terminal, start the `codesearch` server like so:
+
+    ./codesearch -listen tcp://localhost:9999 doc/examples/livegrep/index.json
+
+In another, run livegrep:
+
+    ./livegrep -logtostderr doc/examples/livegrep/server.json
+
+In a browser, now visit
+[http://localhost:8910/](http://localhost:8910/), and you should see a
+working livegrep.
+
 Resource Usage
 --------------
 
