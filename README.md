@@ -42,7 +42,7 @@ the `codesearch` binary.
 
 ### `livegrep` -- the web interface
 
-    go install github.com/nelhage/livegrep/livegrep
+    go get github.com/nelhage/livegrep/livegrep
 
 should suffice to install the livegrep web UI into `$GOPATH/bin`
 
@@ -50,7 +50,7 @@ should suffice to install the livegrep web UI into `$GOPATH/bin`
 
 Similarly,
 
-    go install github.com/nelhage/livegrep/lg
+    go get github.com/nelhage/livegrep/lg
 
 
 Invoking
