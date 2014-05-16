@@ -52,6 +52,7 @@ DEFINE_bool(search, true, "Actually do the search.");
 DEFINE_int32(max_matches, 50, "The maximum number of results to return for a single query.");
 DEFINE_int32(timeout, 1000, "The number of milliseconds a single search may run for.");
 DEFINE_int32(threads, 4, "Number of threads to use.");
+DEFINE_int32(line_limit, 1024, "Maximum line length to index.");
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
     if (lhs.data() == NULL && rhs.data() == NULL)
@@ -456,7 +457,7 @@ void code_searcher::index_file(const indexed_tree *tree,
             stats_.dedup_bytes += (f - p) + 1;
             stats_.dedup_lines ++;
 
-            if (f - p + 1 >= alloc_->chunk_size()) {
+            if (f - p + 1 >= FLAGS_line_limit) {
                 p = f + 1;
                 continue;
             }
