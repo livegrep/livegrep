@@ -27,7 +27,7 @@ On a sufficiently recent Ubuntu, these are all available via `apt-get`:
 
     sudo apt-get install libgflags-dev libjson0-dev libboost-system-dev libboost-filesystem-dev
 
-I have also made packages available in a [PPA](lg-ppa), but they are
+I have also made packages available in a [PPA][lg-ppa], but they are
 largely unmaintained since I no longer deploy livegrep on any older
 distributions.
 
