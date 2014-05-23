@@ -11,7 +11,8 @@ var Codesearch = function() {
         return;
       console.log("Attempting to connect via websocket...");
 
-      var socket = new WebSocket("ws://" + window.location.host + "/socket")
+      var proto = window.location.protocol.replace('http', 'ws');
+      var socket = new WebSocket(proto + "//" + window.location.host + "/socket");
       socket.onmessage = Codesearch.handle_frame
       socket.onopen = function() {
         Codesearch.socket = socket;
