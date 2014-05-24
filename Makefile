@@ -2,7 +2,7 @@
 
 extradirs=$(filter-out /usr,$(sort $(libgit2) $(gflags)))
 
-override CPPFLAGS += $(patsubst %,-I%/include, $(extradirs)) -I vendor/re2/ -I vendor/utf8cpp/source
+override CPPFLAGS += $(patsubst %,-I%/include, $(extradirs)) -I src/vendor/re2/ -I src/vendor/utf8cpp/source
 override LDFLAGS += $(patsubst %, -L%/lib, $(extradirs))
 override LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
@@ -10,7 +10,7 @@ override CXXFLAGS+=-g -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
 override LDFLAGS+=-pthread
 LDLIBS=-lgit2 -ljson -lgflags $(re2) -lz -lssl -lcrypto -ldl -lboost_system -lboost_filesystem
 
-re2 := vendor/re2/obj/libre2.a
+re2 := src/vendor/re2/obj/libre2.a
 
 ifeq ($(noopt),)
 override CXXFLAGS+=-O2
@@ -31,4 +31,4 @@ include Makefile.lib
 $(TOOLS): $(re2)
 
 $(re2): FORCE
-	$(MAKE) -C vendor/re2 obj/libre2.a
+	$(MAKE) -C src/vendor/re2 obj/libre2.a
