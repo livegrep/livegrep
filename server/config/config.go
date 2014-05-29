@@ -38,4 +38,8 @@ type Config struct {
 
 	// The address to listen on, as HOST:PORT.
 	Listen string `json:"listen"`
+
+	Sentry struct {
+		URI string `json:"uri"`
+	} `json:"sentry"`
 }

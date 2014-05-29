@@ -11,6 +11,15 @@
     <script language="javascript" type="text/javascript" src="/assets/js/3d/html.js"></script>
     <script language="javascript" type="text/javascript" src="/assets/js/codesearch.js"></script>
     <script language="javascript" type="text/javascript" src="/assets/js/codesearch_ui.js"></script>
+    {{if .Config.Sentry.URI}}
+    <script src="//cdn.ravenjs.com/1.1.14/jquery,native/raven.min.js"></script>
+    <script>
+      Raven.config({{.Config.Sentry.URI}}, {
+      // we highly recommend restricting exceptions to a domain in order to filter out clutter
+      whitelistUrls: ['livegrep.com']
+      }).install();
+    </script>
+    {{end}}
     {{end}}
     {{if .Config.GoogleAnalyticsId}}
     <script type="text/javascript">
