@@ -14,10 +14,7 @@
     {{if .Config.Sentry.URI}}
     <script src="//cdn.ravenjs.com/1.1.14/jquery,native/raven.min.js"></script>
     <script>
-      Raven.config({{.Config.Sentry.URI}}, {
-      // we highly recommend restricting exceptions to a domain in order to filter out clutter
-      whitelistUrls: ['livegrep.com']
-      }).install();
+      Raven.config({{.Config.Sentry.URI}}, {}).install();
     </script>
     {{end}}
     {{end}}
