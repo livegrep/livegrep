@@ -78,28 +78,37 @@ struct repo_spec {
     json_object *metadata;
 };
 
+json_object *get_with_type(json_object *parent, const char *key, json_type type) {
+    json_object *val = json_object_object_get(parent, key);
+    if (val == NULL || json_object_is_type(val, type)) {
+        return val;
+    }
+    die("Error: '%s': expected %s, got %s", key,
+        json_type_to_name(type),
+        json_type_to_name(json_object_get_type(val)));
+}
+
 repo_spec parse_repo_spec(json_object *js) {
     debug(kDebugUI, "Parsing: %s", json_object_to_json_string(js));
     if (!json_object_is_type(js, json_type_object)) {
-        fprintf(stderr, "Repo spec is not an object!\n");
-        exit(1);
+        die("repository spec must be an object.");
     }
 
     repo_spec spec;
-    json_object *js_path = json_object_object_get(js, "path");
-    if (js_path && json_object_is_type(js_path, json_type_string))
-        spec.path = json_object_get_string(js_path);
-    json_object *js_name = json_object_object_get(js, "name");
-    if (js_name && json_object_is_type(js_name, json_type_string))
-        spec.name = json_object_get_string(js_name);
-    spec.metadata = json_object_get(json_object_object_get(js, "metadata"));
+    json_object *prop;
+    if ((prop = get_with_type(js, "path", json_type_string)))
+        spec.path = json_object_get_string(prop);
+    if ((prop = get_with_type(js, "name", json_type_string)))
+        spec.name = json_object_get_string(prop);
+    spec.metadata = json_object_get(get_with_type(js, "metadata", json_type_object));
 
-    json_object *js_revs = json_object_object_get(js, "revisions");
+    json_object *js_revs = get_with_type(js, "revisions", json_type_array);
     if (js_revs && json_object_is_type(js_revs, json_type_array)) {
         for (int i = 0; i < json_object_array_length(js_revs); ++i) {
             json_object *elt = json_object_array_get_idx(js_revs, i);
-            if (json_object_is_type(elt, json_type_string))
-                spec.revisions.push_back(json_object_get_string(elt));
+            if (!json_object_is_type(elt, json_type_string))
+                die("repository: 'revisions' must be list of strings");
+            spec.revisions.push_back(json_object_get_string(elt));
         }
     }
 
@@ -119,8 +128,8 @@ void extract_repo_specs(vector<repo_spec> &out, json_object *js) {
         }
         break;
     default:
-        fprintf(stderr, "Error: unrecognized type for repo spec: %s\n",
-                json_object_to_json_string(js));
+        die("unrecognized type for repo spec: %s",
+            json_object_to_json_string(js));
         exit(1);
     }
 }

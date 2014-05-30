@@ -31,4 +31,7 @@ void cs_debug(const char *file, int lno, const char *fmt, ...)
 std::string strprintf(const char *fmt, ...)
     __attribute__((format (printf, 1, 2)));
 
+void die(const char *fmt, ...)
+    __attribute__((format (printf, 1, 2), noreturn));
+
 #endif

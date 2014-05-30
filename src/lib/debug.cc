@@ -92,3 +92,13 @@ void cs_debug(const char *file, int lno, const char *fmt, ...) {
 
     fputs(buf.c_str(), stderr);
 }
+
+
+void die(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+    va_end(ap);
+    exit(1);
+}
