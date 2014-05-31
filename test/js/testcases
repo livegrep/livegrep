@@ -1,0 +1,21 @@
+
+____do
+errno\W
+kmalloc\(
+printk\(
+^(\s.*\S)?kmalloc\s*\(
+^(\s.*\S)?printk\s*\(
+^(\s.*\S)?acct_
+.
+^$
+\ba*u*r*g+h+\b
+dazed
+.zqz
+\s$
+\s{10}
+\s<>
+\s{3}<>
+h(al|e*)t
+hello{0}
+[Hh]ello World
+[wW][tT][fF]
