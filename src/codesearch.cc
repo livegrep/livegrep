@@ -297,7 +297,7 @@ protected:
         if (exit_reason_)
             return true;
 
-        if (matches_.load() >= FLAGS_max_matches) {
+        if (FLAGS_max_matches && matches_.load() >= FLAGS_max_matches) {
             exit_reason_ = kExitMatchLimit;
             return true;
         }
