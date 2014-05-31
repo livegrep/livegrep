@@ -1,4 +1,5 @@
-TOOLS := codesearch inspect-index analyze-re
+TOOLS := codesearch inspect-index analyze-re dump-file
 codesearch_SRC := src/tools/codesearch.cc src/tools/interface.c src/tools/json_interface.c
 inspect-index_SRC := src/tools/inspect-index.cc
 analyze-re_SRC := src/tools/analyze-re.cc
+dump-file_SRC := src/tools/dump-file.cc

@@ -164,6 +164,7 @@ public:
     void finalize();
 
     void set_alloc(chunk_allocator *alloc);
+    chunk_allocator *alloc() { return alloc_; }
 
     vector<indexed_repo> repos() const;
     string name() const {
@@ -171,6 +172,13 @@ public:
     };
     void set_name(const string& name) {
         name_ = name;
+    }
+
+    vector<indexed_file*>::const_iterator begin_files() {
+        return files_.begin();
+    }
+    vector<indexed_file*>::const_iterator end_files() {
+        return files_.end();
     }
 
     class search_thread {
