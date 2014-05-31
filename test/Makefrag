@@ -1,8 +1,9 @@
-override CPPFLAGS += -Isrc/vendor/gtest/include -Isrc/vendor/gtest
+override CPPFLAGS += -Isrc/vendor/gtest/include -Isrc/vendor/gtest -DGTEST_HAS_TR1_TUPLE=1 -DGTEST_USE_OWN_TR1_TUPLE=0
 
 define BUILD_test
-TOOLS += test/$(1)
-test/$(1)_SRC := test/$(1).cc src/vendor/gtest/src/gtest-all.o src/vendor/gtest/src/gtest_main.o
+TOOLS += test/out/$(1)
+test/out/$(1)_SRC := test/$(1).cc src/vendor/gtest/src/gtest-all.o src/vendor/gtest/src/gtest_main.o
 endef
 
 $(eval $(call BUILD_test,radix_sorter))
+$(eval $(call BUILD_test,functional))

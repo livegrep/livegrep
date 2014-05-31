@@ -9,7 +9,7 @@
 #include "chunk.h"
 
 void file_contents_builder::extend(chunk *c, const StringPiece &piece) {
-    if (pieces_.size()) {
+    if (pieces_.size() && piece.size()) {
         if (pieces_.back().data() + pieces_.back().size() == piece.data()) {
             pieces_.back().set(pieces_.back().data(),
                                piece.size() + pieces_.back().size());
