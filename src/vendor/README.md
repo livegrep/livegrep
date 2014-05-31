@@ -14,3 +14,5 @@ Vendored repositories:
 
 - utf8cpp: A
   [library for portable C++ UTF-8 handling](http://utfcpp.sourceforge.net/).
+
+- gtest: The [Google C++ Test framework](https://code.google.com/p/googletest/)

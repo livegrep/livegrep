@@ -1,8 +1,8 @@
-override CPPFLAGS += -Itest/gtest/include -Itest/gtest
+override CPPFLAGS += -Isrc/vendor/gtest/include -Isrc/vendor/gtest
 
 define BUILD_test
 TOOLS += test/$(1)
-test/$(1)_SRC := test/$(1).cc test/gtest/src/gtest-all.o test/gtest/src/gtest_main.o
+test/$(1)_SRC := test/$(1).cc src/vendor/gtest/src/gtest-all.o src/vendor/gtest/src/gtest_main.o
 endef
 
 $(eval $(call BUILD_test,radix_sorter))
