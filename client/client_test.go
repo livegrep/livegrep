@@ -3,30 +3,31 @@ package client
 import (
 	"encoding/json"
 	"io"
-	"launchpad.net/gocheck"
 	"net"
 	"strings"
 	"testing"
+
+	"gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type ClientSuite struct {
 	client Client
 }
 
-func (c *ClientSuite) TearDownTest(*gocheck.C) {
+func (c *ClientSuite) TearDownTest(*check.C) {
 	if c.client != nil {
 		c.client.Close()
 	}
 }
 
-var _ = gocheck.Suite(&ClientSuite{})
+var _ = check.Suite(&ClientSuite{})
 
 var (
-	Equals = gocheck.Equals
-	IsNil  = gocheck.IsNil
-	Not    = gocheck.Not
+	Equals = check.Equals
+	IsNil  = check.IsNil
+	Not    = check.Not
 )
 
 type MockServer struct {
@@ -79,7 +80,7 @@ func runMockServer(handle func(net.Conn)) <-chan string {
 	return ready
 }
 
-func (s *ClientSuite) connect(c *gocheck.C, addr string) {
+func (s *ClientSuite) connect(c *check.C, addr string) {
 	var err error
 	s.client, err = Dial("tcp", addr)
 	if err != nil {
@@ -87,18 +88,18 @@ func (s *ClientSuite) connect(c *gocheck.C, addr string) {
 	}
 }
 
-func (s *ClientSuite) TestQuery(c *gocheck.C) {
+func (s *ClientSuite) TestQuery(c *check.C) {
 	s.connect(c, <-runMockServer((&MockServer{
 		Results: []*Result{
 			{Line: "match line 1"},
 		},
 	}).handle))
-	search, err := s.client.Query(&Query{".", "", ""})
-	c.Assert(err, gocheck.IsNil)
+	search, err := s.client.Query(&Query{Line: "."})
+	c.Assert(err, check.IsNil)
 	var n int
 	for r := range search.Results() {
 		n++
-		c.Assert(r.Line, gocheck.Not(Equals), "")
+		c.Assert(r.Line, check.Not(Equals), "")
 	}
 	c.Assert(n, Equals, 1)
 	st, e := search.Close()
@@ -106,19 +107,19 @@ func (s *ClientSuite) TestQuery(c *gocheck.C) {
 	c.Assert(st, Not(IsNil))
 }
 
-func (s *ClientSuite) TestTwoQueries(c *gocheck.C) {
+func (s *ClientSuite) TestTwoQueries(c *check.C) {
 	s.connect(c, <-runMockServer((&MockServer{
 		Results: []*Result{
 			{Line: "match line 1"},
 		},
 	}).handle))
 
-	search, err := s.client.Query(&Query{".", "", ""})
+	search, err := s.client.Query(&Query{Line: "."})
 	c.Assert(err, IsNil)
 	_, err = search.Close()
 	c.Assert(err, IsNil)
 
-	search, err = s.client.Query(&Query{".", "", ""})
+	search, err = s.client.Query(&Query{Line: "."})
 	c.Assert(err, IsNil)
 	n := 0
 	for _ = range search.Results() {
@@ -131,14 +132,14 @@ func (s *ClientSuite) TestTwoQueries(c *gocheck.C) {
 	c.Assert(n, Not(Equals), 0)
 }
 
-func (s *ClientSuite) TestLongLine(c *gocheck.C) {
+func (s *ClientSuite) TestLongLine(c *check.C) {
 	longLine := strings.Repeat("X", 1<<16)
 	s.connect(c, <-runMockServer((&MockServer{
 		Results: []*Result{
 			{Line: longLine},
 		},
 	}).handle))
-	search, err := s.client.Query(&Query{".", "", ""})
+	search, err := s.client.Query(&Query{Line: "."})
 	c.Assert(err, IsNil)
 	var rs []*Result
 	for r := range search.Results() {
@@ -177,13 +178,13 @@ func (m *MockServerQueryError) handle(conn net.Conn) {
 	}
 }
 
-func (s *ClientSuite) TestBadRegex(c *gocheck.C) {
+func (s *ClientSuite) TestBadRegex(c *check.C) {
 	errStr := "Invalid query: ("
 	s.connect(c, <-runMockServer((&MockServerQueryError{
 		Err: errStr,
 	}).handle))
 
-	search, err := s.client.Query(&Query{"(", "", ""})
+	search, err := s.client.Query(&Query{Line: "("})
 	c.Assert(err, IsNil)
 	for _ = range search.Results() {
 		c.Fatal("Got back a result from an erroneous query!")
@@ -208,7 +209,7 @@ func mockServerShutdown() <-chan string {
 	})
 }
 
-func (s *ClientSuite) TestShutdown(c *gocheck.C) {
+func (s *ClientSuite) TestShutdown(c *check.C) {
 	addr := <-mockServerShutdown()
 
 	s.connect(c, addr)

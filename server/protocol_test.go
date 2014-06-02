@@ -1,11 +1,12 @@
 package server_test
 
 import (
+	"testing"
+
 	"code.google.com/p/go.net/websocket"
 	"github.com/nelhage/livegrep/jsonframe"
 	"github.com/nelhage/livegrep/server"
-	. "launchpad.net/gocheck"
-	"testing"
+	. "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { TestingT(t) }
