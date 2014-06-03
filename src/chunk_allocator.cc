@@ -7,10 +7,12 @@
  ********************************************************************/
 #include "chunk_allocator.h"
 #include "chunk.h"
+#include "debug.h"
 
 #include <gflags/gflags.h>
 
 #include <sys/mman.h>
+#include <pthread.h>
 
 DECLARE_int32(threads);
 DECLARE_bool(index);
@@ -28,17 +30,23 @@ static bool validate_chunk_power(const char* flagname, int32_t value) {
 static const bool dummy = google::RegisterFlagValidator(&FLAGS_chunk_power,
                                                         validate_chunk_power);
 
-bool chunk_allocator::finalizer::operator()(chunk *chunk) {
-    if (!chunk)
-        return true;
-    chunk->finalize();
-    return false;
+void *chunk_allocator::finalize_worker(void *p) {
+    chunk_allocator *alloc = static_cast<chunk_allocator*>(p);
+    chunk *c;
+    while (alloc->finalize_queue_.pop(&c)) {
+        c->finalize();
+    }
+
+    return 0;
 }
 
 chunk_allocator::chunk_allocator()  :
     chunk_size_(kChunkSize), content_finger_(0), current_(0),
-    finalizer_(), finalize_pool_(0) {
-    //    new_chunk();
+    threads_(new pthread_t[FLAGS_threads]) {
+    int err;
+    for (int i = 0; i < FLAGS_threads; ++i)
+        if ((err = pthread_create(&threads_[i], NULL, finalize_worker, this)) != 0)
+            die("pthread_create: %s", strerror(err));
 }
 
 chunk_allocator::~chunk_allocator() {
@@ -82,10 +90,7 @@ uint8_t *chunk_allocator::alloc_content_data(size_t len) {
 
 void chunk_allocator::finish_chunk()  {
     if (current_) {
-        if (!finalize_pool_) {
-            finalize_pool_ = new thread_pool<chunk*, finalizer>(FLAGS_threads, finalizer_);
-        }
-        finalize_pool_->queue(current_);
+        finalize_queue_.push(current_);
     }
 }
 
@@ -103,10 +108,10 @@ void chunk_allocator::finalize()  {
     if (!current_)
         return;
     finish_chunk();
+    finalize_queue_.close();
     for (int i = 0; i < FLAGS_threads; i++)
-        finalize_pool_->queue(NULL);
-    delete finalize_pool_;
-    finalize_pool_ = NULL;
+        pthread_join(threads_[i], 0);
+    delete[] threads_;
     for (auto it = begin(); it != end(); ++it)
         (*it)->finalize_files();
     if (content_finger_)

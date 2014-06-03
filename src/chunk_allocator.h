@@ -13,7 +13,7 @@
 #include <string>
 #include <assert.h>
 
-#include "thread_pool.h"
+#include "thread_queue.h"
 
 using namespace std;
 struct chunk;
@@ -74,10 +74,7 @@ public:
 
     virtual void drop_caches();
 protected:
-
-    struct finalizer {
-        bool operator()(chunk *chunk);
-    };
+    static void *finalize_worker(void *);
 
     virtual chunk *alloc_chunk() = 0;
     virtual void free_chunk(chunk *chunk) = 0;
@@ -90,8 +87,8 @@ protected:
     vector<buffer> content_chunks_;
     uint8_t *content_finger_;
     chunk *current_;
-    finalizer finalizer_;
-    thread_pool<chunk*, finalizer> *finalize_pool_;
+    thread_queue<chunk*> finalize_queue_;
+    pthread_t *threads_;
     map<const unsigned char*, chunk*> by_data_;
 };
 
