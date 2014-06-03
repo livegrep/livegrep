@@ -25,6 +25,8 @@ ifneq ($(tcmalloc),)
 override LDLIBS+=-ltcmalloc
 endif
 
+default: all
+
 DIRS := src src/lib src/tools test
 include Makefile.lib
 

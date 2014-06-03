@@ -39,7 +39,7 @@ $(1): override CPPFLAGS+=$$($(1)_CPPFLAGS)
 $(1): override CXXFLAGS+=$$($(1)_CXXFLAGS)
 $(1): override LDFLAGS+=$$($(1)_LDFLAGS)
 $(1): $$(LIBOBJS) $$($(1)_OBJS) $$(MAKEVARS)/LDFLAGS
-	$$(CXX) -o $$@ $$(LDFLAGS) $$(filter-out $$(MAKEVARS)/%,$$^) $$(LDLIBS)
+	$$(CXX) -o $$@ $$(LDFLAGS) $$(filter %.o,$$^) $$(LDLIBS)
 endef
 $(foreach tool,$(TOOLS),$(eval $(call BUILD_tool,$(tool))))
 
