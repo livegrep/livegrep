@@ -68,7 +68,10 @@ void radix_sorter::sort(uint32_t *l, uint32_t *r) {
     cmp_suffix cmp(*this);
     indexer idx(*this);
     msd_radix_sort(l, r, 0, idx, cmp);
+
+#ifdef DEBUG_RADIX_SORT
     assert(is_sorted(l, r, cmp));
+#endif
 }
 
 void chunk::finalize() {
