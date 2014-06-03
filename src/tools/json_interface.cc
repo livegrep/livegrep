@@ -86,6 +86,7 @@ json_object *get_with_type(json_object *parent, const char *key, json_type type)
     die("Error: '%s': expected %s, got %s", key,
         json_type_to_name(type),
         json_type_to_name(json_object_get_type(val)));
+    return NULL;
 }
 
 repo_spec parse_repo_spec(json_object *js) {
