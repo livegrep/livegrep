@@ -78,14 +78,37 @@ struct repo_spec {
     json_object *metadata;
 };
 
+
+// Reimplement this for compatibility with old libjson
+const char *compat_json_type_to_name(enum json_type o_type) {
+    switch (o_type) {
+    case json_type_null:
+        return "null";
+    case json_type_boolean:
+        return "boolean";
+    case json_type_double:
+        return "double";
+    case json_type_int:
+        return "int";
+    case json_type_object:
+        return "object";
+    case json_type_array:
+        return "array";
+    case json_type_string:
+        return "string";
+    default:
+        return "<unknown>";
+    }
+}
+
 json_object *get_with_type(json_object *parent, const char *key, json_type type) {
     json_object *val = json_object_object_get(parent, key);
     if (val == NULL || json_object_is_type(val, type)) {
         return val;
     }
     die("Error: '%s': expected %s, got %s", key,
-        json_type_to_name(type),
-        json_type_to_name(json_object_get_type(val)));
+        compat_json_type_to_name(type),
+        compat_json_type_to_name(json_object_get_type(val)));
     return NULL;
 }
 
