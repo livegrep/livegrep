@@ -35,6 +35,9 @@ LIBOBJS := $(foreach src,$(SRC),$(basename $(src)).o)
 define BUILD_tool
 $(1)_OBJS := $$(if $$($(1)_SRC),$$(foreach obj,$$($(1)_SRC),$$(basename $$(obj)).o),$(1).o)
 OBJECTS += $$($(1)_OBJS)
+$(1): override CPPFLAGS+=$$($(1)_CPPFLAGS)
+$(1): override CXXFLAGS+=$$($(1)_CXXFLAGS)
+$(1): override LDFLAGS+=$$($(1)_LDFLAGS)
 $(1): $$(LIBOBJS) $$($(1)_OBJS) $$(MAKEVARS)/LDFLAGS
 	$$(CXX) -o $$@ $$(LDFLAGS) $$(filter-out $$(MAKEVARS)/%,$$^) $$(LDLIBS)
 endef
