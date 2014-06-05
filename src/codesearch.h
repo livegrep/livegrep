@@ -92,14 +92,6 @@ struct match_stats {
     exit_reason why;
 };
 
-struct index_stats {
-    unsigned long bytes, dedup_bytes;
-    unsigned long lines, dedup_lines;
-    unsigned long files, dedup_files;
-    unsigned long chunks, content_chunks;
-    unsigned long content_ranges;
-};
-
 struct chunk;
 struct chunk_file;
 struct json_object;
@@ -153,7 +145,6 @@ class code_searcher {
 public:
     code_searcher();
     ~code_searcher();
-    void dump_stats();
     void dump_index(const string& path);
     void load_index(const string& path);
 
@@ -229,7 +220,6 @@ public:
 protected:
     string name_;
     string_hash lines_;
-    index_stats stats_;
     chunk_allocator *alloc_;
     bool finalized_;
     vector<indexed_repo*> repos_;

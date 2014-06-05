@@ -5,6 +5,8 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
+#ifndef CODESEARCH_TIMER_H
+#define CODESEARCH_TIMER_H
 #include <sys/time.h>
 #include <assert.h>
 
@@ -134,3 +136,5 @@ protected:
     timer local_;
 #endif
 };
+
+#endif
