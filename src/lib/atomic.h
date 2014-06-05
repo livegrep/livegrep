@@ -10,25 +10,36 @@
 
 /* A minimal implementation of atomic_int for portability */
 
-class atomic_int {
+template <class I>
+class atomic_integral {
 public:
-    atomic_int() : val_(0) { }
-    atomic_int(int x) : val_(x) { }
+    atomic_integral() : val_(0) { }
+    atomic_integral(I x) : val_(x) { }
 
-    int load() {
+    I load() {
         return val_;
     }
 
-    int operator++() {
-        return __sync_fetch_and_add(&val_, 1) + 1;
+    I operator++() {
+        return __sync_add_and_fetch(&val_, 1);
     }
 
-    int operator--() {
-        return __sync_fetch_and_add(&val_, -1) - 1;
+    I operator--() {
+        return __sync_sub_and_fetch(&val_, 1);
     }
 
+    I operator+=(I rhs) {
+        return __sync_add_and_fetch(&val_, rhs);
+    }
+
+    I operator-=(I rhs) {
+        return __sync_sub_and_fetch(&val_, rhs);
+    }
 private:
-    int val_;
+    I val_;
 };
+
+typedef atomic_integral<int> atomic_int;
+typedef atomic_integral<long> atomic_long;
 
 #endif
