@@ -29,7 +29,6 @@ struct debug_flag {
     {"profile",   kDebugProfile},
     {"index",     kDebugIndex},
     {"indexall",  kDebugIndexAll},
-    {"indexall",  kDebugIndexAll},
     {"ui",        kDebugUI},
     {"all",       (debug_mode)-1}
 };
