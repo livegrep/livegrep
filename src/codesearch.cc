@@ -22,6 +22,7 @@
 #include <openssl/sha.h>
 
 #include "timer.h"
+#include "metrics.h"
 #include "thread_queue.h"
 #include "thread_pool.h"
 #include "codesearch.h"
@@ -53,6 +54,19 @@ DEFINE_int32(max_matches, 50, "The maximum number of results to return for a sin
 DEFINE_int32(timeout, 1000, "The number of milliseconds a single search may run for.");
 DEFINE_int32(threads, 4, "Number of threads to use.");
 DEFINE_int32(line_limit, 1024, "Maximum line length to index.");
+
+namespace {
+    metric idx_bytes("index.bytes");
+    metric idx_bytes_dedup("index.bytes.dedup");
+    metric idx_files("index.files");
+    metric idx_files_dedup("index.files.dedup");
+    metric idx_lines("index.lines");
+    metric idx_lines_dedup("index.lines.dedup");
+    metric idx_data_chunks("index.data.chunks");
+    metric idx_content_chunks("index.content.chunks");
+    metric idx_content_ranges("index.content.ranges");
+    metric idx_hash_time("timer.index.dedup.hash");
+};
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
     if (lhs.data() == NULL && rhs.data() == NULL)
@@ -342,7 +356,7 @@ protected:
 };
 
 code_searcher::code_searcher()
-    : stats_(), alloc_(0), finalized_(false)
+    : alloc_(0), finalized_(false)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
@@ -360,26 +374,12 @@ code_searcher::~code_searcher() {
     delete alloc_;
 }
 
-void code_searcher::dump_stats() {
-    debug(kDebugProfile, "chunk_files: %d", chunk::chunk_files);
-    printf("Bytes: %ld (dedup: %ld)\n", stats_.bytes, stats_.dedup_bytes);
-    printf("Lines: %ld (dedup: %ld)\n", stats_.lines, stats_.dedup_lines);
-    printf("Files: %ld (dedup: %ld)\n", stats_.files, stats_.dedup_files);
-    printf("Content ranges: %ld\n", stats_.content_ranges);
-    printf("Data chunks: %ld @%ldM = %0.2fM\n", stats_.chunks,
-           alloc_->chunk_size() >> 20,
-           (alloc_->chunk_size() * stats_.chunks) / double(1 << 20));
-    printf("Content chunks: %ld @%ldM = %0.2fM\n",
-           stats_.content_chunks, kContentChunkSize >> 20,
-           (stats_.content_chunks * kContentChunkSize) / double(1 << 20));
-}
-
 void code_searcher::finalize() {
     assert(!finalized_);
     finalized_ = true;
     alloc_->finalize();
-    stats_.chunks = alloc_->end() - alloc_->begin();
-    stats_.content_chunks = alloc_->end_content() - alloc_->begin_content();
+    idx_data_chunks.inc(alloc_->end() - alloc_->begin());
+    idx_content_chunks.inc(alloc_->end_content() - alloc_->begin_content());
 }
 
 vector<indexed_repo> code_searcher::repos() const {
@@ -422,8 +422,8 @@ void code_searcher::index_file(const indexed_tree *tree,
     if (memchr(p, 0, len) != NULL)
         return;
 
-    stats_.bytes += len;
-    stats_.files++;
+    idx_bytes.inc(len);
+    idx_files.inc();
 
     sha1_buf sha1;
     sha1_string(&sha1, contents);
@@ -435,7 +435,7 @@ void code_searcher::index_file(const indexed_tree *tree,
         return;
     }
 
-    stats_.dedup_files++;
+    idx_files_dedup.inc();
 
     indexed_file *sf = new indexed_file;
     sf->paths.push_back((indexed_path){tree, path});
@@ -450,11 +450,15 @@ void code_searcher::index_file(const indexed_tree *tree,
     file_contents_builder content;
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
-        stats_.lines++;
-        string_hash::iterator it = lines_.find(StringPiece(p, f - p));
+        idx_lines.inc();
+        string_hash::iterator it;
+        {
+            metric::timer tm(idx_hash_time);
+            it = lines_.find(StringPiece(p, f - p));
+        }
         if (it == lines_.end()) {
-            stats_.dedup_bytes += (f - p) + 1;
-            stats_.dedup_lines ++;
+            idx_bytes_dedup.inc((f - p) + 1);
+            idx_lines_dedup.inc();
 
             if (f - p + 1 >= FLAGS_line_limit) {
                 p = f + 1;
@@ -483,7 +487,7 @@ void code_searcher::index_file(const indexed_tree *tree,
         file_contents_builder dummy;
         sf->content = dummy.build(alloc_);
     }
-    stats_.content_ranges += sf->content->size();
+    idx_content_ranges.inc(sf->content->size());
     assert(sf->content->size() <= 3*lines);
 
     for (auto it = alloc_->begin();

@@ -2,8 +2,15 @@
 #include <sstream>
 
 #include "codesearch.h"
+#include "metrics.h"
 #include "git_indexer.h"
 #include "smart_git.h"
+#include "debug.h"
+
+namespace {
+    metric git_walk("timer.git.walk");
+    metric git_contents("timer.git.contents");
+};
 
 using namespace std;
 
@@ -21,6 +28,13 @@ git_indexer::git_indexer(code_searcher *cs,
         exit(1);
     }
     idx_repo_ = cs_->open_repo(name, metadata);
+
+    int err;
+    if ((err = git_threads_init()) != 0)
+        die("git_threads_init: %s", giterr_last()->message);
+    git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_BLOB, 10*1024);
+    git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_OFS_DELTA, 10*1024);
+    git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_REF_DELTA, 10*1024);
 }
 
 git_indexer::~git_indexer() {
@@ -44,6 +58,7 @@ void git_indexer::walk(const string& ref) {
 }
 
 void git_indexer::walk_root(const string& ref, git_tree *tree) {
+    metric::timer tm_walk(git_walk);
     map<string, const git_tree_entry *> root;
     vector<const git_tree_entry *> ordered;
     int entries = git_tree_entrycount(tree);
@@ -69,19 +84,23 @@ void git_indexer::walk_root(const string& ref, git_tree *tree) {
         smart_object<git_object> obj;
         git_tree_entry_to_object(obj, repo_, *it);
         string path = string(git_tree_entry_name(*it));
+        tm_walk.pause();
 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
             walk_tree(ref, path + "/", obj);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
+            metric::timer tm_content(git_contents);
             const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
             cs_->index_file(idx_tree_, path, StringPiece(data, git_blob_rawsize(obj)));
         }
+        tm_walk.start();
     }
 }
 
 void git_indexer::walk_tree(const string& ref,
                             const string& pfx,
                             git_tree *tree) {
+    metric::timer tm_walk(git_walk);
     string path;
     int entries = git_tree_entrycount(tree);
     int i;
@@ -90,11 +109,14 @@ void git_indexer::walk_tree(const string& ref,
         path = pfx + git_tree_entry_name(ent);
         smart_object<git_object> obj;
         git_tree_entry_to_object(obj, repo_, ent);
+        tm_walk.pause();
         if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
             walk_tree(ref, path + "/", obj);
         } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
+            metric::timer tm_contents(git_contents);
             const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
             cs_->index_file(idx_tree_, path, StringPiece(data, git_blob_rawsize(obj)));
         }
+        tm_walk.start();
     }
 }

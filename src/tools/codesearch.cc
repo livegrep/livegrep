@@ -7,6 +7,7 @@
  ********************************************************************/
 #include "codesearch.h"
 #include "timer.h"
+#include "metrics.h"
 #include "re_width.h"
 
 #include "interface.h"
@@ -131,8 +132,7 @@ void initialize_search(code_searcher *search,
     } else {
         search->load_index(FLAGS_load_index);
     }
-    if (FLAGS_cli && !FLAGS_load_index.size())
-        search->dump_stats();
+    metric::dump_all();
     if (FLAGS_dump_index.size() && FLAGS_load_index.size())
         search->dump_index(FLAGS_dump_index);
 }
