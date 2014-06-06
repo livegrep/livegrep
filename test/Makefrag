@@ -1,16 +1,6 @@
 override CPPFLAGS += -Isrc/vendor/gtest/include -Isrc/vendor/gtest
 
-define BUILD_test
-TOOLS += test/out/$(1)
-test/out/$(1): test/out
-test/out/$(1)_SRC := test/$(1).cc src/vendor/gtest/src/gtest-all.o src/vendor/gtest/src/gtest_main.o
-test/out/$(1)_CPPFLAGS := -DGTEST_HAS_TR1_TUPLE=1 -DGTEST_USE_OWN_TR1_TUPLE=0
-endef
+TOOLS += test/codesearch_test
 
-test/out:
-	mkdir -p test/out
-
-TESTS := codesearch_test
-TEST_BINARIES := $(patsubst %,test/out/%,$(TESTS))
-
-$(foreach test,$(TESTS),$(eval $(call BUILD_test,$(test))))
+test/codesearch_test_SRC := $(wildcard test/*.cc) src/vendor/gtest/src/gtest-all.o src/vendor/gtest/src/gtest_main.o
+test/codesearch_test_CPPFLAGS := -DGTEST_HAS_TR1_TUPLE=1 -DGTEST_USE_OWN_TR1_TUPLE=0
