@@ -34,3 +34,8 @@ $(TOOLS): $(re2)
 
 $(re2): FORCE
 	$(MAKE) -C src/vendor/re2 obj/libre2.a
+
+test: FORCE $(TEST_BINARIES)
+	@set -ex; \
+	 for t in $(TEST_BINARIES); do \
+	 ./$$t; done

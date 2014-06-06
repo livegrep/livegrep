@@ -10,5 +10,7 @@ endef
 test/out:
 	mkdir -p test/out
 
-$(eval $(call BUILD_test,radix_sorter))
-$(eval $(call BUILD_test,functional))
+TESTS := radix_sorter functional
+TEST_BINARIES := $(patsubst %,test/out/%,$(TESTS))
+
+$(foreach test,$(TESTS),$(eval $(call BUILD_test,$(test))))
