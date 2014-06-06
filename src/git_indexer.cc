@@ -5,6 +5,7 @@
 #include "metrics.h"
 #include "git_indexer.h"
 #include "smart_git.h"
+#include "debug.h"
 
 namespace {
     metric git_walk("timer.git.walk");
@@ -27,6 +28,13 @@ git_indexer::git_indexer(code_searcher *cs,
         exit(1);
     }
     idx_repo_ = cs_->open_repo(name, metadata);
+
+    int err;
+    if ((err = git_threads_init()) != 0)
+        die("git_threads_init: %s", giterr_last()->message);
+    git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_BLOB, 10*1024);
+    git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_OFS_DELTA, 10*1024);
+    git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_REF_DELTA, 10*1024);
 }
 
 git_indexer::~git_indexer() {

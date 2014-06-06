@@ -65,6 +65,7 @@ namespace {
     metric idx_data_chunks("index.data.chunks");
     metric idx_content_chunks("index.content.chunks");
     metric idx_content_ranges("index.content.ranges");
+    metric idx_hash_time("timer.index.dedup.hash");
 };
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
@@ -450,7 +451,11 @@ void code_searcher::index_file(const indexed_tree *tree,
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
         idx_lines.inc();
-        string_hash::iterator it = lines_.find(StringPiece(p, f - p));
+        string_hash::iterator it;
+        {
+            metric::timer tm(idx_hash_time);
+            it = lines_.find(StringPiece(p, f - p));
+        }
         if (it == lines_.end()) {
             idx_bytes_dedup.inc((f - p) + 1);
             idx_lines_dedup.inc();

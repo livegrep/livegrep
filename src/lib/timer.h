@@ -53,6 +53,11 @@ public:
         timeval_add(&elapsed_, &elapsed_, &elapsed);
     }
 
+    bool running() {
+        mutex_locker locked(lock_);
+        return running_;
+    }
+
     struct timeval elapsed() {
         mutex_locker locked(lock_);
         if (running_) {

@@ -39,7 +39,8 @@ public:
         }
 
         ~timer() {
-            pause();
+            if (tm_.running())
+                pause();
         }
     private:
         metric *m_;
