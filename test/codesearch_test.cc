@@ -6,6 +6,7 @@
 #include "radix_sorter.h"
 #include "codesearch.h"
 #include "content.h"
+#include "atomic.h"
 
 class radix_sorter_test : public ::testing::Test {
 protected:
@@ -94,4 +95,19 @@ TEST_F(codesearch_test, IndexTest) {
     }
 
     EXPECT_EQ(string(file1), content);
+}
+
+TEST(atomic_int, Basic) {
+    atomic_int i;
+    EXPECT_EQ(0, i.load());
+    EXPECT_EQ(1, ++i);
+    EXPECT_EQ(1, i.load());
+    EXPECT_EQ(10, i += 9);
+    EXPECT_EQ(10, i.load());
+    EXPECT_EQ(9, --i);
+    EXPECT_EQ(9, i.load());
+    EXPECT_EQ(4, i -= 5);
+
+    atomic_int j(42);
+    EXPECT_EQ(42, j.load());
 }
