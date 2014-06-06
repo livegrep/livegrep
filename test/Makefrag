@@ -10,7 +10,7 @@ endef
 test/out:
 	mkdir -p test/out
 
-TESTS := radix_sorter functional
+TESTS := codesearch_test
 TEST_BINARIES := $(patsubst %,test/out/%,$(TESTS))
 
 $(foreach test,$(TESTS),$(eval $(call BUILD_test,$(test))))
