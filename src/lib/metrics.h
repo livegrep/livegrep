@@ -22,21 +22,32 @@ public:
     void dec(long i) {val_ -= i;}
 
     static void dump_all();
+
+    class timer {
+    public:
+        timer(metric &m) : m_(&m) {}
+
+        void pause() {
+            tm_.pause();
+            timeval elapsed = tm_.elapsed();
+            m_->inc(elapsed.tv_sec * 1000 + elapsed.tv_usec / 1000);
+            tm_.reset();
+        }
+
+        void start() {
+            tm_.start();
+        }
+
+        ~timer() {
+            pause();
+        }
+    private:
+        metric *m_;
+        ::timer tm_;
+    };
+
 private:
     atomic_long val_;
-};
-
-class record_time {
-    record_time() {}
-
-    ~record_time() {
-        tm_.pause();
-        timeval elapsed = tm_.elapsed();
-        m_->inc(elapsed.tv_sec * 1000 + elapsed.tv_usec / 1000);
-    }
-private:
-    metric *m_;
-    timer tm_;
 };
 
 #endif
