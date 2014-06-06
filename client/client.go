@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nelhage/livegrep/jsonframe"
+	"io"
 	"net"
+
+	"github.com/nelhage/livegrep/jsonframe"
 )
 
 var ops jsonframe.Marshaler
@@ -19,7 +21,7 @@ func init() {
 }
 
 type client struct {
-	conn    net.Conn
+	conn    io.ReadWriteCloser
 	queries chan *search
 	errors  chan error
 	error   error
@@ -39,6 +41,13 @@ func Dial(network, address string) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return New(conn)
+}
+
+func New(conn io.ReadWriteCloser) (Client, error) {
+	var err error
+
 	cl := &client{
 		conn:    conn,
 		queries: make(chan *search),
