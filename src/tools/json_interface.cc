@@ -160,7 +160,10 @@ void extract_repo_specs(vector<repo_spec> &out, json_object *js) {
 
 class json_interface : public codesearch_interface {
 public:
-    json_interface(FILE *in, FILE *out) : in_(in), out_(out) { }
+    json_interface(FILE *in, FILE *out) : in_(in), out_(out) {
+        assert(!setvbuf(in_,  NULL, _IOFBF, 4096*4));
+        assert(!setvbuf(out_, NULL, _IOLBF, 4096));
+    }
 
     void write_frame(const std::string &opcode, json_object *body) {
         json_object *frame = json_frame(opcode, body);
