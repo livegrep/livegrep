@@ -40,9 +40,36 @@ func benchmarkQuery(b *testing.B, q *client.Query) {
 	}
 }
 
+func BenchmarkDazed(b *testing.B) {
+	benchmarkQuery(b, &client.Query{Line: `dazed`})
+}
+
+func BenchmarkDazedCaseFold(b *testing.B) {
+	benchmarkQuery(b, &client.Query{Line: `dazed`, FoldCase: true})
+}
+
+func BenchmarkDefKmalloc(b *testing.B) {
+	benchmarkQuery(b, &client.Query{Line: `^(\s.*\S)?kmalloc\s*\(`})
+}
+
+func BenchmarkSpaceEOL(b *testing.B) {
+	benchmarkQuery(b, &client.Query{Line: `\s$`})
+}
+
+func Benchmark10Space(b *testing.B) {
+	benchmarkQuery(b, &client.Query{Line: `\s{10}$`})
+}
+
 func BenchmarkUUID(b *testing.B) {
 	benchmarkQuery(b, &client.Query{
 		Line: `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,
+	})
+}
+
+func BenchmarkUUIDCaseFold(b *testing.B) {
+	benchmarkQuery(b, &client.Query{
+		Line:     `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,
+		FoldCase: true,
 	})
 }
 
