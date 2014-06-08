@@ -2,5 +2,5 @@ language: c++
 before_install:
   - sudo apt-add-repository -y ppa:nelhage/livegrep
   - sudo apt-get -qq update
-  - sudo apt-get -y install libgflags-dev libjson0-dev libboost-system-dev libboost-filesystem-dev libsparsehash-dev
+  - sudo apt-get -y install libgflags-dev libgit2-dev libjson0-dev libboost-system-dev libboost-filesystem-dev libsparsehash-dev
 script: make test
