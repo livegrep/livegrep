@@ -1,6 +1,6 @@
 language: c++
 before_install:
   - sudo apt-add-repository -y ppa:nelhage/livegrep
-  - sudo apt-get update
+  - sudo apt-get -qq update
   - sudo apt-get -y install libgflags-dev libjson0-dev libboost-system-dev libboost-filesystem-dev
 script: make test
