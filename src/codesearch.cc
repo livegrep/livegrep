@@ -16,6 +16,7 @@
 #include <string>
 #include <fstream>
 #include <limits>
+#include <atomic>
 
 #include <re2/re2.h>
 #include <gflags/gflags.h>
@@ -29,7 +30,6 @@
 #include "chunk.h"
 #include "chunk_allocator.h"
 #include "radix_sort.h"
-#include "atomic.h"
 #include "indexer.h"
 #include "per_thread.h"
 #include "debug.h"

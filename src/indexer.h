@@ -11,12 +11,12 @@
 #include <vector>
 #include <list>
 #include <string>
+#include <atomic>
 #include <boost/intrusive_ptr.hpp>
 
 #include "re2/re2.h"
 #include "re2/walker-inl.h"
 
-#include "atomic.h"
 #include "common.h"
 
 using std::string;
@@ -118,7 +118,7 @@ protected:
     map<pair<uchar, uchar>, intrusive_ptr<IndexKey> > edges_;
     Stats stats_;
     list<iterator> tails_;
-    atomic_int refs_;
+    std::atomic_int refs_;
 
     void collect_tails(list<IndexKey::iterator>& tails);
 

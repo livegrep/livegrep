@@ -12,6 +12,7 @@
 #include <string>
 #include <map>
 #include <fstream>
+#include <atomic>
 #include <boost/intrusive_ptr.hpp>
 
 #ifdef USE_DENSE_HASH_SET
@@ -24,7 +25,6 @@
 #include <locale>
 
 #include "mutex.h"
-#include "atomic.h"
 #include "thread_pool.h"
 
 class searcher;
@@ -40,6 +40,7 @@ using std::locale;
 using std::vector;
 using std::map;
 using std::pair;
+using std::atomic_int;
 
 /*
  * We special-case data() == NULL to provide an "empty" element for

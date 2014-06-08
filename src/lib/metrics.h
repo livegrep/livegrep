@@ -8,9 +8,9 @@
 #ifndef CODESEARCH_METRICS_H
 #define CODESEARCH_METRICS_H
 
-#include "atomic.h"
 #include "timer.h"
 
+#include <atomic>
 #include <string>
 
 class metric {
@@ -48,7 +48,7 @@ public:
     };
 
 private:
-    atomic_long val_;
+    std::atomic_long val_;
 };
 
 #endif
