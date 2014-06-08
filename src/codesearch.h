@@ -14,6 +14,7 @@
 #include <fstream>
 #include <atomic>
 #include <mutex>
+#include <thread>
 #include <boost/intrusive_ptr.hpp>
 
 #ifdef USE_DENSE_HASH_SET
@@ -209,10 +210,10 @@ public:
         };
 
         const code_searcher *cs_;
-        pthread_t *threads_;
+        vector<std::thread> threads_;
         thread_queue<job*> queue_;
 
-        static void* search_one(void *);
+        static void search_one(search_thread *);
     private:
         search_thread(const search_thread&);
         void operator=(const search_thread&);

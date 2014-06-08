@@ -961,12 +961,10 @@ void searcher::finish_group(match_group *group) {
 }
 
 code_searcher::search_thread::search_thread(code_searcher *cs)
-    : cs_(cs), threads_(new pthread_t[FLAGS_threads]) {
+    : cs_(cs) {
     if (FLAGS_search) {
-        int err;
         for (int i = 0; i < FLAGS_threads; ++i)
-            if ((err = pthread_create(&threads_[i], NULL, search_one, this)) != 0)
-                die("pthread_create: %s", strerror(err));
+            threads_.push_back(std::move(std::thread(search_one, this)));
     }
 }
 
@@ -1017,16 +1015,11 @@ void code_searcher::search_thread::match_internal(const query &q,
 
 code_searcher::search_thread::~search_thread() {
     queue_.close();
-    if (threads_) {
-        for (int i = 0; i < FLAGS_threads; ++i)
-            pthread_join(threads_[i], 0);
-    }
-    delete[] threads_;
+    for (auto it = threads_.begin(); it != threads_.end(); ++it)
+        it->join();
 }
 
-void* code_searcher::search_thread::search_one(void *p) {
-    search_thread *me = static_cast<search_thread*>(p);
-
+void code_searcher::search_thread::search_one(search_thread *me) {
     job *j;
     while (me->queue_.pop(&j)) {
         chunk *c;
@@ -1037,7 +1030,6 @@ void* code_searcher::search_thread::search_one(void *p) {
         if (--j->pending == 0)
             j->search->queue_.close();
     }
-    return NULL;
 }
 
 void default_re2_options(RE2::Options &opts) {
