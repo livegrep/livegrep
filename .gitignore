@@ -1,7 +1,7 @@
-/codesearch
-/inspect-index
-/analyze-re
-/dump-file
+/bin/codesearch
+/bin/inspect-index
+/bin/analyze-re
+/bin/dump-file
 /Makefile.config
 *.o
 .*.d
