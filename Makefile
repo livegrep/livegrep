@@ -25,8 +25,6 @@ ifneq ($(tcmalloc),)
 override LDLIBS+=-ltcmalloc
 endif
 
-$(TOOLS): $(re2)
-
 $(re2): FORCE
 	$(MAKE) -C src/vendor/re2 obj/libre2.a
 
@@ -58,3 +56,5 @@ EXTRA_CLEAN := bin/ .gopath/
 
 DIRS := src src/lib src/tools test
 include Makefile.lib
+
+$(TOOLS): $(re2)
