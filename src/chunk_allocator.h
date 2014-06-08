@@ -11,6 +11,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <thread>
 #include <assert.h>
 
 #include "thread_queue.h"
@@ -74,7 +75,7 @@ public:
 
     virtual void drop_caches();
 protected:
-    static void *finalize_worker(void *);
+    static void finalize_worker(chunk_allocator *);
 
     virtual chunk *alloc_chunk() = 0;
     virtual void free_chunk(chunk *chunk) = 0;
@@ -88,7 +89,7 @@ protected:
     uint8_t *content_finger_;
     chunk *current_;
     thread_queue<chunk*> finalize_queue_;
-    pthread_t *threads_;
+    vector<std::thread> threads_;
     map<const unsigned char*, chunk*> by_data_;
 };
 

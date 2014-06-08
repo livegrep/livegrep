@@ -12,7 +12,7 @@
 #include <gflags/gflags.h>
 
 #include <sys/mman.h>
-#include <pthread.h>
+#include <thread>
 
 DECLARE_int32(threads);
 DECLARE_bool(index);
@@ -30,23 +30,17 @@ static bool validate_chunk_power(const char* flagname, int32_t value) {
 static const bool dummy = google::RegisterFlagValidator(&FLAGS_chunk_power,
                                                         validate_chunk_power);
 
-void *chunk_allocator::finalize_worker(void *p) {
-    chunk_allocator *alloc = static_cast<chunk_allocator*>(p);
+void chunk_allocator::finalize_worker(chunk_allocator *alloc) {
     chunk *c;
     while (alloc->finalize_queue_.pop(&c)) {
         c->finalize();
     }
-
-    return 0;
 }
 
 chunk_allocator::chunk_allocator()  :
-    chunk_size_(kChunkSize), content_finger_(0), current_(0),
-    threads_(new pthread_t[FLAGS_threads]) {
-    int err;
+    chunk_size_(kChunkSize), content_finger_(0), current_(0) {
     for (int i = 0; i < FLAGS_threads; ++i)
-        if ((err = pthread_create(&threads_[i], NULL, finalize_worker, this)) != 0)
-            die("pthread_create: %s", strerror(err));
+        threads_.push_back(std::move(std::thread(finalize_worker, this)));
 }
 
 chunk_allocator::~chunk_allocator() {
@@ -109,9 +103,8 @@ void chunk_allocator::finalize()  {
         return;
     finish_chunk();
     finalize_queue_.close();
-    for (int i = 0; i < FLAGS_threads; i++)
-        pthread_join(threads_[i], 0);
-    delete[] threads_;
+    for (auto it = threads_.begin(); it != threads_.end(); ++it)
+        it->join();
     for (auto it = begin(); it != end(); ++it)
         (*it)->finalize_files();
     if (content_finger_)
