@@ -25,15 +25,43 @@ ifneq ($(tcmalloc),)
 override LDLIBS+=-ltcmalloc
 endif
 
-default: all
+$(re2): FORCE
+	$(MAKE) -C src/vendor/re2 obj/libre2.a
+
+test: FORCE godep test/codesearch_test
+	test/codesearch_test
+	go test github.com/nelhage/livegrep/client github.com/nelhage/livegrep/server
+
+ifeq ($(GOPATH),)
+override GOPATH = $(CURDIR)/.gopath
+export GOPATH
+gopath: FORCE
+	mkdir -p $(GOPATH)/src/github.com/nelhage/
+	ln -nsf $(CURDIR) $(GOPATH)/src/github.com/nelhage/livegrep
+else
+gopath: FORCE
+endif
+
+# It's important that we specify these in import-DAG order; `go get`
+# has a bug where, if a package is imported by a package mentioned
+# earlier on the command-line, it won't get test dependencies, even
+# with `-t`.
+godep: gopath FORCE
+	go get -t github.com/nelhage/livegrep/client \
+			github.com/nelhage/livegrep/server \
+			github.com/nelhage/livegrep/livegrep \
+			github.com/nelhage/livegrep/lg
+
+bin/lg: godep FORCE
+	go build -o bin/lg github.com/nelhage/livegrep/lg
+
+bin/livegrep: godep FORCE
+	go build -o bin/livegrep github.com/nelhage/livegrep/livegrep
+
+EXTRA_TARGETS := godep bin/lg bin/livegrep
+EXTRA_CLEAN := bin/ .gopath/
 
 DIRS := src src/lib src/tools test
 include Makefile.lib
 
 $(TOOLS): $(re2)
-
-$(re2): FORCE
-	$(MAKE) -C src/vendor/re2 obj/libre2.a
-
-test: FORCE test/codesearch_test
-	test/codesearch_test

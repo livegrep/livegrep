@@ -46,10 +46,10 @@ $(foreach tool,$(TOOLS),$(eval $(call BUILD_tool,$(tool))))
 OBJECTS := $(LIBOBJS) $(foreach tool,$(TOOLS),$(call $(tool)_OBJS))
 DEPFILES := $(foreach obj,$(OBJECTS),$(dir $(obj)).$(notdir $(obj:.o=)).d)
 
-all: $(TOOLS) $(DEPFILES)
+all: $(TOOLS) $(DEPFILES) $(EXTRA_TARGETS)
 
 clean:
-	rm -f $(TOOLS) $(OBJECTS) $(DEPFILES) $(EXTRA_CLEAN)
+	rm -rf $(TOOLS) $(OBJECTS) $(DEPFILES) $(EXTRA_CLEAN)
 
 $(OBJECTS): $(MAKEVARS)/CXX $(MAKEVARS)/CXXFLAGS
 
@@ -57,4 +57,4 @@ $(OBJECTS): $(MAKEVARS)/CXX $(MAKEVARS)/CXXFLAGS
 
 .PHONY: FORCE
 .PRECIOUS: $(MAKEVARS)/%
-.DEFAULT_GOAL: all
+.DEFAULT_GOAL := all

@@ -1,7 +1,4 @@
-/codesearch
-/inspect-index
-/analyze-re
-/dump-file
+/bin/
 /Makefile.config
 *.o
 .*.d
@@ -12,3 +9,4 @@
 config.json
 vendor/re2/obj/libre2.a
 *.a
+/.gopath
