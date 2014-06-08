@@ -25,7 +25,6 @@
 #include "timer.h"
 #include "metrics.h"
 #include "thread_queue.h"
-#include "thread_pool.h"
 #include "codesearch.h"
 #include "chunk.h"
 #include "chunk_allocator.h"

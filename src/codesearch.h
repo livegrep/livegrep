@@ -25,7 +25,7 @@
 #include <re2/re2.h>
 #include <locale>
 
-#include "thread_pool.h"
+#include "thread_queue.h"
 
 class searcher;
 class chunk_allocator;
