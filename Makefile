@@ -25,15 +25,36 @@ ifneq ($(tcmalloc),)
 override LDLIBS+=-ltcmalloc
 endif
 
-default: all
-
-DIRS := src src/lib src/tools test
-include Makefile.lib
-
 $(TOOLS): $(re2)
 
 $(re2): FORCE
 	$(MAKE) -C src/vendor/re2 obj/libre2.a
 
-test: FORCE test/codesearch_test
+test: FORCE godep test/codesearch_test
 	test/codesearch_test
+	go test github.com/nelhage/livegrep/client github.com/nelhage/livegrep/server
+
+ifeq ($(GOPATH),)
+override GOPATH = $(CURDIR)/.gopath
+export GOPATH
+gopath: FORCE
+	mkdir -p $(GOPATH)/src/github.com/nelhage/
+	ln -nsf $(CURDIR) $(GOPATH)/src/github.com/nelhage/livegrep
+else
+gopath: FORCE
+endif
+
+godep: gopath FORCE
+	go get github.com/nelhage/livegrep/livegrep github.com/nelhage/livegrep/lg
+
+bin/lg: godep FORCE
+	go build -o bin/lg github.com/nelhage/livegrep/lg
+
+bin/livegrep: godep FORCE
+	go build -o bin/livegrep github.com/nelhage/livegrep/livegrep
+
+EXTRA_TARGETS := godep bin/lg bin/livegrep
+EXTRA_CLEAN := bin/ .gopath/
+
+DIRS := src src/lib src/tools test
+include Makefile.lib
