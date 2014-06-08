@@ -228,7 +228,7 @@ protected:
     }
 
     double files_density(void) {
-        mutex_locker locked(mtx_);
+        std::unique_lock<std::mutex> locked(mtx_);
         if (files_density_ >= 0)
             return files_density_;
 
@@ -350,7 +350,7 @@ protected:
      * yet. Protected by mtx_.
      */
     double files_density_;
-    cs_mutex mtx_;
+    std::mutex mtx_;
 
     friend class code_searcher::search_thread;
 };

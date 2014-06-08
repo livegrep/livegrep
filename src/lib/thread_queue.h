@@ -9,8 +9,8 @@
 #define CODESEARCH_THREAD_QUEUE_H
 
 #include <list>
-
-#include "mutex.h"
+#include <mutex>
+#include <condition_variable>
 
 template <class T>
 class thread_queue {
@@ -18,21 +18,21 @@ public:
     thread_queue () : closed_(false) {}
 
     void push(const T& val) {
-        mutex_locker locked(mutex_);
+        std::unique_lock<std::mutex> locked(mutex_);
         queue_.push_back(val);
-        cond_.signal();
+        cond_.notify_one();
     }
 
     void close() {
-        mutex_locker locked(mutex_);
+        std::unique_lock<std::mutex> locked(mutex_);
         closed_ = true;
-        cond_.broadcast();
+        cond_.notify_all();
     }
 
     bool pop(T *out) {
-        mutex_locker locked(mutex_);
+        std::unique_lock<std::mutex> locked(mutex_);
         while (queue_.empty() && !closed_)
-            cond_.wait(&mutex_);
+            cond_.wait(locked);
         if (queue_.empty() && closed_)
             return false;
         *out = queue_.front();
@@ -42,8 +42,8 @@ public:
  protected:
     thread_queue(const thread_queue&);
     thread_queue operator=(const thread_queue &);
-    cs_mutex mutex_;
-    cond_var cond_;
+    std::mutex mutex_;
+    std::condition_variable cond_;
     bool closed_;
     std::list<T> queue_;
 };

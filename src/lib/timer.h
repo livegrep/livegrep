@@ -9,8 +9,7 @@
 #define CODESEARCH_TIMER_H
 #include <sys/time.h>
 #include <assert.h>
-
-#include "mutex.h"
+#include <mutex>
 
 static int timeval_subtract (struct timeval *result, struct timeval *x, struct timeval *y);
 static void timeval_add(struct timeval *res, const struct timeval *x, const struct timeval *y);
@@ -24,14 +23,14 @@ public:
     }
 
     void start() {
-        mutex_locker locked(lock_);
+        std::unique_lock<std::mutex> locked(lock_);
         assert(!running_);
         running_ = true;
         gettimeofday(&start_, NULL);
     }
 
     void pause() {
-        mutex_locker locked(lock_);
+        std::unique_lock<std::mutex> locked(lock_);
         struct timeval now, delta;
         assert(running_);
         running_ = false;
@@ -41,25 +40,25 @@ public:
     }
 
     void reset() {
-        mutex_locker locked(lock_);
+        std::unique_lock<std::mutex> locked(lock_);
         running_ = false;
         elapsed_ = (struct timeval){0,0};
     }
 
     void add(timer &other) {
-        mutex_locker locked(lock_);
+        std::unique_lock<std::mutex> locked(lock_);
         assert(!running_);
         struct timeval elapsed = other.elapsed();
         timeval_add(&elapsed_, &elapsed_, &elapsed);
     }
 
     bool running() {
-        mutex_locker locked(lock_);
+        std::unique_lock<std::mutex> locked(lock_);
         return running_;
     }
 
     struct timeval elapsed() {
-        mutex_locker locked(lock_);
+        std::unique_lock<std::mutex> locked(lock_);
         if (running_) {
             struct timeval now, delta;
             gettimeofday(&now, NULL);
@@ -74,7 +73,7 @@ protected:
     bool running_;
     struct timeval start_;
     struct timeval elapsed_;
-    cs_mutex lock_;
+    std::mutex lock_;
 
     timer(const timer& rhs);
     timer operator=(const timer& rhs);

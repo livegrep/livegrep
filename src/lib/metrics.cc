@@ -1,17 +1,17 @@
 #include "metrics.h"
-#include "mutex.h"
 
 #include <stdlib.h>
 #include <map>
+#include <mutex>
 
 namespace {
-    cs_mutex metrics_mtx;
+    std::mutex metrics_mtx;
     std::map<std::string, metric*> *metrics;
 };
 
 
 metric::metric(const std::string &name) {
-    mutex_locker locked(metrics_mtx);
+    std::unique_lock<std::mutex> locked(metrics_mtx);
     if (metrics == 0)
         metrics = new std::map<std::string, metric*>;
     (*metrics)[name] = this;

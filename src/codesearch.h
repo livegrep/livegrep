@@ -13,6 +13,7 @@
 #include <map>
 #include <fstream>
 #include <atomic>
+#include <mutex>
 #include <boost/intrusive_ptr.hpp>
 
 #ifdef USE_DENSE_HASH_SET
@@ -24,7 +25,6 @@
 #include <re2/re2.h>
 #include <locale>
 
-#include "mutex.h"
 #include "thread_pool.h"
 
 class searcher;
