@@ -42,8 +42,15 @@ else
 gopath: FORCE
 endif
 
+# It's important that we specify these in import-DAG order; `go get`
+# has a bug where, if a package is imported by a package mentioned
+# earlier on the command-line, it won't get test dependencies, even
+# with `-t`.
 godep: gopath FORCE
-	go get github.com/nelhage/livegrep/livegrep github.com/nelhage/livegrep/lg
+	go get -t github.com/nelhage/livegrep/client \
+			github.com/nelhage/livegrep/server \
+			github.com/nelhage/livegrep/livegrep \
+			github.com/nelhage/livegrep/lg
 
 bin/lg: godep FORCE
 	go build -o bin/lg github.com/nelhage/livegrep/lg
