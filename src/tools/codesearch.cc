@@ -9,6 +9,7 @@
 #include "timer.h"
 #include "metrics.h"
 #include "re_width.h"
+#include "debug.h"
 
 #include "interface.h"
 
@@ -204,8 +205,7 @@ int bind_to_address(string spec) {
     } else if (proto == "tcp") {
         int colon = address.find(':');
         if (colon == string::npos) {
-            fprintf(stderr, "-listen: TCP addresses must be HOST:PORT.\n");
-            exit(1);
+            die("-listen: TCP addresses must be HOST:PORT.");
         }
         string host = address.substr(0, colon);
         struct addrinfo hint = {};
@@ -216,7 +216,7 @@ int bind_to_address(string spec) {
         int err;
         if ((err = getaddrinfo(host.c_str(), address.c_str() + colon + 1,
                                &hint, &addrs)) != 0) {
-            fprintf(stderr, "Error resolving %s: %s\n", host.c_str(), gai_strerror(err));
+            die("Error resolving %s: %s", host.c_str(), gai_strerror(err));
         }
 
         server = socket(addrs->ai_family, addrs->ai_socktype, addrs->ai_protocol);
@@ -229,8 +229,7 @@ int bind_to_address(string spec) {
             die_errno("Binding to address");
         freeaddrinfo(addrs);
     } else {
-        fprintf(stderr, "Unknown protocol: %s\n", proto.c_str());
-        exit(1);
+        die("Unknown protocol: %s", proto.c_str());
     }
 
     if (listen(server, 4) < 0)
