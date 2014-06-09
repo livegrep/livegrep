@@ -8,4 +8,4 @@ tgz="${1-livegrep-$rev.tgz}"
 
 make -j4 LDFLAGS=-static all
 
-tar --xform s,^,"$builddir/", -czf "$tgz" bin web
+tar --xform s,^,"$builddir/",S -czf "$tgz" bin web
