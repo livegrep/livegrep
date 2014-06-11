@@ -29,7 +29,6 @@ void msd_radix_sort(uint32_t *left, uint32_t *right, int level,
         std::sort(left, right, cmp);
         return;
     }
-    metric::timer tm(msd_radix_time);
     unsigned counts[256] = {};
     unsigned dest[256];
     uint32_t *p;
@@ -55,11 +54,17 @@ void msd_radix_sort(uint32_t *left, uint32_t *right, int level,
         assert(dest[target] < (right - left));
         swap(left[dest[target]++], *p);
     }
-    tm.pause();
     for (int i = 1; i < 256; i++) {
         uint32_t *r = (i == 255) ? right : left + counts[i+1];
         msd_radix_sort(left + counts[i], r, level + 1, index, cmp);
     }
+}
+
+template <typename Index, typename Compare>
+void msd_radix_sort(uint32_t *left, uint32_t *right,
+                    Index index, Compare cmp) {
+    metric::timer tm(msd_radix_time);
+    msd_radix_sort(left, right, 0, index, cmp);
 }
 
 void lsd_radix_sort(uint32_t *left, uint32_t *right);
