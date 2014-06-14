@@ -108,6 +108,7 @@ void chunk_allocator::finalize()  {
     finalize_queue_.close();
     for (auto it = threads_.begin(); it != threads_.end(); ++it)
         it->join();
+    threads_.clear();
     for (auto it = begin(); it != end(); ++it)
         (*it)->finalize_files();
     if (content_finger_)
