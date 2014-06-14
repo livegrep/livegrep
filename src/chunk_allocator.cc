@@ -44,6 +44,9 @@ chunk_allocator::chunk_allocator()  :
 }
 
 chunk_allocator::~chunk_allocator() {
+    finalize_queue_.close();
+    for (auto it = threads_.begin(); it != threads_.end(); ++it)
+        it->join();
 }
 
 void chunk_allocator::set_chunk_size(size_t size) {

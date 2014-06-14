@@ -1,10 +1,16 @@
-TOOLS := bin/codesearch bin/inspect-index bin/analyze-re bin/dump-file
+TOOLS := bin/codesearch bin/codesearchtool
 bin/codesearch_SRC := src/tools/codesearch.cc src/tools/interface.c src/tools/json_interface.c
-bin/inspect-index_SRC := src/tools/inspect-index.cc
-bin/analyze-re_SRC := src/tools/analyze-re.cc
-bin/dump-file_SRC := src/tools/dump-file.cc
+bin/codesearchtool_SRC := src/tools/codesearchtool.cc \
+			src/tools/inspect-index.cc \
+			src/tools/analyze-re.cc \
+			src/tools/dump-file.cc
 
-$(TOOLS): bin
+TOOL_ALIASES := bin/inspect-index bin/analyze-re bin/dump-file
+
+$(TOOLS): bin $(TOOL_ALIASES)
 
 bin:
 	mkdir -p bin
+
+$(TOOL_ALIASES):
+	ln -s codesearchtool $@

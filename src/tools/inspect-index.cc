@@ -32,12 +32,9 @@ bool operator<(const index_span& left, const index_span& right) {
 
 DEFINE_bool(dump_spans, false, "Dump detailed index span information.");
 
-int main(int argc, char **argv) {
-    google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> INDEX.idx");
-    google::ParseCommandLineFlags(&argc, &argv, true);
-
-    if (argc < 1) {
-        fprintf(stderr, "Usage: %s <options> INDEX.idx\n", argv[0]);
+int inspect_index(int argc, char **argv) {
+    if (argc != 1) {
+        fprintf(stderr, "Usage: %s <options> INDEX.idx\n", google::GetArgv0());
         return 1;
     }
 
@@ -47,7 +44,7 @@ int main(int argc, char **argv) {
 
     vector<index_span> spans;
 
-    fd = open(argv[1], O_RDONLY);
+    fd = open(argv[0], O_RDONLY);
     assert(fd > 0);
     assert(fstat(fd, &st) == 0);
     map = static_cast<uint8_t*>(mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0));

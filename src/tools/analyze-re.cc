@@ -108,12 +108,9 @@ void write_dot_index(const string &path, intrusive_ptr<IndexKey> key) {
     out.output();
 }
 
-int main(int argc, char **argv) {
-    google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REGEX");
-    google::ParseCommandLineFlags(&argc, &argv, true);
-
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <options> REGEX\n", argv[0]);
+int analyze_re(int argc, char **argv) {
+    if (argc != 1) {
+        fprintf(stderr, "Usage: %s <options> REGEX\n", google::GetArgv0());
         return 1;
     }
 
@@ -122,14 +119,14 @@ int main(int argc, char **argv) {
     if (FLAGS_casefold)
         opts.set_case_sensitive(false);
 
-    RE2 re(argv[1], opts);
+    RE2 re(argv[0], opts);
     if (!re.ok()) {
         fprintf(stderr, "Error: %s\n", re.error().c_str());
         return 1;
     }
 
     WidthWalker width;
-    printf("== RE [%s] ==\n", argv[1]);
+    printf("== RE [%s] ==\n", argv[0]);
     printf("width: %d\n", width.Walk(re.Regexp(), 0));
     printf("Program size: %d\n", re.ProgramSize());
 

@@ -19,17 +19,14 @@ void dump_file(code_searcher *cs, indexed_file *f) {
     }
 }
 
-int main(int argc, char **argv) {
-    google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> INDEX PATH");
-    google::ParseCommandLineFlags(&argc, &argv, true);
-
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <options> INDEX PATH\n", argv[0]);
+int dump_file(int argc, char **argv) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <options> INDEX PATH\n", google::GetArgv0());
         return 1;
     }
 
-    string index = argv[1];
-    string path = argv[2];
+    string index = argv[0];
+    string path = argv[1];
 
     code_searcher cs;
     cs.load_index(index);
