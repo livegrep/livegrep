@@ -8,8 +8,11 @@ script: make test
 compiler:
 - gcc
 cache: apt
-before_deploy:
-  - find . -name '*.o' -o -name '.*.d' -delete
+before_deploy: |
+  mkdir -p build
+  rev=$(git rev-parse HEAD | head -c10)
+  builddir="livegrep-$rev"
+  tar --xform s,^,"$builddir/",S -czf "build/$builddir.tgz" bin web doc README.md COPYING
 deploy:
   provider: s3
   access_key_id: AKIAIMAIBQGQF7NT5KCA
@@ -18,3 +21,4 @@ deploy:
   bucket: livegrep
   skip_cleanup: true
   upload-dir: builds
+  local-dir: build
