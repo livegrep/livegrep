@@ -1,9 +1,21 @@
 language: c++
 before_install:
-  - sudo apt-add-repository -y ppa:nelhage/livegrep
-  - sudo apt-get -qq update
-  - sudo apt-get -y install libgflags-dev libgit2-dev libjson0-dev libboost-system-dev libboost-filesystem-dev libsparsehash-dev
-script: make test
+- sudo apt-add-repository -y ppa:nelhage/livegrep
+- sudo apt-get -qq update
+- sudo apt-get -y install libgflags-dev libgit2-dev libjson0-dev libboost-system-dev
+  libboost-filesystem-dev libsparsehash-dev
+script: make test LDFLAGS=-static
 compiler:
-  - gcc
+- gcc
 cache: apt
+before_deploy:
+  - find . -name '*.o' -o -name '.*.d' -delete
+deploy:
+  provider: s3
+  access_key_id: AKIAIMAIBQGQF7NT5KCA
+  secret_access_key:
+    secure: bPY2NfAphjF8MrsKC/ETwnx+N1B5Z9E978dg0i6szHsfTclmAPLtqLNQfmekTJWlc+yKH4nMMjtVZ2JKZUC4ndfPjtu13UCtRWFFdbb2XXOkrLpiAnv39s7O/4WnoK0kv0FT4cpvZ4fza3TSXjn+mlQV5Hn98TDSVZmu89+OCSQ=
+  bucket: livegrep
+  skip_cleanup: true
+  region: us-west-2
+  upload-dir: builds
