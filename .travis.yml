@@ -17,5 +17,4 @@ deploy:
     secure: bPY2NfAphjF8MrsKC/ETwnx+N1B5Z9E978dg0i6szHsfTclmAPLtqLNQfmekTJWlc+yKH4nMMjtVZ2JKZUC4ndfPjtu13UCtRWFFdbb2XXOkrLpiAnv39s7O/4WnoK0kv0FT4cpvZ4fza3TSXjn+mlQV5Hn98TDSVZmu89+OCSQ=
   bucket: livegrep
   skip_cleanup: true
-  region: us-west-2
   upload-dir: builds
