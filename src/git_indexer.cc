@@ -22,6 +22,10 @@ git_indexer::git_indexer(code_searcher *cs,
                          const string& name,
                          json_object *metadata)
     : cs_(cs), repo_(0), name_(name), metadata_(metadata) {
+    int err;
+    if ((err = git_threads_init()) != 0)
+        die("git_threads_init: %s", giterr_last()->message);
+
     git_repository_open(&repo_, repopath.c_str());
     if (repo_ == NULL) {
         fprintf(stderr, "Unable to open repo: %s\n", repopath.c_str());
@@ -29,9 +33,6 @@ git_indexer::git_indexer(code_searcher *cs,
     }
     idx_repo_ = cs_->open_repo(name, metadata);
 
-    int err;
-    if ((err = git_threads_init()) != 0)
-        die("git_threads_init: %s", giterr_last()->message);
     git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_BLOB, 10*1024);
     git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_OFS_DELTA, 10*1024);
     git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_REF_DELTA, 10*1024);
