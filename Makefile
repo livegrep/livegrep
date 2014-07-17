@@ -47,7 +47,7 @@ endif
 # earlier on the command-line, it won't get test dependencies, even
 # with `-t`.
 godep: gopath FORCE
-	go get -t github.com/livegrep/livegrep/client \
+	go get -t -d github.com/livegrep/livegrep/client \
 			github.com/livegrep/livegrep/server \
 			github.com/livegrep/livegrep/livegrep \
 			github.com/livegrep/livegrep/lg
