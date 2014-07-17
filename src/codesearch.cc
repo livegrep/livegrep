@@ -876,76 +876,85 @@ void searcher::try_match(match_group *group,
 
     int lno = 1;
     auto it = sf->content->begin(cc_->alloc_);
-    for (;it != sf->content->end(cc_->alloc_); ++it) {
-        if (line.data() >= it->data() &&
-            line.data() <= it->data() + it->size()) {
-            lno += count(it->data(), line.data(), '\n');
-            break;
-        } else {
-            lno += count(it->data(), it->data() + it->size(), '\n') + 1;
-        }
-    }
 
-    if (it == sf->content->end(cc_->alloc_))
-        return;
-
-    match_context ctx;
-
-    ctx.file = sf;
-    ctx.lno  = lno;
-
-    auto mit = it;
-    StringPiece l = line;
-    int i = 0;
-
-    for (i = 0; i < kContextLines; i++) {
-        if (l.data() == it->data()) {
-            if (it == sf->content->begin(cc_->alloc_))
+    while (true) {
+        for (;it != sf->content->end(cc_->alloc_); ++it) {
+            if (line.data() >= it->data() &&
+                line.data() <= it->data() + it->size()) {
+                lno += count(it->data(), line.data(), '\n');
                 break;
-            --it;
-            l = StringPiece(it->data() + it->size() + 1, 0);
+            } else {
+                lno += count(it->data(), it->data() + it->size(), '\n') + 1;
+            }
         }
-        l = find_line(*it, StringPiece(l.data() - 1, 0));
-        ctx.context_before.push_back(l);
-    }
 
-    l = line;
-    it = mit;
-    for (i = 0; i < kContextLines; i++) {
-        if (l.data() + l.size() == it->data() + it->size()) {
-            if (++it == sf->content->end(cc_->alloc_))
-                break;
-            l = StringPiece(it->data() - 1, 0);
-        }
-        l = find_line(*it, StringPiece(l.data() + l.size() + 1, 0));
-        ctx.context_after.push_back(l);
-    }
+        debug(kDebugSearch, "found match on %s:%d", sf->paths[0].path.c_str(), lno);
 
-    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        if (!accept(*it))
-            continue;
-        auto git = group->matches.find(it->path);
-        if (git == group->matches.end()) {
-            ++matches_;
-            group->matches[it->path] = vector<match_context>();
-            group->matches[it->path].push_back(ctx);
-            group->matches[it->path].back().paths.push_back(*it);
-        } else {
-            bool found = false;
-            for (auto m = git->second.begin(); m != git->second.end(); ++m) {
-                if (m->file == sf ||
-                    (m->context_before == ctx.context_before &&
-                    m->context_after  == ctx.context_after)) {
-                    m->paths.push_back(*it);
-                    found = true;
+        if (it == sf->content->end(cc_->alloc_))
+            return;
+
+        match_context ctx;
+
+        ctx.file = sf;
+        ctx.lno  = lno;
+
+        // iterators for forward and backward context
+        auto fit = it, bit = it;
+        StringPiece l = line;
+        int i = 0;
+
+        for (i = 0; i < kContextLines; i++) {
+            if (l.data() == bit->data()) {
+                if (bit == sf->content->begin(cc_->alloc_))
                     break;
+                --bit;
+                l = StringPiece(it->data() + bit->size() + 1, 0);
+            }
+            l = find_line(*bit, StringPiece(l.data() - 1, 0));
+            ctx.context_before.push_back(l);
+        }
+
+        l = line;
+
+        for (i = 0; i < kContextLines; i++) {
+            if (l.data() + l.size() == fit->data() + fit->size()) {
+                if (++fit == sf->content->end(cc_->alloc_))
+                    break;
+                l = StringPiece(fit->data() - 1, 0);
+            }
+            l = find_line(*fit, StringPiece(l.data() + l.size() + 1, 0));
+            ctx.context_after.push_back(l);
+        }
+
+        for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
+            if (!accept(*it))
+                continue;
+            auto git = group->matches.find(it->path);
+            if (git == group->matches.end()) {
+                ++matches_;
+                group->matches[it->path] = vector<match_context>();
+                group->matches[it->path].push_back(ctx);
+                group->matches[it->path].back().paths.push_back(*it);
+            } else {
+                bool found = false;
+                for (auto m = git->second.begin(); m != git->second.end(); ++m) {
+                    if ((m->file == sf && m->lno == ctx.lno) ||
+                        (m->context_before == ctx.context_before &&
+                         m->context_after  == ctx.context_after)) {
+                        m->paths.push_back(*it);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    git->second.push_back(ctx);
+                    git->second.back().paths.push_back(*it);
                 }
             }
-            if (!found) {
-                git->second.push_back(ctx);
-                git->second.back().paths.push_back(*it);
-            }
         }
+
+        ++it;
+        ++lno;
     }
 }
 
