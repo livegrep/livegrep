@@ -261,7 +261,7 @@ protected:
     /*
      * Given a matching substring, its containing line, and a search
      * file, determine whether that file actually contains that line,
-     * and if so, post a match to the result queue.
+     * and if so, update the match_group with the match information.
      */
     void try_match(match_group *,
                    const StringPiece&,
@@ -969,8 +969,8 @@ code_searcher::search_thread::search_thread(code_searcher *cs)
 }
 
 void code_searcher::search_thread::match_internal(const query &q,
-                                                 const code_searcher::search_thread::base_cb& cb,
-                                                 match_stats *stats) {
+                                                  const code_searcher::search_thread::base_cb& cb,
+                                                  match_stats *stats) {
     match_result *m;
     int matches = 0;
 

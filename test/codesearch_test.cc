@@ -41,3 +41,33 @@ TEST_F(codesearch_test, IndexTest) {
 
     EXPECT_EQ(string(file1), content);
 }
+
+struct accumulate_matches {
+    vector<match_result> *results_;
+    accumulate_matches(vector<match_result> *results) : results_(results) {}
+    void operator()(const match_result *m) {
+        results_->push_back(*m);
+    }
+};
+
+TEST_F(codesearch_test, DuplicateLinesInFile) {
+    cs_.index_file(tree_, "/data/file1",
+                   "line 1\n"
+                   "line 1\n"
+                   "line 2\n");
+    cs_.finalize();
+
+    code_searcher::search_thread search(&cs_);
+    match_stats stats;
+    query q;
+    RE2::Options opts;
+    default_re2_options(opts);
+    q.line_pat.reset(new RE2("line 1", opts));
+    vector<match_result> results;
+    search.match(q, accumulate_matches(&results), &stats);
+
+    ASSERT_EQ(1, results.size());
+    ASSERT_EQ(2, results[0].context.size());
+    EXPECT_EQ(1, results[0].context[0].lno);
+    EXPECT_EQ(2, results[0].context[1].lno);
+}

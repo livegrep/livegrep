@@ -187,7 +187,7 @@ public:
                 cb_(m);
             }
         private:
-            T cb_;
+            mutable T cb_;
         };
 
         void match_internal(const query &q,
