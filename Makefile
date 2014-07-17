@@ -30,14 +30,14 @@ $(re2): FORCE
 
 test: FORCE godep test/codesearch_test
 	test/codesearch_test
-	go test github.com/nelhage/livegrep/client github.com/nelhage/livegrep/server
+	go test github.com/livegrep/livegrep/client github.com/livegrep/livegrep/server
 
 ifeq ($(GOPATH),)
 override GOPATH = $(CURDIR)/.gopath
 export GOPATH
 gopath: FORCE
-	mkdir -p $(GOPATH)/src/github.com/nelhage/
-	ln -nsf $(CURDIR) $(GOPATH)/src/github.com/nelhage/livegrep
+	mkdir -p $(GOPATH)/src/github.com/livegrep/
+	ln -nsf $(CURDIR) $(GOPATH)/src/github.com/livegrep/livegrep
 else
 gopath: FORCE
 endif
@@ -47,16 +47,16 @@ endif
 # earlier on the command-line, it won't get test dependencies, even
 # with `-t`.
 godep: gopath FORCE
-	go get -t github.com/nelhage/livegrep/client \
-			github.com/nelhage/livegrep/server \
-			github.com/nelhage/livegrep/livegrep \
-			github.com/nelhage/livegrep/lg
+	go get -t github.com/livegrep/livegrep/client \
+			github.com/livegrep/livegrep/server \
+			github.com/livegrep/livegrep/livegrep \
+			github.com/livegrep/livegrep/lg
 
 bin/lg: godep FORCE
-	go build -o bin/lg github.com/nelhage/livegrep/lg
+	go build -o bin/lg github.com/livegrep/livegrep/lg
 
 bin/livegrep: godep FORCE
-	go build -o bin/livegrep github.com/nelhage/livegrep/livegrep
+	go build -o bin/livegrep github.com/livegrep/livegrep/livegrep
 
 EXTRA_TARGETS := godep bin/lg bin/livegrep
 EXTRA_CLEAN := bin/ .gopath/
