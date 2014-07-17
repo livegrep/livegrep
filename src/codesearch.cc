@@ -908,7 +908,7 @@ void searcher::try_match(match_group *group,
                 if (bit == sf->content->begin(cc_->alloc_))
                     break;
                 --bit;
-                l = StringPiece(it->data() + bit->size() + 1, 0);
+                l = StringPiece(bit->data() + bit->size() + 1, 0);
             }
             l = find_line(*bit, StringPiece(l.data() - 1, 0));
             ctx.context_before.push_back(l);
