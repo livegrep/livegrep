@@ -2,11 +2,10 @@
 
 set -eux
 
-host="$1"
-tarball="$2"
+tarball="$1"
 
 basedir="${tarball%.*}"
 
-ssh "$host" tar -C /opt/services/livegrep -xzv < "$tarball"
-ssh "$host" ln -nsf "$basedir" /opt/services/livegrep/current
-ssh "$host" sudo svc -t /etc/service/livegrep*
+tar -C /opt/services/livegrep -xzv < "$tarball"
+ln -nsf "$basedir" /opt/services/livegrep/current
+sudo svc -t /etc/service/livegrep*
