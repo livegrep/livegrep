@@ -3,8 +3,8 @@ package server
 import (
 	"bytes"
 	"github.com/golang/glog"
-	"github.com/nelhage/livegrep/server/backend"
-	"github.com/nelhage/livegrep/server/config"
+	"github.com/livegrep/livegrep/server/backend"
+	"github.com/livegrep/livegrep/server/config"
 	"html/template"
 	"io"
 	"path"

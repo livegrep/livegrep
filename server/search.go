@@ -6,9 +6,9 @@ import (
 
 	"code.google.com/p/go.net/websocket"
 	"github.com/golang/glog"
-	"github.com/nelhage/livegrep/client"
-	"github.com/nelhage/livegrep/jsonframe"
-	"github.com/nelhage/livegrep/server/backend"
+	"github.com/livegrep/livegrep/client"
+	"github.com/livegrep/livegrep/jsonframe"
+	"github.com/livegrep/livegrep/server/backend"
 )
 
 type searchConnection struct {

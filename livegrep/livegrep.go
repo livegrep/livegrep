@@ -10,9 +10,9 @@ import (
 	"os"
 
 	"github.com/golang/glog"
-	"github.com/nelhage/livegrep/server"
-	"github.com/nelhage/livegrep/server/config"
-	"github.com/nelhage/livegrep/server/middleware"
+	"github.com/livegrep/livegrep/server"
+	"github.com/livegrep/livegrep/server/config"
+	"github.com/livegrep/livegrep/server/middleware"
 )
 
 var (

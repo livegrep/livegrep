@@ -2,8 +2,8 @@ package backend
 
 import (
 	"github.com/golang/glog"
-	"github.com/nelhage/livegrep/client"
-	"github.com/nelhage/livegrep/server/config"
+	"github.com/livegrep/livegrep/client"
+	"github.com/livegrep/livegrep/server/config"
 	"sync"
 	"time"
 )

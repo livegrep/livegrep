@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/nelhage/go.cli/config"
-	"github.com/nelhage/livegrep/server/api"
+	"github.com/livegrep/livegrep/server/api"
 	"net/http"
 	"net/url"
 	"os"
