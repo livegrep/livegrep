@@ -82,3 +82,10 @@ type Search interface {
 	Results() <-chan *Result
 	Close() (*Stats, error)
 }
+
+type Terminator interface {
+	Terminal() bool
+}
+
+func (r *ReplyError) Terminal() bool { return true }
+func (r *Stats) Terminal() bool      { return true }

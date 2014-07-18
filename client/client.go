@@ -22,18 +22,26 @@ func init() {
 
 type client struct {
 	conn    io.ReadWriteCloser
-	queries chan *search
+	queries chan request
 	errors  chan error
 	error   error
 	ready   chan *ServerInfo
 	info    *ServerInfo
 }
 
+type request struct {
+	request  jsonframe.Op
+	response chan jsonframe.Op
+	errors   chan error
+}
+
 type search struct {
-	query   *Query
+	q *Query
+	r *request
+
 	results chan *Result
-	errors  chan error
-	stats   chan *Stats
+	stats   *Stats
+	err     error
 }
 
 func Dial(network, address string) (Client, error) {
@@ -50,7 +58,7 @@ func New(conn io.ReadWriteCloser) (Client, error) {
 
 	cl := &client{
 		conn:    conn,
-		queries: make(chan *search),
+		queries: make(chan request),
 		errors:  make(chan error, 1),
 		ready:   make(chan *ServerInfo),
 	}
@@ -83,7 +91,10 @@ func (c *client) Err() error {
 }
 
 func (c *client) Query(q *Query) (Search, error) {
-	s := &search{q, make(chan *Result), make(chan error, 1), make(chan *Stats, 1)}
+	s := &search{q: q,
+		r:       &request{q, make(chan jsonframe.Op), make(chan error, 1)},
+		results: make(chan *Result),
+	}
 	select {
 	case e, ok := <-c.errors:
 		if !ok {
@@ -91,7 +102,8 @@ func (c *client) Query(q *Query) (Search, error) {
 		}
 		c.error = e
 		return nil, e
-	case c.queries <- s:
+	case c.queries <- *s.r:
+		go s.loop()
 		return s, nil
 	}
 }
@@ -127,31 +139,25 @@ func (c *client) loop() {
 		if !ok {
 			break
 		}
-		if e := ops.Encode(encoder, q.query); e != nil {
+		if e := ops.Encode(encoder, q.request); e != nil {
 			q.errors <- e
 			close(q.errors)
-			close(q.results)
-			close(q.stats)
-			continue
+			close(q.response)
+			return
 		}
 		done := false
-	ResultLoop:
+
 		for {
 			op, err = ops.Decode(decoder)
 			if err != nil {
 				break
 			}
-			switch concrete := op.(type) {
-			case *ReplyError:
-				q.errors <- QueryError{q.query, string(*concrete)}
+
+			q.response <- op
+
+			if _, ok := op.(Terminator); ok {
 				done = true
-				break ResultLoop
-			case *Stats:
-				q.stats <- concrete
-				done = true
-				break ResultLoop
-			case *Result:
-				q.results <- concrete
+				break
 			}
 		}
 
@@ -162,9 +168,27 @@ func (c *client) loop() {
 		}
 
 		close(q.errors)
-		close(q.results)
-		close(q.stats)
+		close(q.response)
 	}
+}
+
+func (s *search) loop() {
+	for o := range s.r.response {
+		switch concrete := o.(type) {
+		case *Result:
+			s.results <- concrete
+		case *ReplyError:
+			s.err = QueryError{s.q, string(*concrete)}
+		case *Stats:
+			s.stats = concrete
+		}
+	}
+
+	if s.err == nil {
+		s.err = <-s.r.errors
+	}
+
+	close(s.results)
 }
 
 func (s *search) Results() <-chan *Result {
@@ -174,5 +198,5 @@ func (s *search) Results() <-chan *Result {
 func (s *search) Close() (*Stats, error) {
 	for _ = range s.results {
 	}
-	return <-s.stats, <-s.errors
+	return s.stats, s.err
 }
