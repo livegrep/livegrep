@@ -31,6 +31,7 @@ bool operator<(const index_span& left, const index_span& right) {
 }
 
 DEFINE_bool(dump_spans, false, "Dump detailed index span information.");
+DEFINE_bool(dump_repos, false, "Dump repo names.");
 
 int inspect_index(int argc, char **argv) {
     if (argc != 1) {
@@ -135,6 +136,16 @@ int inspect_index(int argc, char **argv) {
     printf(" chunk_file data: %ld (%0.2fM)\n",
            chunk_file_size,
            chunk_file_size / double(1 << 20));
+
+    if (FLAGS_dump_repos) {
+        code_searcher cs;
+        cs.load_index(argv[0]);
+        auto repos = cs.repos();
+        printf("Repos:\n");
+        for (auto it = repos.begin(); it != repos.end(); ++it) {
+            printf(" %s\n", it->name.c_str());
+        }
+    }
 
     if (FLAGS_dump_spans) {
         printf("Span table:\n");
