@@ -13,7 +13,6 @@
 class code_searcher;
 class git_repository;
 class git_tree;
-struct indexed_repo;
 struct indexed_tree;
 struct json_object;
 
@@ -26,13 +25,11 @@ public:
     ~git_indexer();
     void walk(const std::string& ref);
 protected:
-    void walk_root(const std::string& ref, git_tree *tree);
-    void walk_tree(const std::string& ref,
-                   const std::string& pfx, git_tree *tree);
+    void walk_root(git_tree *tree);
+    void walk_tree(const std::string& pfx, git_tree *tree);
 
     code_searcher *cs_;
     git_repository *repo_;
-    const indexed_repo *idx_repo_;
     const indexed_tree *idx_tree_;
     std::string name_;
     json_object *metadata_;

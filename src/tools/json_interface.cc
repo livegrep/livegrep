@@ -28,19 +28,12 @@ json_object *to_json(int i) {
     return json_object_new_int(i);
 }
 
-static json_object *to_json(const indexed_path &path) {
+json_object *to_json(const indexed_tree &tree) {
     json_object *out = json_object_new_object();
-    json_object_object_add(out, "repo", to_json(path.tree->repo->name));
-    json_object_object_add(out, "ref",  to_json(path.tree->revision));
-    json_object_object_add(out, "path", to_json(path.path));
-    return out;
-}
-
-json_object *to_json(const indexed_repo &repo) {
-    json_object *out = json_object_new_object();
-    json_object_object_add(out, "name", to_json(repo.name));
-    if (repo.metadata)
-        json_object_object_add(out, "metadata", json_object_get(repo.metadata));
+    json_object_object_add(out, "name", to_json(tree.name));
+    json_object_object_add(out, "version", to_json(tree.version));
+    if (tree.metadata)
+        json_object_object_add(out, "metadata", json_object_get(tree.metadata));
     return out;
 }
 
@@ -52,7 +45,6 @@ json_object *to_json(vector<T> vec) {
     return out;
 }
 
-
 json_object *json_frame(const std::string op, json_object *body) {
     json_object *frame = json_object_new_object();
     json_object_object_add(frame, "opcode", to_json(op));
@@ -62,7 +54,7 @@ json_object *json_frame(const std::string op, json_object *body) {
 
 json_object *json_info(const code_searcher *cs) {
     json_object *obj = json_object_new_object();
-    json_object_object_add(obj, "repos", to_json(cs->repos()));
+    json_object_object_add(obj, "trees", to_json(cs->trees()));
     json_object_object_add(obj, "name", to_json(cs->name()));
     return obj;
 }
@@ -173,19 +165,15 @@ public:
 
     virtual void print_match(const match_result *m) {
         json_object *obj = json_object_new_object();
-        json_object *contexts = json_object_new_array();
-        for (auto ctx = m->context.begin();
-             ctx != m->context.end(); ++ctx) {
-            json_object *jctx = json_object_new_object();
-            json_object_object_add(jctx, "paths",  to_json(ctx->paths));
-            json_object_object_add(jctx, "lno", to_json(ctx->lno));
-            json_object_object_add(jctx, "context_before",
-                                   to_json(ctx->context_before));
-            json_object_object_add(jctx, "context_after",
-                                   to_json(ctx->context_after));
-            json_object_array_add(contexts, jctx);
-        }
-        json_object_object_add(obj, "contexts", contexts);
+
+        json_object_object_add(obj, "tree",  to_json(m->file->tree->name));
+        json_object_object_add(obj, "version",  to_json(m->file->tree->version));
+        json_object_object_add(obj, "path",  to_json(m->file->path));
+        json_object_object_add(obj, "lno", to_json(m->lno));
+        json_object_object_add(obj, "context_before",
+                               to_json(m->context_before));
+        json_object_object_add(obj, "context_after",
+                               to_json(m->context_after));
         json_object *bounds = json_object_new_array();
         json_object_array_add(bounds, to_json(m->matchleft));
         json_object_array_add(bounds, to_json(m->matchright));

@@ -15,19 +15,15 @@ namespace fs = boost::filesystem;
 fs_indexer::fs_indexer(code_searcher *cs,
                          const string& name)
     : cs_(cs), name_(name) {
+    tree_ = cs->open_tree(name, NULL, "");
 }
 
 fs_indexer::~fs_indexer() {
 }
 
 void fs_indexer::read_file(const string& path) {
-    // XXX This is a hack.
-    const string nullref = "None";
-    const indexed_repo *dummy_repo = cs_->open_repo(name_, NULL);
-    const indexed_tree *dummy_tree = cs_->open_revision(dummy_repo, nullref);
-
     ifstream in(path.c_str(), ios::in);
-    cs_->index_file(dummy_tree, path, StringPiece(static_cast<stringstream const&>(stringstream() << in.rdbuf()).str().c_str(), fs::file_size(path)));
+    cs_->index_file(tree_, path, StringPiece(static_cast<stringstream const&>(stringstream() << in.rdbuf()).str().c_str(), fs::file_size(path)));
 }
 
 void fs_indexer::walk(const string& path) {

@@ -19,9 +19,6 @@ struct index_header {
 
     uint64_t name_off;
 
-    uint32_t nrepos;
-    uint64_t repos_off;
-
     uint32_t ntrees;
     uint64_t refs_off;
 

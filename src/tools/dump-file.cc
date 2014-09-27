@@ -32,11 +32,9 @@ int dump_file(int argc, char **argv) {
     cs.load_index(index);
 
     for (auto it = cs.begin_files(); it != cs.end_files(); ++it) {
-        for (auto pit = (*it)->paths.begin(); pit != (*it)->paths.end(); ++pit) {
-            if (pit->path == path) {
-                dump_file(&cs, *it);
-                return 0;
-            }
+        if ((*it)->path == path) {
+            dump_file(&cs, *it);
+            return 0;
         }
     }
 

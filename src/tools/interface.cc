@@ -95,19 +95,14 @@ public:
     }
 
     virtual void print_match(const match_result *m) {
-        for (auto ctx = m->context.begin();
-             ctx != m->context.end(); ++ctx) {
-            for (auto it = ctx->paths.begin(); it != ctx->paths.end(); ++it) {
-                fprintf(out_,
-                        "%s:%s:%s:%d:%d-%d: %.*s\n",
-                        it->tree->repo->name.c_str(),
-                        it->tree->revision.c_str(),
-                        it->path.c_str(),
-                        ctx->lno,
-                        m->matchleft, m->matchright,
-                        m->line.size(), m->line.data());
-            }
-        }
+        fprintf(out_,
+                "%s:%s:%s:%d:%d-%d: %.*s\n",
+                m->file->tree->name.c_str(),
+                m->file->tree->version.c_str(),
+                m->file->path.c_str(),
+                m->lno,
+                m->matchleft, m->matchright,
+                m->line.size(), m->line.data());
     }
 
     virtual void print_error(const std::string &err) {

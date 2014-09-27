@@ -31,7 +31,7 @@ bool operator<(const index_span& left, const index_span& right) {
 }
 
 DEFINE_bool(dump_spans, false, "Dump detailed index span information.");
-DEFINE_bool(dump_repos, false, "Dump repo names.");
+DEFINE_bool(dump_trees, false, "Dump tree names.");
 
 int inspect_index(int argc, char **argv) {
     if (argc != 1) {
@@ -137,13 +137,16 @@ int inspect_index(int argc, char **argv) {
            chunk_file_size,
            chunk_file_size / double(1 << 20));
 
-    if (FLAGS_dump_repos) {
+    if (FLAGS_dump_trees) {
         code_searcher cs;
         cs.load_index(argv[0]);
-        auto repos = cs.repos();
-        printf("Repos:\n");
-        for (auto it = repos.begin(); it != repos.end(); ++it) {
-            printf(" %s\n", it->name.c_str());
+        auto trees = cs.trees();
+        printf("Trees:\n");
+        for (auto it = trees.begin(); it != trees.end(); ++it) {
+            printf(" %s%s%s\n",
+                   it->name.c_str(),
+                   it->version.empty() ? "" : ":",
+                   it->version.c_str());
         }
     }
 

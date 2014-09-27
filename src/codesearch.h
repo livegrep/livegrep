@@ -98,38 +98,24 @@ struct chunk;
 struct chunk_file;
 struct json_object;
 
-struct indexed_repo {
+struct indexed_tree {
     string name;
     json_object *metadata;
-};
-
-struct indexed_tree {
-    const indexed_repo *repo;
-    string revision;
-};
-
-struct indexed_path {
-    const indexed_tree *tree;
-    string path;
+    string version;
 };
 
 struct indexed_file {
-    vector<indexed_path> paths;
-    sha1_buf hash;
+    const indexed_tree *tree;
+    string path;
     file_contents *content;
     int no;
 };
 
-struct match_context {
+struct match_result {
     indexed_file *file;
-    vector<indexed_path> paths;
     int lno;
     vector<StringPiece> context_before;
     vector<StringPiece> context_after;
-};
-
-struct match_result {
-    vector<match_context> context;
     StringPiece line;
     int matchleft, matchright;
 };
@@ -150,8 +136,7 @@ public:
     void dump_index(const string& path);
     void load_index(const string& path);
 
-    const indexed_repo *open_repo(const string &name, json_object *meta);
-    const indexed_tree *open_revision(const indexed_repo *repo, const string& rev);
+    const indexed_tree *open_tree(const string &name, json_object *meta, const string& version);
     void index_file(const indexed_tree *tree,
                     const string& path,
                     StringPiece contents);
@@ -160,7 +145,7 @@ public:
     void set_alloc(chunk_allocator *alloc);
     chunk_allocator *alloc() { return alloc_; }
 
-    vector<indexed_repo> repos() const;
+    vector<indexed_tree> trees() const;
     string name() const {
         return name_;
     };
@@ -224,10 +209,8 @@ protected:
     string_hash lines_;
     chunk_allocator *alloc_;
     bool finalized_;
-    vector<indexed_repo*> repos_;
     vector<indexed_tree*> trees_;
     vector<indexed_file*> files_;
-    google::sparse_hash_map<sha1_buf, indexed_file*, hash_sha1> file_map_;
 
     friend class search_thread;
     friend class searcher;

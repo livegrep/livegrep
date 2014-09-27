@@ -11,6 +11,7 @@
 #include <string>
 
 class code_searcher;
+struct indexed_tree;
 
 class fs_indexer {
 public:
@@ -22,6 +23,7 @@ public:
 protected:
     code_searcher *cs_;
     std::string name_;
+    const indexed_tree *tree_;
 };
 
 #endif

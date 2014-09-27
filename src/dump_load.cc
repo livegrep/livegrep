@@ -237,12 +237,8 @@ chunk_allocator *make_dump_allocator(code_searcher *search, const string& path) 
 }
 
 void codesearch_index::dump_file(map<const indexed_tree*, int>& ids, indexed_file *sf) {
-    dump(&sf->hash);
-    dump_int32(sf->paths.size());
-    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        dump_int32(ids[it->tree]);
-        dump_string(it->path.c_str());
-    }
+    dump_int32(ids[sf->tree]);
+    dump_string(sf->path);
 }
 
 void codesearch_index::dump_chunk_file(chunk_file *cf) {
@@ -282,7 +278,6 @@ void codesearch_index::dump_chunk_data(chunk *chunk) {
 }
 
 void codesearch_index::dump_metadata() {
-    hdr_.nrepos   = cs_->repos_.size();
     hdr_.ntrees   = cs_->trees_.size();
     hdr_.nfiles   = cs_->files_.size();
     hdr_.nchunks  = cs_->alloc_->size();
@@ -291,24 +286,17 @@ void codesearch_index::dump_metadata() {
     hdr_.name_off = stream_.tellp();
     dump_string(cs_->name());
 
-    map<const indexed_repo*, int> repo_ids;
     map<const indexed_tree*, int> tree_ids;
 
-    hdr_.repos_off = stream_.tellp();
-    for (auto it = cs_->repos_.begin();
-         it != cs_->repos_.end(); ++it) {
+    hdr_.refs_off = stream_.tellp();
+    for (auto it = cs_->trees_.begin();
+         it != cs_->trees_.end(); ++it) {
         dump_string((*it)->name);
+        dump_string((*it)->version);
         if ((*it)->metadata)
             dump_string(json_object_to_json_string((*it)->metadata));
         else
             dump_string("");
-        repo_ids[*it] = it - cs_->repos_.begin();
-    }
-    hdr_.refs_off = stream_.tellp();
-    for (auto it = cs_->trees_.begin();
-         it != cs_->trees_.end(); ++it) {
-        dump_int32(repo_ids[(*it)->repo]);
-        dump_string((*it)->revision);
         tree_ids[*it] = it - cs_->trees_.begin();
     }
     hdr_.files_off = stream_.tellp();
@@ -395,12 +383,8 @@ chunk *load_allocator::alloc_chunk() {
 
 indexed_file *load_allocator::load_file(code_searcher *cs) {
     indexed_file *sf = new indexed_file;
-    memcpy(&sf->hash.hash, consume<sha1_buf>(), sizeof(sf->hash.hash));
-    sf->paths.resize(load_int32());
-    for (auto it = sf->paths.begin(); it != sf->paths.end(); ++it) {
-        it->tree = cs->trees_[load_int32()];
-        it->path = load_string();
-    }
+    sf->tree = cs->trees_[load_int32()];
+    sf->path = load_string();
     sf->no = cs->files_.size();
     return sf;
 }
@@ -437,26 +421,20 @@ void load_allocator::load(code_searcher *cs) {
 
     set_chunk_size(hdr_->chunk_size);
 
-    p_ = ptr<uint8_t>(hdr_->repos_off);
-    for (int i = 0; i < hdr_->nrepos; i++) {
-        indexed_repo *repo = new indexed_repo;
-        repo->name = load_string();
-        string metadata = load_string();
-        if (metadata.size() == 0) {
-            repo->metadata = NULL;
-        } else {
-            json_object *js = json_tokener_parse(metadata.c_str());
-            assert(!is_error(js));
-            repo->metadata = js;
-        }
-        cs->repos_.push_back(repo);
-    }
-
     p_ = ptr<uint8_t>(hdr_->refs_off);
     for (int i = 0; i < hdr_->ntrees; i++) {
         indexed_tree *tree = new indexed_tree;
-        tree->repo = cs->repos_[load_int32()];
-        tree->revision = load_string();
+        tree->name = load_string();
+        tree->version = load_string();
+        string metadata = load_string();
+        if (metadata.size() == 0) {
+            tree->metadata = NULL;
+        } else {
+            json_object *js = json_tokener_parse(metadata.c_str());
+            assert(!is_error(js));
+            tree->metadata = js;
+        }
+
         cs->trees_.push_back(tree);
     }
 
