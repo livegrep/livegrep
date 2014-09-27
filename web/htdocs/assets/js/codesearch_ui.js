@@ -415,9 +415,11 @@ var CodesearchUI = function() {
       CodesearchUI.keypress();
     },
     keypress: function() {
-      setTimeout(CodesearchUI.newsearch, 0);
+      CodesearchUI.clear_timer();
+      CodesearchUI.timer = setTimeout(CodesearchUI.newsearch, 100);
     },
     newsearch: function() {
+      CodesearchUI.clear_timer();
       var search = {
         line: CodesearchUI.input.val(),
         file: CodesearchUI.input_file.val(),
@@ -428,6 +430,12 @@ var CodesearchUI = function() {
         search.backend = CodesearchUI.input_backend.val();
       if (CodesearchUI.state.dispatch(search))
         Codesearch.new_search(search);
+    },
+    clear_timer: function() {
+      if (CodesearchUI.timer) {
+        clearTimeout(CodesearchUI.timer);
+        CodesearchUI.timer = null;
+      }
     },
     error: function(search, error) {
       CodesearchUI.state.handle_error(search, error);
