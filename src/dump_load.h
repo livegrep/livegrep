@@ -9,7 +9,7 @@
 #define CODESEARCH_DUMP_LOAD_H
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 12;
+const uint32_t kIndexVersion = 13;
 const uint32_t kPageSize     = (1 << 12);
 
 struct index_header {
