@@ -871,6 +871,9 @@ void searcher::try_match(const StringPiece& line,
         }
 
         queue_.push(m);
+        ++matches_;
+        if (exit_early())
+            break;
 
         ++it;
         ++lno;
