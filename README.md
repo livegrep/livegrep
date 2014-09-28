@@ -75,7 +75,7 @@ You can also provide `-listen proto://host:port` to make `codesearch`
 start a server and listen on a port for incoming connections. This is
 needed to run `codesearch` as a backend for the `livegrep` frontend.
 
-[index.json]: https://github.com/nelhage/livegrep/blob/master/doc/examples/livegrep/index.json
+[index.json]: https://github.com/livegrep/livegrep/blob/master/doc/examples/livegrep/index.json
 
 ## `livegrep`
 
@@ -91,8 +91,8 @@ Livegrep uses [glog][glog] for logging. You can consult its
 documentation for the full set of logging options. During development,
 `-logtostderr` will send all logs to standard out for easy viewing.
 
-[server.json]: https://github.com/nelhage/livegrep/blob/master/doc/examples/livegrep/server.json
-[config.go]: https://github.com/nelhage/livegrep/blob/master/server/config/config.go
+[server.json]: https://github.com/livegrep/livegrep/blob/master/doc/examples/livegrep/server.json
+[config.go]: https://github.com/livegrep/livegrep/blob/master/server/config/config.go
 [glog]: https://github.com/golang/glog
 
 ## Example

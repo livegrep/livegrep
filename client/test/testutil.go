@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/nelhage/livegrep/client"
+	"github.com/livegrep/livegrep/client"
 )
 
 type childClient struct {

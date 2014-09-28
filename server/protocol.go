@@ -2,8 +2,8 @@ package server
 
 import (
 	"code.google.com/p/go.net/websocket"
-	"github.com/nelhage/livegrep/client"
-	"github.com/nelhage/livegrep/jsonframe"
+	"github.com/livegrep/livegrep/client"
+	"github.com/livegrep/livegrep/jsonframe"
 )
 
 type OpError struct {

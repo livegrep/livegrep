@@ -1,6 +1,6 @@
 package api
 
-import "github.com/nelhage/livegrep/client"
+import "github.com/livegrep/livegrep/client"
 
 type InnerError struct {
 	Code    string `json:"code"`

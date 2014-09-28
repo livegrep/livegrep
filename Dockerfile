@@ -11,10 +11,10 @@ RUN apt-get -y install libboost-filesystem-dev libboost-system-dev
 RUN apt-get -y install golang
 RUN apt-get -y install mercurial git
 
-RUN git clone https://github.com/nelhage/livegrep /livegrep
+RUN git clone https://github.com/livegrep/livegrep /livegrep
 WORKDIR /livegrep
 RUN make -j4 all
 RUN mkdir -p gopath/src/github.com/nelhage
-RUN ln -s /livegrep gopath/src/github.com/nelhage/livegrep
-RUN sh -c 'env GOPATH=/livegrep/gopath go get github.com/nelhage/livegrep/livegrep'
+RUN ln -s /livegrep gopath/src/github.com/livegrep/livegrep
+RUN sh -c 'env GOPATH=/livegrep/gopath go get github.com/livegrep/livegrep/livegrep'
 

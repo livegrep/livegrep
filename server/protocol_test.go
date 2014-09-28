@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"code.google.com/p/go.net/websocket"
-	"github.com/nelhage/livegrep/jsonframe"
-	"github.com/nelhage/livegrep/server"
+	"github.com/livegrep/livegrep/jsonframe"
+	"github.com/livegrep/livegrep/server"
 	. "gopkg.in/check.v1"
 )
 

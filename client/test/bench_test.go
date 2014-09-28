@@ -4,7 +4,7 @@ import (
 	"flag"
 	"testing"
 
-	"github.com/nelhage/livegrep/client"
+	"github.com/livegrep/livegrep/client"
 )
 
 var index = flag.String("index", "", "Path to an index to run benchmarks against")

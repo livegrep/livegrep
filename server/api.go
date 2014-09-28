@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
-	"github.com/nelhage/livegrep/client"
-	"github.com/nelhage/livegrep/server/api"
-	"github.com/nelhage/livegrep/server/backend"
+	"github.com/livegrep/livegrep/client"
+	"github.com/livegrep/livegrep/server/api"
+	"github.com/livegrep/livegrep/server/backend"
 	"net/http"
 )
 

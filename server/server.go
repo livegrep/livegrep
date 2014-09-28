@@ -7,8 +7,8 @@ import (
 
 	"code.google.com/p/go.net/websocket"
 	"github.com/bmizerany/pat"
-	"github.com/nelhage/livegrep/server/backend"
-	"github.com/nelhage/livegrep/server/config"
+	"github.com/livegrep/livegrep/server/backend"
+	"github.com/livegrep/livegrep/server/config"
 )
 
 type server struct {

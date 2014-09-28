@@ -7,7 +7,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/nelhage/livegrep/jsonframe"
+	"github.com/livegrep/livegrep/jsonframe"
 )
 
 var ops jsonframe.Marshaler
