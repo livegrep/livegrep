@@ -87,13 +87,8 @@ positional argument; See
 [server/config/config.go][config.go] for documentation of available
 options.
 
-Livegrep uses [glog][glog] for logging. You can consult its
-documentation for the full set of logging options. During development,
-`-logtostderr` will send all logs to standard out for easy viewing.
-
 [server.json]: https://github.com/livegrep/livegrep/blob/master/doc/examples/livegrep/server.json
 [config.go]: https://github.com/livegrep/livegrep/blob/master/server/config/config.go
-[glog]: https://github.com/golang/glog
 
 ## Example
 

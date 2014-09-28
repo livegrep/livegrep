@@ -2,12 +2,13 @@ package server
 
 import (
 	"bytes"
-	"github.com/golang/glog"
-	"github.com/livegrep/livegrep/server/backend"
-	"github.com/livegrep/livegrep/server/config"
 	"html/template"
 	"io"
+	"log"
 	"path"
+
+	"github.com/livegrep/livegrep/server/backend"
+	"github.com/livegrep/livegrep/server/config"
 )
 
 type templates struct {
@@ -53,6 +54,7 @@ func (s *server) executeTemplate(t *template.Template, context interface{}) ([]b
 func (s *server) renderPage(w io.Writer, p *page) {
 	p.Config = s.config
 	if e := s.t.layout.Execute(w, p); e != nil {
-		glog.Errorf("While rendering: %s", e.Error())
+		log.Printf("Error rendering page=%q error=%q",
+			p.Title, e.Error())
 	}
 }

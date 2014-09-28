@@ -2,10 +2,10 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"code.google.com/p/go.net/websocket"
-	"github.com/golang/glog"
 	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/jsonframe"
 	"github.com/livegrep/livegrep/server/backend"
@@ -32,7 +32,7 @@ func (s *searchConnection) recvLoop() {
 	var op jsonframe.Op
 	for {
 		if err := OpCodec.Receive(s.ws, &op); err != nil {
-			glog.V(1).Infof("Error in receive: %s\n", err.Error())
+			log.Printf("Error in receive: %s\n", err.Error())
 			if _, ok := err.(*ProtocolError); ok {
 				// TODO: is this a good idea?
 				// s.outgoing <- &OpError{err.Error()}
@@ -42,7 +42,6 @@ func (s *searchConnection) recvLoop() {
 				break
 			}
 		}
-		glog.V(2).Infof("Incoming: %s", asJSON{op})
 		s.incoming <- op
 		if s.shutdown {
 			break
@@ -53,7 +52,6 @@ func (s *searchConnection) recvLoop() {
 
 func (s *searchConnection) sendLoop() {
 	for op := range s.outgoing {
-		glog.V(2).Infof("Outgoing: %s", asJSON{op})
 		OpCodec.Send(s.ws, op)
 	}
 }
@@ -98,7 +96,7 @@ SearchLoop:
 			}
 
 		case e := <-s.errors:
-			glog.Infof("error reading from client remote=%s error=%s\n",
+			log.Printf("error reading from client remote=%q error=%q\n",
 				s.ws.Request().RemoteAddr,
 				e.Error())
 			break SearchLoop
@@ -112,7 +110,7 @@ SearchLoop:
 				s.backend = nil
 				if err == nil {
 					duration := time.Since(s.q.t)
-					glog.Infof("search done remote=%s id=%d query=%s millis=%d",
+					log.Printf("search done remote=%q id=%d query=%s millis=%d",
 						s.ws.Request().RemoteAddr,
 						s.q.last.Id,
 						asJSON{query(s.q.last)},
@@ -121,7 +119,7 @@ SearchLoop:
 				} else if _, ok := err.(client.QueryError); ok {
 					s.outgoing <- &OpQueryError{s.q.last.Id, err.Error()}
 				} else {
-					glog.Infof("internal error doing search remote=%s id=%d error=%s",
+					log.Printf("internal error doing search remote=%q id=%d error=%s",
 						s.ws.Request().RemoteAddr,
 						s.q.last.Id, asJSON{err.Error()})
 					if s.q.next == nil {
@@ -136,7 +134,7 @@ SearchLoop:
 		case s.client = <-clients:
 			clients = nil
 			q := query(s.q.next)
-			glog.Infof("dispatching remote=%s id=%d query=%s",
+			log.Printf("dispatching remote=%q id=%d query=%s",
 				s.ws.Request().RemoteAddr,
 				s.q.next.Id,
 				asJSON{q})

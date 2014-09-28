@@ -1,10 +1,10 @@
 package backend
 
 import (
+	"log"
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/server/config"
 )
@@ -66,11 +66,11 @@ func (bk *Backend) connectLoop() {
 		for {
 			cl, err := client.Dial("tcp", bk.Addr)
 			if err != nil {
-				glog.Infof("Connection error: %s", err.Error())
+				log.Printf("Connection error: %s", err.Error())
 				time.Sleep(5 * time.Second)
 				continue
 			}
-			glog.Infof("Connected, backend=%s addr=%s",
+			log.Printf("Connected, backend=%s addr=%s",
 				bk.Id, bk.Addr)
 
 			if info := cl.Info(); info != nil {

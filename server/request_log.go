@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/golang/glog"
+	"log"
 	"net/http"
 )
 
@@ -15,6 +15,6 @@ func (s *requestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *requestLogger) logRequest(r *http.Request) {
-	glog.Infof("request: remote=%s method=%s url=%s",
+	log.Printf("request: remote=%q method=%q url=%q",
 		r.RemoteAddr, r.Method, r.URL)
 }

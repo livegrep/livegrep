@@ -3,18 +3,19 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
+	"log"
+	"net/http"
+
 	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/server/api"
 	"github.com/livegrep/livegrep/server/backend"
-	"net/http"
 )
 
 func replyJSON(w http.ResponseWriter, status int, obj interface{}) {
 	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(obj); err != nil {
-		glog.Warningf("writing http response, data=%s err=%s",
+		log.Printf("writing http response, data=%s err=%s",
 			asJSON{obj},
 			err.Error())
 	}

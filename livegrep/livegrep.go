@@ -5,11 +5,11 @@ import (
 	_ "expvar"
 	"flag"
 	"io/ioutil"
+	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 
-	"github.com/golang/glog"
 	"github.com/livegrep/livegrep/server"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/middleware"
@@ -18,6 +18,7 @@ import (
 var (
 	serveAddr = flag.String("listen", "127.0.0.1:8910", "The address to listen on")
 	docRoot   = flag.String("docroot", "./web", "The livegrep document root (web/ directory)")
+	_         = flag.Bool("logtostderr", false, "[DEPRECATED] compatibility with glog")
 )
 
 // var backendAddr *string = flag.String("connect", "localhost:9999", "The address to connect to")
@@ -26,12 +27,12 @@ func main() {
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
-		glog.Fatalf("Usage: %s CONFIG.json", os.Args[0])
+		log.Fatalf("Usage: %s CONFIG.json", os.Args[0])
 	}
 
 	data, err := ioutil.ReadFile(flag.Arg(0))
 	if err != nil {
-		glog.Fatalf(err.Error())
+		log.Fatalf(err.Error())
 	}
 
 	cfg := &config.Config{
@@ -39,7 +40,7 @@ func main() {
 		Listen:  *serveAddr,
 	}
 	if err = json.Unmarshal(data, &cfg); err != nil {
-		glog.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
+		log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 	}
 
 	handler, err := server.New(cfg)
@@ -53,6 +54,6 @@ func main() {
 
 	http.DefaultServeMux.Handle("/", handler)
 
-	glog.Infof("Listening on %s.", cfg.Listen)
-	glog.Fatal(http.ListenAndServe(cfg.Listen, nil))
+	log.Printf("Listening on %s.", cfg.Listen)
+	log.Fatal(http.ListenAndServe(cfg.Listen, nil))
 }
