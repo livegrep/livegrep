@@ -170,24 +170,3 @@ body {
 #resultarea {
     display: none;
 }
-
-.contexts {
-    font-size: 90%;
-    padding-top: 5px;
-}
-
-.contexts ul {
-    display: inline;
-    padding-left: 0;
-}
-
-.contexts li {
-    display: inline;
-    list-style: none;
-    margin: 0em 1em;
-    padding: 3px;
-}
-
-.contexts li.selected {
-    border-bottom: 1px solid black;
-}

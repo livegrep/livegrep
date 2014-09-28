@@ -41,20 +41,10 @@ function shorten(ref) {
 
 var Match = Backbone.Model.extend({
   initialize: function() {
-    this.get('contexts').forEach(function (ctx) {
-        ctx.paths.sort(function (a,b) {return vercmp(a.ref, b.ref);})
-    });
-    this.get('contexts').sort(function (a,b) {
-        return vercmp(a.paths[0].ref, b.paths[0].ref);
-    });
-    this.set({
-               context: this.get('contexts')[0],
-               path: this.get('contexts')[0].paths[0]
-             });
   },
   url: function() {
-    var name = this.get('path').repo;
-    var ref = this.get('path').ref;
+    var name = this.get('tree');
+    var ref = this.get('version');
 
     var repo_map;
     if (this.get('backend'))
@@ -64,8 +54,8 @@ var Match = Backbone.Model.extend({
     if (!repo_map[name])
       return null;
     return "https://github.com/" + repo_map[name] +
-      "/blob/" + shorten(ref) + "/" + this.get('path').path +
-      "#L" + this.get('context').lno;
+      "/blob/" + shorten(ref) + "/" + this.get('path') +
+      "#L" + this.get('lno');
   }
 });
 
@@ -82,19 +72,19 @@ var MatchView = Backbone.View.extend({
   },
   _render: function() {
     var h = new HTMLFactory();
-    var ctx = this.model.get('context');
     var i;
     var ctx_before = [], ctx_after = [];
-    for (i = 0; i < ctx.context_before.length; i ++) {
+    var lno = this.model.get('lno');
+    for (i = 0; i < this.model.get('context_before').length; i ++) {
       ctx_before.unshift(h.div([
-                                 h.span({cls: 'lno'}, [ctx.lno - i - 1, ":"]),
-                                 ctx.context_before[i]
+                                 h.span({cls: 'lno'}, [lno - i - 1, ":"]),
+                                 this.model.get('context_before')[i]
                                ]));
     }
-    for (i = 0; i < ctx.context_after.length; i ++) {
+    for (i = 0; i < this.model.get('context_after').length; i ++) {
       ctx_after.push(h.div([
-                             h.span({cls: 'lno'}, [ctx.lno + i + 1, ":"]),
-                             ctx.context_after[i]
+                             h.span({cls: 'lno'}, [lno + i + 1, ":"]),
+                             this.model.get('context_after')[i]
                            ]));
     }
     var line = this.model.get('line');
@@ -103,12 +93,13 @@ var MatchView = Backbone.View.extend({
                   line.substring(bounds[0], bounds[1]),
                   line.substring(bounds[1])];
 
-    var path = this.model.get('path');
+    var tree = this.model.get('tree');
+    var version = this.model.get('version');
     var repoLabel = [
-      path.repo ? (path.repo + ":") : "",
-      shorten(path.ref),
+      tree ? (tree + ":") : "",
+      shorten(version),
       ":",
-      path.path];
+      this.model.get('path')];
     var url = this.model.url();
     if (url !== null) {
       repoLabel = [ h.a({href: this.model.url()}, repoLabel) ];
@@ -119,37 +110,12 @@ var MatchView = Backbone.View.extend({
         h.div({cls: 'contents'}, [
                 ctx_before,
                 h.div({cls: 'matchline'}, [
-                  h.span({cls: 'lno'}, [ctx.lno + ":"]),
+                  h.span({cls: 'lno'}, [lno + ":"]),
                   pieces[0],
                   h.span({cls: 'matchstr'}, [pieces[1]]),
                   pieces[2]
                 ]),
-                ctx_after]),
-        this.render_contexts(h)]);
-  },
-  render_contexts: function(h) {
-    var self = this;
-    if (this.model.get('contexts').length == 1 &&
-        this.model.get('context').paths.length == 1)
-      return [];
-    return h.div({cls: 'contexts'}, [
-          h.span({cls: 'label'}, ["Also in:"]),
-          h.ul({},
-          this.model.get('contexts').map(function (ctx) {
-            return h.li(ctx === self.model.get('context') ? {cls: 'selected'} : {}, [
-                h.a({href: "#",
-                     click: _.bind(self.switch_context, self, ctx)}, [
-                shorten(ctx.paths[0].ref)]),
-                ctx.paths.length > 1 ? (" +" + (ctx.paths.length - 1) + " identical") : [],
-            ]);
-          }))])
-  },
-  switch_context: function(ctx) {
-    this.model.set({
-                     context: ctx,
-                     path: ctx.paths[0]
-                   });
-    return false;
+                ctx_after])]);
   }
 });
 
@@ -249,12 +215,9 @@ var SearchState = Backbone.Model.extend({
     if (search < this.get('displaying'))
       return false;
     this.set('displaying', search);
-    this.matches.add({
-                       backend: this.search_map[search].backend,
-                       line: match.line,
-                       bounds: match.bounds,
-                       contexts: match.contexts
-                     });
+    var m = _.clone(match);
+    m.backend = this.search_map[search].backend;
+    this.matches.add(m);
   },
   handle_done: function (search, time, why) {
     this.set('displaying', search);

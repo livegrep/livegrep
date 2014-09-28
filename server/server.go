@@ -39,9 +39,9 @@ func (s *server) ServeSearch(w http.ResponseWriter, r *http.Request) {
 	for _, bk := range s.bk {
 		backends = append(backends, bk)
 		bk.I.Lock()
-		m := make(map[string]string, len(bk.I.Repos))
+		m := make(map[string]string, len(bk.I.Trees))
 		gh[bk.Id] = m
-		for _, r := range bk.I.Repos {
+		for _, r := range bk.I.Trees {
 			if r.Github != "" {
 				m[r.Name] = r.Github
 			}

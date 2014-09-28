@@ -21,19 +21,14 @@ func (q QueryError) Error() string {
 }
 
 type Result struct {
-	Contexts []struct {
-		Paths []struct {
-			Repo string `json:"repo"`
-			Ref  string `json:"ref"`
-			Path string `json:"path"`
-		} `json:"paths"`
-		LineNumber    int      `json:"lno"`
-		ContextBefore []string `json:"context_before"`
-		ContextAfter  []string `json:"context_after"`
-	} `json:"contexts"`
-
-	Bounds [2]int `json:"bounds"`
-	Line   string `json:"line"`
+	Tree          string   `json:"tree"`
+	Version       string   `json:"version"`
+	Path          string   `json:"path"`
+	LineNumber    int      `json:"lno"`
+	ContextBefore []string `json:"context_before"`
+	ContextAfter  []string `json:"context_after"`
+	Bounds        [2]int   `json:"bounds"`
+	Line          string   `json:"line"`
 }
 
 func (r *Result) Opcode() string {
@@ -55,10 +50,11 @@ func (s *Stats) Opcode() string {
 
 type ServerInfo struct {
 	Name  string `json:"name"`
-	Repos []struct {
+	Trees []struct {
 		Name     string                 `json:"name"`
+		Version  string                 `json:"version"`
 		Metadata map[string]interface{} `json:"metadata"`
-	} `json:"repos"`
+	} `json:"trees"`
 }
 
 func (s *ServerInfo) Opcode() string {

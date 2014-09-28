@@ -1,25 +1,27 @@
 package backend
 
 import (
+	"sync"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/nelhage/livegrep/client"
 	"github.com/nelhage/livegrep/server/config"
-	"sync"
-	"time"
 )
 
 const (
 	PoolSize = 8
 )
 
-type Repo struct {
-	Name   string
-	Github string
+type Tree struct {
+	Name    string
+	Version string
+	Github  string
 }
 
 type I struct {
 	Name  string
-	Repos []Repo
+	Trees []Tree
 	sync.Mutex
 }
 
@@ -40,7 +42,7 @@ func New(cfg *config.Backend) *Backend {
 		pending: make(chan struct{}, PoolSize),
 	}
 	for _, r := range cfg.Repos {
-		bk.I.Repos = append(bk.I.Repos, Repo{Name: r.Name, Github: r.Github})
+		bk.I.Trees = append(bk.I.Trees, Tree{Name: r.Name, Version: r.Refs[0], Github: r.Github})
 	}
 	for i := 0; i < PoolSize; i++ {
 		bk.pending <- struct{}{}
@@ -87,16 +89,16 @@ func (bk *Backend) refresh(info *client.ServerInfo) {
 	if info.Name != "" {
 		bk.I.Name = info.Name
 	}
-	if len(info.Repos) > 0 {
-		bk.I.Repos = nil
-		for _, r := range info.Repos {
+	if len(info.Trees) > 0 {
+		bk.I.Trees = nil
+		for _, r := range info.Trees {
 			gh := ""
 			v, ok := r.Metadata["github"]
 			if ok {
 				gh = v.(string)
 			}
-			bk.I.Repos = append(bk.I.Repos,
-				Repo{r.Name, gh})
+			bk.I.Trees = append(bk.I.Trees,
+				Tree{r.Name, r.Version, gh})
 		}
 	}
 }
