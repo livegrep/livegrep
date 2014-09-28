@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/nelhage/go.cli/config"
-	"github.com/nelhage/livegrep/server/api"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/nelhage/go.cli/config"
+	"github.com/nelhage/livegrep/server/api"
 )
 
 var (
@@ -74,12 +75,13 @@ func main() {
 	}
 
 	for _, r := range reply.Results {
-		ctx := r.Contexts[0]
-		p := ctx.Paths[0]
-		if p.Repo != "" {
-			fmt.Printf("%s:", p.Repo)
+		if r.Tree != "" {
+			fmt.Printf("%s:", r.Tree)
 		}
-		fmt.Printf("%s:%s:%d: ", p.Ref, p.Path, ctx.LineNumber)
+		if r.Version != "" {
+			fmt.Printf("%s:", r.Version)
+		}
+		fmt.Printf("%s:%d: ", r.Path, r.LineNumber)
 		fmt.Printf("%s\n", r.Line)
 	}
 }
