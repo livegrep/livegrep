@@ -8,5 +8,6 @@
     ],
     "feedback": {
         "mailto": "nelhage@nelhage.com"
-    }
+    },
+    "listen": "0.0.0.0:8910"
 }
