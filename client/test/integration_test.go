@@ -173,4 +173,6 @@ func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
 
 func (i *IntegrationSuite) TestCrosscheck(c *check.C) {
 	i.crosscheck(c, `hello`)
+	i.crosscheck(c, "\t{10}")
+	i.crosscheck(c, `^(\s.*\S)?printk\s*\(`)
 }
