@@ -62,7 +62,7 @@ func (c *connection) Close() error {
 	return nil
 }
 
-const Codesearch = "../../codesearch"
+const Codesearch = "../../bin/codesearch"
 
 func NewClient(args ...string) (client.Client, error) {
 	cl := &childClient{wait: make(chan error)}

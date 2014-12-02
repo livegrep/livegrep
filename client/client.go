@@ -113,8 +113,9 @@ func (c *client) loop() {
 			return
 		}
 		if info, ok := op.(*ServerInfo); !ok {
-			c.errors <- fmt.Errorf("Expected op: '%s', got: %s",
-				new(ServerInfo).Opcode(), op.Opcode())
+			bytes, _ := ops.Marshal(op)
+			c.errors <- fmt.Errorf("Expected op: '%s', got: %s (%s)",
+				new(ServerInfo).Opcode(), op.Opcode(), bytes)
 			return
 		} else {
 			select {
