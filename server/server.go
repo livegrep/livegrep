@@ -5,9 +5,13 @@ import (
 	"net/http"
 	"path"
 
+	"code.google.com/p/go.net/context"
+
 	"github.com/bmizerany/pat"
 	"github.com/livegrep/livegrep/server/backend"
 	"github.com/livegrep/livegrep/server/config"
+	"github.com/livegrep/livegrep/server/log"
+	"github.com/livegrep/livegrep/server/reqid"
 )
 
 type server struct {
@@ -28,11 +32,11 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.inner.ServeHTTP(w, r)
 }
 
-func (s *server) ServeRoot(w http.ResponseWriter, r *http.Request) {
+func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/search", 303)
 }
 
-func (s *server) ServeSearch(w http.ResponseWriter, r *http.Request) {
+func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	gh := make(map[string]map[string]string, len(s.bk))
 	backends := make([]*backend.Backend, 0, len(s.bk))
 	for _, bk := range s.bk {
@@ -47,11 +51,11 @@ func (s *server) ServeSearch(w http.ResponseWriter, r *http.Request) {
 		}
 		bk.I.Unlock()
 	}
-	ctx := &searchContext{
+	data := &searchContext{
 		GithubRepos: gh,
 		Backends:    backends,
 	}
-	body, err := s.executeTemplate(s.t.searchPage, ctx)
+	body, err := s.executeTemplate(s.t.searchPage, data)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -63,7 +67,7 @@ func (s *server) ServeSearch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *server) ServeAbout(w http.ResponseWriter, r *http.Request) {
+func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	body, err := s.executeTemplate(s.t.aboutPage, nil)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -88,23 +92,37 @@ func (s *server) requestProtocol(r *http.Request) string {
 	return "http"
 }
 
-func (s *server) ServeOpensearch(w http.ResponseWriter, r *http.Request) {
-	ctx := &opensearchContext{}
-	ctx.BaseURL += s.requestProtocol(r) + "://" + r.Host + "/"
+func (s *server) ServeOpensearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	data := &opensearchContext{}
+	data.BaseURL += s.requestProtocol(r) + "://" + r.Host + "/"
 
 	for _, bk := range s.bk {
 		if bk.I.Name != "" {
-			ctx.BackendName = bk.I.Name
+			data.BackendName = bk.I.Name
 			break
 		}
 	}
 
-	body, err := s.executeTemplate(s.t.opensearchXML, ctx)
+	body, err := s.executeTemplate(s.t.opensearchXML, data)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.Write(body)
+}
+
+type handler func(c context.Context, w http.ResponseWriter, r *http.Request)
+
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	ctx = reqid.NewContext(ctx, reqid.New())
+	log.Printf(ctx, "http request: remote=%q method=%q url=%q",
+		r.RemoteAddr, r.Method, r.URL)
+	h(ctx, w, r)
+}
+
+func (s *server) Handler(f func(c context.Context, w http.ResponseWriter, r *http.Request)) http.Handler {
+	return handler(f)
 }
 
 func New(cfg *config.Config) (http.Handler, error) {
@@ -116,20 +134,20 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	m := pat.New()
-	m.Add("GET", "/", http.HandlerFunc(srv.ServeRoot))
-	m.Add("GET", "/search/", http.HandlerFunc(srv.ServeSearch))
-	m.Add("GET", "/search/:backend", http.HandlerFunc(srv.ServeSearch))
-	m.Add("GET", "/about", http.HandlerFunc(srv.ServeAbout))
-	m.Add("GET", "/opensearch.xml", http.HandlerFunc(srv.ServeOpensearch))
+	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
+	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
+	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
+	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
+	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 
-	m.Add("GET", "/api/v1/search/", http.HandlerFunc(srv.ServeAPISearch))
-	m.Add("GET", "/api/v1/search/:backend", http.HandlerFunc(srv.ServeAPISearch))
+	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
+	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))))
 	mux.Handle("/", m)
 
-	srv.inner = &requestLogger{mux}
+	srv.inner = mux
 
 	return srv, nil
 }
