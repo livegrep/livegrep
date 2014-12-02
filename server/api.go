@@ -25,12 +25,23 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 	replyJSON(w, status, &api.ReplyError{Err: api.InnerError{Code: code, Message: message}})
 }
 
+func writeQueryError(w http.ResponseWriter, err error) {
+	if qe, ok := err.(client.QueryError); ok {
+		writeError(w, 400, "query_error", qe.Err)
+	} else {
+		writeError(w, 500, "internal_error",
+			fmt.Sprintf("Talking to backend: %s", err.Error()))
+	}
+	return
+}
+
 func parseQuery(r *http.Request) client.Query {
 	params := r.URL.Query()
 	return client.Query{
-		Line: params.Get("line"),
-		File: params.Get("file"),
-		Repo: params.Get("repo"),
+		Line:     params.Get("line"),
+		File:     params.Get("file"),
+		Repo:     params.Get("repo"),
+		FoldCase: params.Get("fold_case") != "",
 	}
 }
 
@@ -61,8 +72,7 @@ func (s *server) ServeAPISearch(w http.ResponseWriter, r *http.Request) {
 
 	search, err := cl.Query(&q)
 	if err != nil {
-		writeError(w, 500, "internal_error",
-			fmt.Sprintf("Talking to backend: %s", err.Error()))
+		writeQueryError(w, err)
 		return
 	}
 
@@ -74,8 +84,7 @@ func (s *server) ServeAPISearch(w http.ResponseWriter, r *http.Request) {
 
 	reply.Info, err = search.Close()
 	if err != nil {
-		writeError(w, 500, "internal_error",
-			fmt.Sprintf("Talking to backend: %s", err.Error()))
+		writeQueryError(w, err)
 		return
 	}
 

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"path"
 
-	"code.google.com/p/go.net/websocket"
 	"github.com/bmizerany/pat"
 	"github.com/livegrep/livegrep/server/backend"
 	"github.com/livegrep/livegrep/server/config"
@@ -128,7 +127,6 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))))
-	mux.Handle("/socket", websocket.Handler(srv.HandleWebsocket))
 	mux.Handle("/", m)
 
 	srv.inner = &requestLogger{mux}
