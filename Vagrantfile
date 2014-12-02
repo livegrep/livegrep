@@ -16,7 +16,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.synced_folder ".", "/vagrant", type: 'nfs'
 
-  config.vm.synced_folder "#{ENV['HOME']}/code/linux", "/linux", type: 'nfs'
+  if File.exist?("#{ENV['HOME']}/code/linux")
+    config.vm.synced_folder "#{ENV['HOME']}/code/linux", "/linux", type: 'nfs'
+  end
 
   config.vm.network "forwarded_port",
                     guest: 8910,
