@@ -12,11 +12,6 @@
 using std::vector;
 
 #include "per_thread.h"
-#include "metrics.h"
-
-metric msd_radix_time("timer.radixsort.msd");
-metric msd_radix_std_sort_time("timer.radixsort.msd.stdsort");
-metric msd_radix_std_sorts("radixsort.msd.stdsort");
 
 void lsd_radix_sort(uint32_t *left, uint32_t *right)
 {

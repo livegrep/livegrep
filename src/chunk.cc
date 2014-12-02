@@ -7,12 +7,16 @@
  ********************************************************************/
 #include "chunk.h"
 #include "radix_sort.h"
-#include "radix_sorter.h"
+#include "metrics.h"
+#include "divsufsort.h"
 
 #include <re2/re2.h>
 #include <gflags/gflags.h>
 
 #include <limits>
+
+metric index_divsufsort("timer.index.divsufsort");
+metric index_fixupnl("timer.index.fixupnl");
 
 using re2::StringPiece;
 
@@ -64,22 +68,26 @@ void chunk::finish_file() {
 
 int chunk::chunk_files = 0;
 
-void radix_sorter::sort(uint32_t *l, uint32_t *r) {
-    cmp_suffix cmp(*this);
-    indexer idx(*this);
-    msd_radix_sort(l, r, idx, cmp);
-
-#ifdef DEBUG_RADIX_SORT
-    assert(is_sorted(l, r, cmp));
-#endif
-}
-
 void chunk::finalize() {
     if (FLAGS_index) {
-        for (int i = 0; i < size; i++)
-            suffixes[i] = i;
-        radix_sorter sorter(data, size);
-        sorter.sort(suffixes, suffixes + size);
+        // For the purposes of livegrep's line-based sorting, we need
+        // to sort \n before all other characters. divsufsort,
+        // understandably, just lexically-sorts sorts thing. Kludge
+        // around by munging the data in-place before and after the
+        // sort. Sorting must look at all the data anyways, so this is
+        // not an overly-expensive job.
+        {
+            metric::timer tm(index_fixupnl);
+            std::replace(data, data + size, '\n', '\0');
+        }
+        {
+            metric::timer tm(index_divsufsort);
+            divsufsort(data, reinterpret_cast<saidx_t*>(suffixes), size);
+        }
+        {
+            metric::timer tm(index_fixupnl);
+            std::replace(data, data + size, '\0', '\n');
+        }
     }
 }
 
