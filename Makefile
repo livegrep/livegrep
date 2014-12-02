@@ -33,7 +33,7 @@ $(divsufsort):
 	mkdir -p src/vendor/libdivsufsort/build/ && \
 	 cd src/vendor/libdivsufsort/build/ && \
 	 cmake -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF .. && \
-	 $(MAKE) lib/libdivsufsort.a
+	 $(MAKE)
 
 test: FORCE godep test/codesearch_test
 	test/codesearch_test
@@ -80,3 +80,4 @@ include Makefile.lib
 $(TOOLS): $(re2)
 
 src/chunk.o: $(divsufsort)
+src/.chunk.d: $(divsufsort)
