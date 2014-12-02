@@ -16,3 +16,7 @@ Vendored repositories:
   [library for portable C++ UTF-8 handling](http://utfcpp.sourceforge.net/).
 
 - gtest: The [Google C++ Test framework](https://code.google.com/p/googletest/)
+
+- divsufsort: The
+  [libdivsufsort](https://code.google.com/p/libdivsufsort/)
+  suffix-array library.
