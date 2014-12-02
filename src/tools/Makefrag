@@ -13,4 +13,4 @@ bin:
 	mkdir -p bin
 
 $(TOOL_ALIASES):
-	ln -s codesearchtool $@
+	ln -nsf codesearchtool $@
