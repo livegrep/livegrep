@@ -49,6 +49,8 @@ func parseQuery(r *http.Request) client.Query {
 	}
 }
 
+const MaxRetries = 8
+
 func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	backendName := r.URL.Query().Get(":backend")
 	var backend *backend.Backend
@@ -73,13 +75,24 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	cl := <-backend.Clients
-	defer backend.CheckIn(cl)
+	var cl client.Client
+	var search client.Search
+	var err error
 
-	search, err := cl.Query(&q)
-	if err != nil {
-		writeQueryError(ctx, w, err)
-		return
+	for tries := 0; tries < MaxRetries; tries++ {
+		cl = <-backend.Clients
+		defer backend.CheckIn(cl)
+
+		search, err = cl.Query(&q)
+		if err == nil {
+			break
+		}
+		log.Printf(ctx,
+			"error talking to backend try=%d err=%s", tries, err)
+		if _, ok := err.(client.QueryError); ok {
+			writeQueryError(ctx, w, err)
+			return
+		}
 	}
 
 	reply := &api.ReplySearch{}
