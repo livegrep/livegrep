@@ -9,7 +9,7 @@ var Codesearch = function() {
       if (delegate !== undefined)
         Codesearch.delegate = delegate;
       if (Codesearch.delegate.on_connect)
-        setTimeout(0, Codesearch.delegate.on_connect)
+        setTimeout(Codesearch.delegate.on_connect, 0)
     },
     new_search: function(opts) {
       Codesearch.next_search = opts;
@@ -59,7 +59,7 @@ var Codesearch = function() {
       });
       xhr.always(function() {
         Codesearch.in_flight = null;
-        setTimeout(0, Codesearch.dispatch);
+        setTimeout(Codesearch.dispatch, 0);
       });
     }
   };
