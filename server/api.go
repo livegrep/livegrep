@@ -24,7 +24,7 @@ func replyJSON(ctx context.Context, w http.ResponseWriter, status int, obj inter
 }
 
 func writeError(ctx context.Context, w http.ResponseWriter, status int, code, message string) {
-	log.Printf(ctx, "query error status=%d code=%s message=%s",
+	log.Printf(ctx, "error status=%d code=%s message=%s",
 		status, code, message)
 	replyJSON(ctx, w, status, &api.ReplyError{Err: api.InnerError{Code: code, Message: message}})
 }
