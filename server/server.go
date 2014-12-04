@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"net/http"
 	"path"
+	"time"
 
 	"code.google.com/p/go.net/context"
 
@@ -113,8 +114,12 @@ func (s *server) ServeOpensearch(ctx context.Context, w http.ResponseWriter, r *
 
 type handler func(c context.Context, w http.ResponseWriter, r *http.Request)
 
+const RequestTimeout = 4 * time.Second
+
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
+	defer cancel()
 	ctx = reqid.NewContext(ctx, reqid.New())
 	log.Printf(ctx, "http request: remote=%q method=%q url=%q",
 		r.RemoteAddr, r.Method, r.URL)

@@ -80,7 +80,12 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 	var err error
 
 	for tries := 0; tries < MaxRetries; tries++ {
-		cl = <-backend.Clients
+		select {
+		case cl = <-backend.Clients:
+		case <-ctx.Done():
+			writeError(ctx, w, 500, "timed_out", "timed out talking to backend")
+			return
+		}
 		defer backend.CheckIn(cl)
 
 		search, err = cl.Query(&q)
