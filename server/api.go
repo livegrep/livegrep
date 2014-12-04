@@ -100,7 +100,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		}
 	}
 
-	reply := &api.ReplySearch{}
+	reply := &api.ReplySearch{Results: make([]*client.Result, 0)}
 
 	for r := range search.Results() {
 		reply.Results = append(reply.Results, r)
