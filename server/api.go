@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -51,6 +52,41 @@ func parseQuery(r *http.Request) client.Query {
 
 const MaxRetries = 8
 
+var (
+	ErrTimedOut = errors.New("timed out talking to backend")
+)
+
+func (s *server) doSearch(ctx context.Context, backend *backend.Backend, q *client.Query) (*api.ReplySearch, error) {
+	var cl client.Client
+	var search client.Search
+	var err error
+
+	select {
+	case cl = <-backend.Clients:
+	case <-ctx.Done():
+		return nil, ErrTimedOut
+	}
+	defer backend.CheckIn(cl)
+
+	search, err = cl.Query(q)
+	if err != nil {
+		log.Printf(ctx, "error talking to backend err=%s", err)
+		return nil, err
+	}
+
+	reply := &api.ReplySearch{Results: make([]*client.Result, 0)}
+
+	for r := range search.Results() {
+		reply.Results = append(reply.Results, r)
+	}
+
+	reply.Info, err = search.Close()
+	if err != nil {
+		return nil, err
+	}
+	return reply, nil
+}
+
 func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	backendName := r.URL.Query().Get(":backend")
 	var backend *backend.Backend
@@ -75,39 +111,25 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	var cl client.Client
-	var search client.Search
+	var reply *api.ReplySearch
 	var err error
 
 	for tries := 0; tries < MaxRetries; tries++ {
-		select {
-		case cl = <-backend.Clients:
-		case <-ctx.Done():
-			writeError(ctx, w, 500, "timed_out", "timed out talking to backend")
-			return
-		}
-		defer backend.CheckIn(cl)
-
-		search, err = cl.Query(&q)
+		reply, err = s.doSearch(ctx, backend, &q)
 		if err == nil {
 			break
 		}
-		log.Printf(ctx,
-			"error talking to backend try=%d err=%s", tries, err)
-		if _, ok := err.(client.QueryError); ok {
-			writeQueryError(ctx, w, err)
-			return
+		if err == ErrTimedOut {
+			break
 		}
+		if _, ok := err.(*client.QueryError); ok {
+			break
+		}
+		log.Printf(ctx, "error querying try=%d err=%s", tries, err)
 	}
 
-	reply := &api.ReplySearch{Results: make([]*client.Result, 0)}
-
-	for r := range search.Results() {
-		reply.Results = append(reply.Results, r)
-	}
-
-	reply.Info, err = search.Close()
 	if err != nil {
+		log.Printf(ctx, "error in search err=%s", err)
 		writeQueryError(ctx, w, err)
 		return
 	}
