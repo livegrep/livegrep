@@ -1,4 +1,4 @@
-Livegrep [![Build Status](https://travis-ci.org/nelhage/livegrep.svg?branch=master)](https://travis-ci.org/nelhage/livegrep)
+Livegrep [![Build Status](https://travis-ci.org/livegrep/livegrep.svg?branch=master)](https://travis-ci.org/livegrep/livegrep)
 ========
 
 Livegrep is a tool, partially inspired by Google Code Search, for
