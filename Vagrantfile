@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 VAGRANTFILE_API_VERSION = "2"
-GOLANG_VERSION = '1.3'
+GOLANG_VERSION = '1.3.3'
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = 'hashicorp/precise64'
