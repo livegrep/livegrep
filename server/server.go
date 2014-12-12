@@ -2,6 +2,7 @@ package server
 
 import (
 	"html/template"
+	"io"
 	"net/http"
 	"path"
 	"time"
@@ -81,6 +82,10 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 
+func (s *server) ServeHealthcheck(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	io.WriteString(w, "ok\n")
+}
+
 func (s *server) requestProtocol(r *http.Request) string {
 	if s.config.ReverseProxy {
 		if proto := r.Header.Get("X-Real-Proto"); len(proto) > 0 {
@@ -143,6 +148,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
+	m.Add("GET", "/debug/healthcheck", srv.Handler(srv.ServeHealthcheck))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
