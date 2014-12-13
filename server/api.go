@@ -122,10 +122,10 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		if err == ErrTimedOut {
 			break
 		}
-		if _, ok := err.(*client.QueryError); ok {
+		if _, ok := err.(client.QueryError); ok {
 			break
 		}
-		log.Printf(ctx, "error querying try=%d err=%s", tries, err)
+		log.Printf(ctx, "error querying try=%d err=%q", tries, err)
 	}
 
 	if err != nil {
