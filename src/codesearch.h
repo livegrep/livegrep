@@ -111,6 +111,11 @@ struct indexed_file {
     int no;
 };
 
+struct index_info {
+    std::string name;
+    vector<indexed_tree> trees;
+};
+
 struct match_result {
     indexed_file *file;
     int lno;
@@ -121,7 +126,7 @@ struct match_result {
 };
 
 // A query specification passed to match(). line_pat is required to be
-// non-NULL; line_pat and tree_pat may be NULL to specify "no
+// non-NULL; file_pat and tree_pat may be NULL to specify "no
 // constraint"
 struct query {
     std::unique_ptr<RE2> line_pat;

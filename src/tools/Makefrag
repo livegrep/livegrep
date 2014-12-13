@@ -1,5 +1,5 @@
 TOOLS := bin/codesearch bin/codesearchtool
-bin/codesearch_SRC := src/tools/codesearch.cc src/tools/interface.c src/tools/json_interface.c
+bin/codesearch_SRC := src/tools/codesearch.cc src/tools/transport.cc
 bin/codesearchtool_SRC := src/tools/codesearchtool.cc \
 			src/tools/inspect-index.cc \
 			src/tools/analyze-re.cc \
