@@ -110,37 +110,6 @@ bool getline(std::string &out, FILE *in) {
     return (r != -1) && !feof(in) && !ferror(in) ;
 }
 
-struct json_parse_error {
-    json_parse_error() : ok_(true) {}
-    json_parse_error(const std::string &err) : ok_(false), error(err) {}
-
-    bool ok() {
-        return ok_;
-    }
-
-    std::string err() {
-        if (path.size()) {
-            return path + ": " + error;
-        } else {
-            return error;
-        }
-    }
-
-    json_parse_error wrap(string path) {
-        json_parse_error wrapped = *this;
-        if (wrapped.path.size()) {
-            wrapped.path = path + "." + wrapped.path;
-        } else {
-            wrapped.path = path;
-        }
-        return wrapped;
-    }
-private:
-    bool ok_;
-    std::string error;
-    std::string path;
-};
-
 json_parse_error parse_object(json_object *j, bool *);
 json_parse_error parse_object(json_object *j, std::string *);
 json_parse_error parse_object(json_object *j, repo_spec *);
@@ -217,7 +186,7 @@ json_parse_error parse_object(json_object *js, query *q) {
     bool fold_case = false;
     json_parse_error err = parse_object(b, "fold_case", &fold_case);
     if (!err.ok())
-        return err;
+        return err.wrap("body");
     opts.set_case_sensitive(!fold_case);
     err = parse_regex(b, "line", opts, &q->line_pat);
 
@@ -249,6 +218,11 @@ json_parse_error parse_object(json_object *js, repo_spec *r) {
     err = parse_object(js, "metadata", &r->metadata);
     if (!err.ok()) return err;
     err = parse_object(js, "revisions", &r->revisions);
+    if (!err.ok()) return err;
+    std::string revision;
+    err = parse_object(js, "revision", &revision);
+    if (err.ok() && !revision.empty())
+        r->revisions.push_back(revision);
     return err;
 }
 
@@ -318,26 +292,23 @@ bool codesearch_transport::read_query(query *q, bool *done) {
     return err.ok();
 }
 
-bool parse_index_spec(json_object *in, index_spec *out) {
+json_parse_error parse_index_spec(json_object *in, index_spec *out) {
     json_parse_error err = parse_object(in, "name", &out->name);
     if (!err.ok())
-        return false;
+        return err;
     err = parse_object(in, "fs_paths", &out->paths);
     if (!err.ok())
-        return false;
+        return err;
     json_object *repos = json_object_object_get(in, "repositories");
     if (repos == NULL)
-        return true;
+        return json_parse_error();
     if (json_object_get_type(repos) == json_type_object) {
         repo_spec s;
         err = parse_object(in, "repositories", &s);
-        if (!err.ok())
-            return false;
-        out->repos.push_back(s);
+        if (err.ok())
+            out->repos.push_back(s);
     } else {
         err = parse_object(in, "repositories", &out->repos);
-        if (!err.ok())
-            return false;
     }
-    return true;
+    return err;
 }

@@ -109,7 +109,7 @@ void interact(code_searcher *cs, codesearch_transport *tx) {
 
 void build_index(code_searcher *cs, const vector<std::string> &argv) {
     if (argv.size() != 2) {
-        fprintf(stderr, "Usage: %s --json [OPTIONS] config.json\n", argv[0].c_str());
+        fprintf(stderr, "Usage: %s [OPTIONS] config.json\n", argv[0].c_str());
         exit(1);
     }
     json_object *obj = json_object_from_file(const_cast<char*>(argv[1].c_str()));
@@ -119,7 +119,13 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
         exit(1);
     }
     index_spec spec;
-    if (!parse_index_spec(obj, &spec)) {
+    json_parse_error err = parse_index_spec(obj, &spec);
+    if (!err.ok()) {
+        fprintf(stderr, "parsing %s: %s\n", argv[1].c_str(), err.err().c_str());
+        exit(1);
+    }
+    if (spec.paths.empty() && spec.repos.empty()) {
+        fprintf(stderr, "%s: You must specify at least one path to index.\n", argv[1].c_str());
         exit(1);
     }
     json_object_put(obj);

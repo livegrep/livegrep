@@ -34,8 +34,6 @@ struct index_spec {
     std::vector<repo_spec> repos;
 };
 
-bool parse_index_spec(json_object *in, index_spec *out);
-
 class codesearch_transport {
 public:
     codesearch_transport(FILE *in, FILE *out);
@@ -48,5 +46,38 @@ protected:
     void write_frame(const std::string &opcode, json_object *body);
     FILE *in_, *out_;
 };
+
+struct json_parse_error {
+    json_parse_error() : ok_(true) {}
+    json_parse_error(const std::string &err) : ok_(false), error(err) {}
+
+    bool ok() {
+        return ok_;
+    }
+
+    std::string err() {
+        if (path.size()) {
+            return path + ": " + error;
+        } else {
+            return error;
+        }
+    }
+
+    json_parse_error wrap(std::string path) {
+        json_parse_error wrapped = *this;
+        if (wrapped.path.size()) {
+            wrapped.path = path + "." + wrapped.path;
+        } else {
+            wrapped.path = path;
+        }
+        return wrapped;
+    }
+private:
+    bool ok_;
+    std::string error;
+    std::string path;
+};
+
+json_parse_error parse_index_spec(json_object *in, index_spec *out);
 
 #endif
