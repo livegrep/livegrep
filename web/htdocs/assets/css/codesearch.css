@@ -69,11 +69,6 @@ body {
     font-size: 90%;
 }
 
-.match .lno {
-    width: 4em;
-    padding-right: 1em;
-}
-
 .matchline .lno {
     font-weight: bold;
 }
@@ -84,7 +79,25 @@ body {
     background: #eee;
     border: 1px solid black;
     margin-left: 1em;
-    padding: 3px;
+    margin-top: 5px;
+}
+
+.match .code .line {
+   padding-left: 4em;
+}
+
+.contents div.lnos {
+    float: left;
+    border-right: 1px solid grey;
+    padding: 3px 0px 3px 3px;
+}
+
+.contents div.code {
+    padding: 3px 0px;
+}
+
+.match .lno {
+    width: 3em;
 }
 
 .match .matchstr {

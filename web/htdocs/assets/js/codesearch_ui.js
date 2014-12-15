@@ -73,25 +73,34 @@ var MatchView = Backbone.View.extend({
   _render: function() {
     var h = new HTMLFactory();
     var i;
-    var ctx_before = [], ctx_after = [];
+    var lnos = [];
     var lno = this.model.get('lno');
-    for (i = 0; i < this.model.get('context_before').length; i ++) {
-      ctx_before.unshift(h.div([
-                                 h.span({cls: 'lno'}, [lno - i - 1, ":"]),
-                                 this.model.get('context_before')[i]
-                               ]));
+    for (i = lno - this.model.get('context_before').length;
+         i < lno + this.model.get('context_after').length + 1; i++) {
+      var elt = h.div({cls: 'lno'}, [i]);
+      if (i == lno)
+        elt = h.div({cls: 'matchline'}, [elt]);
+      lnos.push(elt);
     }
-    for (i = 0; i < this.model.get('context_after').length; i ++) {
-      ctx_after.push(h.div([
-                             h.span({cls: 'lno'}, [lno + i + 1, ":"]),
-                             this.model.get('context_after')[i]
-                           ]));
+    var lines = [];
+    for (i = 0; i < this.model.get('context_before').length; i ++) {
+      lines.unshift(h.div({cls: "line"},
+        [this.model.get('context_before')[i], h.br()]));
     }
     var line = this.model.get('line');
     var bounds = this.model.get('bounds');
     var pieces = [line.substring(0, bounds[0]),
                   line.substring(bounds[0], bounds[1]),
                   line.substring(bounds[1])];
+    lines.push(h.div({cls: "line matchline"},[
+                  pieces[0],
+                  h.span({cls: 'matchstr'}, [pieces[1]]),
+                  pieces[2]
+                ]));
+    for (i = 0; i < this.model.get('context_after').length; i ++) {
+      lines.push(h.div({cls: "line"},
+        [this.model.get('context_after')[i], h.br()]));
+    }
 
     var tree = this.model.get('tree');
     var version = this.model.get('version');
@@ -108,14 +117,9 @@ var MatchView = Backbone.View.extend({
         h.div({}, [
           h.span({cls: 'label'}, repoLabel)]),
         h.div({cls: 'contents'}, [
-                ctx_before,
-                h.div({cls: 'matchline'}, [
-                  h.span({cls: 'lno'}, [lno + ":"]),
-                  pieces[0],
-                  h.span({cls: 'matchstr'}, [pieces[1]]),
-                  pieces[2]
-                ]),
-                ctx_after])]);
+          h.div({cls: "lnos"}, lnos),
+          h.div({cls: "code"}, lines)
+          ])]);
   }
 });
 
