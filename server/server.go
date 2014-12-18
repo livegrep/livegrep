@@ -145,14 +145,14 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m := pat.New()
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
-	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
+	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/debug/healthcheck", srv.Handler(srv.ServeHealthcheck))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 
-	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
+	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))))
