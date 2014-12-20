@@ -1,5 +1,6 @@
 body {
     margin: 1em 3em;
+    font-family: sans-serif;
 }
 
 #searcharea {
@@ -22,7 +23,7 @@ body {
   width: 20em;
 }
 
-#errorbox {
+#whatbox {
     float: right;
 }
 
@@ -37,6 +38,7 @@ body {
 
 #regex-error {
     display: none;
+    text-align: center;
 }
 
 #errortext {

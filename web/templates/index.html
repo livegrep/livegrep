@@ -8,7 +8,7 @@
       <td><input type="text" id='searchbox'></input></td>
     </tr>
   </table>
-  <div id='errorbox'>
+  <div id='whatbox'>
     {{if gt (.Backends | len) 1 }}
     <div class='what'> Search:
     <select id='backend'>
@@ -25,12 +25,13 @@
     </select>
     {{end}}
     {{end}}
-    <div id='regex-error'>
-      <span class='label'> Error: </span>
+  </div>
+  <div class='clear'> </div>
+  <div id='regex-error'>
+      <span class='label'> error: </span>
       <span id='errortext'>
       </span>
-    </div>
-  </div>
+    </div>  
   <div class='clear'> </div>
 </div>
 <div id='resultbox'>
