@@ -18,6 +18,10 @@ body {
     float: left;
 }
 
+#searcharea input {
+  width: 20em;
+}
+
 #errorbox {
     float: right;
 }
