@@ -40,14 +40,26 @@ func writeQueryError(ctx context.Context, w http.ResponseWriter, err error) {
 	return
 }
 
-func parseQuery(r *http.Request) client.Query {
+func extractQuery(ctx context.Context, r *http.Request) client.Query {
 	params := r.URL.Query()
-	return client.Query{
-		Line:     params.Get("line"),
-		File:     params.Get("file"),
-		Repo:     params.Get("repo"),
-		FoldCase: params.Get("fold_case") != "",
+	var query client.Query
+	if q, ok := params["q"]; ok {
+		query = ParseQuery(q[0])
+		log.Printf(ctx, "parsing query q=%v out=%s", q[0], asJSON{query})
 	}
+	if line, ok := params["line"]; ok {
+		query.Line = line[0]
+	}
+	if file, ok := params["file"]; ok {
+		query.File = file[0]
+	}
+	if repo, ok := params["repo"]; ok {
+		query.Repo = repo[0]
+	}
+	if fc, ok := params["fold_case"]; ok && fc[0] != "" {
+		query.FoldCase = true
+	}
+	return query
 }
 
 const MaxRetries = 8
@@ -103,7 +115,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		}
 	}
 
-	q := parseQuery(r)
+	q := extractQuery(ctx, r)
 
 	if q.Line == "" {
 		writeError(ctx, w, 400, "bad_query",
