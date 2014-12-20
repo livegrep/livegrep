@@ -42,8 +42,9 @@ EOF
 set -ex
 wget --no-verbose -O /usr/local/src/go#{GOLANG_VERSION}.tgz http://golang.org/dl/go#{GOLANG_VERSION}.linux-amd64.tar.gz
 tar -C /usr/local -xzf /usr/local/src/go#{GOLANG_VERSION}.tgz
-mkdir /gopath
-chown vagrant:vagrant /gopath
+mkdir -p /gopath/src/github.com/livegrep/
+ln -nsf /vagrant /gopath/src/github.com/livegrep/livegrep
+chown -R vagrant:vagrant /gopath
 cat >/etc/profile.d/golang.sh <<EOT
 export PATH=$PATH:/usr/local/go/bin
 export GOPATH=/gopath
