@@ -10,7 +10,7 @@ import (
 	"code.google.com/p/go.net/context"
 
 	"github.com/bmizerany/pat"
-	"github.com/livegrep/livegrep/server/backend"
+
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
@@ -18,7 +18,7 @@ import (
 
 type server struct {
 	config *config.Config
-	bk     map[string]*backend.Backend
+	bk     map[string]*Backend
 	inner  http.Handler
 	t      templates
 }
@@ -40,7 +40,7 @@ func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.R
 
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	gh := make(map[string]map[string]string, len(s.bk))
-	backends := make([]*backend.Backend, 0, len(s.bk))
+	backends := make([]*Backend, 0, len(s.bk))
 	for _, bk := range s.bk {
 		backends = append(backends, bk)
 		bk.I.Lock()
@@ -136,11 +136,11 @@ func (s *server) Handler(f func(c context.Context, w http.ResponseWriter, r *htt
 }
 
 func New(cfg *config.Config) (http.Handler, error) {
-	srv := &server{config: cfg, bk: make(map[string]*backend.Backend)}
+	srv := &server{config: cfg, bk: make(map[string]*Backend)}
 	srv.loadTemplates()
 
 	for _, bk := range srv.config.Backends {
-		srv.bk[bk.Id] = backend.New(&bk)
+		srv.bk[bk.Id] = NewBackend(bk.Id, bk.Addr)
 	}
 
 	m := pat.New()

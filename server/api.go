@@ -10,7 +10,6 @@ import (
 
 	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/server/api"
-	"github.com/livegrep/livegrep/server/backend"
 	"github.com/livegrep/livegrep/server/log"
 )
 
@@ -68,7 +67,7 @@ var (
 	ErrTimedOut = errors.New("timed out talking to backend")
 )
 
-func (s *server) doSearch(ctx context.Context, backend *backend.Backend, q *client.Query) (*api.ReplySearch, error) {
+func (s *server) doSearch(ctx context.Context, backend *Backend, q *client.Query) (*api.ReplySearch, error) {
 	var cl client.Client
 	var search client.Search
 	var err error
@@ -101,7 +100,7 @@ func (s *server) doSearch(ctx context.Context, backend *backend.Backend, q *clie
 
 func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	backendName := r.URL.Query().Get(":backend")
-	var backend *backend.Backend
+	var backend *Backend
 	if backendName != "" {
 		backend = s.bk[backendName]
 		if backend == nil {

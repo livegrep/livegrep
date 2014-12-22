@@ -7,7 +7,6 @@ import (
 	"log"
 	"path"
 
-	"github.com/livegrep/livegrep/server/backend"
 	"github.com/livegrep/livegrep/server/config"
 )
 
@@ -32,7 +31,7 @@ type opensearchContext struct {
 
 type searchContext struct {
 	GithubRepos interface{}
-	Backends    []*backend.Backend
+	Backends    []*Backend
 }
 
 func (s *server) readTemplates(files ...string) *template.Template {

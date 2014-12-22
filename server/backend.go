@@ -1,4 +1,4 @@
-package backend
+package server
 
 import (
 	"log"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/livegrep/livegrep/client"
-	"github.com/livegrep/livegrep/server/config"
 )
 
 const (
@@ -33,16 +32,13 @@ type Backend struct {
 	pending chan struct{}
 }
 
-func New(cfg *config.Backend) *Backend {
+func NewBackend(id, addr string) *Backend {
 	bk := &Backend{
-		Addr:    cfg.Addr,
-		Id:      cfg.Id,
-		I:       &I{Name: cfg.Name},
+		Addr:    addr,
+		Id:      id,
+		I:       &I{Name: id},
 		Clients: make(chan client.Client, PoolSize),
 		pending: make(chan struct{}, PoolSize),
-	}
-	for _, r := range cfg.Repos {
-		bk.I.Trees = append(bk.I.Trees, Tree{Name: r.Name, Version: r.Refs[0], Github: r.Github})
 	}
 	for i := 0; i < PoolSize; i++ {
 		bk.pending <- struct{}{}
@@ -93,8 +89,7 @@ func (bk *Backend) refresh(info *client.ServerInfo) {
 		bk.I.Trees = nil
 		for _, r := range info.Trees {
 			gh := ""
-			v, ok := r.Metadata["github"]
-			if ok {
+			if v, ok := r.Metadata["github"]; ok {
 				gh = v.(string)
 			}
 			bk.I.Trees = append(bk.I.Trees,
