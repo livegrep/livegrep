@@ -18,6 +18,7 @@ import (
 var (
 	serveAddr = flag.String("listen", "127.0.0.1:8910", "The address to listen on")
 	docRoot   = flag.String("docroot", "./web", "The livegrep document root (web/ directory)")
+	reload    = flag.Bool("reload", false, "Reload template files on every request")
 	_         = flag.Bool("logtostderr", false, "[DEPRECATED] compatibility with glog")
 )
 
@@ -38,6 +39,7 @@ func main() {
 	cfg := &config.Config{
 		DocRoot: *docRoot,
 		Listen:  *serveAddr,
+		Reload:  *reload,
 	}
 	if err = json.Unmarshal(data, &cfg); err != nil {
 		log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())

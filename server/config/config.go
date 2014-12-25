@@ -30,4 +30,7 @@ type Config struct {
 	Sentry struct {
 		URI string `json:"uri"`
 	} `json:"sentry"`
+
+	// Whether to re-load templates on every request
+	Reload bool `json:"reload"`
 }

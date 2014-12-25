@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"html/template"
 	"io"
 	"net/http"
@@ -15,20 +16,28 @@ import (
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
+	"github.com/livegrep/livegrep/server/templates"
 )
+
+type Templates struct {
+	Layout,
+	Index,
+	About *template.Template
+	OpenSearch *template.Template `template:"opensearch.xml"`
+}
 
 type server struct {
 	config *config.Config
 	bk     map[string]*Backend
 	inner  http.Handler
-	t      templates
+	T      Templates
+	Layout *template.Template
 }
 
 func (s *server) loadTemplates() {
-	s.t.layout = s.readTemplates("layout.html")
-	s.t.searchPage = s.readTemplates("index.html")
-	s.t.aboutPage = s.readTemplates("about.html")
-	s.t.opensearchXML = s.readTemplates("opensearch.xml")
+	if e := templates.Load(path.Join(s.config.DocRoot, "templates"), &s.T); e != nil {
+		panic(fmt.Sprintf("loading templates: %v", e))
+	}
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -54,11 +63,12 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		}
 		bk.I.Unlock()
 	}
-	data := &searchContext{
-		GithubRepos: gh,
-		Backends:    backends,
-	}
-	body, err := s.executeTemplate(s.t.searchPage, data)
+	data := &struct {
+		GithubRepos map[string]map[string]string
+		Backends    []*Backend
+	}{gh, backends}
+
+	body, err := executeTemplate(s.T.Index, data)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -71,7 +81,7 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	body, err := s.executeTemplate(s.t.aboutPage, nil)
+	body, err := executeTemplate(s.T.About, nil)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -100,8 +110,11 @@ func (s *server) requestProtocol(r *http.Request) string {
 }
 
 func (s *server) ServeOpensearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	data := &opensearchContext{}
-	data.BaseURL += s.requestProtocol(r) + "://" + r.Host + "/"
+	data := &struct {
+		BackendName, BaseURL string
+	}{
+		BaseURL: s.requestProtocol(r) + "://" + r.Host + "/",
+	}
 
 	for _, bk := range s.bk {
 		if bk.I.Name != "" {
@@ -110,7 +123,7 @@ func (s *server) ServeOpensearch(ctx context.Context, w http.ResponseWriter, r *
 		}
 	}
 
-	body, err := s.executeTemplate(s.t.opensearchXML, data)
+	body, err := executeTemplate(s.T.OpenSearch, data)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -161,9 +174,17 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 
+	var h http.Handler = m
+
+	if cfg.Reload {
+		h = templates.ReloadHandler(
+			path.Join(srv.config.DocRoot, "templates"),
+			&srv.T, h)
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))))
-	mux.Handle("/", m)
+	mux.Handle("/", h)
 
 	srv.inner = mux
 
