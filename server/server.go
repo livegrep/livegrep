@@ -22,7 +22,8 @@ import (
 type Templates struct {
 	Layout,
 	Index,
-	About *template.Template
+	About,
+	Help *template.Template
 	OpenSearch *template.Template `template:"opensearch.xml"`
 }
 
@@ -74,9 +75,8 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 	s.renderPage(w, &page{
-		Title:     "search",
-		IncludeJS: true,
-		Body:      template.HTML(body),
+		Title: "search",
+		Body:  template.HTML(body),
 	})
 }
 
@@ -87,9 +87,27 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 	s.renderPage(w, &page{
-		Title:     "about",
-		IncludeJS: true,
-		Body:      template.HTML(body),
+		Title: "about",
+		Body:  template.HTML(body),
+	})
+}
+
+func (s *server) ServeHelp(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	d := struct{ SampleRepo string }{}
+	for _, bk := range s.bk {
+		if len(bk.I.Trees) > 1 {
+			d.SampleRepo = bk.I.Trees[0].Name
+		}
+	}
+
+	body, err := executeTemplate(s.T.Help, d)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	s.renderPage(w, &page{
+		Title: "query syntax",
+		Body:  template.HTML(body),
 	})
 }
 
@@ -168,6 +186,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
+	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/debug/healthcheck", srv.Handler(srv.ServeHealthcheck))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 

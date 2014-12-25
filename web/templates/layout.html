@@ -5,7 +5,6 @@
     <title>code search ⋅ {{.Title}}</title>
     <link rel="stylesheet" href='/assets/css/codesearch.css' />
     <script language="javascript" type="text/javascript" src="/assets/js/3d/jquery.js"></script>
-    {{if .IncludeJS}}
     <script language="javascript" type="text/javascript" src="/assets/js/3d/underscore.js"></script>
     <script language="javascript" type="text/javascript" src="/assets/js/3d/backbone.js"></script>
     <script language="javascript" type="text/javascript" src="/assets/js/3d/html.js"></script>
@@ -17,7 +16,7 @@
       Raven.config({{.Config.Sentry.URI}}, {}).install();
     </script>
     {{end}}
-    {{end}}
+
     {{if .Config.GoogleAnalyticsId}}
     <script type="text/javascript">
     
@@ -46,21 +45,6 @@
         {{end}}
         <li class='first'>livegrep is a project by <a href="http://blog.nelhage.com/">Nelson Elhage</a></li>
       </ul>
-    </div>
-    <div id='feedback'>
-      <form id='feedbackform' action='#'>
-        <div class='label'>Comments? Questions? Suggestions? </div>
-        <textarea rows='10' cols='40'></textarea>
-        <div class='clear'> </div>
-        <span class='label'>Email (if you want a reply):</span>
-        <input type='text' class='email'> </input>
-        <div class='clear'> </div>
-        <span class='submit'>
-          <span class='result'> </span>
-          <img class='spinner' src='/assets/img/ajax-loader.gif' alt='…'> </img>
-          <button>Send It</button>
-        </span>
-      </form>
     </div>
     {{ .Body}}
   </body>

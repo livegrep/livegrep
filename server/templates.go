@@ -11,10 +11,9 @@ import (
 )
 
 type page struct {
-	IncludeJS bool
-	Title     string
-	Body      template.HTML
-	Config    *config.Config
+	Title  string
+	Body   template.HTML
+	Config *config.Config
 }
 
 func executeTemplate(t *template.Template, context interface{}) ([]byte, error) {
