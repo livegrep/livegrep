@@ -11,6 +11,7 @@ import (
 
 	"github.com/bmizerany/pat"
 
+	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
@@ -140,7 +141,13 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.loadTemplates()
 
 	for _, bk := range srv.config.Backends {
-		srv.bk[bk.Id] = NewBackend(bk.Id, bk.Addr)
+		addr := bk.Addr
+		be := &Backend{
+			Id:   bk.Id,
+			Dial: func() (client.Client, error) { return client.Dial("tcp", addr) },
+		}
+		be.Start()
+		srv.bk[be.Id] = be
 	}
 
 	m := pat.New()

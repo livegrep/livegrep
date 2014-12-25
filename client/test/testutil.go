@@ -94,3 +94,54 @@ func NewClient(args ...string) (client.Client, error) {
 
 	return cl, nil
 }
+
+// MockClient implements a fake Client that returns constant values
+// based on the provided fields.
+type MockClient struct {
+	QueryError  error
+	SearchError error
+	Err_        error
+	Info_       *client.ServerInfo
+	Stats       *client.Stats
+	Results     []*client.Result
+
+	Closed  bool
+	Queries []*client.Query
+}
+
+type mockSearch struct {
+	m *MockClient
+}
+
+func (m *MockClient) Query(q *client.Query) (client.Search, error) {
+	m.Queries = append(m.Queries, q)
+	if m.QueryError != nil {
+		return nil, m.QueryError
+	}
+	return &mockSearch{m}, nil
+}
+
+func (m *MockClient) Close() {
+	m.Closed = true
+}
+
+func (m *MockClient) Info() *client.ServerInfo {
+	return m.Info_
+}
+
+func (m *MockClient) Err() error {
+	return m.Err_
+}
+
+func (s *mockSearch) Results() <-chan *client.Result {
+	out := make(chan *client.Result, len(s.m.Results))
+	for _, r := range s.m.Results {
+		out <- r
+	}
+	close(out)
+	return out
+}
+
+func (s *mockSearch) Close() (*client.Stats, error) {
+	return s.m.Stats, s.m.SearchError
+}

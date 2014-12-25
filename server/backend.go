@@ -9,7 +9,14 @@ import (
 )
 
 const (
-	PoolSize = 8
+	defaultPoolSize = 8
+)
+
+var (
+	// maximum time to wait after a failed connection
+	// attempt. `var` not `const` so it can be retried by the
+	// tests.
+	maxBackoff = 10 * time.Second
 )
 
 type Tree struct {
@@ -25,26 +32,30 @@ type I struct {
 }
 
 type Backend struct {
-	Addr    string
-	Id      string
-	I       *I
-	Clients chan client.Client
+	Id       string
+	Dial     func() (client.Client, error)
+	PoolSize int
+	I        *I
+	Clients  chan client.Client
+
 	pending chan struct{}
+	backoff time.Duration
 }
 
-func NewBackend(id, addr string) *Backend {
-	bk := &Backend{
-		Addr:    addr,
-		Id:      id,
-		I:       &I{Name: id},
-		Clients: make(chan client.Client, PoolSize),
-		pending: make(chan struct{}, PoolSize),
+func (bk *Backend) Start() {
+	if bk.PoolSize == 0 {
+		bk.PoolSize = defaultPoolSize
 	}
-	for i := 0; i < PoolSize; i++ {
+	bk.Clients = make(chan client.Client, bk.PoolSize)
+	bk.pending = make(chan struct{}, bk.PoolSize)
+	bk.backoff = 10 * time.Millisecond
+	if bk.I == nil {
+		bk.I = &I{Name: bk.Id}
+	}
+	for i := 0; i < bk.PoolSize; i++ {
 		bk.pending <- struct{}{}
 	}
 	go bk.connectLoop()
-	return bk
 }
 
 func (bk *Backend) CheckIn(c client.Client) {
@@ -57,25 +68,46 @@ func (bk *Backend) CheckIn(c client.Client) {
 	bk.Clients <- c
 }
 
-func (bk *Backend) connectLoop() {
-	for _ = range bk.pending {
-		for {
-			cl, err := client.Dial("tcp", bk.Addr)
-			if err != nil {
-				log.Printf("Connection error: %s", err.Error())
-				time.Sleep(5 * time.Second)
-				continue
-			}
-			log.Printf("Connected, backend=%s addr=%s",
-				bk.Id, bk.Addr)
-
-			if info := cl.Info(); info != nil {
-				bk.refresh(info)
-			}
-			bk.Clients <- cl
-			break
+func (bk *Backend) Close() {
+drain:
+	for {
+		select {
+		case <-bk.pending:
+		default:
+			break drain
 		}
 	}
+	close(bk.pending)
+	for c := range bk.Clients {
+		c.Close()
+	}
+}
+
+func (bk *Backend) connectLoop() {
+	for _ = range bk.pending {
+	retry:
+		cl, err := bk.Dial()
+		if err != nil {
+			log.Printf("Connection error: backend=%s error=%s",
+				bk.Id, err.Error())
+			bk.backoff *= 2
+			if bk.backoff > maxBackoff {
+				bk.backoff = maxBackoff
+			}
+			time.Sleep(bk.backoff)
+			goto retry
+		}
+
+		log.Printf("Connected: backend=%s", bk.Id)
+		bk.backoff = 10 * time.Millisecond
+
+		if info := cl.Info(); info != nil {
+			bk.refresh(info)
+		}
+		bk.Clients <- cl
+
+	}
+	close(bk.Clients)
 }
 
 func (bk *Backend) refresh(info *client.ServerInfo) {
