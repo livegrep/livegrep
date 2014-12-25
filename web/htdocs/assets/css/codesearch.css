@@ -7,7 +7,6 @@ body {
     width: 30em;
     margin: auto;
     margin-bottom: 1em;
-    padding: 5px;
     border: 1px solid black;
 }
 
@@ -16,6 +15,10 @@ body {
 }
 
 #searchinput {
+    margin: 10px;
+}
+
+.querybox {
     float: left;
 }
 
@@ -39,6 +42,7 @@ body {
 #regex-error {
     display: none;
     text-align: center;
+    margin: 10px;
 }
 
 #errortext {

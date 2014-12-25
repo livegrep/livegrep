@@ -2,37 +2,35 @@
   $(function(){CodesearchUI.github_repos = {{.GithubRepos}};});
 </script>
 <div id='searcharea'>
-  <table id='searchinput'>
-    <tr>
-      <td><span class='label'>query:</span></td>
-      <td><input type="text" id='searchbox'></input></td>
-    </tr>
-  </table>
-  <div id='whatbox'>
-    {{if gt (.Backends | len) 1 }}
-    <div class='what'> Search:
-    <select id='backend'>
-    {{range .Backends}}
-     <option value="{{.Id}}">{{.I.Name}}</option>
-    {{end}}
-    </select>
+  <div id='searchinput'>
+    <div class='querybox'>
+    <span class='label'>query:</span>
+    <input type="text" id='searchbox'></input>
     </div>
-    {{else}}
-    {{with index .Backends 0}}
-    <div class='what'> Now searching: {{ .I.Name }}</div>
-    <select id='backend' style='display: none;'>
-      <option value="{{.Id}}">{{.I.Name}}</option>
-    </select>
-    {{end}}
-    {{end}}
+    <div id='whatbox'>
+      {{if gt (.Backends | len) 1 }}
+      <div class='what'> Search:
+      <select id='backend'>
+        {{range .Backends}}
+        <option value="{{.Id}}">{{.I.Name}}</option>
+        {{end}}
+      </select>
+      </div>
+      {{else}}
+      {{with index .Backends 0}}
+      <div class='what'> Now searching: {{ .I.Name }}</div>
+      <select id='backend' style='display: none;'>
+        <option value="{{.Id}}">{{.I.Name}}</option>
+      </select>
+      {{end}}
+      {{end}}
+    </div>
+    <div class='clear'> </div>
   </div>
-  <div class='clear'> </div>
   <div id='regex-error'>
-      <span class='label'> error: </span>
-      <span id='errortext'>
-      </span>
+    <span class='label'> error: </span>
+    <span id='errortext'> </span>
     </div>  
-  <div class='clear'> </div>
 </div>
 <div id='resultbox'>
 <div id='resultarea'>
