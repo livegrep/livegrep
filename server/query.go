@@ -1,13 +1,15 @@
 package server
 
 import (
+	"bytes"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/livegrep/livegrep/client"
 )
 
-var pieceRE = regexp.MustCompile(`\(|(?:^(\w+):)| `)
+var pieceRE = regexp.MustCompile(`\(|(?:^(\w+):|\\.)| `)
 
 func ParseQuery(query string) client.Query {
 	ops := make(map[string]string)
@@ -25,8 +27,6 @@ func ParseQuery(query string) client.Query {
 		match := q[m[0]:m[1]]
 		q = q[m[1]:]
 
-		// Three potentially-syntactically-meaningful cases:
-
 		if match == " " {
 			// A space: Ends the operator, if we're in one.
 			if key == "" {
@@ -38,20 +38,32 @@ func ParseQuery(query string) client.Query {
 			// A parenthesis. Nothing is special until the
 			// end of a balanced set of parenthesis
 			p := 1
-			i := 0
-			var r rune
+			esc := false
+			var (
+				i int
+				r rune
+			)
+			var w bytes.Buffer
 			for i, r = range q {
-				if r == '(' {
+				switch {
+				case esc:
+					esc = false
+				case r == '\\':
+					esc = true
+				case r == '(':
 					p++
-				} else if r == ')' {
+				case r == ')':
 					p--
 				}
+				w.WriteRune(r)
 				if p == 0 {
 					break
 				}
 			}
-			ops[key] += match + q[:i]
-			q = q[i:]
+			ops[key] += match + w.String()
+			q = q[i+utf8.RuneLen(r):]
+		} else if match[0] == '\\' {
+			ops[key] += match
 		} else {
 			// An operator. The key is in match group 1
 			key = match[m[2]-m[0] : m[3]-m[0]]
