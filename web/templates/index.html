@@ -2,47 +2,36 @@
   $(function(){CodesearchUI.github_repos = {{.GithubRepos}};});
 </script>
 <div id='searcharea'>
-  <table id='searchinput'>
-    <tr>
-      <td><span class='label'>regex:</span></td>
-      <td><input type="text" id='searchbox'></input></td>
-    </tr>
-    <tr>
-      <td><span class='label'>path:</span></td>
-      <td><input type="text" id='filebox'></input></td>
-    </tr>
-    <tr id='reposel'>
-      <td><span class='label'>repository:</span></td>
-      <td><input type="text" id='repobox'></input></td>
-    </tr>
-  </table>
-  <div id='errorbox'>
-    {{if gt (.Backends | len) 1 }}
-    <div class='what'> Search:
-    <select id='backend'>
-    {{range .Backends}}
-     <option value="{{.Id}}">{{.I.Name}}</option>
-    {{end}}
-    </select>
+  <div id='searchinput'>
+    <div class='querybox'>
+    <span class='label'>query:</span>
+    <input type="text" id='searchbox'></input>
+    <span class='help'><a href="/help" target="_blank">help</a></span>
     </div>
-    {{else}}
-    {{with index .Backends 0}}
-    <div class='what'> Now searching: {{ .I.Name }}</div>
-    <select id='backend' style='display: none;'>
-      <option value="{{.Id}}">{{.I.Name}}</option>
-    </select>
-    {{end}}
-    {{end}}
-    <div id='regex-error'>
-      <span class='label'> Error: </span>
-      <span id='errortext'>
-      </span>
+    <div id='whatbox'>
+      {{if gt (.Backends | len) 1 }}
+      <div class='what'> Search:
+      <select id='backend'>
+        {{range .Backends}}
+        <option value="{{.Id}}">{{.I.Name}}</option>
+        {{end}}
+      </select>
+      </div>
+      {{else}}
+      {{with index .Backends 0}}
+      <div class='what'> Now searching: {{ .I.Name }}</div>
+      <select id='backend' style='display: none;'>
+        <option value="{{.Id}}">{{.I.Name}}</option>
+      </select>
+      {{end}}
+      {{end}}
     </div>
+    <div class='clear'> </div>
   </div>
-  <div id='casefold'>
-    <input type='checkbox' id='fold-case'><label for='fold-case'>ignore case</label>
-  </div>
-  <div class='clear'> </div>
+  <div id='regex-error'>
+    <span class='label'> error: </span>
+    <span id='errortext'> </span>
+    </div>  
 </div>
 <div id='resultbox'>
 <div id='resultarea'>

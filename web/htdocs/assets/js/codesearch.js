@@ -28,14 +28,7 @@ var Codesearch = function() {
       if ('backend' in opts) {
         url = url + opts.backend;
       }
-      var q = {};
-
-      ['line','file', 'repo', 'fold_case'].forEach(function (key) {
-        if(opts[key])
-          q[key] = opts[key];
-      });
-      if (q.fold_case !== true)
-        delete q.fold_case;
+      var q = {q: opts.q};
 
       url = url + "?" + $.param(q);
 

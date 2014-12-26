@@ -1,0 +1,68 @@
+<div id='searcharea'>
+  <p>
+    Search over source code by typing a regular expression into the
+    query box. Searches are case-insensitive by default:
+  </p>
+  <div class='example'>
+    <span class='query'>
+      hello,?\sworld
+    </span>
+    <span class='link'>
+      <a href="/search/?q=hello,?\sworld">
+        try it
+      </a>
+    </span>
+  </div>
+
+  <p>
+    Queries containing capital letters are matched case-sensitively:
+  </p>
+
+  <div class='example'>
+    <span class='query'>
+      Hello
+    </span>
+    <span class='link'>
+      <a href="/search/?q=Hello">
+        try it
+      </a>
+    </span>
+  </div>
+
+  <p>
+    Restrict matches to specific files using a <span
+    class='query'>file:</span> modifier:
+  </p>
+
+  <div class='example'>
+    <span class='query'>
+      exit file:\.c$
+    </span>
+    <span class='link'>
+      <a href="/search/?q=exit+file:\.c$">
+        try it
+      </a>
+    </span>
+  </div>
+
+  {{ if .SampleRepo }}
+  <p>
+    Restrict matches to specific repositories via <span
+    class='query'>repo:</span>
+  </p>
+
+  <div class='example'>
+    <span class='query'>
+      fail repo:{{.SampleRepo}}
+    </span>
+    <span class='link'>
+      <a href="/search/?q=exit+repo:{{.SampleRepo}}">
+        try it
+      </a>
+    </span>
+  </div>
+  {{ end }}
+
+  <p>
+  </p>
+</div>

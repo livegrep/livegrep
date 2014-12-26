@@ -1,12 +1,12 @@
 body {
     margin: 1em 3em;
+    font-family: sans-serif;
 }
 
 #searcharea {
     width: 30em;
     margin: auto;
     margin-bottom: 1em;
-    padding: 5px;
     border: 1px solid black;
 }
 
@@ -15,10 +15,27 @@ body {
 }
 
 #searchinput {
+    margin: 10px;
+}
+
+.querybox {
     float: left;
 }
 
-#errorbox {
+.querybox {
+    font-size: 80%;
+    padding-left: 1ex;
+}
+
+.querybox .help a{
+    text-decoration: none;
+}
+
+#searcharea input {
+  width: 20em;
+}
+
+#whatbox {
     float: right;
 }
 
@@ -33,6 +50,8 @@ body {
 
 #regex-error {
     display: none;
+    text-align: center;
+    margin: 10px;
 }
 
 #errortext {
@@ -138,48 +157,28 @@ body {
     width: 40em;
 }
 
-#feedback {
-    border: 3px double black;
-    background: white;
-    z-index: 1;
-    position: absolute;
-    display: none;
-}
-
-#feedback .spinner {
-    display: none;
-}
-
-#feedback input {
-    margin: 5px;
-}
-
-#feedback button {
-    margin: 5px;
-}
-
-#feedback textarea {
-    margin: 5px;
-}
-
-#feedback .submit {
-    float: right;
-}
-
-#feedback {
-    font-size: 80%;
-    color: #999;
-    margin: 5px;
-}
-
-#feedback .result {
-    font-size: 100%;
-}
-
 #permalink {
     font-size: 80%;
 }
 
 #resultarea {
     display: none;
+}
+
+/* /help */
+
+div.example {
+    margin: 10px;
+    width: 20em;
+    padding-left: 2em;
+}
+
+.query {
+    font-family: monospace;
+    font-weight: bold;
+}
+
+.example .link {
+    font-size: 80%;
+    float: right;
 }
