@@ -72,6 +72,10 @@ func TestParseQuery(t *testing.T) {
 			`a file:(\()`,
 			client.Query{Line: "a", File: `(\()`, FoldCase: true},
 		},
+		{
+			`(`,
+			client.Query{Line: "(", FoldCase: true},
+		},
 	}
 
 	for _, tc := range cases {

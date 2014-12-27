@@ -38,13 +38,16 @@ func ParseQuery(query string) client.Query {
 			// A parenthesis. Nothing is special until the
 			// end of a balanced set of parenthesis
 			p := 1
+			i := 0
 			esc := false
-			var (
-				i int
-				r rune
-			)
 			var w bytes.Buffer
-			for i, r = range q {
+			for i < len(q) {
+				// We decode runes ourselves instead
+				// of using range because exiting the
+				// loop with i = len(q) makes the edge
+				// cases simpler.
+				r, l := utf8.DecodeRuneInString(q[i:])
+				i += l
 				switch {
 				case esc:
 					esc = false
@@ -61,7 +64,7 @@ func ParseQuery(query string) client.Query {
 				}
 			}
 			ops[key] += match + w.String()
-			q = q[i+utf8.RuneLen(r):]
+			q = q[i:]
 		} else if match[0] == '\\' {
 			ops[key] += match
 		} else {
