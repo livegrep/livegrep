@@ -30,6 +30,21 @@
   </div>
 
   <p>
+    Use <span class='query'>case:</span> to force a lower-case match:
+  </p>
+
+  <div class='example'>
+    <span class='query'>
+      case:hello
+    </span>
+    <span class='link'>
+      <a href="/search/?q=hello">
+        try it
+      </a>
+    </span>
+  </div>
+
+  <p>
     Restrict matches to specific files using a <span
     class='query'>file:</span> modifier:
   </p>
@@ -39,7 +54,23 @@
       exit file:\.c$
     </span>
     <span class='link'>
-      <a href="/search/?q=exit+file:\.c$">
+      <a href="/search/?q=exit+file:[.]c$">
+        try it
+      </a>
+    </span>
+  </div>
+
+  <p>
+    Wrap a clause in parentheses to stop interpretation of spaces or
+    query modifiers:
+  </p>
+
+  <div class='example'>
+    <span class='query'>
+      (file:)
+    </span>
+    <span class='link'>
+      <a href="/search/?q=(file:)">
         try it
       </a>
     </span>
