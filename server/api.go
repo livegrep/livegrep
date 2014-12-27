@@ -146,9 +146,10 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	log.Printf(ctx,
-		"responding success results=%d why=%s",
+		"responding success results=%d why=%s stats=%s",
 		len(reply.Results),
-		reply.Info.ExitReason)
+		reply.Info.ExitReason,
+		asJSON{reply.Info})
 
 	replyJSON(ctx, w, 200, reply)
 }
