@@ -186,7 +186,9 @@ var SearchState = Backbone.Model.extend({
       return '/search';
     var base = '/search';
 
-    q.q = current.q;
+    if (current.q !== "") {
+      q.q = current.q;
+    }
 
     if (current.backend) {
       base += "/" + current.backend
