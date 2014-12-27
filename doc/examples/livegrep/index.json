@@ -8,14 +8,6 @@
             "metadata": {
                 "github": "nelhage/livegrep"
             }
-        },
-        {
-            "name": "livegrep^",
-            "path": ".",
-            "revisions": [ "HEAD^" ],
-            "metadata": {
-                "github": "nelhage/livegrep"
-            }
         }
     ]
 }
