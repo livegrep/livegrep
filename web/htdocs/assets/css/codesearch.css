@@ -19,33 +19,24 @@ body {
 }
 
 .querybox {
-    float: left;
-}
-
-.querybox {
     font-size: 80%;
-    padding-left: 1ex;
+    text-align: center;
 }
 
-.querybox .help a{
+.querybox .help a {
     text-decoration: none;
 }
 
 #searcharea input {
-  width: 20em;
+    width: 20em;
 }
 
 #whatbox {
-    float: right;
+    padding-left: 1em;
 }
 
-#casefold {
-    float: right;
-    clear: right;
-}
-
-#casefold label {
-    font-weight: bold;
+.what {
+    color: #999;
 }
 
 #regex-error {
@@ -125,12 +116,6 @@ body {
 
 #countarea {
     float: right;
-}
-
-.what {
-    font-size: 80%;
-    color: #999;
-    padding-bottom: 5px;
 }
 
 #header li {

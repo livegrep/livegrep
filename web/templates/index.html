@@ -7,24 +7,24 @@
     <span class='label'>query:</span>
     <input type="text" id='searchbox'></input>
     <span class='help'><a href="/help" target="_blank">help</a></span>
-    </div>
-    <div id='whatbox'>
+    <span id='whatbox'>
       {{if gt (.Backends | len) 1 }}
-      <div class='what'> Search:
+      <span class='what'> Search:
       <select id='backend'>
         {{range .Backends}}
         <option value="{{.Id}}">{{.I.Name}}</option>
         {{end}}
       </select>
-      </div>
+      </span>
       {{else}}
       {{with index .Backends 0}}
-      <div class='what'> Now searching: {{ .I.Name }}</div>
+      <span class='what'> Searching: {{ .I.Name }}</span>
       <select id='backend' style='display: none;'>
         <option value="{{.Id}}">{{.I.Name}}</option>
       </select>
       {{end}}
       {{end}}
+    </span>
     </div>
     <div class='clear'> </div>
   </div>
