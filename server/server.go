@@ -111,7 +111,7 @@ func (s *server) ServeHelp(ctx context.Context, w http.ResponseWriter, r *http.R
 	})
 }
 
-func (s *server) ServeHealthcheck(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "ok\n")
 }
 
@@ -182,13 +182,13 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	m := pat.New()
-	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
+	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
-	m.Add("GET", "/debug/healthcheck", srv.Handler(srv.ServeHealthcheck))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
+	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
 
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
