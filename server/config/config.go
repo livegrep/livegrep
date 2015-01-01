@@ -1,5 +1,9 @@
 package config
 
+import (
+  "html/template"
+)
+
 type Backend struct {
 	Id   string `json:"id"`
 	Addr string `json:"addr"`
@@ -26,6 +30,10 @@ type Config struct {
 
 	// The address to listen on, as HOST:PORT.
 	Listen string `json:"listen"`
+
+        // HTML injected into layout template
+        // for site-specific customizations
+        HeaderHTML template.HTML `json:"header_html"`
 
 	Sentry struct {
 		URI string `json:"uri"`
