@@ -36,6 +36,12 @@ function shorten(ref) {
   match = /^([0-9a-f]{8})[0-9a-f]+$/.exec(ref);
   if (match)
     return match[1];
+  // If reference is origin/foo, assume that foo is
+  // the branch name.
+  match = /^origin\/(.*)/.exec(ref);
+  if (match) {
+    return match[1];
+  }
   return ref;
 }
 
@@ -47,13 +53,25 @@ var Match = Backbone.Model.extend({
     var ref = this.get('version');
 
     var repo_map;
-    if (this.get('backend'))
-      repo_map = CodesearchUI.github_repos[this.get('backend')]
-    else
-      repo_map = CodesearchUI.github_repos[Object.keys(CodesearchUI.github_repos)[0]]
-    if (!repo_map[name])
+    var backend = Codesearch.in_flight.backend;
+    repo_map = CodesearchUI.github_repos[backend];
+    if (!repo_map) {
       return null;
-    return "https://github.com/" + repo_map[name] +
+    }
+    if (!repo_map[name]) {
+      return null;
+    }
+
+    var base;
+    // If 'github' metadata is already a URL, pass it
+    // through, but otherwise asume it's a user/repo on
+    // the public github site.
+    try {
+        base = new URL(repo_map[name]).toString();
+    } catch(e) {
+        base = "https://github.com/" + repo_map[name];
+    }
+    return base +
       "/blob/" + shorten(ref) + "/" + this.get('path') +
       "#L" + this.get('lno');
   }
