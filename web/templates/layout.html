@@ -35,6 +35,11 @@
     <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Stripe Code Search" />
   </head>
   <body>
+    <div id='customization'>
+    {{if .Config.HeaderHTML}}
+    {{.Config.HeaderHTML}}
+    {{end}}
+    </div>
     <div id='header'>
       <ul>
         <li><a href="/">search</a></li>
