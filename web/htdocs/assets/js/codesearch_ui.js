@@ -356,7 +356,7 @@ var CodesearchUI = function() {
       if (parms.backend)
         backend = parms.backend;
       var m;
-      if (m = (new RegExp("/search/(\\w+)/?").exec(window.location.pathname))) {
+      if (m = (new RegExp("/search/([^\/]+)/?").exec(window.location.pathname))) {
         backend = m[1];
       }
       if (backend && CodesearchUI.input_backend)
