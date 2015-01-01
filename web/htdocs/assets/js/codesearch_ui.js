@@ -182,13 +182,15 @@ var SearchState = Backbone.Model.extend({
   dispatch: function (search) {
     var cur = this.search_map[this.get('displaying')];
     if (cur &&
-        cur.q === search.q) {
+        cur.q === search.q &&
+        cur.backend === search.backend) {
       return false;
     }
     var id = this.next_id();
     search.id = id;
     this.search_map[id] = {
       q: search.q,
+      backend: search.backend
     };
     if (!search.q.length) {
       this.set('displaying', id);
