@@ -409,6 +409,7 @@ void code_searcher::index_file(const indexed_tree *tree,
     file_contents_builder content;
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
+    final:
         idx_lines.inc();
         if (f - p + 1 >= FLAGS_line_limit) {
             // Don't index the long line, but do index an empty
@@ -425,9 +426,9 @@ void code_searcher::index_file(const indexed_tree *tree,
             idx_bytes_dedup.inc((f - p) + 1);
             idx_lines_dedup.inc();
 
-            // Include the trailing '\n' in the chunk buffer
             unsigned char *alloc = alloc_->alloc(f - p + 1);
-            memcpy(alloc, p, f - p + 1);
+            memcpy(alloc, p, f - p);
+            alloc[f - p] = '\n';
             line = StringPiece((char*)alloc, f - p);
             lines_.insert(line);
             c = alloc_->current_chunk();
@@ -438,7 +439,15 @@ void code_searcher::index_file(const indexed_tree *tree,
         }
         c->add_chunk_file(sf, line);
         content.extend(c, line);
-        p = f + 1;
+        p = min(end, f + 1);
+    }
+    if (p < end - 1) {
+        // Handle files with no trailing newline by jumping back and
+        // adding the final line.
+        assert(*(end-1) != '\n');
+        f = end;
+        lines++;
+        goto final;
     }
 
     sf->content = content.build(alloc_);

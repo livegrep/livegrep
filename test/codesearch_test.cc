@@ -40,6 +40,27 @@ TEST_F(codesearch_test, IndexTest) {
     EXPECT_EQ(string(file1), content);
 }
 
+TEST_F(codesearch_test, NoTrailingNewLine) {
+    cs_.index_file(tree_, "/data/file1", "no newline");
+    cs_.finalize();
+
+    EXPECT_EQ(1, cs_.end_files() - cs_.begin_files());
+
+    indexed_file *f = *cs_.begin_files();
+    EXPECT_EQ("/data/file1", f->path);
+    EXPECT_EQ(tree_, f->tree);
+
+    string content;
+
+    for (auto it = f->content->begin(cs_.alloc());
+         it != f->content->end(cs_.alloc()); ++it) {
+        content += it->ToString();
+        content += "\n";
+    }
+
+    EXPECT_EQ(string("no newline\n"), content);
+}
+
 struct accumulate_matches {
     vector<match_result> *results_;
     accumulate_matches(vector<match_result> *results) : results_(results) {}
