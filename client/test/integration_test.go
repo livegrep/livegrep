@@ -124,7 +124,7 @@ func (s SortMatches) Swap(i, j int) {
 var grepRE = regexp.MustCompile(`^HEAD:([^:]+):(\d+):`)
 
 func gitGrep(path, regex string) ([]Match, error) {
-	cmd := exec.Command("git", "grep", "-n", "-E", "-e", regex, "HEAD")
+	cmd := exec.Command("git", "grep", "-n", "-I", "-E", "-e", regex, "HEAD")
 	cmd.Dir = path
 	out, err := cmd.StdoutPipe()
 	if err != nil {
@@ -139,10 +139,15 @@ func gitGrep(path, regex string) ([]Match, error) {
 		line := scan.Bytes()
 		m := grepRE.FindSubmatch(line)
 		if m == nil {
+			cmd.Process.Kill()
 			return nil, fmt.Errorf("unparsable: `%s'", line)
 		}
 		lno, _ := strconv.Atoi(string(m[2]))
 		matches = append(matches, Match{string(m[1]), lno})
+	}
+	if err := scan.Err(); err != nil {
+		cmd.Process.Kill()
+		return nil, err
 	}
 	cmd.Wait()
 
