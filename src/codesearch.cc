@@ -410,6 +410,12 @@ void code_searcher::index_file(const indexed_tree *tree,
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {
         idx_lines.inc();
+        if (f - p + 1 >= FLAGS_line_limit) {
+            // Don't index the long line, but do index an empty
+            // line so that line number of future lines are
+            // preserved.
+            p = f;
+        }
         string_hash::iterator it;
         {
             metric::timer tm(idx_hash_time);
@@ -419,10 +425,6 @@ void code_searcher::index_file(const indexed_tree *tree,
             idx_bytes_dedup.inc((f - p) + 1);
             idx_lines_dedup.inc();
 
-            if (f - p + 1 >= FLAGS_line_limit) {
-                p = f + 1;
-                continue;
-            }
             // Include the trailing '\n' in the chunk buffer
             unsigned char *alloc = alloc_->alloc(f - p + 1);
             memcpy(alloc, p, f - p + 1);

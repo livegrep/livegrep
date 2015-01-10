@@ -68,3 +68,28 @@ TEST_F(codesearch_test, DuplicateLinesInFile) {
     EXPECT_EQ(1, results[0].lno);
     EXPECT_EQ(2, results[1].lno);
 }
+
+TEST_F(codesearch_test, LongLines) {
+    string xs = "x";
+    for (int i = 0; i < 10; i++)
+        xs += xs;
+
+    cs_.index_file(tree_, "/data/file1",
+                   string("line 1\n") +
+                   string("NEEDLE|this line is over 1024 characters") + xs + string("\n") +
+                   string("line 3\n") +
+                   string("NEEDLE\n"));
+    cs_.finalize();
+
+    code_searcher::search_thread search(&cs_);
+    match_stats stats;
+    query q;
+    RE2::Options opts;
+    default_re2_options(opts);
+    q.line_pat.reset(new RE2("NEEDLE", opts));
+    vector<match_result> results;
+    search.match(q, accumulate_matches(&results), &stats);
+
+    ASSERT_EQ(1, results.size());
+    EXPECT_EQ(4, results[0].lno);
+}
