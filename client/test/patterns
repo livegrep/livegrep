@@ -1,0 +1,3 @@
+hello
+	{10}
+^(\s.*\S)?printk\s*\(

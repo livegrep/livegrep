@@ -24,16 +24,36 @@ const LineLimit = 1024
 func Test(t *testing.T) { check.TestingT(t) }
 
 var repo = flag.String("test.repo", "", "Git repository to run integration tests against.")
+var patterns = flag.String("test.patterns", "patterns", "File containing patterns for integration testing.")
 
 type IntegrationSuite struct {
-	config *os.File
-	index  *os.File
-	client client.Client
+	config   *os.File
+	index    *os.File
+	client   client.Client
+	patterns []string
 }
 
 var _ = check.Suite(&IntegrationSuite{})
 
 type J map[string]interface{}
+
+func (i *IntegrationSuite) loadPatterns() error {
+	f, e := os.Open(*patterns)
+	if e != nil {
+		return e
+	}
+	defer f.Close()
+	scan := bufio.NewScanner(f)
+	for scan.Scan() {
+		if len(scan.Text()) > 0 {
+			i.patterns = append(i.patterns, scan.Text())
+		}
+	}
+	if e = scan.Err(); e != nil {
+		return e
+	}
+	return nil
+}
 
 func (i *IntegrationSuite) SetUpSuite(c *check.C) {
 	if *repo == "" {
@@ -42,6 +62,10 @@ func (i *IntegrationSuite) SetUpSuite(c *check.C) {
 	}
 
 	var err error
+
+	if err = i.loadPatterns(); err != nil {
+		c.Fatal("loading patterns", err)
+	}
 
 	i.config, err = ioutil.TempFile("", "livegrep")
 	if err != nil {
@@ -185,6 +209,7 @@ func gitGrep(path, regex string) ([]Match, error) {
 }
 
 func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
+	c.Logf("crosschecking regex=%q", regex)
 	gitMatches, err := gitGrep(*repo, regex)
 	if err != nil {
 		c.Fatalf("git grep: %s", err)
@@ -207,7 +232,7 @@ func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
 }
 
 func (i *IntegrationSuite) TestCrosscheck(c *check.C) {
-	i.crosscheck(c, `hello`)
-	i.crosscheck(c, "\t{10}")
-	i.crosscheck(c, `^(\s.*\S)?printk\s*\(`)
+	for _, p := range i.patterns {
+		i.crosscheck(c, p)
+	}
 }
