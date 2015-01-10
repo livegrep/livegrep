@@ -2,9 +2,11 @@ package test
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -16,6 +18,8 @@ import (
 	"github.com/livegrep/livegrep/client"
 	"gopkg.in/check.v1"
 )
+
+const LineLimit = 1024
 
 func Test(t *testing.T) { check.TestingT(t) }
 
@@ -67,6 +71,7 @@ func (i *IntegrationSuite) SetUpSuite(c *check.C) {
 		"--dump_index", i.index.Name(),
 		"--max_matches", "100000",
 		"--timeout", "100000",
+		"--line_limit", strconv.Itoa(LineLimit),
 		i.config.Name())
 	if err != nil {
 		c.Fatalf("NewClient: %s", err)
@@ -123,6 +128,25 @@ func (s SortMatches) Swap(i, j int) {
 
 var grepRE = regexp.MustCompile(`^HEAD:([^:]+):(\d+):`)
 
+func readLineDropTooLong(r *bufio.Reader) ([]byte, error) {
+	for {
+		line, isPrefix, err := r.ReadLine()
+		if err != nil {
+			return nil, err
+		}
+		if !isPrefix {
+			line = bytes.TrimRight(line, "\n")
+			return line, nil
+		}
+		for isPrefix {
+			line, isPrefix, err = r.ReadLine()
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+}
+
 func gitGrep(path, regex string) ([]Match, error) {
 	cmd := exec.Command("git", "grep", "-n", "-I", "-E", "-e", regex, "HEAD")
 	cmd.Dir = path
@@ -134,20 +158,26 @@ func gitGrep(path, regex string) ([]Match, error) {
 	var matches []Match
 
 	cmd.Start()
-	scan := bufio.NewScanner(out)
-	for scan.Scan() {
-		line := scan.Bytes()
+	buf := bufio.NewReader(out)
+	for {
+		line, err := readLineDropTooLong(buf)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			cmd.Process.Kill()
+			return nil, err
+		}
 		m := grepRE.FindSubmatch(line)
 		if m == nil {
 			cmd.Process.Kill()
 			return nil, fmt.Errorf("unparsable: `%s'", line)
 		}
+		if len(line)-len(m[0]) > LineLimit {
+			continue
+		}
 		lno, _ := strconv.Atoi(string(m[2]))
 		matches = append(matches, Match{string(m[1]), lno})
-	}
-	if err := scan.Err(); err != nil {
-		cmd.Process.Kill()
-		return nil, err
 	}
 	cmd.Wait()
 
