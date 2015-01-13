@@ -17,14 +17,14 @@ func replyJSON(ctx context.Context, w http.ResponseWriter, status int, obj inter
 	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(obj); err != nil {
-		log.Printf(ctx, "writing http response, data=%s err=%s",
+		log.Printf(ctx, "writing http response, data=%s err=%q",
 			asJSON{obj},
 			err.Error())
 	}
 }
 
 func writeError(ctx context.Context, w http.ResponseWriter, status int, code, message string) {
-	log.Printf(ctx, "error status=%d code=%s message=%s",
+	log.Printf(ctx, "error status=%d code=%s message=%q",
 		status, code, message)
 	replyJSON(ctx, w, status, &api.ReplyError{Err: api.InnerError{Code: code, Message: message}})
 }
@@ -44,7 +44,7 @@ func extractQuery(ctx context.Context, r *http.Request) client.Query {
 	var query client.Query
 	if q, ok := params["q"]; ok {
 		query = ParseQuery(q[0])
-		log.Printf(ctx, "parsing query q=%v out=%s", q[0], asJSON{query})
+		log.Printf(ctx, "parsing query q=%q out=%s", q[0], asJSON{query})
 	}
 	if line, ok := params["line"]; ok {
 		query.Line = line[0]
