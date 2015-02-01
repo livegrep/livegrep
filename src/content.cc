@@ -29,9 +29,9 @@ file_contents *file_contents_builder::build(chunk_allocator *alloc) {
         const unsigned char *p = reinterpret_cast<const unsigned char*>
             (pieces_[i].data());
         chunk *chunk = alloc->chunk_from_string(p);
-        out->buf_[3*i]     = chunk->id;
-        out->buf_[3*i + 1] = p - chunk->data;
-        out->buf_[3*i + 2] = pieces_[i].size();
+        out->pieces_[i].chunk = chunk->id;
+        out->pieces_[i].off   = p - chunk->data;
+        out->pieces_[i].len   = pieces_[i].size();
     }
     return out;
 }

@@ -17,8 +17,15 @@
 using re2::StringPiece;
 using std::vector;
 
+
 class file_contents {
 public:
+    struct piece {
+        uint32_t chunk;
+        uint32_t off;
+        uint32_t len;
+    } __attribute__((packed));
+
     template <class T>
     class proxy {
         T obj;
@@ -31,8 +38,8 @@ public:
     class iterator {
     public:
         const StringPiece operator*() {
-            return StringPiece(reinterpret_cast<char*>(alloc_->at(*it_)->data + *(it_+1)),
-                               *(it_+2));
+            return StringPiece(reinterpret_cast<char*>(alloc_->at(it_->chunk)->data + it_->off),
+                               it_->len);
         }
 
         proxy<StringPiece> operator->() {
@@ -40,12 +47,12 @@ public:
         }
 
         iterator &operator++() {
-            it_ += 3;
+            it_++;
             return *this;
         }
 
         iterator &operator--() {
-            it_ -= 3;
+            it_--;
             return *this;
         }
 
@@ -56,11 +63,11 @@ public:
             return !(*this == rhs);
         }
     protected:
-        iterator(chunk_allocator *alloc, uint32_t *it)
+        iterator(chunk_allocator *alloc, piece *it)
             : alloc_(alloc), it_(it) {}
 
         chunk_allocator *alloc_;
-        uint32_t *it_;
+        piece *it_;
 
         friend class file_contents;
     };
@@ -68,19 +75,19 @@ public:
     file_contents(uint32_t npieces) : npieces_(npieces) { }
 
     iterator begin(chunk_allocator *alloc) {
-        return iterator(alloc, buf_);
+        return iterator(alloc, pieces_);
     }
 
     iterator end(chunk_allocator *alloc) {
-        return iterator(alloc, buf_ + 3*npieces_);
+        return iterator(alloc, pieces_ + npieces_);
     }
 
-    uint32_t *begin() {
-        return buf_;
+    piece *begin() {
+        return pieces_;
     }
 
-    uint32_t *end() {
-        return buf_ + 3*npieces_;
+    piece *end() {
+        return pieces_ + npieces_;
     }
 
     size_t size() {
@@ -95,7 +102,7 @@ protected:
     file_contents() {}
 
     uint32_t npieces_;
-    uint32_t buf_[];
+    piece pieces_[];
 };
 
 class file_contents_builder {
