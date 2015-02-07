@@ -743,30 +743,6 @@ void searcher::find_match_brute(const chunk *chunk,
           int(tm.elapsed().tv_usec));
 }
 
-namespace {
-    /*
-     * We use an explicit stack instead of direct recursion. We
-     * want to do an inorder traversal, so that we produce results
-     * in ascending order of position in the chunk, so we have two
-     * types of frames we can push onto the stack.
-     *
-     * A frame with visit = false means that this is the initial
-     * visit to 'node', and we should inspect its position and
-     * push its children, if appropriate. If the node itself is
-     * worth searching, we also push the node again, with visit =
-     * true, in between the children.
-     *
-     * When we encounter a node with visit=true, we actually scan
-     * it for matches.
-     *
-     */
-
-    struct match_frame {
-        chunk_file_node *node;
-        bool visit;
-    };
-};
-
 void searcher::find_match(const chunk *chunk,
                           const StringPiece& match,
                           const StringPiece& line) {
@@ -778,31 +754,15 @@ void searcher::find_match(const chunk *chunk,
     run_timer run(git_time_);
     int loff = (unsigned char*)line.data() - chunk->data;
 
-    vector<match_frame> stack;
+    vector<chunk_file_node *> stack;
     assert(chunk->cf_root);
-    stack.push_back((match_frame){chunk->cf_root, false});
+    stack.push_back(chunk->cf_root);
 
     debug(kDebugSearch, "find_match(%d)", loff);
 
     while (!stack.empty() && !exit_reason_) {
-        match_frame f = stack.back();
+        chunk_file_node *n = stack.back();
         stack.pop_back();
-
-        chunk_file_node *n = f.node;
-
-        if (f.visit) {
-            debug(kDebugSearch, "visit <%d-%d>", n->chunk->left, n->chunk->right);
-            assert(loff >= n->chunk->left && loff <= n->chunk->right);
-            for (list<indexed_file *>::const_iterator it = n->chunk->files.begin();
-                 it != n->chunk->files.end(); ++it) {
-                if (!accept(*it))
-                    continue;
-                if (exit_early())
-                    break;
-                try_match(line, match, *it);
-            }
-            continue;
-        }
 
         debug(kDebugSearch,
               "walk <%d-%d> - %d", n->chunk->left, n->chunk->right,
@@ -812,12 +772,22 @@ void searcher::find_match(const chunk *chunk,
             continue;
         if (loff >= n->chunk->left) {
             if (n->right)
-                stack.push_back((match_frame){n->right, false});
-            if (loff <= n->chunk->right)
-                stack.push_back((match_frame){n, true});
+                stack.push_back(n->right);
+            if (loff <= n->chunk->right) {
+                debug(kDebugSearch, "visit <%d-%d>", n->chunk->left, n->chunk->right);
+                assert(loff >= n->chunk->left && loff <= n->chunk->right);
+                for (list<indexed_file *>::const_iterator it = n->chunk->files.begin();
+                     it != n->chunk->files.end(); ++it) {
+                    if (!accept(*it))
+                        continue;
+                    if (exit_early())
+                        break;
+                    try_match(line, match, *it);
+                }
+            }
         }
         if (n->left)
-            stack.push_back((match_frame){n->left, false});
+            stack.push_back(n->left);
     }
 }
 
