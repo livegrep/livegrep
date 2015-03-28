@@ -230,7 +230,7 @@ class Compiler : public Regexp::Walker<Frag> {
 
   RE2::Anchor anchor_;  // anchor mode for RE2::Set
 
-  DISALLOW_EVIL_CONSTRUCTORS(Compiler);
+  DISALLOW_COPY_AND_ASSIGN(Compiler);
 };
 
 Compiler::Compiler() {
@@ -958,7 +958,7 @@ void Compiler::Setup(Regexp::ParseFlags flags, int64 max_mem,
   max_mem_ = max_mem;
   if (max_mem <= 0) {
     max_inst_ = 100000;  // more than enough
-  } else if (max_mem <= sizeof(Prog)) {
+  } else if (max_mem <= static_cast<int64>(sizeof(Prog))) {
     // No room for anything.
     max_inst_ = 0;
   } else {

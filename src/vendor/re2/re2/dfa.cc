@@ -275,7 +275,7 @@ class DFA {
     vector<int>* matches;
 
    private:
-    DISALLOW_EVIL_CONSTRUCTORS(SearchParams);
+    DISALLOW_COPY_AND_ASSIGN(SearchParams);
   };
 
   // Before each search, the parameters to Search are analyzed by
@@ -428,7 +428,7 @@ class DFA::Workq : public SparseSet {
   int maxmark_;          // maximum number of marks
   int nextmark_;         // id of next mark
   bool last_was_mark_;   // last inserted was mark
-  DISALLOW_EVIL_CONSTRUCTORS(Workq);
+  DISALLOW_COPY_AND_ASSIGN(Workq);
 };
 
 DFA::DFA(Prog* prog, Prog::MatchKind kind, int64 max_mem)
@@ -787,7 +787,7 @@ void DFA::ClearCache() {
        it != state_cache_.end(); ++it)
     v.push_back(*it);
   state_cache_.clear();
-  for (int i = 0; i < v.size(); i++)
+  for (size_t i = 0; i < v.size(); i++)
     delete[] reinterpret_cast<const char*>(v[i]);
 }
 
@@ -1102,7 +1102,7 @@ class DFA::RWLocker {
   Mutex* mu_;
   bool writing_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(RWLocker);
+  DISALLOW_COPY_AND_ASSIGN(RWLocker);
 };
 
 DFA::RWLocker::RWLocker(Mutex* mu)
@@ -1202,7 +1202,7 @@ class DFA::StateSaver {
   bool is_special_;  // whether original state was special
   State* special_;   // if is_special_, the original state
 
-  DISALLOW_EVIL_CONSTRUCTORS(StateSaver);
+  DISALLOW_COPY_AND_ASSIGN(StateSaver);
 };
 
 DFA::StateSaver::StateSaver(DFA* dfa, State* state) {
@@ -1394,7 +1394,7 @@ inline bool DFA::InlinedSearchLoop(SearchParams* params,
         // of 10 bytes per state computation, fail so that RE2 can
         // fall back to the NFA.
         if (FLAGS_re2_dfa_bail_when_slow && resetp != NULL &&
-            (p - resetp) < 10*state_cache_.size()) {
+            static_cast<unsigned long>(p - resetp) < 10*state_cache_.size()) {
           params->failed = true;
           return false;
         }
@@ -1932,7 +1932,7 @@ int DFA::BuildAllStates() {
   q.push_back(params.start);
 
   // Flood to expand every state.
-  for (int i = 0; i < q.size(); i++) {
+  for (size_t i = 0; i < q.size(); i++) {
     State* s = q[i];
     for (int c = 0; c < 257; c++) {
       State* ns = RunStateOnByteUnlocked(s, c);
@@ -2015,6 +2015,7 @@ bool DFA::PossibleMatchRange(string* min, string* max, int maxlen) {
   // Build minimum prefix.
   State* s = params.start;
   min->clear();
+  MutexLock lock(&mutex_);
   for (int i = 0; i < maxlen; i++) {
     if (previously_visited_states[s] > kMaxEltRepetitions) {
       VLOG(2) << "Hit kMaxEltRepetitions=" << kMaxEltRepetitions
@@ -2024,7 +2025,7 @@ bool DFA::PossibleMatchRange(string* min, string* max, int maxlen) {
     previously_visited_states[s]++;
 
     // Stop if min is a match.
-    State* ns = RunStateOnByteUnlocked(s, kByteEndText);
+    State* ns = RunStateOnByte(s, kByteEndText);
     if (ns == NULL)  // DFA out of memory
       return false;
     if (ns != DeadState && (ns == FullMatchState || ns->IsMatch()))
@@ -2033,7 +2034,7 @@ bool DFA::PossibleMatchRange(string* min, string* max, int maxlen) {
     // Try to extend the string with low bytes.
     bool extended = false;
     for (int j = 0; j < 256; j++) {
-      ns = RunStateOnByteUnlocked(s, j);
+      ns = RunStateOnByte(s, j);
       if (ns == NULL)  // DFA out of memory
         return false;
       if (ns == FullMatchState ||
@@ -2063,7 +2064,7 @@ bool DFA::PossibleMatchRange(string* min, string* max, int maxlen) {
     // Try to extend the string with high bytes.
     bool extended = false;
     for (int j = 255; j >= 0; j--) {
-      State* ns = RunStateOnByteUnlocked(s, j);
+      State* ns = RunStateOnByte(s, j);
       if (ns == NULL)
         return false;
       if (ns == FullMatchState ||

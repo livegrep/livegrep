@@ -12,11 +12,11 @@
 #include <stddef.h>         // For size_t
 #include <assert.h>
 #include <stdarg.h>
-#include <sys/time.h>
 #include <time.h>
 #include <ctype.h>	// For isdigit, isalpha.
 
 // C++
+#include <ctime>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -57,6 +57,22 @@ using std::unordered_set;
 
 #endif
 
+#ifdef WIN32
+
+#define snprintf _snprintf_s
+#define sprintf sprintf_s
+#define stricmp _stricmp
+#define strtof strtod /* not really correct but best we can do */
+#define strtoll _strtoi64
+#define strtoull _strtoui64
+#define vsnprintf vsnprintf_s
+
+#pragma warning(disable: 4018) // signed/unsigned mismatch
+#pragma warning(disable: 4244) // possible data loss in int conversion
+#pragma warning(disable: 4800) // conversion from int to bool
+
+#endif
+
 namespace re2 {
 
 typedef int8_t int8;
@@ -81,13 +97,13 @@ template<bool> struct CompileAssert {};
   typedef CompileAssert<(bool(expr))> msg[bool(expr) ? 1 : -1]
 #endif
 
-// DISALLOW_EVIL_CONSTRUCTORS disallows the copy and operator= functions.
+// DISALLOW_COPY_AND_ASSIGN disallows the copy and operator= functions.
 // It goes in the private: declarations in a class.
-#define DISALLOW_EVIL_CONSTRUCTORS(TypeName) \
+#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
   TypeName(const TypeName&);                 \
   void operator=(const TypeName&)
 
-#define arraysize(array) (sizeof(array)/sizeof((array)[0]))
+#define arraysize(array) (int)(sizeof(array)/sizeof((array)[0]))
 
 class StringPiece;
 

@@ -519,6 +519,34 @@ TEST(Capture, NamedGroups) {
   }
 }
 
+TEST(RE2, CapturedGroupTest) {
+  RE2 re("directions from (?P<S>.*) to (?P<D>.*)");
+  int num_groups = re.NumberOfCapturingGroups();
+  EXPECT_EQ(2, num_groups);
+  string args[4];
+  RE2::Arg arg0(&args[0]);
+  RE2::Arg arg1(&args[1]);
+  RE2::Arg arg2(&args[2]);
+  RE2::Arg arg3(&args[3]);
+
+  const RE2::Arg* const matches[4] = {&arg0, &arg1, &arg2, &arg3};
+  EXPECT_TRUE(RE2::FullMatchN("directions from mountain view to san jose",
+                              re, matches, num_groups));
+  const map<string, int>& named_groups = re.NamedCapturingGroups();
+  EXPECT_TRUE(named_groups.find("S") != named_groups.end());
+  EXPECT_TRUE(named_groups.find("D") != named_groups.end());
+
+  // The named group index is 1-based.
+  int source_group_index = named_groups.find("S")->second;
+  int destination_group_index = named_groups.find("D")->second;
+  EXPECT_EQ(1, source_group_index);
+  EXPECT_EQ(2, destination_group_index);
+
+  // The args is zero-based.
+  EXPECT_EQ("mountain view", args[source_group_index - 1]);
+  EXPECT_EQ("san jose", args[destination_group_index - 1]);
+}
+
 TEST(RE2, FullMatchWithNoArgs) {
   CHECK(RE2::FullMatch("h", "h"));
   CHECK(RE2::FullMatch("hello", "hello"));
@@ -696,7 +724,7 @@ TEST(RE2, NULTerminated) {
 
 TEST(RE2, FullMatchTypeTests) {
   // Type tests
-  string zeros(100, '0');
+  string zeros(1000, '0');
   {
     char c;
     CHECK(RE2::FullMatch("Hello", "(H)ello", &c));
@@ -798,12 +826,13 @@ TEST(RE2, FullMatchTypeTests) {
 }
 
 TEST(RE2, FloatingPointFullMatchTypes) {
-  string zeros(100, '0');
+  string zeros(1000, '0');
   {
     float v;
     CHECK(RE2::FullMatch("100",   "(.*)", &v));  CHECK_EQ(v, 100);
     CHECK(RE2::FullMatch("-100.", "(.*)", &v));  CHECK_EQ(v, -100);
     CHECK(RE2::FullMatch("1e23",  "(.*)", &v));  CHECK_EQ(v, float(1e23));
+    CHECK(RE2::FullMatch(" 100",  "(.*)", &v));  CHECK_EQ(v, 100);
 
     CHECK(RE2::FullMatch(zeros + "1e23",  "(.*)", &v));
     CHECK_EQ(v, float(1e23));
@@ -1399,6 +1428,51 @@ TEST(RE2, Bug10131674) {
   RE2 re("\\140\\440\\174\\271\\150\\656\\106\\201\\004\\332", RE2::Latin1);
   EXPECT_FALSE(re.ok());
   EXPECT_FALSE(RE2::FullMatch("hello world", re));
+}
+
+TEST(RE2, Bug18391750) {
+  // Stray write past end of match_ in nfa.cc, caught by fuzzing + address sanitizer.
+  char t[] = {0x28, 0x28, 0xfc, 0xfc, 0x8,  0x8,  0x26, 0x26, 0x28, 0xc2, 0x9b,
+              0xc5, 0xc5, 0xd4, 0x8f, 0x8f, 0x69, 0x69, 0xe7, 0x29, 0x7b, 0x37,
+              0x31, 0x31, 0x7d, 0xae, 0x7c, 0x7c, 0xf3, 0x29, 0xae, 0xae, 0x2e,
+              0x2a, 0x29, 0x0};
+  RE2::Options opt;
+  opt.set_encoding(RE2::Options::EncodingLatin1);
+  opt.set_longest_match(true);
+  opt.set_dot_nl(true);
+  opt.set_case_sensitive(false);
+  RE2 re(t, opt);
+  CHECK(re.ok());
+  RE2::PartialMatch(t, re);
+}
+
+TEST(RE2, Bug18458852) {
+  // Bug in parser accepting invalid (too large) rune,
+  // causing compiler to fail in DCHECK in UTF-8
+  // character class code.
+  char b[] = {0x28, 0x5,  0x5,  0x41, 0x41, 0x28, 0x24, 0x5b, 0x5e,
+              0xf5, 0x87, 0x87, 0x90, 0x29, 0x5d, 0x29, 0x29, 0x0};
+  RE2 re(b);
+  CHECK(!re.ok());
+}
+
+TEST(RE2, Bug18523943) {
+  // Bug in bitstate: case kFailInst was merged into the default with LOG(DFATAL).
+
+  RE2::Options opt;
+  char a[] = {0x29, 0x29, 0x24, 0x0};
+  char b[] = {0x28, 0xa, 0x2a, 0x2a, 0x29, 0x0};
+  opt.set_log_errors(false);
+  opt.set_encoding(RE2::Options::EncodingLatin1);
+  opt.set_posix_syntax(true);
+  opt.set_longest_match(true);
+  opt.set_literal(false);
+  opt.set_never_nl(true);
+
+  RE2 re((const char*)b, opt);
+  CHECK(re.ok());
+  string s1;
+  CHECK(!RE2::PartialMatch((const char*)a, re, &s1));
 }
 
 }  // namespace re2

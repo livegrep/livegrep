@@ -67,6 +67,14 @@ class FilteredRE2 {
                   const vector<int>& atoms,
                   vector<int>* matching_regexps) const;
 
+  // Returns the indices of all potentially matching regexps after first
+  // clearing potential_regexps.
+  // A regexp is potentially matching if it passes the filter.
+  // If a regexp passes the filter it may still not match.
+  // A regexp that does not pass the filter is guaranteed to not match.
+  void AllPotentials(const vector<int>& atoms,
+                     vector<int>* potential_regexps) const;
+
   // The number of regexps added.
   int NumRegexps() const { return re2_vec_.size(); }
 
@@ -91,7 +99,7 @@ class FilteredRE2 {
   // An AND-OR tree of string atoms used for filtering regexps.
   PrefilterTree* prefilter_tree_;
 
-  //DISALLOW_EVIL_CONSTRUCTORS(FilteredRE2);
+  //DISALLOW_COPY_AND_ASSIGN(FilteredRE2);
   FilteredRE2(const FilteredRE2&);
   void operator=(const FilteredRE2&);
 };

@@ -16,7 +16,7 @@ FilteredRE2::FilteredRE2()
 }
 
 FilteredRE2::~FilteredRE2() {
-  for (int i = 0; i < re2_vec_.size(); i++)
+  for (size_t i = 0; i < re2_vec_.size(); i++)
     delete re2_vec_[i];
   delete prefilter_tree_;
 }
@@ -46,7 +46,7 @@ void FilteredRE2::Compile(vector<string>* atoms) {
     return;
   }
 
-  for (int i = 0; i < re2_vec_.size(); i++) {
+  for (size_t i = 0; i < re2_vec_.size(); i++) {
     Prefilter* prefilter = Prefilter::FromRE2(re2_vec_[i]);
     prefilter_tree_->Add(prefilter);
   }
@@ -56,7 +56,7 @@ void FilteredRE2::Compile(vector<string>* atoms) {
 }
 
 int FilteredRE2::SlowFirstMatch(const StringPiece& text) const {
-  for (int i = 0; i < re2_vec_.size(); i++)
+  for (size_t i = 0; i < re2_vec_.size(); i++)
     if (RE2::PartialMatch(text, *re2_vec_[i]))
       return i;
   return -1;
@@ -70,7 +70,7 @@ int FilteredRE2::FirstMatch(const StringPiece& text,
   }
   vector<int> regexps;
   prefilter_tree_->RegexpsGivenStrings(atoms, &regexps);
-  for (int i = 0; i < regexps.size(); i++)
+  for (size_t i = 0; i < regexps.size(); i++)
     if (RE2::PartialMatch(text, *re2_vec_[regexps[i]]))
       return regexps[i];
   return -1;
@@ -83,17 +83,22 @@ bool FilteredRE2::AllMatches(
   matching_regexps->clear();
   vector<int> regexps;
   prefilter_tree_->RegexpsGivenStrings(atoms, &regexps);
-  for (int i = 0; i < regexps.size(); i++)
+  for (size_t i = 0; i < regexps.size(); i++)
     if (RE2::PartialMatch(text, *re2_vec_[regexps[i]]))
       matching_regexps->push_back(regexps[i]);
   return !matching_regexps->empty();
+}
+
+void FilteredRE2::AllPotentials(
+    const vector<int>& atoms,
+    vector<int>* potential_regexps) const {
+  prefilter_tree_->RegexpsGivenStrings(atoms, potential_regexps);
 }
 
 void FilteredRE2::RegexpsGivenStrings(const vector<int>& matched_atoms,
                                       vector<int>* passed_regexps) {
   prefilter_tree_->RegexpsGivenStrings(matched_atoms, passed_regexps);
 }
-
 
 void FilteredRE2::PrintPrefilter(int regexpid) {
   prefilter_tree_->PrintPrefilter(regexpid);
