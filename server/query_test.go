@@ -8,6 +8,15 @@ import (
 )
 
 func TestParseQuery(t *testing.T) {
+	Not := func(file, repo string) struct {
+		File string `json:"file"`
+		Repo string `json:"repo"`
+	} {
+		return struct {
+			File string `json:"file"`
+			Repo string `json:"repo"`
+		}{file, repo}
+	}
 	cases := []struct {
 		in  string
 		out client.Query
@@ -79,6 +88,14 @@ func TestParseQuery(t *testing.T) {
 		{
 			`(file:)`,
 			client.Query{Line: "(file:)", FoldCase: true},
+		},
+		{
+			`-file:Godep re`,
+			client.Query{Line: "re", Not: Not("Godep", ""), FoldCase: true},
+		},
+		{
+			`-file:. -repo:Godep re`,
+			client.Query{Line: "re", Not: Not(".", "Godep"), FoldCase: true},
 		},
 	}
 

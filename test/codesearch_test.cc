@@ -63,7 +63,10 @@ TEST_F(codesearch_test, NoTrailingNewLine) {
 
 struct accumulate_matches {
     vector<match_result> *results_;
-    accumulate_matches(vector<match_result> *results) : results_(results) {}
+    accumulate_matches(vector<match_result> *results) : results_(results) {
+        results_->clear();
+    }
+
     void operator()(const match_result *m) {
         results_->push_back(*m);
     }
@@ -113,4 +116,45 @@ TEST_F(codesearch_test, LongLines) {
 
     ASSERT_EQ(1, results.size());
     EXPECT_EQ(4, results[0].lno);
+}
+
+
+TEST_F(codesearch_test, RestrictFiles) {
+    // tree_ is "REPO"
+    cs_.index_file(tree_, "/file1", "contents");
+    cs_.index_file(tree_, "/file2", "contents");
+    // other is "OTHER"
+    const indexed_tree *other = cs_.open_tree("OTHER", 0, "REV0");
+    cs_.index_file(other, "/file1", "contents");
+    cs_.index_file(other, "/file2", "contents");
+    cs_.finalize();
+
+    code_searcher::search_thread search(&cs_);
+    match_stats stats;
+    query q;
+    vector<match_result> results;
+    RE2::Options opts;
+    default_re2_options(opts);
+
+    q.line_pat.reset(new RE2("contents", opts));
+    q.file_pat.reset(new RE2("file1", opts));
+
+    search.match(q, accumulate_matches(&results), &stats);
+    ASSERT_EQ(2, results.size());
+    EXPECT_EQ("/file1", results[0].file->path);
+    EXPECT_EQ("/file1", results[1].file->path);
+
+    q.file_pat.reset();
+    q.tree_pat.reset(new RE2("REPO", opts));
+    search.match(q, accumulate_matches(&results), &stats);
+    ASSERT_EQ(2, results.size());
+    EXPECT_EQ("REPO", results[0].file->tree->name);
+    EXPECT_EQ("REPO", results[1].file->tree->name);
+
+    q.tree_pat.reset();
+    q.negate.file_pat.reset(new RE2("file1", opts));
+    search.match(q, accumulate_matches(&results), &stats);
+    ASSERT_EQ(2, results.size());
+    EXPECT_EQ("/file2", results[0].file->path);
+    EXPECT_EQ("/file2", results[1].file->path);
 }

@@ -5,6 +5,10 @@ type Query struct {
 	File     string `json:"file"`
 	Repo     string `json:"repo"`
 	FoldCase bool   `json:"fold_case"`
+	Not      struct {
+		File string `json:"file"`
+		Repo string `json:"repo"`
+	} `json:"not"`
 }
 
 func (q *Query) Opcode() string {

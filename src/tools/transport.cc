@@ -167,6 +167,8 @@ json_parse_error parse_regex(json_object *js, const char *key,
     err = parse_object(js, key, &str);
     if (!err.ok())
         return err;
+    if (str.size() == 0)
+        return json_parse_error();
     unique_ptr<RE2> re(new RE2(str, opts));
     if (!re->ok()) {
         return json_parse_error(re->error()).wrap(key);
@@ -176,15 +178,23 @@ json_parse_error parse_regex(json_object *js, const char *key,
 }
 
 json_parse_error parse_object(json_object *js, query *q) {
-    if (json_object_get_type(js) != json_type_object)
-        return json_parse_error("expected a JSON object");
-    json_object *b = json_object_object_get(js, "body");
-    if (b == NULL || json_object_get_type(b) != json_type_object)
-        return json_parse_error("expected a JSON object").wrap("body");
+    json_object *b = NULL, *negate = NULL;
+    json_parse_error err;
+
+    err = parse_object(js, "body", &b);
+    if (!err.ok())
+        return err;
+    if (!b)
+        return json_parse_error("expected a body");
+
+    err = parse_object(b, "not", &negate);
+    if (!err.ok())
+        return err.wrap("body");
+
     RE2::Options opts;
     default_re2_options(opts);
     bool fold_case = false;
-    json_parse_error err = parse_object(b, "fold_case", &fold_case);
+    err = parse_object(b, "fold_case", &fold_case);
     if (!err.ok())
         return err.wrap("body");
     opts.set_case_sensitive(!fold_case);
@@ -197,6 +207,12 @@ json_parse_error parse_object(json_object *js, query *q) {
         err = parse_regex(b, "file", opts, &q->file_pat);
     if (err.ok())
         err = parse_regex(b, "repo", opts, &q->tree_pat);
+
+    if (err.ok() && negate)
+        err = parse_regex(negate, "file", opts, &q->negate.file_pat);
+    if (err.ok() && negate)
+        err = parse_regex(negate, "repo", opts, &q->negate.tree_pat);
+
     return err;
 }
 

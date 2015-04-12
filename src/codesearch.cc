@@ -178,9 +178,6 @@ protected:
     void search_lines(uint32_t *left, int count, const chunk *chunk);
 
     bool accept(const indexed_file *file) {
-        if (!query_->file_pat && !query_->tree_pat)
-            return true;
-
         if (query_->file_pat &&
             !query_->file_pat->Match(file->path, 0, file->path.size(),
                                      RE2::UNANCHORED, 0, 0))
@@ -190,6 +187,18 @@ protected:
             !query_->tree_pat->Match(file->tree->name, 0,
                                      file->tree->name.size(),
                                      RE2::UNANCHORED, 0, 0))
+            return false;
+
+        if (query_->negate.file_pat &&
+            query_->negate.file_pat->Match(file->path, 0,
+                                           file->path.size(),
+                                           RE2::UNANCHORED, 0, 0))
+            return false;
+
+        if (query_->negate.tree_pat &&
+            query_->negate.tree_pat->Match(file->tree->name, 0,
+                                           file->tree->name.size(),
+                                           RE2::UNANCHORED, 0, 0))
             return false;
 
         return true;

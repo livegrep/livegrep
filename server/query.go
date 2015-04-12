@@ -9,7 +9,7 @@ import (
 	"github.com/livegrep/livegrep/client"
 )
 
-var pieceRE = regexp.MustCompile(`\(|(?:^(\w+):|\\.)| `)
+var pieceRE = regexp.MustCompile(`\(|(?:^([a-zA-Z0-9-]+):|\\.)| `)
 
 func ParseQuery(query string) client.Query {
 	ops := make(map[string]string)
@@ -76,6 +76,8 @@ func ParseQuery(query string) client.Query {
 	var out client.Query
 	out.File = ops["file"]
 	out.Repo = ops["repo"]
+	out.Not.File = ops["-file"]
+	out.Not.Repo = ops["-repo"]
 	out.Line = strings.TrimSpace(ops[""] + ops["case"])
 	if _, ok := ops["case"]; ok {
 		out.FoldCase = false
