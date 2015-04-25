@@ -25,7 +25,7 @@ The C++ backend had a number of dependencies, including:
 
 On a sufficiently recent Ubuntu, these are all available via `apt-get`:
 
-    sudo apt-get install libgflags-dev libgit2-dev libjson0-dev libboost-system-dev libboost-filesystem-dev libsparsehash-dev
+    sudo apt-get install libgflags-dev libgit2-dev libjson0-dev libboost-system-dev libboost-filesystem-dev libsparsehash-dev cmake golang
 
 I have also made packages available in a [PPA][lg-ppa], but they are
 largely unmaintained since I no longer deploy livegrep on any older
