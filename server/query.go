@@ -78,7 +78,7 @@ func ParseQuery(query string) client.Query {
 	out.Repo = ops["repo"]
 	out.Not.File = ops["-file"]
 	out.Not.Repo = ops["-repo"]
-	out.Line = strings.TrimSpace(ops[""] + ops["case"])
+	out.Line = strings.TrimSpace(ops[""] + ops["case"] + regexp.QuoteMeta(ops["lit"]))
 	if _, ok := ops["case"]; ok {
 		out.FoldCase = false
 	} else {

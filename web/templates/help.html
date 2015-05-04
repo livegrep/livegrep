@@ -38,7 +38,24 @@
       case:hello
     </span>
     <span class='link'>
-      <a href="/search/?q=hello">
+      <a href="/search/?q=case:hello">
+        try it
+      </a>
+    </span>
+  </div>
+
+  <p>
+    Use <span class='query'>lit:</span> to match a literal string. At
+    present you can't mix and match a literal string and a regular
+    expression.
+  </p>
+
+  <div class='example'>
+    <span class='query'>
+      lit:()()
+    </span>
+    <span class='link'>
+      <a href="/search/?q=lit:()()">
         try it
       </a>
     </span>
