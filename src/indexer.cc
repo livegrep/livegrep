@@ -213,8 +213,10 @@ namespace {
     }
 
     intrusive_ptr<IndexKey> CaseFoldLiteral(Rune r) {
-        if (r < 'a' || r > 'z') {
+        if (r > 127)
             return Any();
+        if (r < 'a' || r > 'z') {
+            return Literal(r);
         }
         intrusive_ptr<IndexKey> k(new IndexKey(kAnchorBoth));
         k->insert(make_pair(make_pair((uchar)r, (uchar)r), (IndexKey*)0));
