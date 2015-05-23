@@ -233,15 +233,15 @@ namespace {
         return Literal(lit);
     }
 
-    intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> lhs, intrusive_ptr<IndexKey> rhs);
+    intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> *children, int nchildren);
     intrusive_ptr<IndexKey> CaseFoldLiteral(Rune *runes, int nrunes) {
         if (nrunes == 0)
             return Empty();
-        intrusive_ptr<IndexKey> k = CaseFoldLiteral(runes[0]);
-        for (int i = 1; i < nrunes; ++i) {
-            k = Concat(k, CaseFoldLiteral(runes[i]));
+        intrusive_ptr<IndexKey> keys[nrunes];
+        for (int i = 0; i < nrunes; ++i) {
+            keys[i] = CaseFoldLiteral(runes[i]);
         }
-        return k;
+        return Concat(&keys[0], nrunes);
     }
 
     intrusive_ptr<IndexKey> LexRange(const string &lo, const string& hi) {
