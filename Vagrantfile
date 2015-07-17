@@ -6,6 +6,7 @@ GOLANG_VERSION = '1.4'
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = 'hashicorp/precise64'
+  config.ssh.forward_agent = true
 
   %w{vmware_fusion vmware_workstation}.each do |provider|
     config.vm.provider(provider) do |v|
