@@ -49,6 +49,8 @@ else
 gopath: FORCE
 endif
 
+GOTOOLS := lg livegrep livegrep-github-reindex
+
 # It's important that we specify these in import-DAG order; `go get`
 # has a bug where, if a package is imported by a package mentioned
 # earlier on the command-line, it won't get test dependencies, even
@@ -56,16 +58,17 @@ endif
 godep: gopath FORCE
 	go get -t -d github.com/livegrep/livegrep/client \
 			github.com/livegrep/livegrep/server \
-			github.com/livegrep/livegrep/livegrep \
-			github.com/livegrep/livegrep/lg
+			github.com/livegrep/livegrep/cmd/lg \
+			$(foreach t,$(GOTOOLS),github.com/livegrep/livegrep/cmd/$(t))
 
-bin/lg: godep FORCE
-	go build -o bin/lg github.com/livegrep/livegrep/lg
+define BUILD_go_tool
+bin/$(1): godep FORCE
+	go build -o $$@ github.com/livegrep/livegrep/cmd/$(1)
+endef
 
-bin/livegrep: godep FORCE
-	go build -o bin/livegrep github.com/livegrep/livegrep/livegrep
+$(foreach gotool,$(GOTOOLS),$(eval $(call BUILD_go_tool,$(gotool))))
 
-EXTRA_TARGETS := godep bin/lg bin/livegrep
+EXTRA_TARGETS := godep $(foreach t,$(GOTOOLS),bin/$(t))
 EXTRA_CLEAN := bin/ .gopath/
 
 clean: clean_vendor
