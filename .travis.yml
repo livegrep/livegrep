@@ -1,16 +1,19 @@
 language: c++
+addons:
+  apt:
+    packages:
+    - libjson0-dev
+    - libboost-system-dev
+    - libboost-filesystem-dev
+    - libsparsehash-dev
+sudo: false
 before_install:
-- sudo apt-add-repository -y ppa:nelhage/livegrep
-- sudo apt-get -qq update
-- sudo apt-get -y install libgflags-dev libgit2-dev libjson0-dev libboost-system-dev
-  libboost-filesystem-dev libsparsehash-dev
-- test -d linux || git clone --depth=1 --branch v3.17 https://github.com/torvalds/linux linux
+  - bash travis.sh
 cache:
   directories:
-    - linux
+    - deps
 script:
-  - env -u GOPATH make all test
-  - env GOPATH=$(pwd)/.gopath go test github.com/livegrep/livegrep/client/test -test.repo $(pwd)/linux
+  - env -u GOPATH make all test gflags=$(pwd)/deps/gflags/build libgit2=$(pwd)/deps/libgit2/build
+  - env GOPATH=$(pwd)/.gopath go test github.com/livegrep/livegrep/client/test -test.repo $(pwd)/deps/linux
 compiler:
-- gcc
-cache: apt
+  - gcc
