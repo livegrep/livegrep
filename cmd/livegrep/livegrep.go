@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 
 	"github.com/livegrep/livegrep/server"
 	"github.com/livegrep/livegrep/server/config"
@@ -27,22 +26,24 @@ var (
 func main() {
 	flag.Parse()
 
-	if len(flag.Args()) == 0 {
-		log.Fatalf("Usage: %s CONFIG.json", os.Args[0])
-	}
-
-	data, err := ioutil.ReadFile(flag.Arg(0))
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
 	cfg := &config.Config{
 		DocRoot: *docRoot,
 		Listen:  *serveAddr,
 		Reload:  *reload,
+		Backends: []config.Backend{
+			{Id: "", Addr: "localhost:9999"},
+		},
 	}
-	if err = json.Unmarshal(data, &cfg); err != nil {
-		log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
+
+	if len(flag.Args()) != 0 {
+		data, err := ioutil.ReadFile(flag.Arg(0))
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+
+		if err = json.Unmarshal(data, &cfg); err != nil {
+			log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
+		}
 	}
 
 	handler, err := server.New(cfg)

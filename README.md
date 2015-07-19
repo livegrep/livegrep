@@ -55,7 +55,7 @@ In one terminal, start the `codesearch` server like so:
 
 In another, run livegrep:
 
-    bin/livegrep -logtostderr doc/examples/livegrep/server.json
+    bin/livegrep
 
 In a browser, now visit
 [http://localhost:8910/](http://localhost:8910/), and you should see a
@@ -86,14 +86,30 @@ index has been built. You can just launch a search server like so:
 
 ## `livegrep`
 
-The `livegrep` frontend expects a JSON configuration file as a single
-positional argument; See
+The `livegrep` frontend expects an optional position argument
+indicating a JSON configuration file; See
 [doc/examples/livegrep/server.json][server.json] for an example, and
 [server/config/config.go][config.go] for documentation of available
 options.
 
+By default, `livegrep` will connect to a single local codesearch
+instance on port `9999`, and listen for HTTP connections on port
+`8910`.
+
 [server.json]: https://github.com/livegrep/livegrep/blob/master/doc/examples/livegrep/server.json
 [config.go]: https://github.com/livegrep/livegrep/blob/master/server/config/config.go
+
+## github integration
+
+`livegrep` includes a helper driver, `livegrep-github-reindex`, which
+can automatically update and index selected github repositories. To
+download and index all of my repositories (except for forks), storing
+the repos in `repos/` and writing `nelhage.idx`, you might run:
+
+    bin/livegrep-github-reindex -user=nelhage -forks=false -name=github.com/nelhage -out nelhage.idx
+
+You can now use `nelhage.idx` as an argument to `codesearch
+-load_index`.
 
 Resource Usage
 --------------
