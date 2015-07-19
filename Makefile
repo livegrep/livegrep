@@ -8,7 +8,7 @@ override LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
 override CXXFLAGS+=-g -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
 override LDFLAGS+=-pthread
-LDLIBS=-lgit2 -ljson -lgflags $(re2) $(divsufsort) -lz -lssl -lcrypto -ldl -lboost_system -lboost_filesystem
+LDLIBS=-lgit2 -ljson -lgflags $(re2) $(divsufsort) -lz -lssl -lcrypto -ldl -lboost_system -lboost_filesystem -lrt
 
 re2 := src/vendor/re2/obj/libre2.a
 divsufsort := src/vendor/libdivsufsort/build/lib/libdivsufsort.a
@@ -24,6 +24,9 @@ override CXXFLAGS+=-DCODESEARCH_SLOWGTOD
 endif
 ifneq ($(tcmalloc),)
 override LDLIBS+=-ltcmalloc
+endif
+ifeq ($(uname),Linux)
+override LDLIBS+=-lrt
 endif
 
 $(re2): FORCE
