@@ -208,7 +208,7 @@ func gitGrep(path, regex string) ([]Match, error) {
 	return matches, nil
 }
 
-func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
+func (i *IntegrationSuite) crosscheck(c *check.C, regex string, casefold bool) {
 	c.Logf("crosschecking regex=%q", regex)
 	gitMatches, err := gitGrep(*repo, regex)
 	if err != nil {
@@ -216,7 +216,7 @@ func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
 	}
 
 	var livegrepMatches []Match
-	search, err := i.client.Query(&client.Query{Line: regex})
+	search, err := i.client.Query(&client.Query{Line: regex, FoldCase: casefold})
 	if err != nil {
 		c.Fatalf("Query: %s", err)
 	}
@@ -233,6 +233,7 @@ func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
 
 func (i *IntegrationSuite) TestCrosscheck(c *check.C) {
 	for _, p := range i.patterns {
-		i.crosscheck(c, p)
+		i.crosscheck(c, p, true)
+		i.crosscheck(c, p, false)
 	}
 }
