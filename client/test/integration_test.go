@@ -175,8 +175,14 @@ func readLineDropTooLong(r *bufio.Reader) ([]byte, error) {
 	}
 }
 
-func gitGrep(path, regex string) ([]Match, error) {
-	cmd := exec.Command("git", "grep", "-n", "-I", "-E", "-e", regex, "HEAD")
+func gitGrep(path, regex string, casefold bool) ([]Match, error) {
+	args := []string{"grep", "-n", "-I", "-E", "-e", regex}
+	if casefold {
+		args = append(args, "-i")
+	}
+	args = append(args, "HEAD")
+
+	cmd := exec.Command("git", args...)
 	cmd.Dir = path
 	out, err := cmd.StdoutPipe()
 	if err != nil {
@@ -244,15 +250,15 @@ func cmpMatches(c *check.C, lhs []Match, rhs []Match) {
 	}
 }
 
-func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
+func (i *IntegrationSuite) crosscheck(c *check.C, regex string, casefold bool) {
 	c.Logf("crosschecking regex=%q", regex)
-	gitMatches, err := gitGrep(*repo, regex)
+	gitMatches, err := gitGrep(*repo, regex, casefold)
 	if err != nil {
 		c.Fatalf("git grep: %s", err)
 	}
 
 	var livegrepMatches []Match
-	search, err := i.client.Query(&client.Query{Line: regex})
+	search, err := i.client.Query(&client.Query{Line: regex, FoldCase: casefold})
 	if err != nil {
 		c.Fatalf("Query: %s", err)
 	}
@@ -269,6 +275,7 @@ func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
 
 func (i *IntegrationSuite) TestCrosscheck(c *check.C) {
 	for _, p := range i.patterns {
-		i.crosscheck(c, p)
+		i.crosscheck(c, p, true)
+		i.crosscheck(c, p, false)
 	}
 }
