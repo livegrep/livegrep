@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -135,12 +136,15 @@ type Match struct {
 
 type SortMatches []Match
 
-func (s SortMatches) Less(i, j int) bool {
-	l, r := s[i], s[j]
+func ltMatch(l, r Match) bool {
 	if l.Path != r.Path {
 		return l.Path < r.Path
 	}
 	return l.Line < r.Line
+}
+
+func (s SortMatches) Less(i, j int) bool {
+	return ltMatch(s[i], s[j])
 }
 func (s SortMatches) Len() int {
 	return len(s)
@@ -208,6 +212,38 @@ func gitGrep(path, regex string) ([]Match, error) {
 	return matches, nil
 }
 
+func cmpMatches(c *check.C, lhs []Match, rhs []Match) {
+	var i, j int
+	ok := true
+	for i < len(lhs) && j < len(rhs) {
+		switch {
+		case i == len(lhs):
+			c.Log("+", rhs[j])
+			ok = false
+			j++
+		case j == len(rhs):
+			c.Log("-", lhs[i])
+			ok = false
+			i++
+		case reflect.DeepEqual(lhs[i], rhs[j]):
+			i++
+			j++
+		case ltMatch(lhs[i], rhs[j]):
+			c.Log("-", lhs[i])
+			ok = false
+			i++
+		case ltMatch(rhs[j], lhs[i]):
+			c.Log("+", rhs[j])
+			ok = false
+			j++
+		}
+	}
+
+	if !ok {
+		c.Error("mismatched results")
+	}
+}
+
 func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
 	c.Logf("crosschecking regex=%q", regex)
 	gitMatches, err := gitGrep(*repo, regex)
@@ -228,7 +264,7 @@ func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
 	sort.Sort(SortMatches(gitMatches))
 	sort.Sort(SortMatches(livegrepMatches))
 
-	c.Check(livegrepMatches, check.DeepEquals, gitMatches)
+	cmpMatches(c, gitMatches, livegrepMatches)
 }
 
 func (i *IntegrationSuite) TestCrosscheck(c *check.C) {
