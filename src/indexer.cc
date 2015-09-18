@@ -378,6 +378,8 @@ namespace {
         for (ptr = best_start + 1; ptr != end; ptr++) {
             out = Concat(out, *ptr);
         }
+        if (best_start != children)
+            out->anchor &= ~kAnchorLeft;
         return out;
     }
 
@@ -459,7 +461,7 @@ namespace {
         if (recursion_depth > kMaxRecursion)
             return Any();
 
-        intrusive_ptr<IndexKey> out(new IndexKey(lhs->anchor & kAnchorLeft));
+        intrusive_ptr<IndexKey> out(new IndexKey(lhs->anchor & rhs->anchor & kAnchorLeft));
         IndexKey::const_iterator lit, rit;
         lit = lhs->begin();
         rit = rhs->begin();

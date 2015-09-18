@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -135,12 +136,15 @@ type Match struct {
 
 type SortMatches []Match
 
-func (s SortMatches) Less(i, j int) bool {
-	l, r := s[i], s[j]
+func ltMatch(l, r Match) bool {
 	if l.Path != r.Path {
 		return l.Path < r.Path
 	}
 	return l.Line < r.Line
+}
+
+func (s SortMatches) Less(i, j int) bool {
+	return ltMatch(s[i], s[j])
 }
 func (s SortMatches) Len() int {
 	return len(s)
@@ -171,8 +175,14 @@ func readLineDropTooLong(r *bufio.Reader) ([]byte, error) {
 	}
 }
 
-func gitGrep(path, regex string) ([]Match, error) {
-	cmd := exec.Command("git", "grep", "-n", "-I", "-E", "-e", regex, "HEAD")
+func gitGrep(path, regex string, casefold bool) ([]Match, error) {
+	args := []string{"grep", "-n", "-I", "-E", "-e", regex}
+	if casefold {
+		args = append(args, "-i")
+	}
+	args = append(args, "HEAD")
+
+	cmd := exec.Command("git", args...)
 	cmd.Dir = path
 	out, err := cmd.StdoutPipe()
 	if err != nil {
@@ -208,15 +218,47 @@ func gitGrep(path, regex string) ([]Match, error) {
 	return matches, nil
 }
 
-func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
+func cmpMatches(c *check.C, lhs []Match, rhs []Match) {
+	var i, j int
+	ok := true
+	for i < len(lhs) && j < len(rhs) {
+		switch {
+		case i == len(lhs):
+			c.Log("+", rhs[j])
+			ok = false
+			j++
+		case j == len(rhs):
+			c.Log("-", lhs[i])
+			ok = false
+			i++
+		case reflect.DeepEqual(lhs[i], rhs[j]):
+			i++
+			j++
+		case ltMatch(lhs[i], rhs[j]):
+			c.Log("-", lhs[i])
+			ok = false
+			i++
+		case ltMatch(rhs[j], lhs[i]):
+			c.Log("+", rhs[j])
+			ok = false
+			j++
+		}
+	}
+
+	if !ok {
+		c.Error("mismatched results")
+	}
+}
+
+func (i *IntegrationSuite) crosscheck(c *check.C, regex string, casefold bool) {
 	c.Logf("crosschecking regex=%q", regex)
-	gitMatches, err := gitGrep(*repo, regex)
+	gitMatches, err := gitGrep(*repo, regex, casefold)
 	if err != nil {
 		c.Fatalf("git grep: %s", err)
 	}
 
 	var livegrepMatches []Match
-	search, err := i.client.Query(&client.Query{Line: regex})
+	search, err := i.client.Query(&client.Query{Line: regex, FoldCase: casefold})
 	if err != nil {
 		c.Fatalf("Query: %s", err)
 	}
@@ -228,11 +270,12 @@ func (i *IntegrationSuite) crosscheck(c *check.C, regex string) {
 	sort.Sort(SortMatches(gitMatches))
 	sort.Sort(SortMatches(livegrepMatches))
 
-	c.Check(livegrepMatches, check.DeepEquals, gitMatches)
+	cmpMatches(c, gitMatches, livegrepMatches)
 }
 
 func (i *IntegrationSuite) TestCrosscheck(c *check.C) {
 	for _, p := range i.patterns {
-		i.crosscheck(c, p)
+		i.crosscheck(c, p, true)
+		i.crosscheck(c, p, false)
 	}
 }
