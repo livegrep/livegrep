@@ -20,7 +20,7 @@ int CEscapeString(const char* src, int src_len, char* dest,
   int used = 0;
 
   for (; src < src_end; src++) {
-    if (dest_len - used < 2)   // Need space for two letter escape
+    if (dest_len - used < 2)   // space for two-character escape
       return -1;
 
     unsigned char c = *src;
@@ -36,9 +36,15 @@ int CEscapeString(const char* src, int src_len, char* dest,
         // digit then that digit must be escaped too to prevent it being
         // interpreted as part of the character code by C.
         if (c < ' ' || c > '~') {
-          if (dest_len - used < 4) // need space for 4 letter escape
+          if (dest_len - used < 5)   // space for four-character escape + \0
             return -1;
-          sprintf(dest + used, "\\%03o", c);
+#if !defined(_WIN32)
+          snprintf(dest + used, 5, "\\%03o", c);
+#else
+          // On Windows, the function takes 4+VA arguments, not 3+VA. With an
+          // array, the buffer size will be inferred, but not with a pointer.
+          snprintf(dest + used, 5, _TRUNCATE, "\\%03o", c);
+#endif
           used += 4;
         } else {
           dest[used++] = c; break;
@@ -57,7 +63,7 @@ int CEscapeString(const char* src, int src_len, char* dest,
 // ----------------------------------------------------------------------
 // CEscape()
 //    Copies 'src' to result, escaping dangerous characters using
-//    C-style escape sequences.  'src' and 'dest' should not overlap. 
+//    C-style escape sequences.  'src' and 'dest' should not overlap.
 // ----------------------------------------------------------------------
 string CEscape(const StringPiece& src) {
   const int dest_length = src.size() * 4 + 1; // Maximum possible expansion
@@ -77,7 +83,7 @@ string PrefixSuccessor(const StringPiece& prefix) {
   // 255's, we just return the empty string.
   bool done = false;
   string limit(prefix.data(), prefix.size());
-  int index = limit.length() - 1;
+  int index = static_cast<int>(limit.size()) - 1;
   while (!done && index >= 0) {
     if ((limit[index]&255) == 255) {
       limit.erase(index);

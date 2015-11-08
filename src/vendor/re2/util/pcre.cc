@@ -7,6 +7,7 @@
 // compilation as PCRE in namespace re2.
 
 #include <errno.h>
+#include <limits>
 #include "util/util.h"
 #include "util/flags.h"
 #include "util/pcre.h"
@@ -21,6 +22,42 @@
 DEFINE_int32(regexp_stack_limit, 256<<10, "default PCRE stack limit (bytes)");
 DEFINE_int32(regexp_match_limit, 1000000,
              "default PCRE match limit (function calls)");
+
+#ifndef USEPCRE
+
+// Fake just enough of the PCRE API to allow this file to build. :)
+
+struct pcre_extra {
+  int flags;
+  int match_limit;
+  int match_limit_recursion;
+};
+
+#define PCRE_EXTRA_MATCH_LIMIT 0
+#define PCRE_EXTRA_MATCH_LIMIT_RECURSION 0
+#define PCRE_ANCHORED 0
+#define PCRE_NOTEMPTY 0
+#define PCRE_ERROR_NOMATCH 1
+#define PCRE_ERROR_MATCHLIMIT 2
+#define PCRE_ERROR_RECURSIONLIMIT 3
+#define PCRE_INFO_CAPTURECOUNT 0
+
+void pcre_free(void*) {
+}
+
+pcre* pcre_compile(const char*, int, const char**, int*, const unsigned char*) {
+  return NULL;
+}
+
+int pcre_exec(const pcre*, const pcre_extra*, const char*, int, int, int, int*, int) {
+  return 0;
+}
+
+int pcre_fullinfo(const pcre*, const pcre_extra*, int, void*) {
+  return 0;
+}
+
+#endif
 
 namespace re2 {
 
@@ -113,7 +150,7 @@ pcre* PCRE::Compile(Anchor anchor) {
   //    ANCHOR_BOTH     Tack a "\z" to the end of the original pattern
   //                    and use a pcre anchored match.
 
-  const char* error;
+  const char* error = "";
   int eoffset;
   pcre* re;
   if (anchor != ANCHOR_BOTH) {
@@ -178,7 +215,7 @@ bool PCRE::FullMatchFunctor::operator ()(const StringPiece& text,
 done:
 
   int consumed;
-  int vec[kVecSize];
+  int vec[kVecSize] = {};
   return re.DoMatchImpl(text, ANCHOR_BOTH, &consumed, args, n, vec, kVecSize);
 }
 
@@ -221,7 +258,7 @@ bool PCRE::PartialMatchFunctor::operator ()(const StringPiece& text,
 done:
 
   int consumed;
-  int vec[kVecSize];
+  int vec[kVecSize] = {};
   return re.DoMatchImpl(text, UNANCHORED, &consumed, args, n, vec, kVecSize);
 }
 
@@ -264,7 +301,7 @@ bool PCRE::ConsumeFunctor::operator ()(StringPiece* input,
 done:
 
   int consumed;
-  int vec[kVecSize];
+  int vec[kVecSize] = {};
   if (pattern.DoMatchImpl(*input, ANCHOR_START, &consumed,
                           args, n, vec, kVecSize)) {
     input->remove_prefix(consumed);
@@ -313,7 +350,7 @@ bool PCRE::FindAndConsumeFunctor::operator ()(StringPiece* input,
 done:
 
   int consumed;
-  int vec[kVecSize];
+  int vec[kVecSize] = {};
   if (pattern.DoMatchImpl(*input, UNANCHORED, &consumed,
                           args, n, vec, kVecSize)) {
     input->remove_prefix(consumed);
@@ -326,7 +363,7 @@ done:
 bool PCRE::Replace(string *str,
                  const PCRE& pattern,
                  const StringPiece& rewrite) {
-  int vec[kVecSize];
+  int vec[kVecSize] = {};
   int matches = pattern.TryMatch(*str, 0, UNANCHORED, true, vec, kVecSize);
   if (matches == 0)
     return false;
@@ -345,12 +382,12 @@ int PCRE::GlobalReplace(string *str,
                       const PCRE& pattern,
                       const StringPiece& rewrite) {
   int count = 0;
-  int vec[kVecSize];
+  int vec[kVecSize] = {};
   string out;
-  size_t start = 0;
+  int start = 0;
   bool last_match_was_empty_string = false;
 
-  for (; start <= str->length();) {
+  while (start <= static_cast<int>(str->size())) {
     // If the previous match was for the empty string, we shouldn't
     // just match again: we'll match in the same way and get an
     // infinite loop.  Instead, we do the match in a special way:
@@ -366,18 +403,19 @@ int PCRE::GlobalReplace(string *str,
       matches = pattern.TryMatch(*str, start, ANCHOR_START, false,
                                  vec, kVecSize);
       if (matches <= 0) {
-        if (start < str->length())
+        if (start < static_cast<int>(str->size()))
           out.push_back((*str)[start]);
         start++;
         last_match_was_empty_string = false;
         continue;
       }
     } else {
-      matches = pattern.TryMatch(*str, start, UNANCHORED, true, vec, kVecSize);
+      matches = pattern.TryMatch(*str, start, UNANCHORED, true,
+                                 vec, kVecSize);
       if (matches <= 0)
         break;
     }
-    size_t matchstart = vec[0], matchend = vec[1];
+    int matchstart = vec[0], matchend = vec[1];
     assert(matchstart >= start);
     assert(matchend >= matchstart);
 
@@ -391,8 +429,8 @@ int PCRE::GlobalReplace(string *str,
   if (count == 0)
     return 0;
 
-  if (start < str->length())
-    out.append(*str, start, str->length() - start);
+  if (start < static_cast<int>(str->size()))
+    out.append(*str, start, static_cast<int>(str->size()) - start);
   swap(out, *str);
   return count;
 }
@@ -401,7 +439,7 @@ bool PCRE::Extract(const StringPiece &text,
                  const PCRE& pattern,
                  const StringPiece &rewrite,
                  string *out) {
-  int vec[kVecSize];
+  int vec[kVecSize] = {};
   int matches = pattern.TryMatch(text, 0, UNANCHORED, true, vec, kVecSize);
   if (matches == 0)
     return false;
@@ -595,9 +633,9 @@ bool PCRE::DoMatch(const StringPiece& text,
                  const Arg* const args[],
                  int n) const {
   assert(n >= 0);
-  size_t const vecsize = (1 + n) * 3;  // results + PCRE workspace
-                                       // (as for kVecSize)
-  int *vec = new int[vecsize];
+  const int vecsize = (1 + n) * 3;  // results + PCRE workspace
+                                    // (as for kVecSize)
+  int* vec = new int[vecsize];
   bool b = DoMatchImpl(text, anchor, consumed, args, n, vec, vecsize);
   delete[] vec;
   return b;
@@ -803,7 +841,7 @@ bool PCRE::Arg::parse_short_radix(const char* str,
   if (!parse_long_radix(str, n, &r, radix)) return false; // Could not parse
   if ((short)r != r) return false;       // Out of range
   if (dest == NULL) return true;
-  *(reinterpret_cast<short*>(dest)) = r;
+  *(reinterpret_cast<short*>(dest)) = (short)r;
   return true;
 }
 
@@ -815,7 +853,7 @@ bool PCRE::Arg::parse_ushort_radix(const char* str,
   if (!parse_ulong_radix(str, n, &r, radix)) return false; // Could not parse
   if ((ushort)r != r) return false;                      // Out of range
   if (dest == NULL) return true;
-  *(reinterpret_cast<unsigned short*>(dest)) = r;
+  *(reinterpret_cast<unsigned short*>(dest)) = (ushort)r;
   return true;
 }
 
@@ -893,7 +931,7 @@ bool PCRE::Arg::parse_double(const char* str, int n, void* dest) {
   char* end;
   double r = strtod(buf, &end);
   if (end != buf + n) {
-#ifdef COMPILER_MSVC
+#ifdef _WIN32
     // Microsoft's strtod() doesn't handle inf and nan, so we have to
     // handle it explicitly.  Speed is not important here because this
     // code is only called in unit tests.
@@ -906,11 +944,11 @@ bool PCRE::Arg::parse_double(const char* str, int n, void* dest) {
       ++i;
     }
     if (0 == stricmp(i, "inf") || 0 == stricmp(i, "infinity")) {
-      r = numeric_limits<double>::infinity();
+      r = std::numeric_limits<double>::infinity();
       if (!pos)
         r = -r;
     } else if (0 == stricmp(i, "nan")) {
-      r = numeric_limits<double>::quiet_NaN();
+      r = std::numeric_limits<double>::quiet_NaN();
     } else {
       return false;
     }

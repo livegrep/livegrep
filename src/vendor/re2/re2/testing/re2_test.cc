@@ -5,10 +5,13 @@
 
 // TODO: Test extractions for PartialMatch/Consume
 
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include <errno.h>
+#ifndef _MSC_VER
+#include <unistd.h>  /* for sysconf */
+#include <sys/mman.h>
+#endif
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <vector>
 #include "util/test.h"
 #include "re2/re2.h"
@@ -173,7 +176,7 @@ TEST(RE2, Replace) {
     { "", NULL, NULL, NULL, NULL, 0 }
   };
 
-  for (const ReplaceTest *t = tests; t->original != NULL; ++t) {
+  for (const ReplaceTest* t = tests; t->original != NULL; t++) {
     VLOG(1) << StringPrintf("\"%s\" =~ s/%s/%s/g", t->original, t->regexp, t->rewrite);
     string one(t->original);
     CHECK(RE2::Replace(&one, t->regexp, t->rewrite));
@@ -366,12 +369,12 @@ TEST(RE2, Match) {
   CHECK_EQ(port, 9000);
 }
 
-static void TestRecursion(int size, const char *pattern) {
+static void TestRecursion(int size, const char* pattern) {
   // Fill up a string repeating the pattern given
   string domain;
   domain.resize(size);
-  int patlen = strlen(pattern);
-  for (int i = 0; i < size; ++i) {
+  size_t patlen = strlen(pattern);
+  for (int i = 0; i < size; i++) {
     domain[i] = pattern[i % patlen];
   }
   // Just make sure it doesn't crash due to too much recursion.
@@ -385,8 +388,8 @@ static void TestQuoteMeta(string unquoted,
                           const RE2::Options& options = RE2::DefaultOptions) {
   string quoted = RE2::QuoteMeta(unquoted);
   RE2 re(quoted, options);
-  EXPECT_TRUE_M(RE2::FullMatch(unquoted, re),
-                "Unquoted='" + unquoted + "', quoted='" + quoted + "'.");
+  EXPECT_TRUE(RE2::FullMatch(unquoted, re))
+      << "Unquoted='" << unquoted << "', quoted='" << quoted << "'.";
 }
 
 // A meta-quoted string, interpreted as a pattern, should always match
@@ -395,8 +398,8 @@ static void NegativeTestQuoteMeta(string unquoted, string should_not_match,
                                   const RE2::Options& options = RE2::DefaultOptions) {
   string quoted = RE2::QuoteMeta(unquoted);
   RE2 re(quoted, options);
-  EXPECT_FALSE_M(RE2::FullMatch(should_not_match, re),
-                 "Unquoted='" + unquoted + "', quoted='" + quoted + "'.");
+  EXPECT_FALSE(RE2::FullMatch(should_not_match, re))
+      << "Unquoted='" << unquoted << "', quoted='" << quoted << "'.";
 }
 
 // Tests that quoted meta characters match their original strings,
@@ -462,11 +465,36 @@ TEST(QuoteMeta, HasNull) {
 TEST(ProgramSize, BigProgram) {
   RE2 re_simple("simple regexp");
   RE2 re_medium("medium.*regexp");
-  RE2 re_complex("hard.{1,128}regexp");
+  RE2 re_complex("complex.{1,128}regexp");
 
   CHECK_GT(re_simple.ProgramSize(), 0);
   CHECK_GT(re_medium.ProgramSize(), re_simple.ProgramSize());
   CHECK_GT(re_complex.ProgramSize(), re_medium.ProgramSize());
+}
+
+TEST(ProgramFanout, BigProgram) {
+  RE2 re1("(?:(?:(?:(?:(?:.)?){1})*)+)");
+  RE2 re10("(?:(?:(?:(?:(?:.)?){10})*)+)");
+  RE2 re100("(?:(?:(?:(?:(?:.)?){100})*)+)");
+  RE2 re1000("(?:(?:(?:(?:(?:.)?){1000})*)+)");
+
+  map<int, int> histogram;
+
+  // 3 is the largest non-empty bucket and has 1 element.
+  CHECK_EQ(3, re1.ProgramFanout(&histogram));
+  CHECK_EQ(1, histogram[3]);
+
+  // 7 is the largest non-empty bucket and has 10 elements.
+  CHECK_EQ(7, re10.ProgramFanout(&histogram));
+  CHECK_EQ(10, histogram[7]);
+
+  // 10 is the largest non-empty bucket and has 100 elements.
+  CHECK_EQ(10, re100.ProgramFanout(&histogram));
+  CHECK_EQ(100, histogram[10]);
+
+  // 13 is the largest non-empty bucket and has 1000 elements.
+  CHECK_EQ(13, re1000.ProgramFanout(&histogram));
+  CHECK_EQ(1000, histogram[13]);
 }
 
 // Issue 956519: handling empty character sets was
@@ -702,7 +730,10 @@ TEST(RE2, FullMatchTypedNullArg) {
 
 // Check that numeric parsing code does not read past the end of
 // the number being parsed.
+// This implementation requires mmap(2) et al. and thus cannot
+// be used unless they are available.
 TEST(RE2, NULTerminated) {
+#if defined(_POSIX_MAPPED_FILES) && _POSIX_MAPPED_FILES > 0
   char *v;
   int x;
   long pagesize = sysconf(_SC_PAGE_SIZE);
@@ -720,6 +751,7 @@ TEST(RE2, NULTerminated) {
   x = 0;
   CHECK(RE2::FullMatch(StringPiece(v + pagesize - 1, 1), "(.*)", &x));
   CHECK_EQ(x, 1);
+#endif
 }
 
 TEST(RE2, FullMatchTypeTests) {
@@ -1432,10 +1464,14 @@ TEST(RE2, Bug10131674) {
 
 TEST(RE2, Bug18391750) {
   // Stray write past end of match_ in nfa.cc, caught by fuzzing + address sanitizer.
-  char t[] = {0x28, 0x28, 0xfc, 0xfc, 0x8,  0x8,  0x26, 0x26, 0x28, 0xc2, 0x9b,
-              0xc5, 0xc5, 0xd4, 0x8f, 0x8f, 0x69, 0x69, 0xe7, 0x29, 0x7b, 0x37,
-              0x31, 0x31, 0x7d, 0xae, 0x7c, 0x7c, 0xf3, 0x29, 0xae, 0xae, 0x2e,
-              0x2a, 0x29, 0x0};
+  const char t[] = {
+      (char)0x28, (char)0x28, (char)0xfc, (char)0xfc, (char)0x08, (char)0x08,
+      (char)0x26, (char)0x26, (char)0x28, (char)0xc2, (char)0x9b, (char)0xc5,
+      (char)0xc5, (char)0xd4, (char)0x8f, (char)0x8f, (char)0x69, (char)0x69,
+      (char)0xe7, (char)0x29, (char)0x7b, (char)0x37, (char)0x31, (char)0x31,
+      (char)0x7d, (char)0xae, (char)0x7c, (char)0x7c, (char)0xf3, (char)0x29,
+      (char)0xae, (char)0xae, (char)0x2e, (char)0x2a, (char)0x29, (char)0x00,
+  };
   RE2::Options opt;
   opt.set_encoding(RE2::Options::EncodingLatin1);
   opt.set_longest_match(true);
@@ -1450,8 +1486,11 @@ TEST(RE2, Bug18458852) {
   // Bug in parser accepting invalid (too large) rune,
   // causing compiler to fail in DCHECK in UTF-8
   // character class code.
-  char b[] = {0x28, 0x5,  0x5,  0x41, 0x41, 0x28, 0x24, 0x5b, 0x5e,
-              0xf5, 0x87, 0x87, 0x90, 0x29, 0x5d, 0x29, 0x29, 0x0};
+  const char b[] = {
+      (char)0x28, (char)0x05, (char)0x05, (char)0x41, (char)0x41, (char)0x28,
+      (char)0x24, (char)0x5b, (char)0x5e, (char)0xf5, (char)0x87, (char)0x87,
+      (char)0x90, (char)0x29, (char)0x5d, (char)0x29, (char)0x29, (char)0x00,
+  };
   RE2 re(b);
   CHECK(!re.ok());
 }
@@ -1460,8 +1499,12 @@ TEST(RE2, Bug18523943) {
   // Bug in bitstate: case kFailInst was merged into the default with LOG(DFATAL).
 
   RE2::Options opt;
-  char a[] = {0x29, 0x29, 0x24, 0x0};
-  char b[] = {0x28, 0xa, 0x2a, 0x2a, 0x29, 0x0};
+  const char a[] = {
+      (char)0x29, (char)0x29, (char)0x24, (char)0x00,
+  };
+  const char b[] = {
+      (char)0x28, (char)0x0a, (char)0x2a, (char)0x2a, (char)0x29, (char)0x00,
+  };
   opt.set_log_errors(false);
   opt.set_encoding(RE2::Options::EncodingLatin1);
   opt.set_posix_syntax(true);
@@ -1473,6 +1516,17 @@ TEST(RE2, Bug18523943) {
   CHECK(re.ok());
   string s1;
   CHECK(!RE2::PartialMatch((const char*)a, re, &s1));
+}
+
+TEST(RE2, Bug21371806) {
+  // Bug in parser accepting Unicode groups in Latin-1 mode,
+  // causing compiler to fail in DCHECK in prog.cc.
+
+  RE2::Options opt;
+  opt.set_encoding(RE2::Options::EncodingLatin1);
+
+  RE2 re("g\\p{Zl}]", opt);
+  CHECK(re.ok());
 }
 
 }  // namespace re2

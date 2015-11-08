@@ -53,19 +53,19 @@ static inline void WriteMemoryBarrier() {
 #elif defined(__ppc__) || defined(__powerpc64__)
 
 static inline void WriteMemoryBarrier() {
-  __asm__ __volatile__("eieio" : : : "memory");
-}
-
-#elif defined(__alpha__)
-
-static inline void WriteMemoryBarrier() {
-  __asm__ __volatile__("wmb" : : : "memory");
+  __asm__ __volatile__("lwsync" : : : "memory");
 }
 
 #elif defined(__aarch64__)
 
 static inline void WriteMemoryBarrier() {
   __asm__ __volatile__("dmb st" : : : "memory");
+}
+
+#elif defined(__alpha__)
+
+static inline void WriteMemoryBarrier() {
+  __asm__ __volatile__("wmb" : : : "memory");
 }
 
 #elif defined(__arm__) && defined(__linux__)
@@ -75,24 +75,33 @@ static inline void WriteMemoryBarrier() {
   ((void(*)(void))0xffff0fa0)();
 }
 
-#elif defined(__windows__)
+#elif defined(__windows__) || defined(_WIN32)
 
-// Windows
-inline void WriteMemoryBarrier() {
+#include <intrin.h>
+#include <windows.h>
+
+static inline void WriteMemoryBarrier() {
+#if defined(_M_IX86) || defined(_M_X64)
+  // x86 and x64 CPUs have a strong memory model that prohibits most types of
+  // reordering, so a non-instruction intrinsic to suppress compiler reordering
+  // is sufficient. _WriteBarrier is deprecated, but is still appropriate for
+  // the "old compiler" path (pre C++11).
+  _WriteBarrier();
+#else
   LONG x;
   ::InterlockedExchange(&x, 0);
+#endif
 }
 
 #elif defined(OS_NACL)
 
-// Native Client
-inline void WriteMemoryBarrier() {
+static inline void WriteMemoryBarrier() {
   __sync_synchronize();
 }
 
 #elif defined(__mips__)
 
-inline void WriteMemoryBarrier() {
+static inline void WriteMemoryBarrier() {
   __asm__ __volatile__("sync" : : : "memory");
 }
 
@@ -113,16 +122,6 @@ static inline void WriteMemoryBarrier() {
   re2::MutexLock l(&mu);
 }
 
-/*
-#error Need WriteMemoryBarrier for architecture.
-
-// Windows
-inline void WriteMemoryBarrier() {
-  LONG x;
-  ::InterlockedExchange(&x, 0);
-}
-*/
-
 #endif
 
 // Alpha has very weak memory ordering. If relying on WriteBarriers, one must
@@ -141,7 +140,13 @@ static inline void MaybeReadMemoryBarrier() {}
 
 // Read barrier for various targets.
 
-#if defined(__aarch64__)
+#if defined(__ppc__) || defined(__powerpc64__)
+
+static inline void ReadMemoryBarrier() {
+  __asm__ __volatile__("lwsync" : : : "memory");
+}
+
+#elif defined(__aarch64__)
 
 static inline void ReadMemoryBarrier() {
   __asm__ __volatile__("dmb ld" : : : "memory");
@@ -155,7 +160,7 @@ static inline void ReadMemoryBarrier() {
 
 #elif defined(__mips__)
 
-inline void ReadMemoryBarrier() {
+static inline void ReadMemoryBarrier() {
   __asm__ __volatile__("sync" : : : "memory");
 }
 

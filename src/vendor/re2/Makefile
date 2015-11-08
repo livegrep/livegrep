@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-all: obj/libre2.a obj/so/libre2.so
-
 # to build against PCRE for testing or benchmarking,
 # uncomment the next two lines
 # CCPCRE=-I/usr/local/include -DUSEPCRE
@@ -12,7 +10,7 @@ all: obj/libre2.a obj/so/libre2.so
 CXX?=g++
 CXXFLAGS?=-Wall -O3 -g -pthread # can override
 RE2_CXXFLAGS?=-Wsign-compare -c -I. $(CCPCRE)  # required
-LDFLAGS?=
+LDFLAGS?=-pthread
 AR?=ar
 ARFLAGS?=rsc
 NM?=nm
@@ -38,10 +36,23 @@ SONAME=0
 # REBUILD_TABLES=1
 
 ifeq ($(shell uname),Darwin)
-MAKE_SHARED_LIBRARY=$(CXX) -dynamiclib $(LDFLAGS) -exported_symbols_list libre2.symbols.darwin
+SOEXT=dylib
+SOEXTVER=$(SONAME).$(SOEXT)
+SOEXTVER00=$(SONAME).0.0.$(SOEXT)
+MAKE_SHARED_LIBRARY=$(CXX) -dynamiclib $(LDFLAGS) -Wl,-install_name,@rpath/libre2.$(SOEXTVER) -exported_symbols_list libre2.symbols.darwin
+else ifeq ($(shell uname),SunOS)
+SOEXT=so
+SOEXTVER=$(SOEXT).$(SONAME)
+SOEXTVER00=$(SOEXT).$(SONAME).0.0
+MAKE_SHARED_LIBRARY=$(CXX) -shared -Wl,-soname,libre2.$(SOEXTVER),-M,libre2.symbols $(LDFLAGS)
 else
-MAKE_SHARED_LIBRARY=$(CXX) -shared -Wl,-soname,libre2.so.$(SONAME),--version-script=libre2.symbols $(LDFLAGS)
+SOEXT=so
+SOEXTVER=$(SOEXT).$(SONAME)
+SOEXTVER00=$(SOEXT).$(SONAME).0.0
+MAKE_SHARED_LIBRARY=$(CXX) -shared -Wl,-soname,libre2.$(SOEXTVER),--version-script,libre2.symbols $(LDFLAGS)
 endif
+
+all: obj/libre2.a obj/so/libre2.$(SOEXT)
 
 INSTALL_HFILES=\
 	re2/filtered_re2.h\
@@ -51,7 +62,6 @@ INSTALL_HFILES=\
 	re2/variadic_function.h\
 
 HFILES=\
-	util/arena.h\
 	util/atomicops.h\
 	util/benchmark.h\
 	util/flags.h\
@@ -62,6 +72,7 @@ HFILES=\
 	util/sparse_array.h\
 	util/sparse_set.h\
 	util/test.h\
+	util/thread.h\
 	util/utf.h\
 	util/util.h\
 	util/valgrind.h\
@@ -83,10 +94,9 @@ HFILES=\
 	re2/walker-inl.h\
 
 OFILES=\
-	obj/util/arena.o\
 	obj/util/hash.o\
+	obj/util/logging.o\
 	obj/util/rune.o\
-	obj/util/stringpiece.o\
 	obj/util/stringprintf.o\
 	obj/util/strutil.o\
 	obj/util/valgrind.o\
@@ -106,6 +116,7 @@ OFILES=\
 	obj/re2/regexp.o\
 	obj/re2/set.o\
 	obj/re2/simplify.o\
+	obj/re2/stringpiece.o\
 	obj/re2/tostring.o\
 	obj/re2/unicode_casefold.o\
 	obj/re2/unicode_groups.o\
@@ -176,10 +187,10 @@ obj/dbg/libre2.a: $(DOFILES)
 	@mkdir -p obj/dbg
 	$(AR) $(ARFLAGS) obj/dbg/libre2.a $(DOFILES)
 
-obj/so/libre2.so: $(SOFILES)
+obj/so/libre2.$(SOEXT): $(SOFILES)
 	@mkdir -p obj/so
-	$(MAKE_SHARED_LIBRARY) -o $@.$(SONAME) $(SOFILES)
-	ln -sf libre2.so.$(SONAME) $@
+	$(MAKE_SHARED_LIBRARY) -o obj/so/libre2.$(SOEXTVER) $(SOFILES)
+	ln -sf libre2.$(SOEXTVER) $@
 
 obj/test/%: obj/libre2.a obj/re2/testing/%.o $(TESTOFILES) obj/util/test.o
 	@mkdir -p obj/test
@@ -189,7 +200,7 @@ obj/dbg/test/%: obj/dbg/libre2.a obj/dbg/re2/testing/%.o $(DTESTOFILES) obj/dbg/
 	@mkdir -p obj/dbg/test
 	$(CXX) -o $@ obj/dbg/re2/testing/$*.o $(DTESTOFILES) obj/dbg/util/test.o obj/dbg/libre2.a $(LDFLAGS) $(LDPCRE)
 
-obj/so/test/%: obj/so/libre2.so obj/libre2.a obj/so/re2/testing/%.o $(STESTOFILES) obj/so/util/test.o
+obj/so/test/%: obj/so/libre2.$(SOEXT) obj/libre2.a obj/so/re2/testing/%.o $(STESTOFILES) obj/so/util/test.o
 	@mkdir -p obj/so/test
 	$(CXX) -o $@ obj/so/re2/testing/$*.o $(STESTOFILES) obj/so/util/test.o -Lobj/so -lre2 obj/libre2.a $(LDFLAGS) $(LDPCRE)
 
@@ -203,6 +214,8 @@ re2/perl_groups.cc: re2/make_perl_groups.pl
 
 re2/unicode_%.cc: re2/make_unicode_%.py
 	python $< > $@
+
+.PRECIOUS: re2/perl_groups.cc re2/unicode_casefold.cc re2/unicode_groups.cc
 endif
 
 distclean: clean
@@ -245,23 +258,28 @@ shared-bigtest: $(STESTS) $(SBIGTESTS)
 
 benchmark: obj/test/regexp_benchmark
 
-install: obj/libre2.a obj/so/libre2.so
-	mkdir -p $(DESTDIR)$(includedir)/re2 $(DESTDIR)$(libdir)
+install: obj/libre2.a obj/so/libre2.$(SOEXT)
+	mkdir -p $(DESTDIR)$(includedir)/re2 $(DESTDIR)$(libdir)/pkgconfig
 	$(INSTALL_DATA) $(INSTALL_HFILES) $(DESTDIR)$(includedir)/re2
 	$(INSTALL) obj/libre2.a $(DESTDIR)$(libdir)/libre2.a
-	$(INSTALL) obj/so/libre2.so $(DESTDIR)$(libdir)/libre2.so.$(SONAME).0.0
-	ln -sf libre2.so.$(SONAME).0.0 $(DESTDIR)$(libdir)/libre2.so.$(SONAME)
-	ln -sf libre2.so.$(SONAME).0.0 $(DESTDIR)$(libdir)/libre2.so
+	$(INSTALL) obj/so/libre2.$(SOEXT) $(DESTDIR)$(libdir)/libre2.$(SOEXTVER00)
+	ln -sf libre2.$(SOEXTVER00) $(DESTDIR)$(libdir)/libre2.$(SOEXTVER)
+	ln -sf libre2.$(SOEXTVER00) $(DESTDIR)$(libdir)/libre2.$(SOEXT)
+	sed -e "s#@prefix@#${prefix}#" re2.pc >$(DESTDIR)$(libdir)/pkgconfig/re2.pc
 
 testinstall:
 	@mkdir -p obj
 	cp testinstall.cc obj
+ifneq ($(shell uname),Darwin)
+	(cd obj && $(CXX) -I$(DESTDIR)$(includedir) -L$(DESTDIR)$(libdir) testinstall.cc -lre2 -pthread -static -o testinstall)
+	obj/testinstall
+endif
 	(cd obj && $(CXX) -I$(DESTDIR)$(includedir) -L$(DESTDIR)$(libdir) testinstall.cc -lre2 -pthread -o testinstall)
 	LD_LIBRARY_PATH=$(DESTDIR)$(libdir) obj/testinstall
 
 benchlog: obj/test/regexp_benchmark
 	(echo '==BENCHMARK==' `hostname` `date`; \
-	  (uname -a; $(CXX) --version; hg identify; file obj/test/regexp_benchmark) | sed 's/^/# /'; \
+	  (uname -a; $(CXX) --version; git rev-parse --short HEAD; file obj/test/regexp_benchmark) | sed 's/^/# /'; \
 	  echo; \
 	  ./obj/test/regexp_benchmark 'PCRE|RE2') | tee -a benchlog.$$(hostname | sed 's/\..*//')
 
@@ -273,8 +291,9 @@ benchlog: obj/test/regexp_benchmark
 	obj/test/% obj/so/test/% obj/dbg/test/%
 
 log:
-	make clean
-	make CXXFLAGS="$(CXXFLAGS) -DLOGGING=1" obj/test/exhaustive{,1,2,3}_test
+	$(MAKE) clean
+	$(MAKE) CXXFLAGS="$(CXXFLAGS) -DLOGGING=1" \
+		$(filter obj/test/exhaustive%_test,$(BIGTESTS))
 	echo '#' RE2 exhaustive tests built by make log >re2-exhaustive.txt
 	echo '#' $$(date) >>re2-exhaustive.txt
 	obj/test/exhaustive_test |grep -v '^PASS$$' >>re2-exhaustive.txt
@@ -282,7 +301,7 @@ log:
 	obj/test/exhaustive2_test |grep -v '^PASS$$' >>re2-exhaustive.txt
 	obj/test/exhaustive3_test |grep -v '^PASS$$' >>re2-exhaustive.txt
 
-	make CXXFLAGS="$(CXXFLAGS) -DLOGGING=1" obj/test/search_test
+	$(MAKE) CXXFLAGS="$(CXXFLAGS) -DLOGGING=1" obj/test/search_test
 	echo '#' RE2 basic search tests built by make $@ >re2-search.txt
 	echo '#' $$(date) >>re2-search.txt
 	obj/test/search_test |grep -v '^PASS$$' >>re2-search.txt

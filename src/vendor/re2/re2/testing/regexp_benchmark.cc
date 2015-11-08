@@ -135,13 +135,15 @@ ParseImpl SearchParse1CachedPCRE, SearchParse1CachedRE2;
 // Generate random text that won't contain the search string,
 // to test worst-case search behavior.
 void MakeText(string* text, int nbytes) {
+  srand(1);
   text->resize(nbytes);
-  srand(0);
   for (int i = 0; i < nbytes; i++) {
-    if (!rand()%30)
-      (*text)[i] = '\n';
-    else
-      (*text)[i] = rand()%(0x7E + 1 - 0x20)+0x20;
+    // Generate a one-byte rune that isn't a control character (e.g. '\n').
+    // Clipping to 0x20 introduces some bias, but we don't need uniformity.
+    int byte = rand() & 0x7F;
+    if (byte < 0x20)
+      byte = 0x20;
+    (*text)[i] = byte;
   }
 }
 
@@ -263,6 +265,7 @@ BENCHMARK_RANGE(Search_BigFixed_CachedPCRE,    8, 32<<10)->ThreadRange(1, NumCPU
 BENCHMARK_RANGE(Search_BigFixed_CachedRE2,     8, 1<<20)->ThreadRange(1, NumCPUs());
 
 // Benchmark: FindAndConsume
+
 void FindAndConsume(int iters, int nbytes) {
   StopBenchmarkTiming();
   string s;
@@ -284,9 +287,11 @@ BENCHMARK_RANGE(FindAndConsume, 8, 16<<20)->ThreadRange(1, NumCPUs());
 // Benchmark: successful anchored search.
 
 void SearchSuccess(int iters, int nbytes, const char* regexp, SearchImpl* search) {
+  StopBenchmarkTiming();
   string s;
   MakeText(&s, nbytes);
   BenchmarkMemoryUsage();
+  StartBenchmarkTiming();
   search(iters, regexp, s, Prog::kAnchored, true);
   SetBenchmarkBytesProcessed(static_cast<int64>(iters)*nbytes);
 }
@@ -344,11 +349,9 @@ BENCHMARK_RANGE(Search_Success1_Cached_RE2,     8, 16<<20)->ThreadRange(1, NumCP
 // Benchmark: use regexp to find phone number.
 
 void SearchDigits(int iters, SearchImpl* search) {
-  const char *text = "650-253-0001";
-  int len = strlen(text);
+  StringPiece s("650-253-0001");
   BenchmarkMemoryUsage();
-  search(iters, "([0-9]+)-([0-9]+)-([0-9]+)",
-         StringPiece(text, len), Prog::kAnchored, true);
+  search(iters, "([0-9]+)-([0-9]+)-([0-9]+)", s, Prog::kAnchored, true);
   SetBenchmarkItemsProcessed(iters);
 }
 
@@ -685,7 +688,6 @@ BENCHMARK(BM_Regexp_Compile)->ThreadRange(1, NumCPUs());
 BENCHMARK(BM_Regexp_SimplifyCompile)->ThreadRange(1, NumCPUs());
 BENCHMARK(BM_Regexp_NullWalk)->ThreadRange(1, NumCPUs());
 BENCHMARK(BM_RE2_Compile)->ThreadRange(1, NumCPUs());
-
 
 // Makes text of size nbytes, then calls run to search
 // the text for regexp iters times.

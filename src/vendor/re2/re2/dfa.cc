@@ -21,11 +21,11 @@
 //
 // See http://swtch.com/~rsc/regexp/ for a very bare-bones equivalent.
 
-#include "re2/prog.h"
-#include "re2/stringpiece.h"
 #include "util/atomicops.h"
 #include "util/flags.h"
 #include "util/sparse_set.h"
+#include "re2/prog.h"
+#include "re2/stringpiece.h"
 
 DEFINE_bool(re2_dfa_bail_when_slow, true,
             "Whether the RE2 DFA should bail out early "
@@ -143,7 +143,7 @@ class DFA {
       if (sizeof(size_t) == sizeof(uint32))
         return Hash32StringWithSeed(s, len, a->flag_);
       else
-        return Hash64StringWithSeed(s, len, a->flag_);
+        return static_cast<size_t>(Hash64StringWithSeed(s, len, a->flag_));
     }
 #ifdef STL_MSVC
     // Less than operator.
@@ -228,9 +228,8 @@ class DFA {
   // sets *ismatch to true.
   // L >= mutex_
   void RunWorkqOnByte(Workq* q, Workq* nq,
-                             int c, uint flag, bool* ismatch,
-                             Prog::MatchKind kind,
-                             int new_byte_loop);
+                      int c, uint flag, bool* ismatch,
+                      Prog::MatchKind kind);
 
   // Runs a Workq on a set of empty-string flags, producing a new Workq in nq.
   // L >= mutex_
@@ -340,7 +339,6 @@ class DFA {
   // Constant after initialization.
   Prog* prog_;              // The regular expression program to run.
   Prog::MatchKind kind_;    // The kind of DFA.
-  int start_unanchored_;  // start of unanchored program
   bool init_failed_;        // initialization failed (out of memory)
 
   Mutex mutex_;  // mutex_ >= cache_mutex_.r
@@ -443,11 +441,8 @@ DFA::DFA(Prog* prog, Prog::MatchKind kind, int64 max_mem)
   if (DebugDFA)
     fprintf(stderr, "\nkind %d\n%s\n", (int)kind_, prog_->DumpUnanchored().c_str());
   int nmark = 0;
-  start_unanchored_ = 0;
-  if (kind_ == Prog::kLongestMatch) {
+  if (kind_ == Prog::kLongestMatch)
     nmark = prog->size();
-    start_unanchored_ = prog->start_unanchored();
-  }
   nastack_ = 2 * prog->size() + nmark;
 
   // Account for space needed for DFA, q0, q1, astack.
@@ -456,7 +451,7 @@ DFA::DFA(Prog* prog, Prog::MatchKind kind, int64 max_mem)
                  (sizeof(int)+sizeof(int)) * 2;  // q0, q1
   mem_budget_ -= nastack_ * sizeof(int);  // astack
   if (mem_budget_ < 0) {
-    LOG(INFO) << StringPrintf("DFA out of memory: prog size %lld mem %lld",
+    LOG(INFO) << StringPrintf("DFA out of memory: prog size %d mem %lld",
                               prog_->size(), max_mem);
     init_failed_ = true;
     return;
@@ -471,7 +466,7 @@ DFA::DFA(Prog* prog, Prog::MatchKind kind, int64 max_mem)
   int64 one_state = sizeof(State) + (prog_->size()+nmark)*sizeof(int) +
                     (prog_->bytemap_range()+1)*sizeof(State*);
   if (state_budget_ < 20*one_state) {
-    LOG(INFO) << StringPrintf("DFA out of memory: prog size %lld mem %lld",
+    LOG(INFO) << StringPrintf("DFA out of memory: prog size %d mem %lld",
                               prog_->size(), max_mem);
     init_failed_ = true;
     return;
@@ -869,8 +864,10 @@ void DFA::AddToQueue(Workq* q, int id, uint flag) {
         break;
 
       case kInstEmptyWidth:
-        if ((ip->empty() & flag) == ip->empty())
-          stk[nstk++] = ip->out();
+        // Continue on if we have all the right flag bits.
+        if (ip->empty() & ~flag)
+          break;
+        stk[nstk++] = ip->out();
         break;
     }
   }
@@ -908,8 +905,7 @@ void DFA::RunWorkqOnEmptyString(Workq* oldq, Workq* newq, uint flag) {
 // regular expression program has been reached (the regexp has matched).
 void DFA::RunWorkqOnByte(Workq* oldq, Workq* newq,
                          int c, uint flag, bool* ismatch,
-                         Prog::MatchKind kind,
-                         int new_byte_loop) {
+                         Prog::MatchKind kind) {
   if (DEBUG_MODE)
     mutex_.AssertHeld();
 
@@ -1020,7 +1016,7 @@ DFA::State* DFA::RunStateOnByte(State* state, int c) {
   // byte processed was a word character.  Use that info to
   // insert empty-width (non-)word boundaries.
   bool islastword = state->flag_ & kFlagLastWord;
-  bool isword = (c != kByteEndText && Prog::IsWordChar(c));
+  bool isword = (c != kByteEndText && Prog::IsWordChar(static_cast<uint8>(c)));
   if (isword == islastword)
     beforeflag |= kEmptyNonWordBoundary;
   else
@@ -1033,8 +1029,8 @@ DFA::State* DFA::RunStateOnByte(State* state, int c) {
     swap(q0_, q1_);
   }
   bool ismatch = false;
-  RunWorkqOnByte(q0_, q1_, c, afterflag, &ismatch, kind_, start_unanchored_);
-  
+  RunWorkqOnByte(q0_, q1_, c, afterflag, &ismatch, kind_);
+
   // Most of the time, we build the state from the output of
   // RunWorkqOnByte, so swap q0_ and q1_ here.  However, so that
   // RE2::Set can tell exactly which match instructions
@@ -2040,7 +2036,7 @@ bool DFA::PossibleMatchRange(string* min, string* max, int maxlen) {
       if (ns == FullMatchState ||
           (ns > SpecialStateMax && ns->ninst_ > 0)) {
         extended = true;
-        min->append(1, j);
+        min->append(1, static_cast<char>(j));
         s = ns;
         break;
       }
@@ -2070,7 +2066,7 @@ bool DFA::PossibleMatchRange(string* min, string* max, int maxlen) {
       if (ns == FullMatchState ||
           (ns > SpecialStateMax && ns->ninst_ > 0)) {
         extended = true;
-        max->append(1, j);
+        max->append(1, static_cast<char>(j));
         s = ns;
         break;
       }

@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 #include <stdio.h>
-#ifndef WIN32
+#ifndef _WIN32
 #include <sys/resource.h>
 #endif
 #include "util/test.h"
@@ -22,18 +22,6 @@ void RegisterTest(void (*fn)(void), const char *name) {
   tests[ntests].fn = fn;
   tests[ntests++].name = name;
 }
-
-namespace re2 {
-int64 VirtualProcessSize() {
-#ifdef WIN32
-  return 0;
-#else
-  struct rusage ru;
-  getrusage(RUSAGE_SELF, &ru);
-  return (int64)ru.ru_maxrss*1024;
-#endif
-}
-}  // namespace re2
 
 int main(int argc, char **argv) {
   for (int i = 0; i < ntests; i++) {

@@ -21,6 +21,7 @@
 #include "re2/stringpiece.h"
 #include "re2/unicode_casefold.h"
 #include "re2/unicode_groups.h"
+#include "re2/walker-inl.h"
 
 namespace re2 {
 
@@ -214,7 +215,8 @@ bool Regexp::ParseState::PushRegexp(Regexp* re) {
   // single characters (e.g., [.] instead of \.), and some
   // analysis does better with fewer character classes.
   // Similarly, [Aa] can be rewritten as a literal A with ASCII case folding.
-  if (re->op_ == kRegexpCharClass) {
+  if (re->op_ == kRegexpCharClass && re->ccb_ != NULL) {
+    re->ccb_->RemoveAbove(rune_max_);
     if (re->ccb_->size() == 1) {
       Rune r = re->ccb_->begin()->lo;
       re->Decref();
@@ -377,7 +379,6 @@ bool Regexp::ParseState::PushLiteral(Rune r) {
       }
       r = CycleFoldRune(r);
     } while (r != r1);
-    re->ccb_->RemoveAbove(rune_max_);
     return PushRegexp(re);
   }
 
@@ -463,6 +464,59 @@ bool Regexp::ParseState::PushRepeatOp(RegexpOp op, const StringPiece& s,
   return true;
 }
 
+// RepetitionWalker reports whether the repetition regexp is valid.
+// Valid means that the combination of the top-level repetition
+// and any inner repetitions does not exceed n copies of the
+// innermost thing.
+// This rewalks the regexp tree and is called for every repetition,
+// so we have to worry about inducing quadratic behavior in the parser.
+// We avoid this by only using RepetitionWalker when min or max >= 2.
+// In that case the depth of any >= 2 nesting can only get to 9 without
+// triggering a parse error, so each subtree can only be rewalked 9 times.
+class RepetitionWalker : public Regexp::Walker<int> {
+ public:
+  RepetitionWalker() {}
+  virtual int PreVisit(Regexp* re, int parent_arg, bool* stop);
+  virtual int PostVisit(Regexp* re, int parent_arg, int pre_arg,
+                        int* child_args, int nchild_args);
+  virtual int ShortVisit(Regexp* re, int parent_arg);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(RepetitionWalker);
+};
+
+int RepetitionWalker::PreVisit(Regexp* re, int parent_arg, bool* stop) {
+  int arg = parent_arg;
+  if (re->op() == kRegexpRepeat) {
+    int m = re->max();
+    if (m < 0) {
+      m = re->min();
+    }
+    if (m > 0) {
+      arg /= m;
+    }
+  }
+  return arg;
+}
+
+int RepetitionWalker::PostVisit(Regexp* re, int parent_arg, int pre_arg,
+                                int* child_args, int nchild_args) {
+  int arg = pre_arg;
+  for (int i = 0; i < nchild_args; i++) {
+    if (child_args[i] < arg) {
+      arg = child_args[i];
+    }
+  }
+  return arg;
+}
+
+int RepetitionWalker::ShortVisit(Regexp* re, int parent_arg) {
+  // This should never be called, since we use Walk and not
+  // WalkExponential.
+  LOG(DFATAL) << "RepetitionWalker::ShortVisit called";
+  return 0;
+}
+
 // Pushes a repetition regexp onto the stack.
 // A valid argument for the operator must already be on the stack.
 bool Regexp::ParseState::PushRepetition(int min, int max,
@@ -488,8 +542,15 @@ bool Regexp::ParseState::PushRepetition(int min, int max,
   re->down_ = stacktop_->down_;
   re->sub()[0] = FinishRegexp(stacktop_);
   re->simple_ = re->ComputeSimple();
-
   stacktop_ = re;
+  if (min >= 2 || max >= 2) {
+    RepetitionWalker w;
+    if (w.Walk(stacktop_, 1000) == 0) {
+      status_->set_code(kRegexpRepeatSize);
+      status_->set_error_arg(s);
+      return false;
+    }
+  }
   return true;
 }
 
@@ -515,13 +576,6 @@ bool Regexp::ParseState::DoLeftParenNoCapture() {
   return PushRegexp(re);
 }
 
-// Adds r to cc, along with r's upper case if foldascii is set.
-static void AddLiteral(CharClassBuilder* cc, Rune r, bool foldascii) {
-  cc->AddRange(r, r);
-  if (foldascii && 'a' <= r && r <= 'z')
-    cc->AddRange(r + 'A' - 'a', r + 'A' - 'a');
-}
-
 // Processes a vertical bar in the input.
 bool Regexp::ParseState::DoVerticalBar() {
   MaybeConcatString(-1, NoParseFlags);
@@ -535,46 +589,34 @@ bool Regexp::ParseState::DoVerticalBar() {
   Regexp* r1;
   Regexp* r2;
   if ((r1 = stacktop_) != NULL &&
-      (r2 = stacktop_->down_) != NULL &&
+      (r2 = r1->down_) != NULL &&
       r2->op() == kVerticalBar) {
-    // If above and below vertical bar are literal or char class,
-    // can merge into a single char class.
     Regexp* r3;
-    if ((r1->op() == kRegexpLiteral ||
-         r1->op() == kRegexpCharClass ||
-         r1->op() == kRegexpAnyChar) &&
-        (r3 = r2->down_) != NULL) {
-      Rune rune;
-      switch (r3->op()) {
-        case kRegexpLiteral:  // convert to char class
-          rune = r3->rune_;
-          r3->op_ = kRegexpCharClass;
-          r3->cc_ = NULL;
-          r3->ccb_ = new CharClassBuilder;
-          AddLiteral(r3->ccb_, rune, r3->parse_flags_ & Regexp::FoldCase);
-          // fall through
-        case kRegexpCharClass:
-          if (r1->op() == kRegexpLiteral)
-            AddLiteral(r3->ccb_, r1->rune_,
-                       r1->parse_flags_ & Regexp::FoldCase);
-          else if (r1->op() == kRegexpCharClass)
-            r3->ccb_->AddCharClass(r1->ccb_);
-          if (r1->op() == kRegexpAnyChar || r3->ccb_->full()) {
-            delete r3->ccb_;
-            r3->ccb_ = NULL;
-            r3->op_ = kRegexpAnyChar;
-          }
-          // fall through
-        case kRegexpAnyChar:
-          // pop r1
-          stacktop_ = r2;
-          r1->Decref();
-          return true;
-        default:
-          break;
+    if ((r3 = r2->down_) != NULL &&
+        (r1->op() == kRegexpAnyChar || r3->op() == kRegexpAnyChar)) {
+      // AnyChar is above or below the vertical bar. Let it subsume
+      // the other when the other is Literal, CharClass or AnyChar.
+      if (r3->op() == kRegexpAnyChar &&
+          (r1->op() == kRegexpLiteral ||
+           r1->op() == kRegexpCharClass ||
+           r1->op() == kRegexpAnyChar)) {
+        // Discard r1.
+        stacktop_ = r2;
+        r1->Decref();
+        return true;
+      }
+      if (r1->op() == kRegexpAnyChar &&
+          (r3->op() == kRegexpLiteral ||
+           r3->op() == kRegexpCharClass ||
+           r3->op() == kRegexpAnyChar)) {
+        // Rearrange the stack and discard r3.
+        r1->down_ = r3->down_;
+        r2->down_ = r1;
+        stacktop_ = r2;
+        r3->Decref();
+        return true;
       }
     }
-
     // Swap r1 below vertical bar (r2).
     r1->down_ = r2->down_;
     r2->down_ = r1;
@@ -1105,7 +1147,7 @@ bool Regexp::ParseState::MaybeConcatString(int r, ParseFlags flags) {
   if (r >= 0) {
     re1->op_ = kRegexpLiteral;
     re1->rune_ = r;
-    re1->parse_flags_ = flags;
+    re1->parse_flags_ = static_cast<uint16>(flags);
     return true;
   }
 
@@ -1771,7 +1813,6 @@ bool Regexp::ParseState::ParseCharClass(StringPiece* s,
 
   if (negated)
     re->ccb_->Negate();
-  re->ccb_->RemoveAbove(rune_max_);
 
   *out_re = re;
   return true;

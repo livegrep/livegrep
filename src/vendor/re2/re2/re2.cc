@@ -11,11 +11,10 @@
 
 #include <stdio.h>
 #include <string>
-#include <pthread.h>
 #include <errno.h>
-#include "util/atomicops.h"
 #include "util/util.h"
 #include "util/flags.h"
+#include "util/sparse_array.h"
 #include "re2/prog.h"
 #include "re2/regexp.h"
 
@@ -33,9 +32,9 @@ const VariadicFunction2<bool, StringPiece*, const RE2&, RE2::Arg, RE2::ConsumeN>
 const VariadicFunction2<bool, StringPiece*, const RE2&, RE2::Arg, RE2::FindAndConsumeN> RE2::FindAndConsume = {};
 
 // This will trigger LNK2005 error in MSVC.
-#ifndef COMPILER_MSVC
+#ifndef _MSC_VER
 const int RE2::Options::kDefaultMaxMem;  // initialized in re2.h
-#endif  // COMPILER_MSVC
+#endif
 
 RE2::Options::Options(RE2::CannedOptions opt)
   : encoding_(opt == RE2::Latin1 ? EncodingLatin1 : EncodingUTF8),
@@ -272,8 +271,36 @@ int RE2::ProgramSize() const {
   return prog_->size();
 }
 
+int RE2::ProgramFanout(map<int, int>* histogram) const {
+  if (prog_ == NULL)
+    return -1;
+  SparseArray<int> fanout(prog_->size());
+  prog_->Fanout(&fanout);
+  histogram->clear();
+  for (SparseArray<int>::iterator i = fanout.begin(); i != fanout.end(); ++i) {
+    // TODO(junyer): Optimise this?
+    int bucket = 0;
+    while (1 << bucket < i->second) {
+      bucket++;
+    }
+    (*histogram)[bucket]++;
+  }
+  return histogram->rbegin()->first;
+}
+
+// Returns num_captures_, computing it if needed, or -1 if the
+// regexp wasn't valid on construction.
+int RE2::NumberOfCapturingGroups() const {
+  MutexLock l(mutex_);
+  if (suffix_regexp_ == NULL)
+    return -1;
+  if (num_captures_ == -1)
+    num_captures_ = suffix_regexp_->NumCaptures();
+  return num_captures_;
+}
+
 // Returns named_groups_, computing it if needed.
-const map<string, int>&  RE2::NamedCapturingGroups() const {
+const map<string, int>& RE2::NamedCapturingGroups() const {
   MutexLock l(mutex_);
   if (!ok())
     return *empty_named_groups;
@@ -286,7 +313,7 @@ const map<string, int>&  RE2::NamedCapturingGroups() const {
 }
 
 // Returns group_names_, computing it if needed.
-const map<int, string>&  RE2::CapturingGroupNames() const {
+const map<int, string>& RE2::CapturingGroupNames() const {
   MutexLock l(mutex_);
   if (!ok())
     return *empty_group_names;
@@ -541,7 +568,10 @@ bool RE2::Match(const StringPiece& text,
 
   if (startpos < 0 || startpos > endpos || endpos > text.size()) {
     if (options_.log_errors())
-      LOG(ERROR) << "RE2: invalid startpos, endpos pair.";
+      LOG(ERROR) << "RE2: invalid startpos, endpos pair. ["
+                 << "startpos: " << startpos << ", "
+                 << "endpos: " << endpos << ", "
+                 << "text size: " << text.size() << "]";
     return false;
   }
 
@@ -842,7 +872,7 @@ bool RE2::DoMatch(const StringPiece& text,
     if (!args[i]->Parse(s.data(), s.size())) {
       // TODO: Should we indicate what the error was?
       VLOG(1) << "Parse error on #" << i << " " << s << " "
-	      << (void*)s.data() << "/" << s.size();
+              << (void*)s.data() << "/" << s.size();
       delete[] heapvec;
       return false;
     }
@@ -858,48 +888,33 @@ bool RE2::Rewrite(string *out, const StringPiece &rewrite,
                  const StringPiece *vec, int veclen) const {
   for (const char *s = rewrite.data(), *end = s + rewrite.size();
        s < end; s++) {
-    int c = *s;
-    if (c == '\\') {
-      s++;
-      c = (s < end) ? *s : -1;
-      if (isdigit(c)) {
-        int n = (c - '0');
-        if (n >= veclen) {
-          if (options_.log_errors()) {
-            LOG(ERROR) << "requested group " << n
-                       << " in regexp " << rewrite.data();
-          }
-          return false;
+    if (*s != '\\') {
+      out->push_back(*s);
+      continue;
+    }
+    s++;
+    int c = (s < end) ? *s : -1;
+    if (isdigit(c)) {
+      int n = (c - '0');
+      if (n >= veclen) {
+        if (options_.log_errors()) {
+          LOG(ERROR) << "requested group " << n
+                     << " in regexp " << rewrite.data();
         }
-        StringPiece snip = vec[n];
-        if (snip.size() > 0)
-          out->append(snip.data(), snip.size());
-      } else if (c == '\\') {
-        out->push_back('\\');
-      } else {
-        if (options_.log_errors())
-          LOG(ERROR) << "invalid rewrite pattern: " << rewrite.data();
         return false;
       }
+      StringPiece snip = vec[n];
+      if (snip.size() > 0)
+        out->append(snip.data(), snip.size());
+    } else if (c == '\\') {
+      out->push_back('\\');
     } else {
-      out->push_back(c);
+      if (options_.log_errors())
+        LOG(ERROR) << "invalid rewrite pattern: " << rewrite.data();
+      return false;
     }
   }
   return true;
-}
-
-// Return the number of capturing subpatterns, or -1 if the
-// regexp wasn't valid on construction.
-int RE2::NumberOfCapturingGroups() const {
-  if (suffix_regexp_ == NULL)
-    return -1;
-  int n;
-  ATOMIC_LOAD_RELAXED(n, &num_captures_);
-  if (n == -1) {
-    n = suffix_regexp_->NumCaptures();
-    ATOMIC_STORE_RELAXED(&num_captures_, n);
-  }
-  return n;
 }
 
 // Checks that the rewrite string is well-formed with respect to this
@@ -1081,7 +1096,7 @@ bool RE2::Arg::parse_short_radix(const char* str,
   if (!parse_long_radix(str, n, &r, radix)) return false; // Could not parse
   if ((short)r != r) return false;       // Out of range
   if (dest == NULL) return true;
-  *(reinterpret_cast<short*>(dest)) = r;
+  *(reinterpret_cast<short*>(dest)) = (short)r;
   return true;
 }
 
@@ -1093,7 +1108,7 @@ bool RE2::Arg::parse_ushort_radix(const char* str,
   if (!parse_ulong_radix(str, n, &r, radix)) return false; // Could not parse
   if ((ushort)r != r) return false;                      // Out of range
   if (dest == NULL) return true;
-  *(reinterpret_cast<unsigned short*>(dest)) = r;
+  *(reinterpret_cast<unsigned short*>(dest)) = (ushort)r;
   return true;
 }
 
@@ -1121,7 +1136,7 @@ bool RE2::Arg::parse_uint_radix(const char* str,
   return true;
 }
 
-#ifdef RE2_HAVE_LONGLONG
+#if RE2_HAVE_LONGLONG
 bool RE2::Arg::parse_longlong_radix(const char* str,
                                    int n,
                                    void* dest,
@@ -1179,7 +1194,7 @@ static bool parse_double_float(const char* str, int n, bool isfloat, void *dest)
   if (errno) return false;
   if (dest == NULL) return true;
   if (isfloat) {
-    *(reinterpret_cast<float*>(dest)) = r;
+    *(reinterpret_cast<float*>(dest)) = (float)r;
   } else {
     *(reinterpret_cast<double*>(dest)) = r;
   }
