@@ -18,10 +18,6 @@
 #include <limits>
 #include <atomic>
 
-#include <re2/re2.h>
-#include <gflags/gflags.h>
-#include <openssl/sha.h>
-
 #include "timer.h"
 #include "metrics.h"
 #include "thread_queue.h"
@@ -33,6 +29,10 @@
 #include "per_thread.h"
 #include "debug.h"
 #include "content.h"
+
+#include <re2/re2.h>
+#include <gflags/gflags.h>
+#include <openssl/sha.h>
 
 #include "utf8.h"
 
