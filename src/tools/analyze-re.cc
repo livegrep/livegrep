@@ -1,4 +1,3 @@
-#include <gflags/gflags.h>
 #include <stdint.h>
 #include <fcntl.h>
 #include <sys/unistd.h>
@@ -18,6 +17,8 @@
 #include "debug.h"
 #include "indexer.h"
 #include "re_width.h"
+
+#include <gflags/gflags.h>
 
 using namespace std;
 

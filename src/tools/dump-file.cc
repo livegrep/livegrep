@@ -1,4 +1,3 @@
-#include <gflags/gflags.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,6 +10,7 @@
 #include "indexer.h"
 #include "re_width.h"
 
+#include <gflags/gflags.h>
 
 void dump_file(code_searcher *cs, indexed_file *f) {
     for (auto it = f->content->begin(cs->alloc());

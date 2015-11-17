@@ -1,4 +1,3 @@
-#include <gflags/gflags.h>
 #include <stdint.h>
 #include <fcntl.h>
 #include <sys/unistd.h>
@@ -14,6 +13,8 @@
 #include "dump_load.h"
 #include "codesearch.h"
 #include "debug.h"
+
+#include <gflags/gflags.h>
 
 using std::string;
 
