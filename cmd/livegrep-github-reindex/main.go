@@ -309,7 +309,7 @@ func checkoutOne(dir string, r *github.Repository) error {
 		}
 	}
 
-	cmd := exec.Command("git", "--git-dir", checkout, "fetch")
+	cmd := exec.Command("git", "--git-dir", checkout, "fetch", "-p")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
