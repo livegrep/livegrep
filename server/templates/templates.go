@@ -7,6 +7,7 @@ import (
 	"path"
 	"reflect"
 	"strings"
+	texttemplate "text/template"
 )
 
 func templatePath(f reflect.StructField) string {
@@ -29,12 +30,21 @@ func Load(base string, templates interface{}) error {
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 
-		if !f.Type.AssignableTo(reflect.TypeOf((*template.Template)(nil))) {
+		is_html_template := f.Type.AssignableTo(reflect.TypeOf((*template.Template)(nil)))
+		is_text_template := f.Type.AssignableTo(reflect.TypeOf((*texttemplate.Template)(nil)))
+		if !is_html_template && !is_text_template {
 			continue
 		}
 
 		p := templatePath(f)
-		tpl, err := template.ParseFiles(path.Join(base, p))
+		var err error
+		var tpl interface{}
+		if is_html_template {
+			tpl, err = template.ParseFiles(path.Join(base, p))
+		} else {
+			tpl, err = texttemplate.ParseFiles(path.Join(base, p))
+		}
+
 		if err != nil {
 			return err
 		}

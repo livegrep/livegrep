@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"html/template"
+	texttemplate "text/template"
 
 	"github.com/livegrep/livegrep/server/config"
 )
@@ -14,6 +15,14 @@ type page struct {
 	Title  string
 	Body   template.HTML
 	Config *config.Config
+}
+
+func executeTextTemplate(t *texttemplate.Template, context interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, context); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func executeTemplate(t *template.Template, context interface{}) ([]byte, error) {
