@@ -142,7 +142,7 @@ func (s *server) ServeOpensearch(ctx context.Context, w http.ResponseWriter, r *
 		}
 	}
 
-	body, err := executeTextTemplate(s.T.OpenSearch, data)
+	body, err := executeTemplate(s.T.OpenSearch, data)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
