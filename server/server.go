@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	texttemplate "text/template"
 	"time"
 
 	"code.google.com/p/go.net/context"
@@ -24,7 +25,7 @@ type Templates struct {
 	Index,
 	About,
 	Help *template.Template
-	OpenSearch *template.Template `template:"opensearch.xml"`
+	OpenSearch *texttemplate.Template `template:"opensearch.xml"`
 }
 
 type server struct {
@@ -146,6 +147,8 @@ func (s *server) ServeOpensearch(ctx context.Context, w http.ResponseWriter, r *
 		http.Error(w, err.Error(), 500)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/xml")
 	w.Write(body)
 }
 

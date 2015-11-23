@@ -16,7 +16,11 @@ type page struct {
 	Config *config.Config
 }
 
-func executeTemplate(t *template.Template, context interface{}) ([]byte, error) {
+type Template interface {
+  Execute(wr io.Writer, data interface{}) error
+}
+
+func executeTemplate(t Template, context interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := t.Execute(&buf, context); err != nil {
 		return nil, err
