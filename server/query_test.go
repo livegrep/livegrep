@@ -97,6 +97,10 @@ func TestParseQuery(t *testing.T) {
 			`-file:. -repo:Godep re`,
 			client.Query{Line: "re", Not: Not(".", "Godep"), FoldCase: true},
 		},
+		{
+			`case:foo:`,
+			client.Query{Line: "foo:", FoldCase: false},
+		},
 	}
 
 	for _, tc := range cases {

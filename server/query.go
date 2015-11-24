@@ -69,7 +69,11 @@ func ParseQuery(query string) client.Query {
 			ops[key] += match
 		} else {
 			// An operator. The key is in match group 1
-			key = match[m[2]-m[0] : m[3]-m[0]]
+			if key == "" {
+				key = match[m[2]-m[0] : m[3]-m[0]]
+			} else {
+				ops[key] += match
+			}
 		}
 	}
 
