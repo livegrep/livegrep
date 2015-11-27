@@ -51,10 +51,12 @@ void git_indexer::walk(const string& ref) {
         strdup(git_oid_tostr(oidstr, sizeof(oidstr), git_commit_id(commit))) : ref;
 
     idx_tree_ = cs_->open_tree(name_, metadata_, version);
-    walk_root(tree);
+    walk_tree("", FLAGS_order_root, tree);
 }
 
-void git_indexer::walk_root(git_tree *tree) {
+void git_indexer::walk_tree(const string& pfx,
+                            const string& order,
+                            git_tree *tree) {
     metric::timer tm_walk(git_walk);
     map<string, const git_tree_entry *> root;
     vector<const git_tree_entry *> ordered;
@@ -64,7 +66,7 @@ void git_indexer::walk_root(git_tree *tree) {
         root[git_tree_entry_name(ent)] = ent;
     }
 
-    istringstream stream(FLAGS_order_root);
+    istringstream stream(order);
     string dir;
     while(stream >> dir) {
         map<string, const git_tree_entry *>::iterator it = root.find(dir);
@@ -80,36 +82,13 @@ void git_indexer::walk_root(git_tree *tree) {
          it != ordered.end(); ++it) {
         smart_object<git_object> obj;
         git_tree_entry_to_object(obj, repo_, *it);
-        string path = string(git_tree_entry_name(*it));
+        string path = pfx + git_tree_entry_name(*it);
         tm_walk.pause();
 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
-            walk_tree(path + "/", obj);
+            walk_tree(path + "/", "", obj);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
             metric::timer tm_content(git_contents);
-            const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
-            cs_->index_file(idx_tree_, path, StringPiece(data, git_blob_rawsize(obj)));
-        }
-        tm_walk.start();
-    }
-}
-
-void git_indexer::walk_tree(const string& pfx,
-                            git_tree *tree) {
-    metric::timer tm_walk(git_walk);
-    string path;
-    int entries = git_tree_entrycount(tree);
-    int i;
-    for (i = 0; i < entries; i++) {
-        const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
-        path = pfx + git_tree_entry_name(ent);
-        smart_object<git_object> obj;
-        git_tree_entry_to_object(obj, repo_, ent);
-        tm_walk.pause();
-        if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
-            walk_tree(path + "/", obj);
-        } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
-            metric::timer tm_contents(git_contents);
             const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
             cs_->index_file(idx_tree_, path, StringPiece(data, git_blob_rawsize(obj)));
         }

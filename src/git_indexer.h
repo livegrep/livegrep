@@ -25,8 +25,9 @@ public:
     ~git_indexer();
     void walk(const std::string& ref);
 protected:
-    void walk_root(git_tree *tree);
-    void walk_tree(const std::string& pfx, git_tree *tree);
+    void walk_tree(const std::string& pfx,
+                   const std::string& order,
+                   git_tree *tree);
 
     code_searcher *cs_;
     git_repository *repo_;
