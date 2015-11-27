@@ -64,6 +64,7 @@ namespace {
     metric idx_content_chunks("index.content.chunks");
     metric idx_content_ranges("index.content.ranges");
     metric idx_hash_time("timer.index.dedup.hash");
+    metric idx_index_file_time("timer.index.index_file");
 };
 
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
@@ -391,6 +392,7 @@ const indexed_tree* code_searcher::open_tree(const string &name,
 void code_searcher::index_file(const indexed_tree *tree,
                                const string& path,
                                StringPiece contents) {
+    metric::timer tm(idx_index_file_time);
     assert(!finalized_);
     assert(alloc_);
     size_t len = contents.size();
@@ -439,7 +441,10 @@ void code_searcher::index_file(const indexed_tree *tree,
             memcpy(alloc, p, f - p);
             alloc[f - p] = '\n';
             line = StringPiece((char*)alloc, f - p);
-            lines_.insert(line);
+            {
+                metric::timer tm(idx_hash_time);
+                lines_.insert(line);
+            }
             c = alloc_->current_chunk();
         } else {
             line = *it;

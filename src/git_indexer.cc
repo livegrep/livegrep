@@ -9,7 +9,6 @@
 
 namespace {
     metric git_walk("timer.git.walk");
-    metric git_contents("timer.git.contents");
 };
 
 using namespace std;
@@ -88,7 +87,6 @@ void git_indexer::walk_tree(const string& pfx,
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
             walk_tree(path + "/", "", obj);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
-            metric::timer tm_content(git_contents);
             const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
             cs_->index_file(idx_tree_, path, StringPiece(data, git_blob_rawsize(obj)));
         }
