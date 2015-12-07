@@ -400,6 +400,7 @@ void code_searcher::index_file(const indexed_tree *tree,
     const char *end = p + len;
     const char *f;
     chunk *c;
+    chunk *prev = NULL;
     StringPiece line;
 
     if (memchr(p, 0, len) != NULL)
@@ -443,9 +444,11 @@ void code_searcher::index_file(const indexed_tree *tree,
             line = StringPiece((char*)alloc, f - p);
             {
                 metric::timer tm(idx_hash_time);
+                if (alloc_->current_chunk() != prev)
+                    lines_.clear();
                 lines_.insert(line);
             }
-            c = alloc_->current_chunk();
+            prev = c = alloc_->current_chunk();
         } else {
             line = *it;
             c = alloc_->chunk_from_string
