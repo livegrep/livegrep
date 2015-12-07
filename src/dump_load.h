@@ -8,6 +8,8 @@
 #ifndef CODESEARCH_DUMP_LOAD_H
 #define CODESEARCH_DUMP_LOAD_H
 
+#include <stdint.h>
+
 const uint32_t kIndexMagic   = 0xc0d35eac;
 const uint32_t kIndexVersion = 13;
 const uint32_t kPageSize     = (1 << 12);
