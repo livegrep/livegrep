@@ -29,6 +29,7 @@ var (
 	}
 	flagName  = flag.String("name", "livegrep index", "The name to be stored in the index file")
 	flagForks = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
+	flagHTTP  = flag.Bool("http", false, "clone repositories over HTTPS instead ofssh")
 	flagRepos = stringList{}
 	flagOrgs  = stringList{}
 	flagUsers = stringList{}
@@ -84,7 +85,7 @@ func main() {
 
 	sort.Sort(ReposByName(repos))
 
-	if err := checkoutRepos(repos, *flagRepoDir); err != nil {
+	if err := checkoutRepos(repos, *flagRepoDir, *flagHTTP); err != nil {
 		log.Fatalln(err.Error())
 	}
 
@@ -232,7 +233,7 @@ func listUserRepos(client *github.Client, user string, buf []github.Repository) 
 
 const Workers = 8
 
-func checkoutRepos(repos []github.Repository, dir string) error {
+func checkoutRepos(repos []github.Repository, dir string, http bool) error {
 	repoc := make(chan *github.Repository)
 	errc := make(chan error, Workers)
 	stop := make(chan struct{})
@@ -241,7 +242,7 @@ func checkoutRepos(repos []github.Repository, dir string) error {
 	for i := 0; i < Workers; i++ {
 		go func() {
 			defer wg.Done()
-			checkoutWorker(dir, repoc, stop, errc)
+			checkoutWorker(dir, http, repoc, stop, errc)
 		}()
 	}
 
@@ -267,6 +268,7 @@ Repos:
 }
 
 func checkoutWorker(dir string,
+	http bool,
 	c <-chan *github.Repository,
 	stop <-chan struct{}, errc chan error) {
 	for {
@@ -275,7 +277,7 @@ func checkoutWorker(dir string,
 			if !ok {
 				return
 			}
-			err := checkoutOne(dir, r)
+			err := checkoutOne(dir, http, r)
 			if err != nil {
 				errc <- err
 			}
@@ -285,7 +287,7 @@ func checkoutWorker(dir string,
 	}
 }
 
-func checkoutOne(dir string, r *github.Repository) error {
+func checkoutOne(dir string, http bool, r *github.Repository) error {
 	log.Println("Updating", *r.FullName)
 	checkout := path.Join(dir, *r.FullName)
 	out, err := exec.Command("git", "--git-dir", checkout, "rev-parse", "--is-bare-repository").Output()
@@ -301,7 +303,13 @@ func checkoutOne(dir string, r *github.Repository) error {
 		if err := os.MkdirAll(checkout, 0755); err != nil {
 			return err
 		}
-		cmd := exec.Command("git", "clone", "--mirror", *r.SSHURL, checkout)
+		var remote string
+		if http {
+			remote = *r.CloneURL
+		} else {
+			remote = *r.SSHURL
+		}
+		cmd := exec.Command("git", "clone", "--mirror", remote, checkout)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
