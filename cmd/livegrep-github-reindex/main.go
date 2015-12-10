@@ -30,6 +30,7 @@ var (
 	flagName  = flag.String("name", "livegrep index", "The name to be stored in the index file")
 	flagForks = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
 	flagHTTP  = flag.Bool("http", false, "clone repositories over HTTPS instead ofssh")
+	flagDepth = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
 	flagRepos = stringList{}
 	flagOrgs  = stringList{}
 	flagUsers = stringList{}
@@ -85,7 +86,7 @@ func main() {
 
 	sort.Sort(ReposByName(repos))
 
-	if err := checkoutRepos(repos, *flagRepoDir, *flagHTTP); err != nil {
+	if err := checkoutRepos(repos, *flagRepoDir, *flagDepth, *flagHTTP); err != nil {
 		log.Fatalln(err.Error())
 	}
 
@@ -233,7 +234,7 @@ func listUserRepos(client *github.Client, user string, buf []github.Repository) 
 
 const Workers = 8
 
-func checkoutRepos(repos []github.Repository, dir string, http bool) error {
+func checkoutRepos(repos []github.Repository, dir string, depth int, http bool) error {
 	repoc := make(chan *github.Repository)
 	errc := make(chan error, Workers)
 	stop := make(chan struct{})
@@ -242,7 +243,7 @@ func checkoutRepos(repos []github.Repository, dir string, http bool) error {
 	for i := 0; i < Workers; i++ {
 		go func() {
 			defer wg.Done()
-			checkoutWorker(dir, http, repoc, stop, errc)
+			checkoutWorker(dir, depth, http, repoc, stop, errc)
 		}()
 	}
 
@@ -268,6 +269,7 @@ Repos:
 }
 
 func checkoutWorker(dir string,
+	depth int,
 	http bool,
 	c <-chan *github.Repository,
 	stop <-chan struct{}, errc chan error) {
@@ -277,7 +279,7 @@ func checkoutWorker(dir string,
 			if !ok {
 				return
 			}
-			err := checkoutOne(dir, http, r)
+			err := checkoutOne(dir, depth, http, r)
 			if err != nil {
 				errc <- err
 			}
@@ -287,7 +289,7 @@ func checkoutWorker(dir string,
 	}
 }
 
-func checkoutOne(dir string, http bool, r *github.Repository) error {
+func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
 	log.Println("Updating", *r.FullName)
 	checkout := path.Join(dir, *r.FullName)
 	out, err := exec.Command("git", "--git-dir", checkout, "rev-parse", "--is-bare-repository").Output()
@@ -309,7 +311,12 @@ func checkoutOne(dir string, http bool, r *github.Repository) error {
 		} else {
 			remote = *r.SSHURL
 		}
-		cmd := exec.Command("git", "clone", "--mirror", remote, checkout)
+		args := []string{"clone", "--mirror"}
+		if depth != 0 {
+			args = append(args, fmt.Sprintf("--depth=%d", depth))
+		}
+		args = append(args, remote, checkout)
+		cmd := exec.Command("git", args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -317,7 +324,11 @@ func checkoutOne(dir string, http bool, r *github.Repository) error {
 		}
 	}
 
-	cmd := exec.Command("git", "--git-dir", checkout, "fetch", "-p")
+	args := []string{"--git-dir", checkout, "fetch", "-p"}
+	if depth != 0 {
+		args = append(args, fmt.Sprintf("--depth=%d", depth))
+	}
+	cmd := exec.Command("git", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
