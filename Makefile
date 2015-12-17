@@ -8,7 +8,8 @@ override LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
 override CXXFLAGS+=-g -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
 override LDFLAGS+=-pthread
-LDLIBS=-lgit2 -ljson -lgflags $(re2) $(divsufsort) -lz -lssl -lcrypto -ldl -lboost_system -lboost_filesystem -lrt
+LDLIBS=-lgit2 -ljson -lgflags $(re2) $(divsufsort) -lz -lssl -lcrypto -lboost_system -lboost_filesystem -lrt
+DYNLIBS=-ldl
 
 re2 := src/vendor/re2/obj/libre2.a
 divsufsort := src/vendor/libdivsufsort/build/lib/libdivsufsort.a
