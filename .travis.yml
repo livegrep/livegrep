@@ -6,6 +6,12 @@ addons:
     - libboost-system-dev
     - libboost-filesystem-dev
     - libsparsehash-dev
+  artifacts:
+    paths:
+      - builds
+    bucket: livegrep
+    target_paths: builds
+  s3_region: us-west-2
 sudo: false
 before_install:
   - bash travis.sh
@@ -17,3 +23,12 @@ script:
   - env GOPATH=$(pwd)/.gopath go test github.com/livegrep/livegrep/client/test -test.repo $(pwd)/deps/linux
 compiler:
   - gcc
+after_success: |
+  mkdir -p builds
+  rev=$(git rev-parse HEAD | head -c10)
+  builddir="livegrep-$rev"
+  tar --xform s,^,"$builddir/",S -czf "builds/$builddir.tgz" bin web doc README.md COPYING
+env:
+  global:
+    - AWS_ACCESS_KEY_ID=AKIAIAQXOJA3S2ZTGLWA
+    - secure: "YK0pGNgQ4Xf+Rcy6cC8Mg14WI5RYZLIbnWRDMG/FUUqF4eS3RSiez8zxEgxMVtp5eYeG77jFRNdTIZA5UwlEr+Bvl9Q12d12ba5t5kVtB1UEuouIH8p4oDp6mNiuWVqkmlOA4IG4Ao6/n78QMuGCZuxaZ+9lMO/wA1vDt9woCJ8="
