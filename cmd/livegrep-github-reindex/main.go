@@ -27,13 +27,15 @@ var (
 		display: "${dir}/livegrep.idx",
 		fn:      func() string { return path.Join(*flagRepoDir, "livegrep.idx") },
 	}
-	flagName  = flag.String("name", "livegrep index", "The name to be stored in the index file")
-	flagForks = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
-	flagHTTP  = flag.Bool("http", false, "clone repositories over HTTPS instead ofssh")
-	flagDepth = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
-	flagRepos = stringList{}
-	flagOrgs  = stringList{}
-	flagUsers = stringList{}
+	flagRevision = flag.String("revision", "HEAD", "git revision to index")
+	flagRevparse = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
+	flagName     = flag.String("name", "livegrep index", "The name to be stored in the index file")
+	flagForks    = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
+	flagHTTP     = flag.Bool("http", false, "clone repositories over HTTPS instead ofssh")
+	flagDepth    = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
+	flagRepos    = stringList{}
+	flagOrgs     = stringList{}
+	flagUsers    = stringList{}
 )
 
 func init() {
@@ -90,20 +92,32 @@ func main() {
 		log.Fatalln(err.Error())
 	}
 
-	if err := writeConfig(*flagName, repos, *flagRepoDir); err != nil {
+	config, err := buildConfig(*flagName, *flagRepoDir, repos, *flagRevision)
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+	configPath := path.Join(*flagRepoDir, "livegrep.json")
+	if err := writeConfig(config, configPath); err != nil {
 		log.Fatalln(err.Error())
 	}
 
 	index := flagIndexPath.Get().(string)
 	tmp := index + ".tmp"
 
-	cmd := exec.Command(
-		path.Join(path.Dir(os.Args[0]), "codesearch"),
+	args := []string{
 		"--debug=ui",
 		"--dump_index",
 		tmp,
-		"--revparse",
-		path.Join(*flagRepoDir, "livegrep.json"))
+	}
+	if *flagRevparse {
+		args = append(args, "--revparse")
+	}
+	args = append(args, configPath)
+
+	cmd := exec.Command(
+		path.Join(path.Dir(os.Args[0]), "codesearch"),
+		args...,
+	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -349,11 +363,18 @@ type RepoConfig struct {
 	Metadata  map[string]string `json:"metadata"`
 }
 
-func writeConfig(name string, repos []github.Repository, dir string) error {
+func writeConfig(config []byte, file string) error {
+	dir := path.Dir(file)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
+	return ioutil.WriteFile(file, config, 0644)
+}
 
+func buildConfig(name string,
+	dir string,
+	repos []github.Repository,
+	revision string) ([]byte, error) {
 	cfg := IndexConfig{
 		Name: name,
 	}
@@ -362,18 +383,12 @@ func writeConfig(name string, repos []github.Repository, dir string) error {
 		cfg.Repositories = append(cfg.Repositories, RepoConfig{
 			Path:      path.Join(dir, *r.FullName),
 			Name:      *r.FullName,
-			Revisions: []string{"HEAD"},
+			Revisions: []string{revision},
 			Metadata: map[string]string{
 				"github": *r.FullName,
 			},
 		})
 	}
 
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(path.Join(dir, "livegrep.json"),
-		data, 0644)
+	return json.MarshalIndent(cfg, "", "  ")
 }
