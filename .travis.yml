@@ -11,7 +11,7 @@ addons:
       - builds
     bucket: livegrep
     target_paths: builds
-  s3_region: us-west-2
+    s3_region: us-west-2
 sudo: false
 before_install:
   - bash travis.sh
