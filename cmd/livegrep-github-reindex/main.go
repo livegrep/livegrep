@@ -303,6 +303,19 @@ func checkoutWorker(dir string,
 	}
 }
 
+func retryCommand(program string, args []string) error {
+	var err error
+	for i := 0; i < 3; i++ {
+		cmd := exec.Command("git", args...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err = cmd.Run(); err == nil {
+			break
+		}
+	}
+	return err
+}
+
 func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
 	log.Println("Updating", *r.FullName)
 	checkout := path.Join(dir, *r.FullName)
@@ -330,25 +343,14 @@ func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
 			args = append(args, fmt.Sprintf("--depth=%d", depth))
 		}
 		args = append(args, remote, checkout)
-		cmd := exec.Command("git", args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return err
-		}
+		return retryCommand("git", args)
 	}
 
 	args := []string{"--git-dir", checkout, "fetch", "-p"}
 	if depth != 0 {
 		args = append(args, fmt.Sprintf("--depth=%d", depth))
 	}
-	cmd := exec.Command("git", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
+	return retryCommand("git", args)
 }
 
 type IndexConfig struct {
