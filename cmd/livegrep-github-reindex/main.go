@@ -45,6 +45,8 @@ func init() {
 	flag.Var(&flagUsers, "user", "Specify a github user to index (may be passed multiple times)")
 }
 
+const Workers = 8
+
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
@@ -149,44 +151,90 @@ func loadBlacklist(path string) (map[string]struct{}, error) {
 	return out, nil
 }
 
+type loadJob struct {
+	obj string
+	get func(*github.Client, string) ([]github.Repository, error)
+}
+
+type maybeRepo struct {
+	repos []github.Repository
+	err   error
+}
+
 func loadRepos(
 	client *github.Client,
 	repos []string,
 	orgs []string,
 	users []string) ([]github.Repository, error) {
-	var out []github.Repository
+
+	jobc := make(chan loadJob)
+	done := make(chan struct{})
+	repoc := make(chan maybeRepo)
+
+	var jobs []loadJob
 	for _, repo := range repos {
-		bits := strings.SplitN(repo, "/", 2)
-		if len(bits) != 2 {
-			return nil, fmt.Errorf("Bad repository: %s", repo)
-		}
-
-		ghRepo, _, err := client.Repositories.Get(bits[0], bits[1])
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, *ghRepo)
+		jobs = append(jobs, loadJob{repo, getOneRepo})
 	}
-
 	for _, org := range orgs {
-		var err error
-		log.Printf("fetching repos in org %s...", org)
-		out, err = listOrgRepos(client, org, out)
-		if err != nil {
-			log.Fatalf("listing %s: %s", org, err.Error())
-		}
+		jobs = append(jobs, loadJob{org, getOrgRepos})
 	}
-
 	for _, user := range users {
-		var err error
-		log.Printf("fetching repos for user %s...", user)
-		out, err = listUserRepos(client, user, out)
-		if err != nil {
-			log.Fatalf("listing %s: %s", user, err.Error())
+		jobs = append(jobs, loadJob{user, getUserRepos})
+	}
+	go func() {
+		defer close(jobc)
+		for _, j := range jobs {
+			select {
+			case jobc <- j:
+			case <-done:
+				return
+			}
 		}
+	}()
+	var wg sync.WaitGroup
+	wg.Add(Workers)
+	for i := 0; i < Workers; i++ {
+		go func() {
+			runJobs(client, jobc, done, repoc)
+			wg.Done()
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(repoc)
+	}()
+	var out []github.Repository
+	for repo := range repoc {
+		if repo.err != nil {
+			close(done)
+			return nil, repo.err
+		}
+		out = append(out, repo.repos...)
 	}
 
 	return out, nil
+}
+
+func runJobs(client *github.Client, jobc <-chan loadJob, done <-chan struct{}, out chan<- maybeRepo) {
+	for {
+		var job loadJob
+		var ok bool
+		select {
+		case job, ok = <-jobc:
+			if !ok {
+				return
+			}
+		case <-done:
+			return
+		}
+		var res maybeRepo
+		res.repos, res.err = job.get(client, job.obj)
+		select {
+		case out <- res:
+		case <-done:
+			return
+		}
+	}
 }
 
 func filterRepos(repos []github.Repository,
@@ -210,7 +258,21 @@ func filterRepos(repos []github.Repository,
 	return out
 }
 
-func listOrgRepos(client *github.Client, org string, buf []github.Repository) ([]github.Repository, error) {
+func getOneRepo(client *github.Client, repo string) ([]github.Repository, error) {
+	bits := strings.SplitN(repo, "/", 2)
+	if len(bits) != 2 {
+		return nil, fmt.Errorf("Bad repository: %s", repo)
+	}
+
+	ghRepo, _, err := client.Repositories.Get(bits[0], bits[1])
+	if err != nil {
+		return nil, err
+	}
+	return []github.Repository{*ghRepo}, nil
+}
+
+func getOrgRepos(client *github.Client, org string) ([]github.Repository, error) {
+	var buf []github.Repository
 	opt := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{PerPage: 50},
 	}
@@ -228,7 +290,8 @@ func listOrgRepos(client *github.Client, org string, buf []github.Repository) ([
 	return buf, nil
 }
 
-func listUserRepos(client *github.Client, user string, buf []github.Repository) ([]github.Repository, error) {
+func getUserRepos(client *github.Client, user string) ([]github.Repository, error) {
+	var buf []github.Repository
 	opt := &github.RepositoryListOptions{
 		ListOptions: github.ListOptions{PerPage: 50},
 	}
@@ -245,8 +308,6 @@ func listUserRepos(client *github.Client, user string, buf []github.Repository) 
 	}
 	return buf, nil
 }
-
-const Workers = 8
 
 func checkoutRepos(repos []github.Repository, dir string, depth int, http bool) error {
 	repoc := make(chan *github.Repository)
