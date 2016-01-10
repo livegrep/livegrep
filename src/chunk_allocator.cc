@@ -16,11 +16,11 @@
 
 DECLARE_int32(threads);
 DECLARE_bool(index);
-DEFINE_int32(chunk_power, 29, "Size of search chunks, as a power of two");
-size_t kChunkSize = (1 << 29);
+DEFINE_int32(chunk_power, 27, "Size of search chunks, as a power of two");
+size_t kChunkSize = (1 << 27);
 
 static bool validate_chunk_power(const char* flagname, int32_t value) {
-    if (value > 10 && value < 32) {
+    if (value > 10 && value < 30) {
         kChunkSize = (1 << value);
         return true;
     }
