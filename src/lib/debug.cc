@@ -76,8 +76,9 @@ string vstrprintf(const char *fmt, va_list ap) {
 string strprintf(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    return vstrprintf(fmt, ap);
+    string out = vstrprintf(fmt, ap);
     va_end(ap);
+    return out;
 }
 
 void cs_debug(const char *file, int lno, const char *fmt, ...) {
