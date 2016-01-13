@@ -54,7 +54,7 @@ var Match = Backbone.Model.extend({
 
     var repo_map;
     var backend = Codesearch.in_flight.backend;
-    repo_map = CodesearchUI.github_repos[backend];
+    repo_map = CodesearchUI.repo_urls[backend];
     if (!repo_map) {
       return null;
     }
@@ -62,18 +62,13 @@ var Match = Backbone.Model.extend({
       return null;
     }
 
-    var base;
-    // If 'github' metadata is already a URL, pass it
-    // through, but otherwise asume it's a user/repo on
-    // the public github site.
-    try {
-        base = new URL(repo_map[name]).toString();
-    } catch(e) {
-        base = "https://github.com/" + repo_map[name];
-    }
-    return base +
-      "/blob/" + shorten(ref) + "/" + this.get('path') +
-      "#L" + this.get('lno');
+    // the order of these replacements is used to minimize conflicts
+    var url = repo_map[name];
+    url = url.replace('{lno}', this.get('lno'));
+    url = url.replace('{version}', shorten(ref));
+    url = url.replace('{name}', name);
+    url = url.replace('{path}', this.get('path'));
+    return url;
   }
 });
 
@@ -413,7 +408,7 @@ var CodesearchUI = function() {
     search_done: function(search, time, why) {
       CodesearchUI.state.handle_done(search, time, why);
     },
-    github_repos: {}
+    repo_urls: {}
   };
 }();
 CodesearchUI.onload();

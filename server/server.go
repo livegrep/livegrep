@@ -51,24 +51,22 @@ func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	gh := make(map[string]map[string]string, len(s.bk))
+	urls := make(map[string]map[string]string, len(s.bk))
 	backends := make([]*Backend, 0, len(s.bk))
 	for _, bk := range s.bk {
 		backends = append(backends, bk)
 		bk.I.Lock()
 		m := make(map[string]string, len(bk.I.Trees))
-		gh[bk.Id] = m
+		urls[bk.Id] = m
 		for _, r := range bk.I.Trees {
-			if r.Github != "" {
-				m[r.Name] = r.Github
-			}
+			m[r.Name] = r.Url
 		}
 		bk.I.Unlock()
 	}
 	data := &struct {
-		GithubRepos map[string]map[string]string
+		RepoUrls map[string]map[string]string
 		Backends    []*Backend
-	}{gh, backends}
+	}{urls, backends}
 
 	body, err := executeTemplate(s.T.Index, data)
 	if err != nil {
