@@ -19,6 +19,14 @@ struct json_object;
 struct index_info;
 struct query;
 
+struct path_spec {
+    std::string path;
+    std::string name;
+    json_object *metadata;
+
+    path_spec() : metadata(NULL) {}
+};
+
 struct repo_spec {
     std::string path;
     std::string name;
@@ -30,7 +38,7 @@ struct repo_spec {
 
 struct index_spec {
     std::string name;
-    std::vector<std::string> paths;
+    std::vector<path_spec> paths;
     std::vector<repo_spec> repos;
 };
 

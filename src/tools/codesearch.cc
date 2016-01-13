@@ -132,14 +132,15 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
     if (spec.name.size())
         cs->set_name(spec.name);
     for (auto it = spec.paths.begin(); it != spec.paths.end(); ++it) {
-        fprintf(stderr, "Walking `%s'... ", it->c_str());
-        fs_indexer indexer(cs, *it);
-        indexer.walk(*it);
-        fprintf(stderr, "done.\n");
+        fprintf(stderr, "Walking path_spec name=%s, path=%s\n",
+                it->name.c_str(), it->path.c_str());
+        fs_indexer indexer(cs, it->path, it->name, it->metadata);
+        indexer.walk(it->path);
+        fprintf(stderr, "done\n");
     }
 
     for (auto it = spec.repos.begin(); it != spec.repos.end(); ++it) {
-        fprintf(stderr, "Walking name=%s, path=%s",
+        fprintf(stderr, "Walking repo_spec name=%s, path=%s\n",
                 it->name.c_str(), it->path.c_str());
         git_indexer indexer(cs, it->path, it->name, it->metadata);
         for (auto rev = it->revisions.begin();

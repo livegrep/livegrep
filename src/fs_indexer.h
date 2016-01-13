@@ -16,12 +16,15 @@ struct indexed_tree;
 class fs_indexer {
 public:
     fs_indexer(code_searcher *cs,
-                             const string& name);
+               const string& repopath,
+               const string& name,
+               json_object *metadata = 0);
     ~fs_indexer();
     void read_file(const std::string& path);
     void walk(const std::string& path);
 protected:
     code_searcher *cs_;
+    std::string repopath_;
     std::string name_;
     const indexed_tree *tree_;
 };
