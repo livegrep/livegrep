@@ -112,6 +112,7 @@ bool getline(std::string &out, FILE *in) {
 
 json_parse_error parse_object(json_object *j, bool *);
 json_parse_error parse_object(json_object *j, std::string *);
+json_parse_error parse_object(json_object *j, path_spec *);
 json_parse_error parse_object(json_object *j, repo_spec *);
 json_parse_error parse_object(json_object *j, json_object **);
 
@@ -223,6 +224,18 @@ json_parse_error parse_object(json_object *js, json_object **out) {
     return json_parse_error();
 }
 
+json_parse_error parse_object(json_object *js, path_spec *p) {
+    if (json_object_get_type(js) != json_type_object)
+        return json_parse_error("expected a JSON object");
+    json_parse_error err;
+    err = parse_object(js, "path", &p->path);
+    if (!err.ok()) return err;
+    err = parse_object(js, "name", &p->name);
+    if (!err.ok()) return err;
+    err = parse_object(js, "metadata", &p->metadata);
+    return err;
+}
+
 json_parse_error parse_object(json_object *js, repo_spec *r) {
     if (json_object_get_type(js) != json_type_object)
         return json_parse_error("expected a JSON object");
@@ -312,19 +325,36 @@ json_parse_error parse_index_spec(json_object *in, index_spec *out) {
     json_parse_error err = parse_object(in, "name", &out->name);
     if (!err.ok())
         return err;
-    err = parse_object(in, "fs_paths", &out->paths);
-    if (!err.ok())
-        return err;
-    json_object *repos = json_object_object_get(in, "repositories");
-    if (repos == NULL)
-        return json_parse_error();
-    if (json_object_get_type(repos) == json_type_object) {
-        repo_spec s;
-        err = parse_object(in, "repositories", &s);
-        if (err.ok())
-            out->repos.push_back(s);
-    } else {
-        err = parse_object(in, "repositories", &out->repos);
+
+    json_object *paths = json_object_object_get(in, "fs_paths");
+    if (paths != NULL)
+    {
+       if (json_object_get_type(paths) == json_type_object) {
+           path_spec s;
+           err = parse_object(in, "fs_paths", &s);
+           if (err.ok())
+               out->paths.push_back(s);
+       } else {
+           err = parse_object(in, "fs_paths", &out->paths);
+           if (!err.ok())
+               return err;
+       }
     }
+
+    json_object *repos = json_object_object_get(in, "repositories");
+    if (repos != NULL)
+    {
+       if (json_object_get_type(repos) == json_type_object) {
+           repo_spec s;
+           err = parse_object(in, "repositories", &s);
+           if (err.ok())
+               out->repos.push_back(s);
+       } else {
+           err = parse_object(in, "repositories", &out->repos);
+           if (!err.ok())
+               return err;
+       }
+    }
+
     return err;
 }

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <gflags/gflags.h>
 #include <sstream>
 #include <iostream>
@@ -13,9 +14,11 @@ using namespace std;
 namespace fs = boost::filesystem;
 
 fs_indexer::fs_indexer(code_searcher *cs,
-                         const string& name)
-    : cs_(cs), name_(name) {
-    tree_ = cs->open_tree(name, NULL, "");
+                       const string& repopath,
+                       const string& name,
+                       json_object *metadata)
+    : cs_(cs), repopath_(repopath), name_(name) {
+    tree_ = cs->open_tree(name, metadata, "");
 }
 
 fs_indexer::~fs_indexer() {
@@ -23,7 +26,9 @@ fs_indexer::~fs_indexer() {
 
 void fs_indexer::read_file(const string& path) {
     ifstream in(path.c_str(), ios::in);
-    cs_->index_file(tree_, path, StringPiece(static_cast<stringstream const&>(stringstream() << in.rdbuf()).str().c_str(), fs::file_size(path)));
+    string relpath(mismatch(path.begin(), path.end(), repopath_.begin()).first,
+                   path.end());
+    cs_->index_file(tree_, relpath, StringPiece(static_cast<stringstream const&>(stringstream() << in.rdbuf()).str().c_str(), fs::file_size(path)));
 }
 
 void fs_indexer::walk(const string& path) {

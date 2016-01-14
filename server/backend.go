@@ -2,6 +2,7 @@ package server
 
 import (
 	"log"
+	"net/url"
 	"sync"
 	"time"
 
@@ -22,7 +23,7 @@ var (
 type Tree struct {
 	Name    string
 	Version string
-	Github  string
+	Url     string
 }
 
 type I struct {
@@ -120,12 +121,23 @@ func (bk *Backend) refresh(info *client.ServerInfo) {
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil
 		for _, r := range info.Trees {
-			gh := ""
+			pattern := ""
+			if v, ok := r.Metadata["url-pattern"]; ok {
+				pattern = v.(string)
+			}
 			if v, ok := r.Metadata["github"]; ok {
-				gh = v.(string)
+				value := v.(string)
+				base := ""
+				_, err := url.ParseRequestURI(value)
+				if err != nil {
+					base = "https://github.com/" + value
+				} else {
+					base = value
+				}
+				pattern = base + "/blob/{version}/{path}#L{lno}"
 			}
 			bk.I.Trees = append(bk.I.Trees,
-				Tree{r.Name, r.Version, gh})
+				Tree{r.Name, r.Version, pattern})
 		}
 	}
 }
