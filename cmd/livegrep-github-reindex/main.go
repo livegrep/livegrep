@@ -16,7 +16,8 @@ import (
 
 	"github.com/google/go-github/github"
 
-	"code.google.com/p/goauth2/oauth"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
 )
 
 var (
@@ -70,10 +71,11 @@ func main() {
 	if *flagGithubKey == "" {
 		h = http.DefaultClient
 	} else {
-		t := &oauth.Transport{
-			Token: &oauth.Token{AccessToken: *flagGithubKey},
-		}
-		h = t.Client()
+		tok := &oauth2.Token{AccessToken: *flagGithubKey}
+		h = oauth2.NewClient(
+			context.Background(),
+			oauth2.StaticTokenSource(tok),
+		)
 	}
 
 	gh := github.NewClient(h)

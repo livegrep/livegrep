@@ -9,7 +9,7 @@ import (
 	texttemplate "text/template"
 	"time"
 
-	"code.google.com/p/go.net/context"
+	"golang.org/x/net/context"
 
 	"github.com/bmizerany/pat"
 
@@ -65,7 +65,7 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 	}
 	data := &struct {
 		RepoUrls map[string]map[string]string
-		Backends    []*Backend
+		Backends []*Backend
 	}{urls, backends}
 
 	body, err := executeTemplate(s.T.Index, data)

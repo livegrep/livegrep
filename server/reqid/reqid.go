@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"code.google.com/p/go.net/context"
+	"golang.org/x/net/context"
 )
 
 type key int

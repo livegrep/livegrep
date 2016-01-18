@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"code.google.com/p/go.net/context"
+	"golang.org/x/net/context"
 
 	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/server/api"
