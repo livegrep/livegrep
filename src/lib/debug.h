@@ -34,4 +34,20 @@ std::string strprintf(const char *fmt, ...)
 void die(const char *fmt, ...)
     __attribute__((format (printf, 1, 2), noreturn));
 
+void log(const char *fmt, ...)
+    __attribute__((format (printf, 1, 2)));
+void log(const std::string &trace, const char *fmt, ...)
+    __attribute__((format (printf, 2, 3)));
+
+std::string current_trace_id();
+
+class scoped_trace_id {
+ public:
+    scoped_trace_id(const std::string &tid);
+    ~scoped_trace_id();
+ private:
+    std::string *orig_;
+};
+
+
 #endif

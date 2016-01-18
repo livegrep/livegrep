@@ -15,11 +15,15 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "per_thread.h"
+
 using std::string;
 
 debug_mode debug_enabled;
 
 DEFINE_string(debug, "", "Enable debugging for selected subsystems");
+
+static per_thread<string> trace_id;
 
 struct debug_flag {
     const char *flag;
@@ -85,8 +89,13 @@ void cs_debug(const char *file, int lno, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
 
-    string buf = strprintf("[%s:%d] %s\n",
-                           file, lno, vstrprintf(fmt, ap).c_str());
+    string buf;
+    if (trace_id->empty())
+        buf = strprintf("[%s:%d] %s\n",
+                        file, lno, vstrprintf(fmt, ap).c_str());
+    else
+        buf = strprintf("[%s][%s:%d] %s\n",
+                        trace_id->c_str(), file, lno, vstrprintf(fmt, ap).c_str());
 
     va_end(ap);
 
@@ -101,4 +110,41 @@ void die(const char *fmt, ...) {
     fprintf(stderr, "\n");
     va_end(ap);
     exit(1);
+}
+
+void vlog(const std::string &trace, const char *fmt, va_list ap) {
+    string buf;
+    if (trace.empty())
+        buf = vstrprintf(fmt, ap);
+    else
+        buf = strprintf("[%s] %s\n",
+                        trace.c_str(), vstrprintf(fmt, ap).c_str());
+
+    fputs(buf.c_str(), stderr);
+}
+
+void log(const std::string &trace, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vlog(trace, fmt, ap);
+    va_end(ap);
+}
+
+void log(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vlog(*trace_id, fmt, ap);
+    va_end(ap);
+}
+
+std::string current_trace_id() {
+    return *trace_id.get();
+}
+
+scoped_trace_id::scoped_trace_id(const std::string &tid) {
+    orig_ = trace_id.put(new std::string(tid));
+}
+
+scoped_trace_id::~scoped_trace_id() {
+    delete trace_id.put(orig_);
 }

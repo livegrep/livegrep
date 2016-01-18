@@ -80,12 +80,22 @@ void interact(code_searcher *cs, codesearch_transport *tx) {
         if (!tx->read_query(&q, &done))
             continue;
 
+        log(q.trace_id,
+            "processing query line='%s' file='%s' tree='%s' not_file='%s' not_tree='%s'",
+            q.line_pat->pattern().c_str(),
+            q.file_pat->pattern().c_str(),
+            q.tree_pat->pattern().c_str(),
+            q.negate.file_pat->pattern().c_str(),
+            q.negate.tree_pat->pattern().c_str());
+
         if (q.line_pat->ProgramSize() > kMaxProgramSize) {
+            log(q.trace_id, "program too large size=%d", q.line_pat->ProgramSize());
             tx->write_error("Parse error.");
             continue;
         }
         int w = width.Walk(q.line_pat->Regexp(), 0);
         if (w > kMaxWidth) {
+            log(q.trace_id, "program too wide width=%d", w);
             tx->write_error("Parse error.");
             continue;
         }
@@ -94,8 +104,6 @@ void interact(code_searcher *cs, codesearch_transport *tx) {
             struct timeval elapsed;
             match_stats stats;
 
-            fprintf(stderr, "ProgramSize: %d\n", q.line_pat->ProgramSize());
-
             {
                 sem_wait(&interact_sem);
                 search.match(q, print_match(tx), &stats);
@@ -103,6 +111,7 @@ void interact(code_searcher *cs, codesearch_transport *tx) {
             }
             elapsed = tm.elapsed();
             tx->write_done(elapsed, &stats);
+            log(q.trace_id, "done elapsed=%ld", timeval_ms(elapsed));
         }
     }
 }
