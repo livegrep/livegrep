@@ -64,6 +64,12 @@ const int kMaxWidth       = 200;
 
 sem_t interact_sem;
 
+std::string pat(const std::unique_ptr<RE2> &p) {
+    if (p.get() == 0)
+        return "";
+    return p->pattern();
+}
+
 void interact(code_searcher *cs, codesearch_transport *tx) {
     code_searcher::search_thread search(cs);
     WidthWalker width;
@@ -82,11 +88,11 @@ void interact(code_searcher *cs, codesearch_transport *tx) {
 
         log(q.trace_id,
             "processing query line='%s' file='%s' tree='%s' not_file='%s' not_tree='%s'",
-            q.line_pat->pattern().c_str(),
-            q.file_pat->pattern().c_str(),
-            q.tree_pat->pattern().c_str(),
-            q.negate.file_pat->pattern().c_str(),
-            q.negate.tree_pat->pattern().c_str());
+            pat(q.line_pat).c_str(),
+            pat(q.file_pat).c_str(),
+            pat(q.tree_pat).c_str(),
+            pat(q.negate.file_pat).c_str(),
+            pat(q.negate.tree_pat).c_str());
 
         if (q.line_pat->ProgramSize() > kMaxProgramSize) {
             log(q.trace_id, "program too large size=%d", q.line_pat->ProgramSize());
