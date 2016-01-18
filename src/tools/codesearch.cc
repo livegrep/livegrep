@@ -111,7 +111,8 @@ void interact(code_searcher *cs, codesearch_transport *tx) {
             }
             elapsed = tm.elapsed();
             tx->write_done(elapsed, &stats);
-            log(q.trace_id, "done elapsed=%ld", timeval_ms(elapsed));
+            log(q.trace_id, "done elapsed=%ld matches=%d why=%d",
+                timeval_ms(elapsed), stats.matches, int(stats.why));
         }
     }
 }
