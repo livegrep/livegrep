@@ -373,7 +373,7 @@ func retryCommand(program string, args []string) error {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err = cmd.Run(); err == nil {
-			break
+			return nil
 		}
 	}
 	return fmt.Errorf("%s %v: %s", program, args, err.Error())
