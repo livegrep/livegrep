@@ -376,7 +376,7 @@ func retryCommand(program string, args []string) error {
 			break
 		}
 	}
-	return err
+	return fmt.Errorf("%s %v: %s", program, args, err.Error())
 }
 
 func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
