@@ -56,10 +56,6 @@ json_object *to_json(const index_info *info) {
     return out;
 }
 
-long timeval_ms (struct timeval tv) {
-    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
-}
-
 json_object *to_json(timeval t) {
     return json_object_new_int(timeval_ms(t));
 }
@@ -182,6 +178,10 @@ json_parse_error parse_object(json_object *js, query *q) {
     json_object *b = NULL, *negate = NULL;
     json_parse_error err;
 
+    err = parse_object(js, "trace_id", &q->trace_id);
+    if (!err.ok())
+        return err;
+
     err = parse_object(js, "body", &b);
     if (!err.ok())
         return err;
@@ -256,6 +256,10 @@ json_parse_error parse_object(json_object *js, repo_spec *r) {
 }
 
 };
+
+long timeval_ms (struct timeval tv) {
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
 
 codesearch_transport::codesearch_transport(FILE *in, FILE *out) : in_(in), out_(out) {
     assert(!setvbuf(in_,  NULL, _IOFBF, 4096*4));

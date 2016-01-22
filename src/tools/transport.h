@@ -42,6 +42,8 @@ struct index_spec {
     std::vector<repo_spec> repos;
 };
 
+long timeval_ms (struct timeval tv);
+
 class codesearch_transport {
 public:
     codesearch_transport(FILE *in, FILE *out);
