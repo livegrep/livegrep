@@ -886,9 +886,9 @@ code_searcher::search_thread::search_thread(code_searcher *cs)
     }
 }
 
-void code_searcher::search_thread::match_internal(const query &q,
-                                                  const code_searcher::search_thread::base_cb& cb,
-                                                  match_stats *stats) {
+void code_searcher::search_thread::match(const query &q,
+                                         const callback_func& cb,
+                                         match_stats *stats) {
     match_result *m;
     int matches = 0;
 

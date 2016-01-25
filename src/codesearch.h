@@ -16,6 +16,7 @@
 #include <mutex>
 #include <thread>
 #include <boost/intrusive_ptr.hpp>
+#include <boost/function.hpp>
 
 #ifdef USE_DENSE_HASH_SET
 #include <google/dense_hash_set>
@@ -172,32 +173,15 @@ public:
     }
 
     class search_thread {
-    protected:
-        struct base_cb {
-            virtual void operator()(const struct match_result *m) const = 0;
-        };
-        template <class T>
-        struct match_cb : public base_cb {
-            match_cb(T cb) : cb_(cb) {}
-            virtual void operator()(const struct match_result *m) const {
-                cb_(m);
-            }
-        private:
-            mutable T cb_;
-        };
-
-        void match_internal(const query &q,
-                            const base_cb& cb,
-                            match_stats *stats);
     public:
         search_thread(code_searcher *cs);
         ~search_thread();
 
+        // function that will be called to record a match
+        typedef boost::function<void (const struct match_result*)> callback_func;
+
         /* file_pat may be NULL */
-        template <class T>
-        void match(const query& q, T cb, match_stats *stats) {
-            match_internal(q, match_cb<T>(cb), stats);
-        }
+        void match(const query& q, const callback_func& cb, match_stats *stats);
     protected:
         struct job {
             atomic_int pending;
