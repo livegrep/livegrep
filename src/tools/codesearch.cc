@@ -6,6 +6,7 @@
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
 #include "codesearch.h"
+#include "tagsearch.h"
 #include "timer.h"
 #include "metrics.h"
 #include "re_width.h"
@@ -25,22 +26,32 @@
 #include <semaphore.h>
 
 #include <iostream>
+#include <functional>
+#include <thread>
 
 #include <gflags/gflags.h>
 
+#include <boost/bind.hpp>
 #include <re2/regexp.h>
-#include "re2/walker-inl.h"
+#include <re2/walker-inl.h>
 
 #include <json/json.h>
 
 DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
+DEFINE_string(load_tags, "", "Load the index built from a tags file.");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_string(listen, "", "Listen on a socket for connections. example: -listen tcp://localhost:9999");
+DEFINE_string(listen_tags, "", "Listen on a socket for connections to tag search. example: -listen_tags tcp://localhost:9998");
 
 using namespace std;
 using namespace re2;
+
+const int kMaxProgramSize = 4000;
+const int kMaxWidth       = 200;
+
+sem_t interact_sem;
 
 void die_errno(const char *str) {
     perror(str);
@@ -59,10 +70,52 @@ protected:
     codesearch_transport *tx_;
 };
 
-const int kMaxProgramSize = 4000;
-const int kMaxWidth       = 200;
+typedef std::function<match_stats (code_searcher::search_thread*,
+                                   query*,
+                                   codesearch_transport*)> match_func;
 
-sem_t interact_sem;
+struct codesearch_matcher {
+    match_stats operator()(code_searcher::search_thread *s, query *q, codesearch_transport *tx) {
+        match_stats stats;
+        sem_wait(&interact_sem);
+        s->match(*q, print_match(tx), &stats);
+        sem_post(&interact_sem);
+        return stats;
+    }
+};
+
+struct tagsearch_matcher {
+    tagsearch_matcher(tag_searcher* ts) : ts_(ts) {}
+
+    match_stats operator()(code_searcher::search_thread *s, query *q, codesearch_transport *tx) {
+        match_stats stats;
+        // the negation constraints will be checked when we transform the match
+        // (unfortunately, we can't construct a line query that checks these)
+        query constraints;
+        constraints.negate.file_pat.swap(q->negate.file_pat);
+        constraints.negate.tags_pat.swap(q->negate.tags_pat);
+
+        // modify the line pattern to match the constraints that we can handle now
+        std::string name = ts_->create_partial_regex(q->line_pat.get());
+        std::string file = ts_->create_partial_regex(q->file_pat.get());
+        std::string tags = ts_->create_partial_regex(q->tags_pat.get());
+        std::string regex = ts_->create_tag_line_regex(name, file, "\\d+", tags);
+
+        q->line_pat.reset(new RE2(regex, q->line_pat->options()));
+        q->file_pat.reset();
+        q->tags_pat.reset();
+
+        sem_wait(&interact_sem);
+        s->match(*q,
+                 print_match(tx),
+                 boost::bind(&tag_searcher::transform, ts_, &constraints, _1),
+                 &stats);
+        sem_post(&interact_sem);
+        return stats;
+    }
+protected:
+    tag_searcher* ts_;
+};
 
 std::string pat(const std::unique_ptr<RE2> &p) {
     if (p.get() == 0)
@@ -70,7 +123,7 @@ std::string pat(const std::unique_ptr<RE2> &p) {
     return p->pattern();
 }
 
-void interact(code_searcher *cs, codesearch_transport *tx) {
+void interact(code_searcher *cs, codesearch_transport *tx, const match_func& match) {
     code_searcher::search_thread search(cs);
     WidthWalker width;
 
@@ -87,12 +140,15 @@ void interact(code_searcher *cs, codesearch_transport *tx) {
             continue;
 
         log(q.trace_id,
-            "processing query line='%s' file='%s' tree='%s' not_file='%s' not_tree='%s'",
+            "processing query line='%s' file='%s' tree='%s' tags='%s' "
+                                        "not_file='%s' not_tree='%s' not_tags='%s'",
             pat(q.line_pat).c_str(),
             pat(q.file_pat).c_str(),
             pat(q.tree_pat).c_str(),
+            pat(q.tags_pat).c_str(),
             pat(q.negate.file_pat).c_str(),
-            pat(q.negate.tree_pat).c_str());
+            pat(q.negate.tree_pat).c_str(),
+            pat(q.negate.tags_pat).c_str());
 
         if (q.line_pat->ProgramSize() > kMaxProgramSize) {
             log(q.trace_id, "program too large size=%d", q.line_pat->ProgramSize());
@@ -108,13 +164,7 @@ void interact(code_searcher *cs, codesearch_transport *tx) {
         {
             timer tm;
             struct timeval elapsed;
-            match_stats stats;
-
-            {
-                sem_wait(&interact_sem);
-                search.match(q, print_match(tx), &stats);
-                sem_post(&interact_sem);
-            }
+            match_stats stats = match(&search, &q, tx);
             elapsed = tm.elapsed();
             tx->write_done(elapsed, &stats);
             log(q.trace_id, "done elapsed=%ld matches=%d why=%d",
@@ -169,6 +219,7 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
 }
 
 void initialize_search(code_searcher *search,
+                       tag_searcher *tags,
                        int argc, char **argv) {
     if (FLAGS_load_index.size() == 0) {
         if (FLAGS_dump_index.size())
@@ -192,6 +243,10 @@ void initialize_search(code_searcher *search,
     } else {
         search->load_index(FLAGS_load_index);
     }
+    if (FLAGS_load_tags.size() != 0) {
+        tags->load_index(FLAGS_load_tags);
+        tags->cache_indexed_files(search);
+    }
     if (FLAGS_dump_index.size() && FLAGS_load_index.size())
         search->dump_index(FLAGS_dump_index);
 }
@@ -199,6 +254,7 @@ void initialize_search(code_searcher *search,
 struct child_state {
     int fd;
     code_searcher *search;
+    match_func match;
 };
 
 void *handle_client(void *data) {
@@ -225,7 +281,7 @@ void *handle_client(void *data) {
 
 
     codesearch_transport *tx = new codesearch_transport(r, w);
-    interact(child->search, tx);
+    interact(child->search, tx, child->match);
     delete tx;
     delete child;
     fclose(r);
@@ -296,7 +352,7 @@ int bind_to_address(string spec) {
     return server;
 }
 
-void listen(code_searcher *search, string path) {
+void listen(code_searcher *search, const string& path, const match_func& match) {
     int server = bind_to_address(path);
 
     printf("codesearch: listening on %s.\n", path.c_str());
@@ -309,6 +365,7 @@ void listen(code_searcher *search, string path) {
         child_state *state = new child_state;
         state->fd = fd;
         state->search = search;
+        state->match = match;
 
         pthread_t thread;
         pthread_create(&thread, NULL, handle_client, state);
@@ -322,19 +379,33 @@ int main(int argc, char **argv) {
     prctl(PR_SET_PDEATHSIG, SIGINT);
 
     code_searcher search;
+    tag_searcher tags;
 
     signal(SIGPIPE, SIG_IGN);
 
-    initialize_search(&search, argc, argv);
+    initialize_search(&search, &tags, argc, argv);
 
     if (sem_init(&interact_sem, 0, FLAGS_concurrency) < 0)
         die_errno("sem_init");
 
+    std::vector<std::thread> listeners;
     if (FLAGS_listen.size()) {
-        listen(&search, FLAGS_listen);
-    } else {
+        codesearch_matcher matcher;
+        listeners.emplace_back(
+            std::thread(boost::bind(&listen, &search, FLAGS_listen, matcher)));
+    }
+    if (FLAGS_listen_tags.size()) {
+        tagsearch_matcher matcher(&tags);
+        listeners.emplace_back(
+            std::thread(boost::bind(&listen, tags.cs(), FLAGS_listen_tags, matcher)));
+    }
+    for (auto& listener : listeners) {
+        listener.join();
+    }
+
+    if (listeners.size() == 0) {
         codesearch_transport *tx = new codesearch_transport(stdin, stdout);
-        interact(&search, tx);
+        interact(&search, tx, codesearch_matcher());
         delete tx;
     }
 

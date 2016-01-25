@@ -208,11 +208,15 @@ json_parse_error parse_object(json_object *js, query *q) {
         err = parse_regex(b, "file", opts, &q->file_pat);
     if (err.ok())
         err = parse_regex(b, "repo", opts, &q->tree_pat);
+    if (err.ok())
+        err = parse_regex(b, "tags", opts, &q->tags_pat);
 
     if (err.ok() && negate)
         err = parse_regex(negate, "file", opts, &q->negate.file_pat);
     if (err.ok() && negate)
         err = parse_regex(negate, "repo", opts, &q->negate.tree_pat);
+    if (err.ok() && negate)
+        err = parse_regex(negate, "tags", opts, &q->negate.tags_pat);
 
     return err;
 }

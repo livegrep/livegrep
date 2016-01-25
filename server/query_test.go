@@ -8,14 +8,16 @@ import (
 )
 
 func TestParseQuery(t *testing.T) {
-	Not := func(file, repo string) struct {
+	Not := func(file, repo, tags string) struct {
 		File string `json:"file"`
 		Repo string `json:"repo"`
+		Tags string `json:"tags"`
 	} {
 		return struct {
 			File string `json:"file"`
 			Repo string `json:"repo"`
-		}{file, repo}
+			Tags string `json:"tags"`
+		}{file, repo, tags}
 	}
 	cases := []struct {
 		in  string
@@ -90,12 +92,20 @@ func TestParseQuery(t *testing.T) {
 			client.Query{Line: "(file:)", FoldCase: true},
 		},
 		{
+			`re tags:kind:function`,
+			client.Query{Line: "re", FoldCase: true, Tags: "kind:function"},
+		},
+		{
 			`-file:Godep re`,
-			client.Query{Line: "re", Not: Not("Godep", ""), FoldCase: true},
+			client.Query{Line: "re", Not: Not("Godep", "", ""), FoldCase: true},
 		},
 		{
 			`-file:. -repo:Godep re`,
-			client.Query{Line: "re", Not: Not(".", "Godep"), FoldCase: true},
+			client.Query{Line: "re", Not: Not(".", "Godep", ""), FoldCase: true},
+		},
+		{
+			`-tags:kind:class re`,
+			client.Query{Line: "re", Not: Not("", "", "kind:class"), FoldCase: true},
 		},
 		{
 			`case:foo:`,
