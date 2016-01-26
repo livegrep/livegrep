@@ -179,9 +179,17 @@ public:
 
         // function that will be called to record a match
         typedef boost::function<void (const struct match_result*)> callback_func;
+        // function that will be called to transform a match
+        typedef boost::function<bool (struct match_result*)> transform_func;
 
         /* file_pat may be NULL */
-        void match(const query& q, const callback_func& cb, match_stats *stats);
+        void match(const query& q, const callback_func& cb, match_stats *stats)
+        {
+            match(q, cb, transform_func(), stats);
+        }
+        void match(const query& q,
+                   const callback_func& cb,
+                   const transform_func& func, match_stats *stats);
     protected:
         struct job {
             atomic_int pending;
