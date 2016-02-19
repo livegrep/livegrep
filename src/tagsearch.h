@@ -22,17 +22,11 @@ public:
 
     void cache_indexed_files(code_searcher *cs);
 
-    std::string create_partial_regex(RE2 *re) const;
-
-    std::string create_tag_line_regex(
-        const std::string& name,
-        const std::string& file,
-        const std::string& lno,
-        const std::string& tags) const;
-
     bool transform(query *q, match_result *m) const;
 
     code_searcher* cs() { return &cs_; }
+
+    static std::string create_tag_line_regex_from_query(query *q);
 
 protected:
     code_searcher cs_;

@@ -96,11 +96,7 @@ struct tagsearch_matcher {
         constraints.negate.tags_pat.swap(q->negate.tags_pat);
 
         // modify the line pattern to match the constraints that we can handle now
-        std::string name = ts_->create_partial_regex(q->line_pat.get());
-        std::string file = ts_->create_partial_regex(q->file_pat.get());
-        std::string tags = ts_->create_partial_regex(q->tags_pat.get());
-        std::string regex = ts_->create_tag_line_regex(name, file, "\\d+", tags);
-
+        std::string regex = tag_searcher::create_tag_line_regex_from_query(q);
         q->line_pat.reset(new RE2(regex, q->line_pat->options()));
         q->file_pat.reset();
         q->tags_pat.reset();

@@ -13,30 +13,9 @@
 
 using re2::RE2;
 
-void tag_searcher::load_index(const string& path) {
-    cs_.load_index(path);
-}
+namespace {
 
-void tag_searcher::cache_indexed_files(code_searcher* cs) {
-    file_alloc_ = cs->alloc_;
-    for (auto it = cs->begin_files(); it != cs->end_files(); ++it) {
-        auto file = *it;
-        auto key = repo_path_pair(file->tree->name, file->path);
-        path_to_file_map_.insert(std::make_pair(key, file));
-    }
-}
-
-std::string tag_searcher::create_tag_line_regex(
-    const std::string& name,
-    const std::string& file,
-    const std::string& lno,
-    const std::string& tags) const
-{
-    // full regex match for a tag line created with ctags using format=2.
-    return std::string("^") + name + "\\t" + file + "\\t" + lno + "\\;\\\"\\t" + tags + "$";
-}
-
-std::string tag_searcher::create_partial_regex(RE2 *re) const {
+std::string create_partial_regex(RE2 *re) {
     if (!re)
         return ".*";
 
@@ -53,6 +32,30 @@ std::string tag_searcher::create_partial_regex(RE2 *re) const {
         pattern.append(".*");
 
     return pattern;
+}
+
+std::string create_tag_line_regex(
+    const std::string& name,
+    const std::string& file,
+    const std::string& lno,
+    const std::string& tags) {
+    // full regex match for a tag line created with ctags using format=2.
+    return std::string("^") + name + "\\t" + file + "\\t" + lno + "\\;\\\"\\t" + tags + "$";
+}
+
+};
+
+void tag_searcher::load_index(const string& path) {
+    cs_.load_index(path);
+}
+
+void tag_searcher::cache_indexed_files(code_searcher* cs) {
+    file_alloc_ = cs->alloc_;
+    for (auto it = cs->begin_files(); it != cs->end_files(); ++it) {
+        auto file = *it;
+        auto key = repo_path_pair(file->tree->name, file->path);
+        path_to_file_map_.insert(std::make_pair(key, file));
+    }
 }
 
 bool tag_searcher::transform(query *q, match_result *m) const {
@@ -115,4 +118,11 @@ bool tag_searcher::transform(query *q, match_result *m) const {
     }
 
     return true;
+}
+
+std::string tag_searcher::create_tag_line_regex_from_query(query *q) {
+    return create_tag_line_regex(create_partial_regex(q->line_pat.get()),
+                                 create_partial_regex(q->file_pat.get()),
+                                 "\\d+",
+                                 create_partial_regex(q->tags_pat.get()));
 }
