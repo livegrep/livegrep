@@ -111,8 +111,10 @@ struct match_finger;
 
 class searcher {
 public:
-    searcher(const code_searcher *cc, const query &q) :
-        cc_(cc), query_(&q), queue_(),
+    searcher(const code_searcher *cc,
+             const query &q,
+             const code_searcher::search_thread::transform_func& func) :
+        cc_(cc), query_(&q), transform_(func), queue_(),
         matches_(0), re2_time_(false), git_time_(false),
         index_time_(false), sort_time_(false), analyze_time_(false),
         exit_reason_(kExitNone), files_(new uint8_t[cc->files_.size()]),
@@ -316,6 +318,7 @@ protected:
 
     const code_searcher *cc_;
     const query *query_;
+    const code_searcher::search_thread::transform_func transform_;
     thread_queue<match_result*> queue_;
     atomic_int matches_;
     intrusive_ptr<IndexKey> index_;
@@ -868,8 +871,10 @@ void searcher::try_match(const StringPiece& line,
             m->context_after.push_back(l);
         }
 
-        queue_.push(m);
-        ++matches_;
+        if (!transform_ || transform_(m)) {
+            queue_.push(m);
+            ++matches_;
+        }
         if (exit_early())
             break;
 
@@ -888,6 +893,7 @@ code_searcher::search_thread::search_thread(code_searcher *cs)
 
 void code_searcher::search_thread::match(const query &q,
                                          const callback_func& cb,
+                                         const transform_func& func,
                                          match_stats *stats) {
     match_result *m;
     int matches = 0;
@@ -902,7 +908,7 @@ void code_searcher::search_thread::match(const query &q,
         cs_->alloc_->drop_caches();
     }
 
-    searcher search(cs_, q);
+    searcher search(cs_, q, func);
     job j;
     j.search = &search;
     j.pending = 0;

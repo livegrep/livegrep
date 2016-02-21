@@ -15,8 +15,8 @@
 #include <atomic>
 #include <mutex>
 #include <thread>
+#include <functional>
 #include <boost/intrusive_ptr.hpp>
-#include <boost/function.hpp>
 
 #ifdef USE_DENSE_HASH_SET
 #include <google/dense_hash_set>
@@ -127,7 +127,7 @@ struct match_result {
 };
 
 // A query specification passed to match(). line_pat is required to be
-// non-NULL; file_pat and tree_pat may be NULL to specify "no
+// non-NULL; file_pat, tree_pat and tag_pat may be NULL to specify "no
 // constraint"
 struct query {
     std::string trace_id;
@@ -135,9 +135,11 @@ struct query {
     std::unique_ptr<RE2> line_pat;
     std::unique_ptr<RE2> file_pat;
     std::unique_ptr<RE2> tree_pat;
+    std::unique_ptr<RE2> tags_pat;
     struct {
         std::unique_ptr<RE2> file_pat;
         std::unique_ptr<RE2> tree_pat;
+        std::unique_ptr<RE2> tags_pat;
     } negate;
 };
 
@@ -178,10 +180,19 @@ public:
         ~search_thread();
 
         // function that will be called to record a match
-        typedef boost::function<void (const struct match_result*)> callback_func;
+        typedef std::function<void (const struct match_result*)> callback_func;
+        // function that will be called to transform a match
+        typedef std::function<bool (struct match_result*)> transform_func;
 
         /* file_pat may be NULL */
-        void match(const query& q, const callback_func& cb, match_stats *stats);
+        void match(const query& q, const callback_func& cb, match_stats *stats)
+        {
+            match(q, cb, transform_func(), stats);
+        }
+        void match(const query& q,
+                   const callback_func& cb,
+                   const transform_func& func,
+                   match_stats *stats);
     protected:
         struct job {
             atomic_int pending;
@@ -211,6 +222,7 @@ protected:
     friend class searcher;
     friend class codesearch_index;
     friend class load_allocator;
+    friend class tag_searcher;
 };
 
 // dump_load.cc

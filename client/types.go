@@ -4,10 +4,12 @@ type Query struct {
 	Line     string `json:"line"`
 	File     string `json:"file"`
 	Repo     string `json:"repo"`
+	Tags     string `json:"tags"`
 	FoldCase bool   `json:"fold_case"`
 	Not      struct {
 		File string `json:"file"`
 		Repo string `json:"repo"`
+		Tags string `json:"tags"`
 	} `json:"not"`
 }
 
