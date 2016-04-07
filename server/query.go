@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"errors"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -11,7 +12,7 @@ import (
 
 var pieceRE = regexp.MustCompile(`\(|(?:^([a-zA-Z0-9-]+):|\\.)| `)
 
-func ParseQuery(query string) client.Query {
+func ParseQuery(query string) (client.Query, error) {
 	ops := make(map[string]string)
 	key := ""
 	q := strings.TrimSpace(query)
@@ -84,12 +85,22 @@ func ParseQuery(query string) client.Query {
 	out.Not.File = ops["-file"]
 	out.Not.Repo = ops["-repo"]
 	out.Not.Tags = ops["-tags"]
-	out.Line = strings.TrimSpace(ops[""] + ops["case"] + regexp.QuoteMeta(ops["lit"]))
+	var bits []string
+	for _, k := range []string{"", "case", "lit"} {
+		bit := strings.TrimSpace(ops[k])
+		if len(bit) != 0 {
+			bits = append(bits, bit)
+		}
+	}
+	out.Line = strings.Join(bits, "")
 	if _, ok := ops["case"]; ok {
 		out.FoldCase = false
 	} else {
 		out.FoldCase = strings.IndexAny(out.Line, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") == -1
 	}
 
-	return out
+	if len(bits) > 1 {
+		return out, errors.New("You cannot provide multiple of case:, lit:, and a bare regex")
+	}
+	return out, nil
 }

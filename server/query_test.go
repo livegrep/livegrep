@@ -114,10 +114,18 @@ func TestParseQuery(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		parsed := ParseQuery(tc.in)
+		parsed, err := ParseQuery(tc.in)
 		if !reflect.DeepEqual(tc.out, parsed) {
 			t.Errorf("error parsing %q: expected %#v got %#v",
 				tc.in, tc.out, parsed)
 		}
+		if err != nil {
+			t.Errorf("parse(%v) error=%v", tc.in, err)
+		}
+	}
+
+	_, err := ParseQuery(`hello case:foo`)
+	if err == nil {
+		t.Errorf("parse multiple regexes, no error")
 	}
 }

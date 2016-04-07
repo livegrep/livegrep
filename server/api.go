@@ -39,11 +39,12 @@ func writeQueryError(ctx context.Context, w http.ResponseWriter, err error) {
 	return
 }
 
-func extractQuery(ctx context.Context, r *http.Request) client.Query {
+func extractQuery(ctx context.Context, r *http.Request) (client.Query, error) {
 	params := r.URL.Query()
 	var query client.Query
+	var err error
 	if q, ok := params["q"]; ok {
-		query = ParseQuery(q[0])
+		query, err = ParseQuery(q[0])
 		log.Printf(ctx, "parsing query q=%q out=%s", q[0], asJSON{query})
 	}
 	if line, ok := params["line"]; ok {
@@ -58,7 +59,7 @@ func extractQuery(ctx context.Context, r *http.Request) client.Query {
 	if fc, ok := params["fold_case"]; ok && fc[0] != "" {
 		query.FoldCase = true
 	}
-	return query
+	return query, err
 }
 
 const MaxRetries = 8
@@ -114,16 +115,20 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		}
 	}
 
-	q := extractQuery(ctx, r)
+	q, err := extractQuery(ctx, r)
+
+	if err != nil {
+		writeError(ctx, w, 400, "bad_query", err.Error())
+		return
+	}
 
 	if q.Line == "" {
 		writeError(ctx, w, 400, "bad_query",
-			"You must specify a 'line' regex.")
+			"You must specify a regex to match")
 		return
 	}
 
 	var reply *api.ReplySearch
-	var err error
 
 	for tries := 0; tries < MaxRetries; tries++ {
 		reply, err = s.doSearch(ctx, backend, &q)
