@@ -88,12 +88,17 @@ func ParseQuery(query string) (client.Query, error) {
 	var bits []string
 	for _, k := range []string{"", "case", "lit"} {
 		bit := strings.TrimSpace(ops[k])
+		if k == "lit" {
+			bit = regexp.QuoteMeta(bit)
+		}
 		if len(bit) != 0 {
 			bits = append(bits, bit)
 		}
 	}
 	out.Line = strings.Join(bits, "")
 	if _, ok := ops["case"]; ok {
+		out.FoldCase = false
+	} else if _, ok := ops["lit"]; ok {
 		out.FoldCase = false
 	} else {
 		out.FoldCase = strings.IndexAny(out.Line, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") == -1

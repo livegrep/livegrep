@@ -111,6 +111,10 @@ func TestParseQuery(t *testing.T) {
 			`case:foo:`,
 			client.Query{Line: "foo:", FoldCase: false},
 		},
+		{
+			`lit:.`,
+			client.Query{Line: `\.`, FoldCase: false},
+		},
 	}
 
 	for _, tc := range cases {
