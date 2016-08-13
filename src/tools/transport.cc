@@ -86,13 +86,6 @@ json_object *json_frame(const std::string op, json_object *body) {
     return frame;
 }
 
-json_object *json_info(const code_searcher *cs) {
-    json_object *obj = json_object_new_object();
-    json_object_object_add(obj, "trees", to_json(cs->trees()));
-    json_object_object_add(obj, "name", to_json(cs->name()));
-    return obj;
-}
-
 bool getline(std::string &out, FILE *in) {
     char *line = 0;
     size_t n = 0;

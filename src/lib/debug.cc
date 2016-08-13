@@ -64,8 +64,8 @@ static bool validate_debug(const char *flagname, const string& value) {
     return true;
 }
 
-static const bool dummy = google::RegisterFlagValidator(&FLAGS_debug,
-                                                        validate_debug);
+static const bool __attribute((unused)) dummy =
+    google::RegisterFlagValidator(&FLAGS_debug, validate_debug);
 
 
 string vstrprintf(const char *fmt, va_list ap) {

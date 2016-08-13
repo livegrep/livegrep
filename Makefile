@@ -6,10 +6,10 @@ override CPPFLAGS += $(patsubst %,-I%/include, $(extradirs)) -I src/vendor/re2/ 
 override LDFLAGS += $(patsubst %, -L%/lib, $(extradirs))
 override LDFLAGS += $(patsubst %, -Wl$(comma)-R%/lib, $(extradirs))
 
-override CXXFLAGS+=-g -std=c++0x -Wall -Werror -Wno-sign-compare -pthread
+override CXXFLAGS+=-g -std=c++11 -Wall -Werror -Wno-sign-compare -pthread -Wno-deprecated-declarations
 override LDFLAGS+=-pthread
-LDLIBS=-lgit2 -ljson -lgflags $(re2) $(divsufsort) -lz -lssl -lcrypto -lboost_system -lboost_filesystem -lrt
-DYNLIBS=-ldl
+LDLIBS=-ljson -lgflags $(re2) $(divsufsort) -lz -lssl -lcrypto -lboost_system -lboost_filesystem -lrt
+DYNLIBS=-ldl -lgit2
 
 re2 := src/vendor/re2/obj/libre2.a
 divsufsort := src/vendor/libdivsufsort/build/lib/libdivsufsort.a
@@ -31,7 +31,7 @@ override LDLIBS+=-lrt
 endif
 
 $(re2): FORCE
-	$(MAKE) -C src/vendor/re2 obj/libre2.a
+	$(MAKE) -C src/vendor/re2 CXXFLAGS=-std=c++11 obj/libre2.a
 
 $(divsufsort):
 	mkdir -p src/vendor/libdivsufsort/build/ && \

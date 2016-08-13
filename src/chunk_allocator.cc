@@ -27,8 +27,9 @@ static bool validate_chunk_power(const char* flagname, int32_t value) {
     return false;
 }
 
-static const bool dummy = google::RegisterFlagValidator(&FLAGS_chunk_power,
-                                                        validate_chunk_power);
+static const bool __attribute((unused)) dummy =
+    google::RegisterFlagValidator(&FLAGS_chunk_power,
+                                  validate_chunk_power);
 
 void chunk_allocator::finalize_worker(chunk_allocator *alloc) {
     chunk *c;
