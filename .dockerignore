@@ -1,0 +1,8 @@
+**/*.idx
+**/*.test
+**/*.o
+**/*.a
+bin
+repos
+.vagrant
+.gopath

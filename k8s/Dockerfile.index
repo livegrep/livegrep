@@ -1,0 +1,12 @@
+FROM livegrep
+
+RUN /livegrep/bin/livegrep-github-reindex \
+  -http \
+  -dir /livegrep/repos \
+  -repo livegrep/livegrep \
+  -name livegrep \
+  -revparse true
+EXPOSE 9999
+CMD /livegrep/bin/codeseach \
+  -load_index /livegrep/repos/livegrep.idx \
+  -listen tcp://0.0.0.0:9999

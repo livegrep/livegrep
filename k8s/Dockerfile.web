@@ -1,0 +1,5 @@
+FROM livegrep
+EXPOSE 8910
+ADD web.json /livegrep/
+CMD /livegrep/bin/livegrep \
+  /livegrep/livegrep.json
