@@ -18,8 +18,10 @@ cc_library(
     "@com_googlesource_code_re2//:re2",
     "@divsufsort//:divsufsort",
     "@boost//:intrusive_ptr",
+    "@com_github_sparsehash//:sparsehash",
+
     "//src/vendor:utf8cpp",
-  ],
+   ],
   hdrs = glob(["src/*.h"]),
   includes = [ "src" ],
 )

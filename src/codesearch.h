@@ -24,7 +24,7 @@
 #include <google/sparse_hash_set>
 #endif
 #include <google/sparse_hash_map>
-#include <re2/re2.h>
+#include "re2/re2.h"
 #include <locale>
 
 #include "thread_queue.h"

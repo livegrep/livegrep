@@ -32,8 +32,8 @@
 #include <gflags/gflags.h>
 
 #include <boost/bind.hpp>
-#include <re2/regexp.h>
-#include <re2/walker-inl.h>
+#include "re2/regexp.h"
+#include "re2/walker-inl.h"
 
 #include <json/json.h>
 

@@ -42,3 +42,16 @@ git_repository(
 load("@com_github_nelhage_boost//:boost/boost.bzl",
      "boost_deps")
 boost_deps()
+
+load("//tools/build_defs:externals.bzl",
+     "new_patched_http_archive",
+)
+
+new_patched_http_archive(
+  name = "com_github_sparsehash",
+  url = "https://github.com/sparsehash/sparsehash/archive/sparsehash-2.0.3.tar.gz",
+  sha256 = "05e986a5c7327796dad742182b2d10805a8d4f511ad090da0490f146c1ff7a8c",
+  build_file = "//src/vendor:BUILD.sparsehash",
+  strip_prefix = "sparsehash-sparsehash-2.0.3/",
+  patch_file = "//src/vendor:sparsehash.patch",
+)

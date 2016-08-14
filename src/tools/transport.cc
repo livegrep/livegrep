@@ -11,9 +11,9 @@
 
 #include <json/json.h>
 
-#include <gflags/gflags.h>
+#include "gflags/gflags.h"
 
-#include <re2/re2.h>
+#include "re2/re2.h"
 using re2::RE2;
 using std::unique_ptr;
 
