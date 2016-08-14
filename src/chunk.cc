@@ -10,7 +10,7 @@
 #include "metrics.h"
 #include "divsufsort.h"
 
-#include <re2/re2.h>
+#include "re2/re2.h"
 #include <gflags/gflags.h>
 
 #include <limits>

@@ -36,7 +36,7 @@ DEFINE_bool(dump_trees, false, "Dump tree names.");
 
 int inspect_index(int argc, char **argv) {
     if (argc != 1) {
-        fprintf(stderr, "Usage: %s <options> INDEX.idx\n", google::GetArgv0());
+        fprintf(stderr, "Usage: %s <options> INDEX.idx\n", gflags::GetArgv0());
         return 1;
     }
 

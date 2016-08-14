@@ -64,7 +64,7 @@ static bool validate_debug(const char *flagname, const string& value) {
     return true;
 }
 
-static const bool dummy = google::RegisterFlagValidator(&FLAGS_debug,
+static const bool dummy = gflags::RegisterFlagValidator(&FLAGS_debug,
                                                         validate_debug);
 
 

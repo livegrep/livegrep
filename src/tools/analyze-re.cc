@@ -111,7 +111,7 @@ void write_dot_index(const string &path, intrusive_ptr<IndexKey> key) {
 
 int analyze_re(int argc, char **argv) {
     if (argc != 1) {
-        fprintf(stderr, "Usage: %s <options> REGEX\n", google::GetArgv0());
+        fprintf(stderr, "Usage: %s <options> REGEX\n", gflags::GetArgv0());
         return 1;
     }
 

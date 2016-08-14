@@ -21,7 +21,7 @@ void dump_file(code_searcher *cs, indexed_file *f) {
 
 int dump_file(int argc, char **argv) {
     if (argc != 2) {
-        fprintf(stderr, "Usage: %s <options> INDEX PATH\n", google::GetArgv0());
+        fprintf(stderr, "Usage: %s <options> INDEX PATH\n", gflags::GetArgv0());
         return 1;
     }
 

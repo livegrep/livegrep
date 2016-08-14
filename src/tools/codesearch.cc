@@ -369,8 +369,8 @@ void listen(code_searcher *search, const string& path, const match_func& match) 
 }
 
 int main(int argc, char **argv) {
-    google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
-    google::ParseCommandLineFlags(&argc, &argv, true);
+    gflags::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     prctl(PR_SET_PDEATHSIG, SIGINT);
 

@@ -1,25 +1,27 @@
 genrule(
   name = "cmake",
-  srcs = [ "libdivsufsort-2.0.1" ],
+  srcs = [ "CMakeLists.txt" ],
   outs = [
-    "libdivsufsort-2.0.1/build/include/divsufsort.h",
-    "libdivsufsort-2.0.1/build/include/config.h",
-    "libdivsufsort-2.0.1/build/include/lfs.h",
+    "build/include/divsufsort.h",
+    "build/include/config.h",
+    "build/include/lfs.h",
   ],
   local = 1,
-  cmd = "src=$$(python -c 'import os.path,sys; print os.path.realpath(sys.argv[1])' $<);" +
-   "mkdir -p $(@D)/$</build && cd $(@D)/$</build && " +
-   "cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF $$src",
+  cmd = '''
+  src=$$(python -c 'import os.path,sys; print os.path.realpath(os.path.dirname(sys.argv[1]))' $<)
+  mkdir -p $(@D)/build && cd $(@D)/build
+  cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF $$src
+  '''
 )
 
 cc_library(
   name = "divsufsort",
   includes = [
-    "libdivsufsort-2.0.1/build/include/",
-    "libdivsufsort-2.0.1/include/",
+    "build/include/",
+    "include/",
   ],
   hdrs = [ ":cmake" ],
-  srcs = glob(["libdivsufsort-2.0.1/lib/*.c"]),
+  srcs = glob(["lib/*.c", "include/*.h"]),
   visibility = [ "//visibility:public" ],
   copts = [
     "-DHAVE_CONFIG_H"

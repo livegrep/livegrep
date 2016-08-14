@@ -3,6 +3,8 @@ cc_library(
   srcs = glob(["src/lib/*.cc"]),
   hdrs = glob(["src/lib/*.h"]),
   includes = [ "src/lib/" ],
+  deps = [ "@gflags//:gflags" ],
+  copts = [ "-Wno-sign-compare" ],
 )
 
 cc_library(
@@ -11,9 +13,11 @@ cc_library(
     "src/*.cc",
   ]),
   deps = [
-    "@re2//re2-2015-11-01:re2",
     ":lib",
+
+    "@com_googlesource_code_re2//:re2",
     "@divsufsort//:divsufsort",
+    "@boost//:intrusive_ptr",
     "//src/vendor:utf8cpp",
   ],
   hdrs = glob(["src/*.h"]),
