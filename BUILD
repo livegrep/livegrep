@@ -32,14 +32,10 @@ cc_library(
 LIBS = [
     "-lm",
     "-lgit2",
-    "-ljson",
-    "-lgflags",
     "-lz",
     "-lssl",
     "-lcrypto",
     "-ldl",
-    "-lboost_system",
-    "-lboost_filesystem",
     "-lrt",
 ]
 
@@ -48,11 +44,17 @@ cc_binary(
   srcs = [
     "src/tools/codesearch.cc",
     "src/tools/transport.cc",
+    "src/tools/transport.h",
   ],
   deps = [
     ":libcodesearch",
+    "@boost//:bind",
   ],
   linkopts = LIBS,
+  copts = [
+    "-Wno-deprecated-declarations",
+    "-Wno-sign-compare",
+  ]
 )
 
 cc_binary(
@@ -67,6 +69,9 @@ cc_binary(
     ":libcodesearch",
   ],
   linkopts = LIBS,
+  copts = [
+    "-Wno-sign-compare",
+  ],
 )
 
 [genrule(

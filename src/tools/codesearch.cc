@@ -176,8 +176,8 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
     }
     json_object *obj = json_object_from_file(const_cast<char*>(argv[1].c_str()));
     if (is_error(obj)) {
-        fprintf(stderr, "Error parsing `%s': %s\n",
-                argv[1].c_str(), json_tokener_errors[-(unsigned long)obj]);
+        fprintf(stderr, "Error parsing `%s'\n",
+                argv[1].c_str());
         exit(1);
     }
     index_spec spec;
