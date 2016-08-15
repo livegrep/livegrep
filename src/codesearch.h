@@ -60,18 +60,6 @@ struct hashstr {
     size_t operator()(const StringPiece &str) const;
 };
 
-struct sha1_buf {
-    unsigned char hash[20];
-};
-
-bool operator==(const sha1_buf &lhs, const sha1_buf &rhs);
-
-struct hash_sha1 {
-    size_t operator()(const sha1_buf &hash) const;
-};
-
-void sha1_string(sha1_buf *out, StringPiece string);
-
 #ifdef USE_DENSE_HASH_SET
 typedef google::dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
 #else

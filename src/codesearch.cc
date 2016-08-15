@@ -81,30 +81,6 @@ size_t hashstr::operator()(const StringPiece& str) const {
     return coll.hash(str.data(), str.data() + str.size());
 }
 
-bool operator==(const sha1_buf &lhs, const sha1_buf &rhs) {
-    return memcmp(lhs.hash, rhs.hash, sizeof(lhs.hash)) == 0;
-}
-
-void sha1_string(sha1_buf *out, StringPiece string) {
-    SHA_CTX ctx;
-    SHA1_Init(&ctx);
-    SHA1_Update(&ctx, string.data(), string.size());
-    SHA1_Final(out->hash, &ctx);
-}
-
-size_t hash_sha1::operator()(const sha1_buf& hash) const {
-    /*
-     * We could hash the entire oid together, but since the oid is the
-     * output of a cryptographic hash anyways, just taking the first N
-     * bytes should work just well.
-     */
-    union {
-        sha1_buf sha1;
-        size_t trunc;
-    } u = {hash};
-    return u.trunc;
-}
-
 const StringPiece empty_string(NULL, 0);
 
 class code_searcher;

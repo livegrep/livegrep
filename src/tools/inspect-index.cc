@@ -97,9 +97,8 @@ int inspect_index(int argc, char **argv) {
            idx->ncontent, content_size >> 20);
     uint8_t *p = map + idx->files_off;
     for (int i = 0; i < idx->nfiles; i++) {
-        p += sizeof(sha1_buf);
         p += 4;
-        p += strlen(reinterpret_cast<char*>(p));
+        p += 4 + *reinterpret_cast<uint32_t*>(p);
     }
     spans.push_back(index_span(idx->files_off,
                                (unsigned long)(p - map),

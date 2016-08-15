@@ -2,8 +2,6 @@ LIBS = [
     "-lm",
     "-lgit2",
     "-lz",
-    "-lssl",
-    "-lcrypto",
     "-ldl",
     "-lrt",
 ]
