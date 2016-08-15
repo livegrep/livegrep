@@ -54,7 +54,7 @@ int WidthWalker::PostVisit(Regexp *re, int parent_arg,
     case kRegexpAlternate:
         width = 0;
         for (int i = 0; i < nchild_args; i++)
-            width = max(width, child_args[i]);
+            width = std::max(width, child_args[i]);
         break;
 
     case kRegexpStar:

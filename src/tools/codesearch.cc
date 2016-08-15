@@ -35,7 +35,7 @@
 #include "re2/regexp.h"
 #include "re2/walker-inl.h"
 
-#include <json/json.h>
+#include <json-c/json.h>
 
 DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");

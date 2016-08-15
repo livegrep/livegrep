@@ -18,12 +18,15 @@ cc_library(
     "@com_googlesource_code_re2//:re2",
     "@divsufsort//:divsufsort",
     "@boost//:intrusive_ptr",
+    "@boost//:filesystem",
     "@com_github_sparsehash//:sparsehash",
+    "@com_github_json_c//:json",
 
     "//src/vendor:utf8cpp",
    ],
   hdrs = glob(["src/*.h"]),
   includes = [ "src" ],
+  copts = [ "-Wno-sign-compare" ],
 )
 
 LIBS = [

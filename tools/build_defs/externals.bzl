@@ -1,15 +1,17 @@
 def _new_patched_http_archive_impl(ctx):
   ctx.download_and_extract(
     ctx.attr.url,
-    ".",
+    ctx.attr.add_prefix,
     ctx.attr.sha256,
     ctx.attr.type,
     ctx.attr.strip_prefix,
   )
   ctx.symlink(ctx.attr.build_file, "BUILD")
-  ctx.symlink(ctx.attr.patch_file, ctx.name + ".patch")
   cmd = ctx.execute(
-    ["patch", "-i", ctx.name + ".patch"] + ctx.attr.patch_args,)
+    ["patch", "-d", ctx.attr.add_prefix, "-i", ctx.path(ctx.attr.patch_file)] +
+    ctx.attr.patch_args,)
+  if cmd.return_code != 0:
+    fail("error patching: " + cmd.stderr)
 
 new_patched_http_archive = repository_rule(
   implementation=_new_patched_http_archive_impl,
@@ -21,4 +23,5 @@ new_patched_http_archive = repository_rule(
     "strip_prefix": attr.string(),
     "type": attr.string(),
     "patch_args": attr.string_list(default=["-p1"]),
+    "add_prefix": attr.string(default="."),
   })

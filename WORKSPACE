@@ -55,3 +55,13 @@ new_patched_http_archive(
   strip_prefix = "sparsehash-sparsehash-2.0.3/",
   patch_file = "//src/vendor:sparsehash.patch",
 )
+
+new_patched_http_archive(
+  name = "com_github_json_c",
+  url = "https://s3.amazonaws.com/json-c_releases/releases/json-c-0.12.1-nodoc.tar.gz",
+  sha256 = "5a617da9aade997938197ef0f8aabd7f97b670c216dc173977e1d56eef9e1291",
+  strip_prefix = "json-c-0.12.1",
+  build_file = "//src/vendor:BUILD.json_c",
+  patch_file = "//src/vendor:json_c.patch",
+  add_prefix = "json-c",
+)

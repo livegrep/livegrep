@@ -20,7 +20,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <json/json.h>
+#include <json-c/json.h>
 
 class codesearch_index {
 public:

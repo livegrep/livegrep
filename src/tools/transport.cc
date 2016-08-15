@@ -9,7 +9,7 @@
 #include "transport.h"
 #include "debug.h"
 
-#include <json/json.h>
+#include <json-c/json.h>
 
 #include "gflags/gflags.h"
 
