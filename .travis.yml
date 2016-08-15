@@ -1,34 +1,31 @@
-language: c++
+sudo: required
+dist: trusty
+
 addons:
   apt:
     packages:
-    - libjson0-dev
-    - libboost-system-dev
-    - libboost-filesystem-dev
-    - libsparsehash-dev
-  artifacts:
-    paths:
-      - builds
-    bucket: livegrep
-    target_paths: builds
-    s3_region: us-west-2
-sudo: false
+      - gcc-4.8
+      - g++-4.8
+      - libxml2-utils
+      - wget
+      # Package list from http://bazel.io/docs/install.html
+      - pkg-config
+      - zip
+      - unzip
+      - zlib1g-dev
+jdk:
+  - oraclejdk8
+
 before_install:
+  - wget 'https://github.com/bazelbuild/bazel/releases/download/0.3.1/bazel-0.3.1-installer-linux-x86_64.sh'
+  - chmod +x bazel-0.3.1-installer-linux-x86_64.sh
+  - ./bazel-0.3.1-installer-linux-x86_64.sh --user
+  - mv .bazelrc.travis .bazelrc
+  - bash travisdeps.sh
+
+script:
   - bash travis.sh
+
 cache:
   directories:
     - deps
-script:
-  - env -u GOPATH make all test gflags=$(pwd)/deps/gflags/build libgit2=$(pwd)/deps/libgit2/build
-  - env GOPATH=$(pwd)/.gopath go test github.com/livegrep/livegrep/client/test -test.repo $(pwd)/deps/linux
-compiler:
-  - gcc
-after_success: |
-  mkdir -p builds
-  rev=$(git rev-parse HEAD | head -c10)
-  builddir="livegrep-$rev"
-  tar --xform s,^,"$builddir/",S -czf "builds/$builddir.tgz" bin web doc README.md COPYING
-env:
-  global:
-    - AWS_ACCESS_KEY_ID=AKIAIAQXOJA3S2ZTGLWA
-    - secure: "YK0pGNgQ4Xf+Rcy6cC8Mg14WI5RYZLIbnWRDMG/FUUqF4eS3RSiez8zxEgxMVtp5eYeG77jFRNdTIZA5UwlEr+Bvl9Q12d12ba5t5kVtB1UEuouIH8p4oDp6mNiuWVqkmlOA4IG4Ao6/n78QMuGCZuxaZ+9lMO/wA1vDt9woCJ8="
