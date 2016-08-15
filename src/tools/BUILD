@@ -1,11 +1,3 @@
-LIBS = [
-    "-lm",
-    "-lgit2",
-    "-lz",
-    "-ldl",
-    "-lrt",
-]
-
 cc_binary(
   name = "codesearch",
   srcs = [
@@ -17,7 +9,7 @@ cc_binary(
     "//src:codesearch",
     "@boost//:bind",
   ],
-  linkopts = LIBS,
+  linkopts = ["-lgit2"],
   copts = [
     "-Wno-deprecated-declarations",
     "-Wno-sign-compare",
@@ -35,7 +27,6 @@ cc_binary(
   deps = [
     "//src:codesearch",
   ],
-  linkopts = LIBS,
   copts = [
     "-Wno-sign-compare",
   ],
