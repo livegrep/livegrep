@@ -12,11 +12,12 @@
 
 #include <string>
 
-#include "dump_load.h"
-#include "codesearch.h"
-#include "debug.h"
-#include "indexer.h"
-#include "re_width.h"
+#include "src/lib/debug.h"
+
+#include "src/dump_load.h"
+#include "src/codesearch.h"
+#include "src/indexer.h"
+#include "src/re_width.h"
 
 #include <gflags/gflags.h>
 

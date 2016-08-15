@@ -1,8 +1,8 @@
 #include <string.h>
 #include "gtest/gtest.h"
 
-#include "codesearch.h"
-#include "content.h"
+#include "src/codesearch.h"
+#include "src/content.h"
 
 class codesearch_test : public ::testing::Test {
 protected:

@@ -3,9 +3,10 @@
 #include <sstream>
 #include <iostream>
 
-#include "codesearch.h"
-#include "fs_indexer.h"
-#include "recursion.h"
+#include "src/lib/recursion.h"
+
+#include "src/codesearch.h"
+#include "src/fs_indexer.h"
 #include <boost/filesystem.hpp>
 
 static int kMaxRecursion = 100;

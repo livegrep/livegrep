@@ -18,7 +18,7 @@
 #include "re2/re2.h"
 #include "re2/walker-inl.h"
 
-#include "common.h"
+#include "src/common.h"
 
 using std::string;
 using std::vector;

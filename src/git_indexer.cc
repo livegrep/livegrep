@@ -1,11 +1,12 @@
 #include <gflags/gflags.h>
 #include <sstream>
 
-#include "codesearch.h"
-#include "metrics.h"
-#include "git_indexer.h"
-#include "smart_git.h"
-#include "debug.h"
+#include "src/lib/metrics.h"
+#include "src/lib/debug.h"
+
+#include "src/codesearch.h"
+#include "src/git_indexer.h"
+#include "src/smart_git.h"
 
 namespace {
     metric git_walk("timer.git.walk");

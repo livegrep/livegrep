@@ -5,16 +5,17 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "codesearch.h"
-#include "tagsearch.h"
-#include "timer.h"
-#include "metrics.h"
-#include "re_width.h"
-#include "debug.h"
-#include "git_indexer.h"
-#include "fs_indexer.h"
+#include "src/lib/timer.h"
+#include "src/lib/metrics.h"
+#include "src/lib/debug.h"
 
-#include "transport.h"
+#include "src/codesearch.h"
+#include "src/tagsearch.h"
+#include "src/re_width.h"
+#include "src/git_indexer.h"
+#include "src/fs_indexer.h"
+
+#include "src/tools/transport.h"
 
 #include <stdio.h>
 #include <sys/socket.h>

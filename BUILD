@@ -2,7 +2,6 @@ cc_library(
   name = "lib",
   srcs = glob(["src/lib/*.cc"]),
   hdrs = glob(["src/lib/*.h"]),
-  includes = [ "src/lib/" ],
   deps = [ "@gflags//:gflags" ],
   copts = [ "-Wno-sign-compare" ],
 )
@@ -22,10 +21,9 @@ cc_library(
     "@com_github_sparsehash//:sparsehash",
     "@com_github_json_c//:json",
 
-    "//src/vendor:utf8cpp",
+    "//third_party:utf8cpp",
    ],
   hdrs = glob(["src/*.h"]),
-  includes = [ "src" ],
   copts = [ "-Wno-sign-compare" ],
 )
 

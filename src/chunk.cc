@@ -5,11 +5,12 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "chunk.h"
-#include "radix_sort.h"
-#include "metrics.h"
-#include "divsufsort.h"
+#include "src/lib/radix_sort.h"
+#include "src/lib/metrics.h"
 
+#include "src/chunk.h"
+
+#include "divsufsort.h"
 #include "re2/re2.h"
 #include <gflags/gflags.h>
 

@@ -10,9 +10,10 @@
 
 #include <string>
 
-#include "dump_load.h"
-#include "codesearch.h"
-#include "debug.h"
+#include "src/lib/debug.h"
+
+#include "src/dump_load.h"
+#include "src/codesearch.h"
 
 #include <gflags/gflags.h>
 

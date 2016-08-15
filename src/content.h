@@ -11,8 +11,8 @@
 #include <vector>
 #include "re2/re2.h"
 
-#include "chunk.h"
-#include "chunk_allocator.h"
+#include "src/chunk.h"
+#include "src/chunk_allocator.h"
 
 using re2::StringPiece;
 using std::vector;

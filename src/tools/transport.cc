@@ -5,9 +5,10 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "codesearch.h"
-#include "transport.h"
-#include "debug.h"
+#include "src/lib/debug.h"
+
+#include "src/codesearch.h"
+#include "src/tools/transport.h"
 
 #include <json-c/json.h>
 

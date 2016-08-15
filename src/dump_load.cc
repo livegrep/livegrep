@@ -5,11 +5,11 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "codesearch.h"
-#include "chunk.h"
-#include "chunk_allocator.h"
-#include "content.h"
-#include "dump_load.h"
+#include "src/codesearch.h"
+#include "src/chunk.h"
+#include "src/chunk_allocator.h"
+#include "src/content.h"
+#include "src/dump_load.h"
 
 #include <map>
 #include <string>

@@ -18,17 +18,18 @@
 #include <limits>
 #include <atomic>
 
-#include "timer.h"
-#include "metrics.h"
-#include "thread_queue.h"
-#include "codesearch.h"
-#include "chunk.h"
-#include "chunk_allocator.h"
-#include "radix_sort.h"
-#include "indexer.h"
-#include "per_thread.h"
-#include "debug.h"
-#include "content.h"
+#include "src/lib/timer.h"
+#include "src/lib/metrics.h"
+#include "src/lib/thread_queue.h"
+#include "src/lib/radix_sort.h"
+#include "src/lib/per_thread.h"
+#include "src/lib/debug.h"
+
+#include "src/codesearch.h"
+#include "src/chunk.h"
+#include "src/chunk_allocator.h"
+#include "src/indexer.h"
+#include "src/content.h"
 
 #include "re2/re2.h"
 #include "gflags/gflags.h"
