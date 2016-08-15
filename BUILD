@@ -22,3 +22,7 @@ cc_test(
     linkopts = LIBS,
     size = "small",
 )
+
+load("@io_bazel_rules_go//go:def.bzl", "go_prefix")
+
+go_prefix("github.com/livegrep/livegrep")
