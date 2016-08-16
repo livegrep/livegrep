@@ -75,3 +75,15 @@ git_repository(
 load("@io_bazel_rules_go//go:def.bzl", "go_repositories")
 
 go_repositories()
+
+load("//tools/build_defs:libgit2.bzl",
+     "new_libgit2_archive",
+)
+
+new_libgit2_archive(
+  name = "com_github_libgit2",
+  url = "https://github.com/libgit2/libgit2/archive/v0.24.1.tar.gz",
+  version = "0.24.1",
+  sha256 = "60198cbb34066b9b5c1613d15c0479f6cd25f4aef42f7ec515cd1cc13a77fede",
+  build_file = "//third_party:BUILD.libgit2",
+)

@@ -13,6 +13,7 @@ cc_library(
     "@boost//:filesystem",
     "@com_github_sparsehash//:sparsehash",
     "@com_github_json_c//:json",
+    "@com_github_libgit2//:libgit2",
 
     "//third_party:utf8cpp",
    ],

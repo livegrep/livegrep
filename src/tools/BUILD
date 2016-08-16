@@ -8,8 +8,8 @@ cc_binary(
   deps = [
     "//src:codesearch",
     "@boost//:bind",
+    "@com_github_libgit2//:libgit2",
   ],
-  linkopts = ["-lgit2"],
   copts = [
     "-Wno-deprecated-declarations",
     "-Wno-sign-compare",
