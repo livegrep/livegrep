@@ -1,10 +1,15 @@
 workspace(name = "com_github_livegrep_livegrep")
 
-new_http_archive(
+load("//tools/build_defs:externals.bzl",
+     "new_patched_http_archive",
+)
+
+new_patched_http_archive(
   name = "divsufsort",
   url = "https://codeload.github.com/y-256/libdivsufsort/tar.gz/2.0.1",
   sha256 = "9164cb6044dcb6e430555721e3318d5a8f38871c2da9fd9256665746a69351e0",
   build_file = "//third_party:BUILD.divsufsort",
+  patch_file = "//third_party:divsufsort.patch",
   strip_prefix = "libdivsufsort-2.0.1",
   type = "tgz",
 )
@@ -42,10 +47,6 @@ git_repository(
 load("@com_github_nelhage_boost//:boost/boost.bzl",
      "boost_deps")
 boost_deps()
-
-load("//tools/build_defs:externals.bzl",
-     "new_patched_http_archive",
-)
 
 new_patched_http_archive(
   name = "com_github_sparsehash",
