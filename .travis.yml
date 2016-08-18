@@ -13,6 +13,12 @@ addons:
       - zip
       - unzip
       - zlib1g-dev
+  artifacts:
+    paths:
+      - builds
+    bucket: livegrep
+    target_paths: builds
+    s3_region: us-west-2
 jdk:
   - oraclejdk8
 
@@ -29,3 +35,11 @@ script:
 cache:
   directories:
     - deps
+
+env:
+  global:
+    - AWS_ACCESS_KEY_ID=AKIAIAQXOJA3S2ZTGLWA
+    - secure: "YK0pGNgQ4Xf+Rcy6cC8Mg14WI5RYZLIbnWRDMG/FUUqF4eS3RSiez8zxEgxMVtp5eYeG77jFRNdTIZA5UwlEr+Bvl9Q12d12ba5t5kVtB1UEuouIH8p4oDp6mNiuWVqkmlOA4IG4Ao6/n78QMuGCZuxaZ+9lMO/wA1vDt9woCJ8="
+
+after_success:
+  - bash package.sh
