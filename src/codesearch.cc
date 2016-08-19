@@ -18,21 +18,22 @@
 #include <limits>
 #include <atomic>
 
-#include <re2/re2.h>
-#include <gflags/gflags.h>
-#include <openssl/sha.h>
+#include "src/lib/timer.h"
+#include "src/lib/metrics.h"
+#include "src/lib/thread_queue.h"
+#include "src/lib/radix_sort.h"
+#include "src/lib/per_thread.h"
+#include "src/lib/debug.h"
 
-#include "timer.h"
-#include "metrics.h"
-#include "thread_queue.h"
-#include "codesearch.h"
-#include "chunk.h"
-#include "chunk_allocator.h"
-#include "radix_sort.h"
-#include "indexer.h"
-#include "per_thread.h"
-#include "debug.h"
-#include "content.h"
+#include "src/codesearch.h"
+#include "src/chunk.h"
+#include "src/chunk_allocator.h"
+#include "src/indexer.h"
+#include "src/content.h"
+
+#include "re2/re2.h"
+#include "gflags/gflags.h"
+#include <openssl/sha.h>
 
 #include "utf8.h"
 
@@ -78,30 +79,6 @@ bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
 size_t hashstr::operator()(const StringPiece& str) const {
     const std::collate<char>& coll = std::use_facet<std::collate<char> >(loc);
     return coll.hash(str.data(), str.data() + str.size());
-}
-
-bool operator==(const sha1_buf &lhs, const sha1_buf &rhs) {
-    return memcmp(lhs.hash, rhs.hash, sizeof(lhs.hash)) == 0;
-}
-
-void sha1_string(sha1_buf *out, StringPiece string) {
-    SHA_CTX ctx;
-    SHA1_Init(&ctx);
-    SHA1_Update(&ctx, string.data(), string.size());
-    SHA1_Final(out->hash, &ctx);
-}
-
-size_t hash_sha1::operator()(const sha1_buf& hash) const {
-    /*
-     * We could hash the entire oid together, but since the oid is the
-     * output of a cryptographic hash anyways, just taking the first N
-     * bytes should work just well.
-     */
-    union {
-        sha1_buf sha1;
-        size_t trunc;
-    } u = {hash};
-    return u.trunc;
 }
 
 const StringPiece empty_string(NULL, 0);

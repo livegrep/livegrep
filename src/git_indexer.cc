@@ -1,11 +1,12 @@
 #include <gflags/gflags.h>
 #include <sstream>
 
-#include "codesearch.h"
-#include "metrics.h"
-#include "git_indexer.h"
-#include "smart_git.h"
-#include "debug.h"
+#include "src/lib/metrics.h"
+#include "src/lib/debug.h"
+
+#include "src/codesearch.h"
+#include "src/git_indexer.h"
+#include "src/smart_git.h"
 
 namespace {
     metric git_walk("timer.git.walk");
@@ -22,8 +23,8 @@ git_indexer::git_indexer(code_searcher *cs,
                          json_object *metadata)
     : cs_(cs), repo_(0), name_(name), metadata_(metadata) {
     int err;
-    if ((err = git_threads_init()) != 0)
-        die("git_threads_init: %s", giterr_last()->message);
+    if ((err = git_libgit2_init()) < 0)
+        die("git_libgit2_init: %s", giterr_last()->message);
 
     git_repository_open(&repo_, repopath.c_str());
     if (repo_ == NULL) {

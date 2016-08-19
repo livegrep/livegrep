@@ -1,0 +1,9 @@
+cc_library(
+  name = "sparsehash",
+  includes = ["src"],
+  hdrs = glob([
+    "src/google/**/*",
+    "src/sparsehash/**/*"
+  ]),
+  visibility = ["//visibility:public"],
+)

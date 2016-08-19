@@ -1,4 +1,3 @@
-#include <gflags/gflags.h>
 #include <stdint.h>
 #include <fcntl.h>
 #include <sys/unistd.h>
@@ -13,11 +12,14 @@
 
 #include <string>
 
-#include "dump_load.h"
-#include "codesearch.h"
-#include "debug.h"
-#include "indexer.h"
-#include "re_width.h"
+#include "src/lib/debug.h"
+
+#include "src/dump_load.h"
+#include "src/codesearch.h"
+#include "src/indexer.h"
+#include "src/re_width.h"
+
+#include <gflags/gflags.h>
 
 using namespace std;
 
@@ -110,7 +112,7 @@ void write_dot_index(const string &path, intrusive_ptr<IndexKey> key) {
 
 int analyze_re(int argc, char **argv) {
     if (argc != 1) {
-        fprintf(stderr, "Usage: %s <options> REGEX\n", google::GetArgv0());
+        fprintf(stderr, "Usage: %s <options> REGEX\n", gflags::GetArgv0());
         return 1;
     }
 

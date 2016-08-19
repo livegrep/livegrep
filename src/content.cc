@@ -5,8 +5,8 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "content.h"
-#include "chunk.h"
+#include "src/content.h"
+#include "src/chunk.h"
 
 void file_contents_builder::extend(chunk *c, const StringPiece &piece) {
     if (pieces_.size() && piece.size()) {

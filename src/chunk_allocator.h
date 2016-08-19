@@ -14,7 +14,7 @@
 #include <thread>
 #include <assert.h>
 
-#include "thread_queue.h"
+#include "src/lib/thread_queue.h"
 
 using namespace std;
 struct chunk;

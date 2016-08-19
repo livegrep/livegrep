@@ -62,7 +62,7 @@ func (c *connection) Close() error {
 	return nil
 }
 
-const Codesearch = "../../bin/codesearch"
+const Codesearch = "../../bazel-bin/src/tools/codesearch"
 
 func NewClient(args ...string) (client.Client, error) {
 	cl := &childClient{wait: make(chan error)}

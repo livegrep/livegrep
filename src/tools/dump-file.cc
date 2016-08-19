@@ -1,16 +1,17 @@
-#include <gflags/gflags.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <string>
 
-#include "dump_load.h"
-#include "codesearch.h"
-#include "content.h"
-#include "debug.h"
-#include "indexer.h"
-#include "re_width.h"
+#include "src/lib/debug.h"
 
+#include "src/dump_load.h"
+#include "src/codesearch.h"
+#include "src/content.h"
+#include "src/indexer.h"
+#include "src/re_width.h"
+
+#include <gflags/gflags.h>
 
 void dump_file(code_searcher *cs, indexed_file *f) {
     for (auto it = f->content->begin(cs->alloc());
@@ -21,7 +22,7 @@ void dump_file(code_searcher *cs, indexed_file *f) {
 
 int dump_file(int argc, char **argv) {
     if (argc != 2) {
-        fprintf(stderr, "Usage: %s <options> INDEX PATH\n", google::GetArgv0());
+        fprintf(stderr, "Usage: %s <options> INDEX PATH\n", gflags::GetArgv0());
         return 1;
     }
 

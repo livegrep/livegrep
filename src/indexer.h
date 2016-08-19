@@ -12,12 +12,13 @@
 #include <list>
 #include <string>
 #include <atomic>
+#include <map>
 #include <boost/intrusive_ptr.hpp>
 
 #include "re2/re2.h"
 #include "re2/walker-inl.h"
 
-#include "common.h"
+#include "src/common.h"
 
 using std::string;
 using std::vector;
@@ -34,9 +35,9 @@ enum {
 
 class IndexKey {
 public:
-    typedef map<pair<uchar, uchar>, intrusive_ptr<IndexKey> >::iterator iterator;
-    typedef map<pair<uchar, uchar>, intrusive_ptr<IndexKey> >::const_iterator const_iterator;
-    typedef pair<pair<uchar, uchar>, intrusive_ptr<IndexKey> > value_type;
+    typedef std::map<std::pair<uchar, uchar>, intrusive_ptr<IndexKey> >::iterator iterator;
+    typedef std::map<std::pair<uchar, uchar>, intrusive_ptr<IndexKey> >::const_iterator const_iterator;
+    typedef std::pair<std::pair<uchar, uchar>, intrusive_ptr<IndexKey> > value_type;
 
     iterator begin() {
         return edges_.begin();
@@ -49,7 +50,7 @@ public:
     IndexKey(int anchor = kAnchorNone)
         : anchor(anchor), refs_(0) { }
 
-    IndexKey(pair<uchar, uchar> p,
+    IndexKey(std::pair<uchar, uchar> p,
              intrusive_ptr<IndexKey> next,
              int anchor = kAnchorNone)
         : anchor(anchor), refs_(0) {
@@ -115,7 +116,7 @@ public:
 
     int anchor;
 protected:
-    map<pair<uchar, uchar>, intrusive_ptr<IndexKey> > edges_;
+    std::map<std::pair<uchar, uchar>, intrusive_ptr<IndexKey> > edges_;
     Stats stats_;
     list<iterator> tails_;
     std::atomic_int refs_;

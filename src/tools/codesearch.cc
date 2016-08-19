@@ -5,16 +5,17 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "codesearch.h"
-#include "tagsearch.h"
-#include "timer.h"
-#include "metrics.h"
-#include "re_width.h"
-#include "debug.h"
-#include "git_indexer.h"
-#include "fs_indexer.h"
+#include "src/lib/timer.h"
+#include "src/lib/metrics.h"
+#include "src/lib/debug.h"
 
-#include "transport.h"
+#include "src/codesearch.h"
+#include "src/tagsearch.h"
+#include "src/re_width.h"
+#include "src/git_indexer.h"
+#include "src/fs_indexer.h"
+
+#include "src/tools/transport.h"
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -32,10 +33,10 @@
 #include <gflags/gflags.h>
 
 #include <boost/bind.hpp>
-#include <re2/regexp.h>
-#include <re2/walker-inl.h>
+#include "re2/regexp.h"
+#include "re2/walker-inl.h"
 
-#include <json/json.h>
+#include <json-c/json.h>
 
 DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
@@ -176,8 +177,8 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
     }
     json_object *obj = json_object_from_file(const_cast<char*>(argv[1].c_str()));
     if (is_error(obj)) {
-        fprintf(stderr, "Error parsing `%s': %s\n",
-                argv[1].c_str(), json_tokener_errors[-(unsigned long)obj]);
+        fprintf(stderr, "Error parsing `%s'\n",
+                argv[1].c_str());
         exit(1);
     }
     index_spec spec;
@@ -369,8 +370,8 @@ void listen(code_searcher *search, const string& path, const match_func& match) 
 }
 
 int main(int argc, char **argv) {
-    google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
-    google::ParseCommandLineFlags(&argc, &argv, true);
+    gflags::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     prctl(PR_SET_PDEATHSIG, SIGINT);
 

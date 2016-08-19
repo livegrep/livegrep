@@ -8,7 +8,7 @@
 #ifndef CODESEARCH_RE_WIDTH_H
 #define CODESEARCH_RE_WIDTH_H
 
-#include <re2/regexp.h>
+#include "re2/regexp.h"
 #include "re2/walker-inl.h"
 
 using re2::Regexp;

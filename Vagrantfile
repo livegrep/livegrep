@@ -31,9 +31,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provision :shell, inline: <<EOF
 set -ex
 sudo apt-get update
+sudo apt-get -y install software-properties-common
+sudo apt-add-repository ppa:openjdk-r/ppa
+sudo apt-get update
 sudo apt-get -y install libgflags-dev libgit2-dev libjson0-dev \
   libboost-system-dev libboost-filesystem-dev libsparsehash-dev \
-  build-essential git mercurial gdb
+  build-essential git mercurial gdb openjdk-8-jdk unzip cmake
 EOF
 
   config.vm.provision :shell, inline: <<EOF

@@ -5,15 +5,16 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "codesearch.h"
-#include "transport.h"
-#include "debug.h"
+#include "src/lib/debug.h"
 
-#include <json/json.h>
+#include "src/codesearch.h"
+#include "src/tools/transport.h"
 
-#include <gflags/gflags.h>
+#include <json-c/json.h>
 
-#include <re2/re2.h>
+#include "gflags/gflags.h"
+
+#include "re2/re2.h"
 using re2::RE2;
 using std::unique_ptr;
 
@@ -84,13 +85,6 @@ json_object *json_frame(const std::string op, json_object *body) {
     json_object_object_add(frame, "opcode", to_json(op));
     json_object_object_add(frame, "body", body);
     return frame;
-}
-
-json_object *json_info(const code_searcher *cs) {
-    json_object *obj = json_object_new_object();
-    json_object_object_add(obj, "trees", to_json(cs->trees()));
-    json_object_object_add(obj, "name", to_json(cs->name()));
-    return obj;
 }
 
 bool getline(std::string &out, FILE *in) {
@@ -313,10 +307,11 @@ bool codesearch_transport::read_query(query *q, bool *done) {
         *done = true;
         return false;
     }
-    json_object *js = json_tokener_parse(line.c_str());
-    if (is_error(js)) {
+    json_tokener_error json_err;
+    json_object *js = json_tokener_parse_verbose(line.c_str(), &json_err);
+    if (js == NULL) {
         write_error("Parse error: " +
-                    string(json_tokener_errors[-(unsigned long)js]));
+                    string(json_tokener_error_desc(json_err)));
         return false;
     }
 

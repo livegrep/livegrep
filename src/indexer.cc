@@ -5,9 +5,10 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "indexer.h"
-#include "recursion.h"
-#include "debug.h"
+#include "src/lib/recursion.h"
+#include "src/lib/debug.h"
+
+#include "src/indexer.h"
 
 #include <gflags/gflags.h>
 

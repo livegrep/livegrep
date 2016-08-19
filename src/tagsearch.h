@@ -8,7 +8,7 @@
 #ifndef TAGSEARCH_H
 #define TAGSEARCH_H
 
-#include "codesearch.h"
+#include "src/codesearch.h"
 
 #include <map>
 #include <string>

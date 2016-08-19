@@ -1,0 +1,12 @@
+cc_library(
+  name = "divsufsort",
+  includes = [
+    "include/",
+  ],
+  hdrs = ["include/divsufsort.h"],
+  srcs = glob(["lib/*.c", "include/*.h"], exclude=["include/divsufsort.h"]),
+  visibility = [ "//visibility:public" ],
+  copts = [
+    "-DHAVE_CONFIG_H"
+  ],
+)

@@ -8,7 +8,7 @@
 #ifndef CODESEARCH_SMART_GIT_H
 #define CODESEARCH_SMART_GIT_H
 
-#include <git2.h>
+#include "git2.h"
 
 class smart_object_base {
 public:

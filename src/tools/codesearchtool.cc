@@ -19,8 +19,8 @@ struct _command {
 };
 
 int main(int argc, char **argv) {
-    google::SetUsageMessage("Usage: " + string(argv[0]) + " <options> COMMAND ARGS");
-    google::ParseCommandLineFlags(&argc, &argv, true);
+    gflags::SetUsageMessage("Usage: " + string(argv[0]) + " <options> COMMAND ARGS");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     string me(argv[0]);
     size_t i = me.rfind('/');

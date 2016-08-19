@@ -64,7 +64,7 @@ static bool validate_debug(const char *flagname, const string& value) {
     return true;
 }
 
-static const bool dummy = google::RegisterFlagValidator(&FLAGS_debug,
+static const bool dummy = gflags::RegisterFlagValidator(&FLAGS_debug,
                                                         validate_debug);
 
 
@@ -117,10 +117,10 @@ void vlog(const std::string &trace, const char *fmt, va_list ap) {
     if (trace.empty())
         buf = vstrprintf(fmt, ap);
     else
-        buf = strprintf("[%s] %s\n",
+        buf = strprintf("[%s] %s",
                         trace.c_str(), vstrprintf(fmt, ap).c_str());
 
-    fputs(buf.c_str(), stderr);
+    fprintf(stderr, "%s\n", buf.c_str());
 }
 
 void log(const std::string &trace, const char *fmt, ...) {

@@ -5,9 +5,10 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "chunk_allocator.h"
-#include "chunk.h"
-#include "debug.h"
+#include "src/lib/debug.h"
+
+#include "src/chunk_allocator.h"
+#include "src/chunk.h"
 
 #include <gflags/gflags.h>
 
@@ -27,7 +28,7 @@ static bool validate_chunk_power(const char* flagname, int32_t value) {
     return false;
 }
 
-static const bool dummy = google::RegisterFlagValidator(&FLAGS_chunk_power,
+static const bool dummy = gflags::RegisterFlagValidator(&FLAGS_chunk_power,
                                                         validate_chunk_power);
 
 void chunk_allocator::finalize_worker(chunk_allocator *alloc) {

@@ -5,9 +5,10 @@
  * This program is free software. You may use, redistribute, and/or
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
-#include "tagsearch.h"
-#include "content.h"
-#include "lib/debug.h"
+#include "src/tagsearch.h"
+#include "src/content.h"
+
+#include "src/lib/debug.h"
 
 #include <utility>
 

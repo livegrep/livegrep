@@ -1,4 +1,3 @@
-#include <gflags/gflags.h>
 #include <stdint.h>
 #include <fcntl.h>
 #include <sys/unistd.h>
@@ -11,9 +10,12 @@
 
 #include <string>
 
-#include "dump_load.h"
-#include "codesearch.h"
-#include "debug.h"
+#include "src/lib/debug.h"
+
+#include "src/dump_load.h"
+#include "src/codesearch.h"
+
+#include <gflags/gflags.h>
 
 using std::string;
 
@@ -35,7 +37,7 @@ DEFINE_bool(dump_trees, false, "Dump tree names.");
 
 int inspect_index(int argc, char **argv) {
     if (argc != 1) {
-        fprintf(stderr, "Usage: %s <options> INDEX.idx\n", google::GetArgv0());
+        fprintf(stderr, "Usage: %s <options> INDEX.idx\n", gflags::GetArgv0());
         return 1;
     }
 
@@ -95,9 +97,8 @@ int inspect_index(int argc, char **argv) {
            idx->ncontent, content_size >> 20);
     uint8_t *p = map + idx->files_off;
     for (int i = 0; i < idx->nfiles; i++) {
-        p += sizeof(sha1_buf);
         p += 4;
-        p += strlen(reinterpret_cast<char*>(p));
+        p += 4 + *reinterpret_cast<uint32_t*>(p);
     }
     spans.push_back(index_span(idx->files_off,
                                (unsigned long)(p - map),
