@@ -9,36 +9,20 @@ can see a running instance at
 Building
 --------
 
-This respository contains three separate components: The indexing and
-search backend (written in C++), the web interface (server in golang,
-UI, obviously, in Javascript), and a CLI that talks to the web
-interface. These each need to be built separately.
+livegrep builds using [bazel][bazel]. You will need to
+[install bazel][bazel-install] version 0.3 or newer. livegrep vendors
+and/or fetches all of its dependencies using `bazel`, and so should
+only require a relatively recent C++ compiler to build.
 
-### `codesearch` -- the search backend
+Once you have those dependencies, you can build using
 
-The C++ backend had a number of dependencies, including:
+    bazel build //...
 
- - [libgit2][libgit2]
- - [gflags][gflags]
- - [libjson][libjson]
- - [boost][boost] (in particular, `boost::system` and `boost:filesystem`)
+Note that the initial build will download around 100M of
+dependencies. These will be cached once downloaded.
 
-On a sufficiently recent Ubuntu, these are all available via `apt-get`:
-
-    sudo apt-get install libgflags-dev libgit2-dev libjson0-dev libboost-system-dev libboost-filesystem-dev libsparsehash-dev cmake golang
-
-I have also made packages available in a [PPA][lg-ppa], but they are
-largely unmaintained since I no longer deploy livegrep on any older
-distributions.
-
-[libgit2]: http://libgit2.github.com/
-[gflags]: https://code.google.com/p/gflags/?redir=1
-[libjson]: http://oss.metaparadigm.com/json-c/
-[boost]: http://www.boost.org/
-[lg-ppa]: https://launchpad.net/~nelhage/+archive/livegrep
-
-Once all the dependencies are installed, a simple `make` should build
-all of the binaries into the `bin/` directory.
+[bazel]: http://www.bazel.io/
+[bazel-install]: http://www.bazel.io/docs/install.html
 
 Invoking
 --------
@@ -51,11 +35,11 @@ built both `codesearch` and `livegrep`:
 
 In one terminal, start the `codesearch` server like so:
 
-    bin/codesearch -listen tcp://localhost:9999 doc/examples/livegrep/index.json
+    bazel-bin/src/tools/codesearch -listen tcp://localhost:9999 doc/examples/livegrep/index.json
 
 In another, run livegrep:
 
-    bin/livegrep
+    bazel-bin/cmd/livegrep/livegrep
 
 In a browser, now visit
 [http://localhost:8910/](http://localhost:8910/), and you should see a
@@ -75,14 +59,14 @@ advantages of allowing indexes that are too large to fit in RAM, and
 of allowing an index file to be reused. You instruct `codesearch` to
 generate an index file via the `-dump_index` flag:
 
-    bin/codesearch -dump_index livegrep.idx doc/examples/livegrep/index.json </dev/null
+    bazel-bin/src/tools/codesearch -dump_index livegrep.idx doc/examples/livegrep/index.json </dev/null
 
 Once `codeseach` has built the index, this index file can be used for
 future runs. Index files are standalone, and you no longer need access
 to the source code repositories, or even a configuration file, once an
 index has been built. You can just launch a search server like so:
 
-    bin/codesearch -load_index livegrep.idx  -listen tcp://localhost:9999
+    bazel-bin/src/tools/codesearch -load_index livegrep.idx  -listen tcp://localhost:9999
 
 ## `livegrep`
 
@@ -106,7 +90,7 @@ can automatically update and index selected github repositories. To
 download and index all of my repositories (except for forks), storing
 the repos in `repos/` and writing `nelhage.idx`, you might run:
 
-    bin/livegrep-github-reindex -user=nelhage -forks=false -name=github.com/nelhage -out nelhage.idx
+    bazel-bin/cmd/livegrep-github-reindex/livegrep-github-reindex -user=nelhage -forks=false -name=github.com/nelhage -out nelhage.idx
 
 You can now use `nelhage.idx` as an argument to `codesearch
 -load_index`.
