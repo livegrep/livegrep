@@ -14,6 +14,7 @@ name = "livegrep",
     "//server/config:go_default_library",
     "//server/middleware:go_default_library",
     "//server:go_default_library",
+    "//vendor/github.com/honeycombio/libhoney-go:go_default_library",
   ],
   visibility = ["//visibility:public"],
 )

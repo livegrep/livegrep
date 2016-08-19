@@ -9,6 +9,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
+	libhoney "github.com/honeycombio/libhoney-go"
 	"github.com/livegrep/livegrep/server"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/middleware"
@@ -45,6 +46,8 @@ func main() {
 			log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 		}
 	}
+
+	libhoney.Init(libhoney.Config{})
 
 	handler, err := server.New(cfg)
 	if err != nil {
