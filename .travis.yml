@@ -35,6 +35,7 @@ script:
 cache:
   directories:
     - deps
+    - ~/bazel
 
 env:
   global:
