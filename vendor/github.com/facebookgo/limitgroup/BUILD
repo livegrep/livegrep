@@ -8,8 +8,7 @@ load("@io_bazel_rules_go//go:def.bzl",
 go_library(
 name = "go_default_library",
   srcs = [
-    "context.go",
-    "go17.go",
+    "limitgroup.go",
   ],
   deps = [
   ],

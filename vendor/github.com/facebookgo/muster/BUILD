@@ -8,10 +8,11 @@ load("@io_bazel_rules_go//go:def.bzl",
 go_library(
 name = "go_default_library",
   srcs = [
-    "context.go",
-    "go17.go",
+    "muster.go",
   ],
   deps = [
+    "//vendor/github.com/facebookgo/clock:go_default_library",
+    "//vendor/github.com/facebookgo/limitgroup:go_default_library",
   ],
   visibility = ["//visibility:public"],
 )

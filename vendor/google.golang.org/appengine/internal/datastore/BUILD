@@ -8,10 +8,10 @@ load("@io_bazel_rules_go//go:def.bzl",
 go_library(
 name = "go_default_library",
   srcs = [
-    "context.go",
-    "go17.go",
+    "datastore_v3.pb.go",
   ],
   deps = [
+    "//vendor/github.com/golang/protobuf/proto:go_default_library",
   ],
   visibility = ["//visibility:public"],
 )

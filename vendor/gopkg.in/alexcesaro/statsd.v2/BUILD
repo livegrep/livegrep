@@ -8,8 +8,10 @@ load("@io_bazel_rules_go//go:def.bzl",
 go_library(
 name = "go_default_library",
   srcs = [
-    "context.go",
-    "go17.go",
+    "conn.go",
+    "doc.go",
+    "options.go",
+    "statsd.go",
   ],
   deps = [
   ],
