@@ -9,7 +9,7 @@ go_library(
 name = "go_default_library",
   srcs = [
     "context.go",
-    "pre_go17.go",
+    "go17.go",
   ],
   deps = [
   ],

@@ -11,6 +11,7 @@ import (
 	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/server/api"
 	"github.com/livegrep/livegrep/server/log"
+	"github.com/livegrep/livegrep/server/reqid"
 )
 
 func replyJSON(ctx context.Context, w http.ResponseWriter, status int, obj interface{}) {
@@ -148,6 +149,31 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		log.Printf(ctx, "error in search err=%s", err)
 		writeQueryError(ctx, w, err)
 		return
+	}
+
+	if s.honey != nil {
+		e := s.honey.NewEvent()
+		reqid, ok := reqid.FromContext(ctx)
+		if ok {
+			e.AddField("request_id", reqid)
+		}
+		e.AddField("backend", backend.Id)
+		e.AddField("query_line", q.Line)
+		e.AddField("query_file", q.File)
+		e.AddField("query_repo", q.Repo)
+		e.AddField("query_foldcase", q.FoldCase)
+		e.AddField("query_not_file", q.Not.File)
+		e.AddField("query_not_repo", q.Not.Repo)
+
+		e.AddField("result_count", len(reply.Results))
+		e.AddField("re2_time", reply.Info.RE2Time)
+		e.AddField("git_time", reply.Info.GitTime)
+		e.AddField("sort_time", reply.Info.SortTime)
+		e.AddField("index_time", reply.Info.IndexTime)
+		e.AddField("analyze_time", reply.Info.AnalyzeTime)
+
+		e.AddField("exit_reason", reply.Info.ExitReason)
+		e.Send()
 	}
 
 	log.Printf(ctx,

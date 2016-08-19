@@ -55,7 +55,7 @@ func main() {
 
 	for _, d := range dirs {
 		if e := genBuild(&ctx, d); e != nil {
-			fmt.Print("!", e)
+			fmt.Printf("[%s]: %v", d, e)
 		}
 	}
 }

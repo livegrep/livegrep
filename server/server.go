@@ -12,6 +12,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/bmizerany/pat"
+	libhoney "github.com/honeycombio/libhoney-go"
 
 	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/server/config"
@@ -34,6 +35,8 @@ type server struct {
 	inner  http.Handler
 	T      Templates
 	Layout *template.Template
+
+	honey *libhoney.Builder
 }
 
 func (s *server) loadTemplates() {
@@ -171,6 +174,12 @@ func (s *server) Handler(f func(c context.Context, w http.ResponseWriter, r *htt
 func New(cfg *config.Config) (http.Handler, error) {
 	srv := &server{config: cfg, bk: make(map[string]*Backend)}
 	srv.loadTemplates()
+
+	if cfg.Honeycomb.WriteKey != "" {
+		srv.honey = libhoney.NewBuilder()
+		srv.honey.WriteKey = cfg.Honeycomb.WriteKey
+		srv.honey.Dataset = cfg.Honeycomb.Dataset
+	}
 
 	for _, bk := range srv.config.Backends {
 		addr := bk.Addr

@@ -1,7 +1,7 @@
 package config
 
 import (
-  "html/template"
+	"html/template"
 )
 
 type Backend struct {
@@ -31,9 +31,9 @@ type Config struct {
 	// The address to listen on, as HOST:PORT.
 	Listen string `json:"listen"`
 
-        // HTML injected into layout template
-        // for site-specific customizations
-        HeaderHTML template.HTML `json:"header_html"`
+	// HTML injected into layout template
+	// for site-specific customizations
+	HeaderHTML template.HTML `json:"header_html"`
 
 	Sentry struct {
 		URI string `json:"uri"`
@@ -41,4 +41,10 @@ type Config struct {
 
 	// Whether to re-load templates on every request
 	Reload bool `json:"reload"`
+
+	// honeycomb API write key
+	Honeycomb struct {
+		WriteKey string `json:"write_key"`
+		Dataset  string `json:"dataset"`
+	} `json:"honeycomb"`
 }
