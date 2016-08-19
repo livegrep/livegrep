@@ -65,6 +65,7 @@ func (m *MockServer) handle(conn net.Conn) {
 func runMockServer(handle func(net.Conn)) <-chan string {
 	ready := make(chan string, 1)
 	go func() {
+		defer close(ready)
 		ln, err := net.Listen("tcp4", ":0")
 		if err != nil {
 			panic(err.Error())
