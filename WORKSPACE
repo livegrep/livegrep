@@ -26,6 +26,14 @@ git_repository(
   commit = "ec8dfdfa39233663779f01935124ecc36e840a03",
 )
 
+new_http_archive(
+  name = "com_google_gtest",
+  url = "https://googletest.googlecode.com/files/gtest-1.7.0.zip",
+  sha256 = "247ca18dd83f53deb1328be17e4b1be31514cedfc1e3424f672bf11fd7e0d60d",
+  build_file = "//third_party:BUILD.gtest",
+  strip_prefix = "gtest-1.7.0",
+)
+
 git_repository(
   name = "gflags",
   remote = "git://github.com/gflags/gflags",
