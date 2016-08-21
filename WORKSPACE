@@ -4,6 +4,12 @@ load("//tools/build_defs:externals.bzl",
      "new_patched_http_archive",
 )
 
+git_repository(
+  name = "org_pubref_rules_protobuf",
+  remote = "https://github.com/pubref/rules_protobuf",
+  commit = "4951c882fbb7ba9662862c107c79fb9f4e910804",
+)
+
 new_patched_http_archive(
   name = "divsufsort",
   url = "https://codeload.github.com/y-256/libdivsufsort/tar.gz/2.0.1",
@@ -18,14 +24,6 @@ git_repository(
   name = "com_googlesource_code_re2",
   remote = "git://github.com/google/re2",
   commit = "ec8dfdfa39233663779f01935124ecc36e840a03",
-)
-
-new_http_archive(
-  name = "gtest",
-  url = "https://googletest.googlecode.com/files/gtest-1.7.0.zip",
-  sha256 = "247ca18dd83f53deb1328be17e4b1be31514cedfc1e3424f672bf11fd7e0d60d",
-  build_file = "//third_party:BUILD.gtest",
-  strip_prefix = "gtest-1.7.0",
 )
 
 git_repository(
@@ -86,4 +84,10 @@ new_libgit2_archive(
   version = "0.24.1",
   sha256 = "60198cbb34066b9b5c1613d15c0479f6cd25f4aef42f7ec515cd1cc13a77fede",
   build_file = "//third_party:BUILD.libgit2",
+)
+
+load("@org_pubref_rules_protobuf//bzl:rules.bzl", "protobuf_repositories")
+protobuf_repositories(
+  with_go = True,
+  with_cpp = True,
 )

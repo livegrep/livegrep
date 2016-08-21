@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message Query {
+    string line = 1;
+    string file = 2;
+    string repo = 3;
+    string tags = 4;
+    bool fold_case = 5;
+    string not_file = 6;
+    string not_repo = 7;
+    string not_tags = 8;
+}
