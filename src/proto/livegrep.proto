@@ -10,3 +10,56 @@ message Query {
     string not_repo = 7;
     string not_tags = 8;
 }
+
+message Bounds {
+    int32 left = 1;
+    int32 right = 2;
+}
+
+message SearchResult {
+    string tree = 1;
+    string version = 2;
+    string path = 3;
+    int64 line_number = 4;
+    repeated string context_before = 5;
+    repeated string context_after = 6;
+    Bounds bounds = 7;
+    string line = 8;
+}
+
+message SearchStats {
+    int64 re2_time = 1;
+    int64 git_time = 2;
+    int64 sort_time = 3;
+    int64 index_time = 4;
+    int64 analyze_time = 5;
+    enum ExitReason {
+        NONE = 0;
+        TIMEOUT = 1;
+        MATCH_LIMIT = 2;
+    }
+    ExitReason exit_reason = 6;
+}
+
+message ServerInfo {
+    string name = 1;
+    message Tree {
+        string name = 1;
+        string version = 2;
+        map<string, string> metadata = 3;
+    }
+    repeated Tree trees = 2;
+}
+
+message CodeSearchResult {
+    SearchStats stats = 1;
+    repeated SearchResult results = 2;
+}
+
+message InfoRequest {
+}
+
+service CodeSearch {
+    rpc Info(InfoRequest) returns (ServerInfo);
+    rpc Search(Query) returns (CodeSearchResult);
+}

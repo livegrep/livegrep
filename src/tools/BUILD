@@ -2,13 +2,19 @@ cc_binary(
   name = "codesearch",
   srcs = [
     "codesearch.cc",
+    "grpc_server.cc",
+    "grpc_server.h",
     "transport.cc",
     "transport.h",
+    "limits.h",
   ],
   deps = [
     "//src:codesearch",
+    "//src/proto:cc_proto",
+
     "@boost//:bind",
     "@com_github_libgit2//:libgit2",
+    "@com_github_grpc_grpc//:grpc",
   ],
   copts = [
     "-Wno-deprecated-declarations",

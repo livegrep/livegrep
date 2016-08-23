@@ -16,6 +16,8 @@
 #include "src/fs_indexer.h"
 
 #include "src/tools/transport.h"
+#include "src/tools/limits.h"
+#include "src/tools/grpc_server.h"
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -38,19 +40,23 @@
 
 #include <json-c/json.h>
 
+#include <grpc++/server.h>
+#include <grpc++/server_builder.h>
+
 DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 DEFINE_string(load_tags, "", "Load the index built from a tags file.");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_string(listen, "", "Listen on a socket for connections. example: -listen tcp://localhost:9999");
+DEFINE_string(grpc, "", "Listen for GRPC clients. example: -grpc localhost:9999");
 DEFINE_string(listen_tags, "", "Listen on a socket for connections to tag search. example: -listen_tags tcp://localhost:9998");
 
 using namespace std;
 using namespace re2;
 
-const int kMaxProgramSize = 4000;
-const int kMaxWidth       = 200;
+using grpc::Server;
+using grpc::ServerBuilder;
 
 sem_t interact_sem;
 
@@ -369,6 +375,16 @@ void listen(code_searcher *search, const string& path, const match_func& match) 
     }
 }
 
+void listen_grpc(code_searcher *search, const string& addr) {
+    CodeSearchImpl service(search);
+
+    ServerBuilder builder;
+    builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
+    builder.RegisterService(&service);
+    std::unique_ptr<Server> server(builder.BuildAndStart());
+    server->Wait();
+}
+
 int main(int argc, char **argv) {
     gflags::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -386,6 +402,10 @@ int main(int argc, char **argv) {
         die_errno("sem_init");
 
     std::vector<std::thread> listeners;
+    if (FLAGS_grpc.size()) {
+        listeners.emplace_back(
+            std::thread(boost::bind(&listen_grpc, &search, FLAGS_grpc)));
+    }
     if (FLAGS_listen.size()) {
         codesearch_matcher matcher;
         listeners.emplace_back(
