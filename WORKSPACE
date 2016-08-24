@@ -99,3 +99,9 @@ protobuf_repositories(
   with_go = True,
   with_cpp = True,
 )
+
+git_repository(
+    name = "io_bazel_buildifier",
+    commit = "0ca1d7991357ae7a7555589af88930d82cf07c0a",
+    remote = "https://github.com/bazelbuild/buildifier.git",
+)
