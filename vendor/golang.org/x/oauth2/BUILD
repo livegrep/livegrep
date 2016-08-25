@@ -13,10 +13,8 @@ name = "go_default_library",
     "transport.go",
   ],
   deps = [
-    "//vendor/golang.org/x/net/context:go_default_library",
+    "@org_golang_x_net//:context",
     "//vendor/golang.org/x/oauth2/internal:go_default_library",
   ],
   visibility = ["//visibility:public"],
 )
-
-

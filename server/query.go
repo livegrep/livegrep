@@ -7,12 +7,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/livegrep/livegrep/client"
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
 var pieceRE = regexp.MustCompile(`\(|(?:^([a-zA-Z0-9-]+):|\\.)| `)
 
-func ParseQuery(query string) (client.Query, error) {
+func ParseQuery(query string) (pb.Query, error) {
 	ops := make(map[string]string)
 	key := ""
 	q := strings.TrimSpace(query)
@@ -78,13 +78,13 @@ func ParseQuery(query string) (client.Query, error) {
 		}
 	}
 
-	var out client.Query
+	var out pb.Query
 	out.File = ops["file"]
 	out.Repo = ops["repo"]
 	out.Tags = ops["tags"]
-	out.Not.File = ops["-file"]
-	out.Not.Repo = ops["-repo"]
-	out.Not.Tags = ops["-tags"]
+	out.NotFile = ops["-file"]
+	out.NotRepo = ops["-repo"]
+	out.NotTags = ops["-tags"]
 	var bits []string
 	for _, k := range []string{"", "case", "lit"} {
 		bit := strings.TrimSpace(ops[k])

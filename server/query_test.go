@@ -4,36 +4,25 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/livegrep/livegrep/client"
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
 func TestParseQuery(t *testing.T) {
-	Not := func(file, repo, tags string) struct {
-		File string `json:"file"`
-		Repo string `json:"repo"`
-		Tags string `json:"tags"`
-	} {
-		return struct {
-			File string `json:"file"`
-			Repo string `json:"repo"`
-			Tags string `json:"tags"`
-		}{file, repo, tags}
-	}
 	cases := []struct {
 		in  string
-		out client.Query
+		out pb.Query
 	}{
 		{
 			"hello",
-			client.Query{Line: "hello", FoldCase: true},
+			pb.Query{Line: "hello", FoldCase: true},
 		},
 		{
 			"a b c",
-			client.Query{Line: "a b c", FoldCase: true},
+			pb.Query{Line: "a b c", FoldCase: true},
 		},
 		{
 			"line file:.rb",
-			client.Query{
+			pb.Query{
 				Line:     "line",
 				File:     ".rb",
 				FoldCase: true,
@@ -41,79 +30,79 @@ func TestParseQuery(t *testing.T) {
 		},
 		{
 			" a  ",
-			client.Query{Line: "a", FoldCase: true},
+			pb.Query{Line: "a", FoldCase: true},
 		},
 		{
 			"( a  )",
-			client.Query{Line: "( a  )", FoldCase: true},
+			pb.Query{Line: "( a  )", FoldCase: true},
 		},
 		{
 			"Aa",
-			client.Query{Line: "Aa", FoldCase: false},
+			pb.Query{Line: "Aa", FoldCase: false},
 		},
 		{
 			"case:abc",
-			client.Query{Line: "abc", FoldCase: false},
+			pb.Query{Line: "abc", FoldCase: false},
 		},
 		{
 			"case:abc file:^kernel/",
-			client.Query{Line: "abc", FoldCase: false, File: "^kernel/"},
+			pb.Query{Line: "abc", FoldCase: false, File: "^kernel/"},
 		},
 		{
 			"case:abc file:( )",
-			client.Query{Line: "abc", FoldCase: false, File: "( )"},
+			pb.Query{Line: "abc", FoldCase: false, File: "( )"},
 		},
 		{
 			"a file:b c",
-			client.Query{Line: "a c", FoldCase: true, File: "b"},
+			pb.Query{Line: "a c", FoldCase: true, File: "b"},
 		},
 		{
 			"a file:((abc()())()) c",
-			client.Query{Line: "a c", FoldCase: true, File: "((abc()())())"},
+			pb.Query{Line: "a c", FoldCase: true, File: "((abc()())())"},
 		},
 		{
 			"(  () (   ",
-			client.Query{Line: "(  () (", FoldCase: true},
+			pb.Query{Line: "(  () (", FoldCase: true},
 		},
 		{
 			`a file:\(`,
-			client.Query{Line: "a", File: `\(`, FoldCase: true},
+			pb.Query{Line: "a", File: `\(`, FoldCase: true},
 		},
 		{
 			`a file:(\()`,
-			client.Query{Line: "a", File: `(\()`, FoldCase: true},
+			pb.Query{Line: "a", File: `(\()`, FoldCase: true},
 		},
 		{
 			`(`,
-			client.Query{Line: "(", FoldCase: true},
+			pb.Query{Line: "(", FoldCase: true},
 		},
 		{
 			`(file:)`,
-			client.Query{Line: "(file:)", FoldCase: true},
+			pb.Query{Line: "(file:)", FoldCase: true},
 		},
 		{
 			`re tags:kind:function`,
-			client.Query{Line: "re", FoldCase: true, Tags: "kind:function"},
+			pb.Query{Line: "re", FoldCase: true, Tags: "kind:function"},
 		},
 		{
 			`-file:Godep re`,
-			client.Query{Line: "re", Not: Not("Godep", "", ""), FoldCase: true},
+			pb.Query{Line: "re", NotFile: "Godep", FoldCase: true},
 		},
 		{
 			`-file:. -repo:Godep re`,
-			client.Query{Line: "re", Not: Not(".", "Godep", ""), FoldCase: true},
+			pb.Query{Line: "re", NotFile: ".", NotRepo: "Godep", FoldCase: true},
 		},
 		{
 			`-tags:kind:class re`,
-			client.Query{Line: "re", Not: Not("", "", "kind:class"), FoldCase: true},
+			pb.Query{Line: "re", NotTags: "kind:class", FoldCase: true},
 		},
 		{
 			`case:foo:`,
-			client.Query{Line: "foo:", FoldCase: false},
+			pb.Query{Line: "foo:", FoldCase: false},
 		},
 		{
 			`lit:.`,
-			client.Query{Line: `\.`, FoldCase: false},
+			pb.Query{Line: `\.`, FoldCase: false},
 		},
 	}
 

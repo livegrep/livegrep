@@ -20,8 +20,9 @@ name = "go_default_library",
     "transaction.go",
   ],
   deps = [
+    "@org_golang_x_net//:context",
+
     "//vendor/github.com/golang/protobuf/proto:go_default_library",
-    "//vendor/golang.org/x/net/context:go_default_library",
     "//vendor/google.golang.org/appengine/internal/base:go_default_library",
     "//vendor/google.golang.org/appengine/internal/datastore:go_default_library",
     "//vendor/google.golang.org/appengine/internal/log:go_default_library",
@@ -29,5 +30,3 @@ name = "go_default_library",
   ],
   visibility = ["//visibility:public"],
 )
-
-
