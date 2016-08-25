@@ -3,6 +3,7 @@ package test
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -16,8 +17,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/livegrep/livegrep/client"
 	"gopkg.in/check.v1"
+
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
 const LineLimit = 1024
@@ -30,7 +32,7 @@ var patterns = flag.String("test.patterns", "patterns", "File containing pattern
 type IntegrationSuite struct {
 	config   *os.File
 	index    *os.File
-	client   client.Client
+	client   *TestClient
 	patterns []string
 }
 
@@ -58,7 +60,7 @@ func (i *IntegrationSuite) loadPatterns() error {
 
 func (i *IntegrationSuite) SetUpSuite(c *check.C) {
 	if *repo == "" {
-		c.Skip("No test.root specified.")
+		c.Skip("No test.repo specified.")
 		return
 	}
 
@@ -118,14 +120,10 @@ func (i *IntegrationSuite) TearDownSuite(*check.C) {
 }
 
 func (i *IntegrationSuite) TestBasic(c *check.C) {
-	search, err := i.client.Query(&client.Query{Line: "."})
-	if err != nil {
-		c.Fatalf("Query: %s", err)
-	}
-	for _ = range search.Results() {
-	}
-	stats, err := search.Close()
-	c.Check(stats, check.Not(check.IsNil))
+	search, err := i.client.Search(
+		context.Background(),
+		&pb.Query{Line: "."})
+	c.Check(search, check.Not(check.IsNil))
 	c.Check(err, check.IsNil)
 }
 
@@ -258,14 +256,15 @@ func (i *IntegrationSuite) crosscheck(c *check.C, regex string, casefold bool) {
 	}
 
 	var livegrepMatches []Match
-	search, err := i.client.Query(&client.Query{Line: regex, FoldCase: casefold})
+	search, err := i.client.Search(
+		context.Background(),
+		&pb.Query{Line: regex, FoldCase: casefold})
 	if err != nil {
 		c.Fatalf("Query: %s", err)
 	}
-	for m := range search.Results() {
-		livegrepMatches = append(livegrepMatches, Match{m.Path, m.LineNumber})
+	for _, m := range search.Results {
+		livegrepMatches = append(livegrepMatches, Match{m.Path, int(m.LineNumber)})
 	}
-	search.Close()
 
 	sort.Sort(SortMatches(gitMatches))
 	sort.Sort(SortMatches(livegrepMatches))
