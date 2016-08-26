@@ -1,9 +1,12 @@
 cc_test(
     name = "codesearch_test",
-    srcs = [ "codesearch_test.cc" ],
+    srcs = [
+      "codesearch_test.cc",
+      "main.cc",
+    ],
     deps = [
       "//src:codesearch",
-      "@com_google_gtest//:main",
+      "@gtest//:gtest",
     ],
     defines = [
         "GTEST_HAS_TR1_TUPLE",

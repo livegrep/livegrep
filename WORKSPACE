@@ -1,13 +1,13 @@
 workspace(name = "com_github_livegrep_livegrep")
 
-load("//tools/build_defs:externals.bzl",
-     "new_patched_http_archive",
-)
-
 git_repository(
   name = "org_pubref_rules_protobuf",
   remote = "https://github.com/pubref/rules_protobuf",
-  commit = "4951c882fbb7ba9662862c107c79fb9f4e910804",
+  commit = "5f922b7f34cc59cf48678a35ede1574e11a14577",
+)
+
+load("//tools/build_defs:externals.bzl",
+     "new_patched_http_archive",
 )
 
 new_patched_http_archive(
@@ -24,14 +24,6 @@ git_repository(
   name = "com_googlesource_code_re2",
   remote = "git://github.com/google/re2",
   commit = "ec8dfdfa39233663779f01935124ecc36e840a03",
-)
-
-new_http_archive(
-  name = "com_google_gtest",
-  url = "https://googletest.googlecode.com/files/gtest-1.7.0.zip",
-  sha256 = "247ca18dd83f53deb1328be17e4b1be31514cedfc1e3424f672bf11fd7e0d60d",
-  build_file = "//third_party:BUILD.gtest",
-  strip_prefix = "gtest-1.7.0",
 )
 
 git_repository(
@@ -78,9 +70,6 @@ git_repository(
     remote = "https://github.com/bazelbuild/rules_go.git",
     commit = "ae8ea32be1af991eef77d6347591dc8ba56c40a2",
 )
-load("@io_bazel_rules_go//go:def.bzl", "go_repositories")
-
-go_repositories()
 
 load("//tools/build_defs:libgit2.bzl",
      "new_libgit2_archive",
