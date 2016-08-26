@@ -18,7 +18,17 @@ using grpc::StatusCode;
 
 using std::string;
 
+string trace_id_from_request(ServerContext *ctx) {
+    auto it = ctx->client_metadata().find("request-id");
+    if (it == ctx->client_metadata().end())
+        return string("");
+    return string(it->second.data(), it->second.size());
+}
+
 Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response) {
+    scoped_trace_id trace(trace_id_from_request(context));
+    log("Info()");
+
     response->set_name(cs_->name());
     std::vector<indexed_tree> trees = cs_->trees();
     for (auto it = trees.begin(); it != trees.end(); ++it) {
@@ -111,17 +121,36 @@ private:
 
 extern long timeval_ms(struct timeval tv);
 
+static std::string pat(const std::unique_ptr<RE2> &p) {
+    if (p.get() == 0)
+        return "";
+    return p->pattern();
+}
+
 Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::CodeSearchResult* response) {
     code_searcher::search_thread search(cs_);
     WidthWalker width;
 
-    /* todo: trace ID */
-    /* todo: log request */
+    scoped_trace_id trace(trace_id_from_request(context));
+
     query q;
     Status st;
     st = parse_query(&q, request, response);
     if (!st.ok())
         return st;
+
+    q.trace_id = current_trace_id();
+
+    log(q.trace_id,
+        "processing query line='%s' file='%s' tree='%s' tags='%s' "
+        "not_file='%s' not_tree='%s' not_tags='%s'",
+        pat(q.line_pat).c_str(),
+        pat(q.file_pat).c_str(),
+        pat(q.tree_pat).c_str(),
+        pat(q.tags_pat).c_str(),
+        pat(q.negate.file_pat).c_str(),
+        pat(q.negate.tree_pat).c_str(),
+        pat(q.negate.tags_pat).c_str());
 
     if (q.line_pat->ProgramSize() > kMaxProgramSize) {
         log("program too large size=%d", q.line_pat->ProgramSize());

@@ -120,7 +120,7 @@ protected:
     tag_searcher* ts_;
 };
 
-std::string pat(const std::unique_ptr<RE2> &p) {
+static std::string pat(const std::unique_ptr<RE2> &p) {
     if (p.get() == 0)
         return "";
     return p->pattern();

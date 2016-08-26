@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"golang.org/x/net/context"
 
@@ -87,7 +88,14 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	search, err = backend.Codesearch.Search(ctx, q, grpc.FailFast(false))
+	if id, ok := reqid.FromContext(ctx); ok {
+		ctx = metadata.NewContext(ctx, metadata.Pairs("Request-Id", string(id)))
+	}
+
+	search, err = backend.Codesearch.Search(
+		ctx, q,
+		grpc.FailFast(false),
+	)
 	if err != nil {
 		log.Printf(ctx, "error talking to backend err=%s", err)
 		return nil, err
