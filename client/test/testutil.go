@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"time"
 
 	"google.golang.org/grpc"
 
@@ -34,16 +33,6 @@ func (c *TestClient) Close() {
 const Codesearch = "../../bazel-bin/src/tools/codesearch"
 const Port = 9812
 
-func (c *TestClient) waitStartup() error {
-	for {
-		_, e := c.Info(context.Background(), &pb.InfoRequest{})
-		if e == nil {
-			return nil
-		}
-		time.Sleep(time.Second)
-	}
-}
-
 func NewClient(args ...string) (*TestClient, error) {
 	addr := fmt.Sprintf("localhost:%d", Port)
 	args = append([]string{"-grpc", addr},
@@ -61,16 +50,13 @@ func NewClient(args ...string) (*TestClient, error) {
 		cl.wait <- cl.cmd.Wait()
 	}()
 
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		cl.Close()
 		return nil, err
 	}
 
 	cl.client = pb.NewCodeSearchClient(conn)
-	if e := cl.waitStartup(); e != nil {
-		return nil, e
-	}
 
 	return cl, nil
 }
