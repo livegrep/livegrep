@@ -28,33 +28,31 @@ type Backend struct {
 	Addr       string
 	I          *I
 	Codesearch pb.CodeSearchClient
-	Ready      chan struct{}
+}
 
-	client *grpc.ClientConn
+func NewBackend(id string, addr string) (*Backend, error) {
+	client, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	bk := &Backend{
+		Id:         id,
+		I:          &I{Name: id},
+		Codesearch: pb.NewCodeSearchClient(client),
+	}
+	return bk, nil
 }
 
 func (bk *Backend) Start() {
 	if bk.I == nil {
 		bk.I = &I{Name: bk.Id}
 	}
-	bk.Ready = make(chan struct{})
 	go bk.poll()
 }
 
 func (bk *Backend) poll() {
 	for {
-		if bk.Codesearch == nil {
-			conn, err := grpc.Dial(bk.Addr, grpc.WithInsecure())
-			if err != nil {
-				log.Printf("Dial: %s: %v", bk.Addr, err)
-				time.Sleep(30 * time.Second)
-				continue
-			}
-			bk.Codesearch = pb.NewCodeSearchClient(conn)
-			close(bk.Ready)
-
-		}
-		info, e := bk.Codesearch.Info(context.Background(), &pb.InfoRequest{})
+		info, e := bk.Codesearch.Info(context.Background(), &pb.InfoRequest{}, grpc.FailFast(false))
 		if e == nil {
 			bk.refresh(info)
 		} else {

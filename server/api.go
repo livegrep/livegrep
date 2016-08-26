@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
+
+	"google.golang.org/grpc"
 
 	"golang.org/x/net/context"
 
@@ -81,13 +84,10 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 	var search *pb.CodeSearchResult
 	var err error
 
-	select {
-	case <-backend.Ready:
-	case <-ctx.Done():
-		return nil, ErrTimedOut
-	}
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
-	search, err = backend.Codesearch.Search(ctx, q)
+	search, err = backend.Codesearch.Search(ctx, q, grpc.FailFast(false))
 	if err != nil {
 		log.Printf(ctx, "error talking to backend err=%s", err)
 		return nil, err

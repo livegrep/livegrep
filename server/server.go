@@ -181,9 +181,9 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	for _, bk := range srv.config.Backends {
-		be := &Backend{
-			Id:   bk.Id,
-			Addr: bk.Addr,
+		be, e := NewBackend(bk.Id, bk.Addr)
+		if e != nil {
+			return nil, e
 		}
 		be.Start()
 		srv.bk[be.Id] = be
