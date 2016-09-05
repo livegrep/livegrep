@@ -49,6 +49,7 @@ message ServerInfo {
         map<string, string> metadata = 3;
     }
     repeated Tree trees = 2;
+    bool has_tags = 3;
 }
 
 message CodeSearchResult {

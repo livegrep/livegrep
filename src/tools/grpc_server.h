@@ -4,10 +4,12 @@
 #include "src/proto/livegrep.grpc.pb.h"
 
 class code_searcher;
+class tag_searcher;
 
 class CodeSearchImpl final : public CodeSearch::Service {
  public:
-    explicit CodeSearchImpl(code_searcher *cs) : cs_(cs) {
+    explicit CodeSearchImpl(code_searcher *cs, tag_searcher *ts)
+        : cs_(cs), ts_(ts) {
     }
 
     virtual grpc::Status Info(grpc::ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response);
@@ -15,6 +17,7 @@ class CodeSearchImpl final : public CodeSearch::Service {
 
  private:
     code_searcher *cs_;
+    tag_searcher *ts_;
 };
 
 #endif /* CODESEARCH_GRPC_SERVER_H */

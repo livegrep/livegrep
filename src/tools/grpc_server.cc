@@ -55,6 +55,7 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
             }
         }
     }
+    response->set_has_tags(ts_ != nullptr);
     return Status::OK;
 }
 
@@ -87,9 +88,13 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
     if (status.ok())
         status = extract_regex(&q->tree_pat, "repo", request->repo(), opts);
     if (status.ok())
+        status = extract_regex(&q->tags_pat, "tags", request->tags(), opts);
+    if (status.ok())
         status = extract_regex(&q->negate.file_pat, "-file", request->not_file(), opts);
     if (status.ok())
         status = extract_regex(&q->negate.tree_pat, "-repo", request->not_repo(), opts);
+    if (status.ok())
+        status = extract_regex(&q->negate.tags_pat, "-tags", request->not_tags(), opts);
     return Status::OK;
 }
 

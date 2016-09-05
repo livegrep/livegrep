@@ -375,8 +375,11 @@ void listen(code_searcher *search, const string& path, const match_func& match) 
     }
 }
 
-void listen_grpc(code_searcher *search, const string& addr) {
-    CodeSearchImpl service(search);
+void listen_grpc(code_searcher *search, tag_searcher *tags, const string& addr) {
+    if (tags->cs() == nullptr)
+        tags = nullptr;
+
+    CodeSearchImpl service(search, tags);
 
     ServerBuilder builder;
     builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
@@ -404,7 +407,7 @@ int main(int argc, char **argv) {
     std::vector<std::thread> listeners;
     if (FLAGS_grpc.size()) {
         listeners.emplace_back(
-            std::thread(boost::bind(&listen_grpc, &search, FLAGS_grpc)));
+            std::thread(boost::bind(&listen_grpc, &search, &tags, FLAGS_grpc)));
     }
     if (FLAGS_listen.size()) {
         codesearch_matcher matcher;
