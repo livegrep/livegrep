@@ -33,7 +33,6 @@
 
 #include "re2/re2.h"
 #include "gflags/gflags.h"
-#include <openssl/sha.h>
 
 #include "utf8.h"
 
