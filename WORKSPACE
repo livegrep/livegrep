@@ -22,10 +22,10 @@ git_repository(
 
 new_http_archive(
   name = "gtest",
-  url = "https://googletest.googlecode.com/files/gtest-1.7.0.zip",
-  sha256 = "247ca18dd83f53deb1328be17e4b1be31514cedfc1e3424f672bf11fd7e0d60d",
+  url = "https://github.com/google/googletest/archive/release-1.7.0.tar.gz",
+  sha256 = "f73a6546fdf9fce9ff93a5015e0333a8af3062a152a9ad6bcb772c96687016cc",
   build_file = "//third_party:BUILD.gtest",
-  strip_prefix = "gtest-1.7.0",
+  strip_prefix = "googletest-release-1.7.0",
 )
 
 git_repository(
