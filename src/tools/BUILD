@@ -1,20 +1,33 @@
-cc_binary(
-  name = "codesearch",
+cc_library(
+  name = "grpc_server",
   srcs = [
-    "codesearch.cc",
     "grpc_server.cc",
     "grpc_server.h",
-    "transport.cc",
-    "transport.h",
     "limits.h",
   ],
   deps = [
     "//src:codesearch",
     "//src/proto:cc_proto",
+    "@com_github_grpc_grpc//:grpc",
+  ],
+  visibility = [ "//visibility:public" ],
+)
+
+cc_binary(
+  name = "codesearch",
+  srcs = [
+    "codesearch.cc",
+    "transport.cc",
+    "transport.h",
+    "limits.h",
+  ],
+  deps = [
+    ":grpc_server",
+    "//src:codesearch",
+    "//src/proto:cc_proto",
 
     "@boost//:bind",
     "@com_github_libgit2//:libgit2",
-    "@com_github_grpc_grpc//:grpc",
   ],
   copts = [
     "-Wno-deprecated-declarations",

@@ -6,6 +6,7 @@ cc_test(
     ],
     deps = [
       "//src:codesearch",
+      "//src/tools:grpc_server",
       "@gtest//:gtest",
     ],
     defines = [

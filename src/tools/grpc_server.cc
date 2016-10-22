@@ -1,4 +1,5 @@
 #include "src/lib/debug.h"
+#include "src/lib/timer.h"
 
 #include "src/codesearch.h"
 #include "src/tagsearch.h"
@@ -126,8 +127,6 @@ public:
 private:
     CodeSearchResult* response_;
 };
-
-extern long timeval_ms(struct timeval tv);
 
 static std::string pat(const std::unique_ptr<RE2> &p) {
     if (p.get() == 0)
