@@ -1,6 +1,7 @@
 #include "src/lib/debug.h"
 
 #include "src/codesearch.h"
+#include "src/tagsearch.h"
 #include "src/re_width.h"
 
 #include "src/tools/limits.h"
@@ -11,6 +12,8 @@
 #include <string>
 #include <algorithm>
 #include <functional>
+
+#include <boost/bind.hpp>
 
 using grpc::ServerContext;
 using grpc::Status;
@@ -133,7 +136,6 @@ static std::string pat(const std::unique_ptr<RE2> &p) {
 }
 
 Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::CodeSearchResult* response) {
-    code_searcher::search_thread search(cs_);
     WidthWalker width;
 
     scoped_trace_id trace(trace_id_from_request(context));
@@ -169,7 +171,33 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
     }
 
     match_stats stats;
-    search.match(q, add_match(response), &stats);
+    if (q.tags_pat == NULL) {
+        code_searcher::search_thread search(cs_);
+        search.match(q, add_match(response), &stats);
+    } else {
+        if (ts_ == NULL)
+            return Status(StatusCode::FAILED_PRECONDITION, "No tags file available.");
+
+        code_searcher::search_thread search(ts_->cs());
+
+        // the negation constraints will be checked when we transform the match
+        // (unfortunately, we can't construct a line query that checks these)
+        query constraints;
+        constraints.negate.file_pat.swap(q.negate.file_pat);
+        constraints.negate.tags_pat.swap(q.negate.tags_pat);
+
+        // modify the line pattern to match the constraints that we can handle now
+        std::string regex = tag_searcher::create_tag_line_regex_from_query(&q);
+        q.line_pat.reset(new RE2(regex, q.line_pat->options()));
+        q.file_pat.reset();
+        q.tags_pat.reset();
+
+        search.match(q,
+                     add_match(response),
+                     boost::bind(&tag_searcher::transform, ts_, &constraints, _1),
+                     &stats);
+    }
+
     auto out_stats = response->mutable_stats();
     out_stats->set_re2_time(timeval_ms(stats.re2_time));
     out_stats->set_git_time(timeval_ms(stats.git_time));
