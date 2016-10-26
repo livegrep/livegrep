@@ -28,15 +28,16 @@ var (
 		display: "${dir}/livegrep.idx",
 		fn:      func() string { return path.Join(*flagRepoDir, "livegrep.idx") },
 	}
-	flagRevision = flag.String("revision", "HEAD", "git revision to index")
-	flagRevparse = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
-	flagName     = flag.String("name", "livegrep index", "The name to be stored in the index file")
-	flagForks    = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
-	flagHTTP     = flag.Bool("http", false, "clone repositories over HTTPS instead ofssh")
-	flagDepth    = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
-	flagRepos    = stringList{}
-	flagOrgs     = stringList{}
-	flagUsers    = stringList{}
+	flagRevision    = flag.String("revision", "HEAD", "git revision to index")
+	flagRevparse    = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
+	flagName        = flag.String("name", "livegrep index", "The name to be stored in the index file")
+	flagForks       = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
+	flagHTTP        = flag.Bool("http", false, "clone repositories over HTTPS instead ofssh")
+	flagDepth       = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
+	flagSkipMissing = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
+	flagRepos       = stringList{}
+	flagOrgs        = stringList{}
+	flagUsers       = stringList{}
 )
 
 func init() {
@@ -445,6 +446,21 @@ func buildConfig(name string,
 	}
 
 	for _, r := range repos {
+		if *flagSkipMissing {
+			cmd := exec.Command("git",
+				"--git-dir",
+				path.Join(dir, *r.FullName),
+				"rev-parse",
+				"--verify",
+				revision,
+			)
+			if e := cmd.Run(); e != nil {
+				log.Printf("Skipping missing revision repo=%s rev=%s",
+					*r.FullName, revision,
+				)
+				continue
+			}
+		}
 		cfg.Repositories = append(cfg.Repositories, RepoConfig{
 			Path:      path.Join(dir, *r.FullName),
 			Name:      *r.FullName,
