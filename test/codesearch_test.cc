@@ -9,7 +9,7 @@ class codesearch_test : public ::testing::Test {
 protected:
     codesearch_test() {
         cs_.set_alloc(make_mem_allocator());
-        tree_ = cs_.open_tree("REPO", 0, "REV0");
+        tree_ = cs_.open_tree("repo", 0, "REV0");
     }
 
     code_searcher cs_;
@@ -158,4 +158,36 @@ TEST_F(codesearch_test, RestrictFiles) {
     ASSERT_EQ(2, matches.results_size());
     EXPECT_EQ("/file2", matches.results(0).path());
     EXPECT_EQ("/file2", matches.results(1).path());
+}
+
+
+TEST_F(codesearch_test, Tags) {
+    cs_.index_file(tree_,
+                   "file.c",
+                   "void do_the_thing(void) {\n"
+                   "}\n"
+                   "do_the_thing()\n");
+    cs_.finalize();
+
+    code_searcher tags;
+    tags.set_alloc(make_mem_allocator());
+    const indexed_tree *tag_tree = cs_.open_tree("", 0, "HEAD");
+    tags.index_file(tag_tree,
+                    "tags",
+                    "do_the_thing\trepo/file.c\t1;\"\tfunction\n");
+    tags.finalize();
+
+    CodeSearchImpl srv(&cs_, &tags);
+    Query request;
+    CodeSearchResult matches;
+    grpc::ServerContext ctx;
+    grpc::Status st;
+
+    request.set_line("do_the_thing");
+    request.set_tags("func");
+
+    st = srv.Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(1, matches.results_size());
 }

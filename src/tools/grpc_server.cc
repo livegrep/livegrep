@@ -22,6 +22,18 @@ using grpc::StatusCode;
 
 using std::string;
 
+CodeSearchImpl::CodeSearchImpl(code_searcher *cs, code_searcher *tagdata)
+    : cs_(cs), tagdata_(tagdata), tagmatch_(nullptr) {
+    if (tagdata != nullptr) {
+        tagmatch_ = new tag_searcher;
+        tagmatch_->cache_indexed_files(cs_);
+    }
+}
+
+CodeSearchImpl::~CodeSearchImpl() {
+    delete tagmatch_;
+}
+
 string trace_id_from_request(ServerContext *ctx) {
     auto it = ctx->client_metadata().find("request-id");
     if (it == ctx->client_metadata().end())
@@ -59,7 +71,7 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
             }
         }
     }
-    response->set_has_tags(ts_ != nullptr);
+    response->set_has_tags(tagdata_ != nullptr);
     return Status::OK;
 }
 
@@ -174,10 +186,10 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         code_searcher::search_thread search(cs_);
         search.match(q, add_match(response), &stats);
     } else {
-        if (ts_ == NULL)
+        if (tagdata_ == NULL)
             return Status(StatusCode::FAILED_PRECONDITION, "No tags file available.");
 
-        code_searcher::search_thread search(ts_->cs());
+        code_searcher::search_thread search(tagdata_);
 
         // the negation constraints will be checked when we transform the match
         // (unfortunately, we can't construct a line query that checks these)
@@ -193,7 +205,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
 
         search.match(q,
                      add_match(response),
-                     boost::bind(&tag_searcher::transform, ts_, &constraints, _1),
+                     boost::bind(&tag_searcher::transform, tagmatch_, &constraints, _1),
                      &stats);
     }
 

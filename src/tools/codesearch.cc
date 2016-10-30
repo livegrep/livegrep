@@ -92,7 +92,9 @@ struct codesearch_matcher {
 };
 
 struct tagsearch_matcher {
-    tagsearch_matcher(tag_searcher* ts) : ts_(ts) {}
+    tagsearch_matcher(code_searcher *cs, code_searcher *tagdata) : tagdata_(tagdata) {
+        ts_.cache_indexed_files(cs);
+    }
 
     match_stats operator()(code_searcher::search_thread *s, query *q, codesearch_transport *tx) {
         match_stats stats;
@@ -111,13 +113,14 @@ struct tagsearch_matcher {
         sem_wait(&interact_sem);
         s->match(*q,
                  print_match(tx),
-                 boost::bind(&tag_searcher::transform, ts_, &constraints, _1),
+                 boost::bind(&tag_searcher::transform, &ts_, &constraints, _1),
                  &stats);
         sem_post(&interact_sem);
         return stats;
     }
 protected:
-    tag_searcher* ts_;
+    code_searcher *tagdata_;
+    tag_searcher ts_;
 };
 
 static std::string pat(const std::unique_ptr<RE2> &p) {
@@ -222,7 +225,7 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
 }
 
 void initialize_search(code_searcher *search,
-                       tag_searcher *tags,
+                       code_searcher *tags,
                        int argc, char **argv) {
     if (FLAGS_load_index.size() == 0) {
         if (FLAGS_dump_index.size())
@@ -248,7 +251,6 @@ void initialize_search(code_searcher *search,
     }
     if (FLAGS_load_tags.size() != 0) {
         tags->load_index(FLAGS_load_tags);
-        tags->cache_indexed_files(search);
     }
     if (FLAGS_dump_index.size() && FLAGS_load_index.size())
         search->dump_index(FLAGS_dump_index);
@@ -375,10 +377,7 @@ void listen(code_searcher *search, const string& path, const match_func& match) 
     }
 }
 
-void listen_grpc(code_searcher *search, tag_searcher *tags, const string& addr) {
-    if (tags->cs() == nullptr)
-        tags = nullptr;
-
+void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr) {
     CodeSearchImpl service(search, tags);
 
     ServerBuilder builder;
@@ -395,7 +394,7 @@ int main(int argc, char **argv) {
     prctl(PR_SET_PDEATHSIG, SIGINT);
 
     code_searcher search;
-    tag_searcher tags;
+    code_searcher tags;
 
     signal(SIGPIPE, SIG_IGN);
 
@@ -415,9 +414,9 @@ int main(int argc, char **argv) {
             std::thread(boost::bind(&listen, &search, FLAGS_listen, matcher)));
     }
     if (FLAGS_listen_tags.size()) {
-        tagsearch_matcher matcher(&tags);
+        tagsearch_matcher matcher(&search, &tags);
         listeners.emplace_back(
-            std::thread(boost::bind(&listen, tags.cs(), FLAGS_listen_tags, matcher)));
+            std::thread(boost::bind(&listen, &tags, FLAGS_listen_tags, matcher)));
     }
     for (auto& listener : listeners) {
         listener.join();
