@@ -3,7 +3,7 @@ workspace(name = "com_github_livegrep_livegrep")
 git_repository(
   name = "org_pubref_rules_protobuf",
   remote = "https://github.com/pubref/rules_protobuf",
-  commit = "5f922b7f34cc59cf48678a35ede1574e11a14577",
+  commit = "7d12b7e3f1d40086a2d28ce900cd7980ab8f2758",
 )
 
 load("//tools/build_defs:externals.bzl",
@@ -68,8 +68,17 @@ new_patched_http_archive(
 git_repository(
     name = "io_bazel_rules_go",
     remote = "https://github.com/bazelbuild/rules_go.git",
-    commit = "ae8ea32be1af991eef77d6347591dc8ba56c40a2",
+    commit = "3b13b2dba81e09ec213ccbd4da56ad332cb5d3dc",
 )
+
+load("@io_bazel_rules_go//go:def.bzl",
+     "go_repositories", "new_go_repository")
+
+go_repositories()
+new_go_repository(
+  name = "org_golang_x_net",
+  importpath = "golang.org/x/net",
+  commit = "73058b0420c0c24a7f9ec3eb6f624ac85d2ed035")
 
 load("//tools/build_defs:libgit2.bzl",
      "new_libgit2_archive",
@@ -83,11 +92,11 @@ new_libgit2_archive(
   build_file = "//third_party:BUILD.libgit2",
 )
 
-load("@org_pubref_rules_protobuf//bzl:rules.bzl", "protobuf_repositories")
-protobuf_repositories(
-  with_go = True,
-  with_cpp = True,
-)
+load("@org_pubref_rules_protobuf//go:rules.bzl", "go_proto_repositories")
+load("@org_pubref_rules_protobuf//cpp:rules.bzl", "cpp_proto_repositories")
+
+go_proto_repositories();
+cpp_proto_repositories();
 
 git_repository(
     name = "io_bazel_buildifier",
