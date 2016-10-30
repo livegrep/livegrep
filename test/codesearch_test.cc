@@ -112,7 +112,7 @@ TEST_F(codesearch_test, LongLines) {
 
 
 TEST_F(codesearch_test, RestrictFiles) {
-    // tree_ is "REPO"
+    // tree_ is "repo"
     cs_.index_file(tree_, "/file1", "contents");
     cs_.index_file(tree_, "/file2", "contents");
     // other is "OTHER"
@@ -138,15 +138,15 @@ TEST_F(codesearch_test, RestrictFiles) {
     EXPECT_EQ("/file1", matches.results(1).path());
 
     request.clear_file();
-    request.set_repo("REPO");
+    request.set_repo("repo");
 
     matches.Clear();
     st = srv.Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
 
     ASSERT_EQ(2, matches.results_size());
-    EXPECT_EQ("REPO", matches.results(0).tree());
-    EXPECT_EQ("REPO", matches.results(1).tree());
+    EXPECT_EQ("repo", matches.results(0).tree());
+    EXPECT_EQ("repo", matches.results(1).tree());
 
     request.clear_repo();
     request.set_not_file("file1");
