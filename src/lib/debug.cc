@@ -90,7 +90,7 @@ void cs_debug(const char *file, int lno, const char *fmt, ...) {
     va_start(ap, fmt);
 
     string buf;
-    if (trace_id->empty())
+    if (current_trace_id().empty())
         buf = strprintf("[%s:%d] %s\n",
                         file, lno, vstrprintf(fmt, ap).c_str());
     else
@@ -133,11 +133,13 @@ void log(const std::string &trace, const char *fmt, ...) {
 void log(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    vlog(*trace_id, fmt, ap);
+    vlog(current_trace_id(), fmt, ap);
     va_end(ap);
 }
 
 std::string current_trace_id() {
+    if (trace_id.get() == nullptr)
+        trace_id.put(new std::string());
     return *trace_id.get();
 }
 
