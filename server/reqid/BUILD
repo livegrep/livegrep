@@ -11,7 +11,7 @@ name = "go_default_library",
     "reqid.go",
   ],
   deps = [
-    "@org_golang_x_net//:context",
+    "@org_golang_x_net//context:go_default_library",
   ],
   visibility = ["//visibility:public"],
 )

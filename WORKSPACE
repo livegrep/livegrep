@@ -78,7 +78,20 @@ go_repositories()
 new_go_repository(
   name = "org_golang_x_net",
   importpath = "golang.org/x/net",
-  commit = "73058b0420c0c24a7f9ec3eb6f624ac85d2ed035")
+  commit = "73058b0420c0c24a7f9ec3eb6f624ac85d2ed035",
+)
+
+new_go_repository(
+  name = "org_golang_google_appengine",
+  importpath = "google.golang.org/appengine/",
+  commit = "46239ca616842c00f41b8cbc6bbf2bd6ffbfcdad",
+)
+
+new_go_repository(
+  name = "org_golang_x_oauth2",
+  importpath = "golang.org/x/oauth2",
+  commit = "25b4fb1468cb89700c7c060cb99f30581a61f5e3",
+)
 
 load("//tools/build_defs:libgit2.bzl",
      "new_libgit2_archive",

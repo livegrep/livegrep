@@ -13,7 +13,7 @@ name = "go_default_library",
   deps = [
     "//src/proto:go_proto",
 
-    "@org_golang_x_net//:context",
+    "@org_golang_x_net//context:go_default_library",
     "@org_golang_google_grpc//:go_default_library",
   ],
   visibility = ["//visibility:public"],
