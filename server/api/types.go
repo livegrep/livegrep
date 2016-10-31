@@ -1,7 +1,5 @@
 package api
 
-import "github.com/livegrep/livegrep/client"
-
 type InnerError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -14,6 +12,26 @@ type ReplyError struct {
 
 // ReplySearch is returned to /api/v1/search/:backend
 type ReplySearch struct {
-	Info    *client.Stats    `json:"info"`
-	Results []*client.Result `json:"results"`
+	Info    *Stats    `json:"info"`
+	Results []*Result `json:"results"`
+}
+
+type Stats struct {
+	RE2Time     int64  `json:"re2_time"`
+	GitTime     int64  `json:"git_time"`
+	SortTime    int64  `json:"sort_time"`
+	IndexTime   int64  `json:"index_time"`
+	AnalyzeTime int64  `json:"analyze_time"`
+	ExitReason  string `json:"why"`
+}
+
+type Result struct {
+	Tree          string   `json:"tree"`
+	Version       string   `json:"version"`
+	Path          string   `json:"path"`
+	LineNumber    int      `json:"lno"`
+	ContextBefore []string `json:"context_before"`
+	ContextAfter  []string `json:"context_after"`
+	Bounds        [2]int   `json:"bounds"`
+	Line          string   `json:"line"`
 }

@@ -6,6 +6,7 @@
  * modify it under the terms listed in the COPYING file.
  ********************************************************************/
 #include "src/lib/debug.h"
+#include "src/lib/timer.h"
 
 #include "src/codesearch.h"
 #include "src/tools/transport.h"
@@ -254,10 +255,6 @@ json_parse_error parse_object(json_object *js, repo_spec *r) {
 }
 
 };
-
-long timeval_ms (struct timeval tv) {
-    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
-}
 
 codesearch_transport::codesearch_transport(FILE *in, FILE *out) : in_(in), out_(out) {
     assert(!setvbuf(in_,  NULL, _IOFBF, 4096*4));

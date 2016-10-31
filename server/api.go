@@ -5,13 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"golang.org/x/net/context"
 
-	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/server/api"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
+
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
 func replyJSON(ctx context.Context, w http.ResponseWriter, status int, obj interface{}) {
@@ -31,18 +36,18 @@ func writeError(ctx context.Context, w http.ResponseWriter, status int, code, me
 }
 
 func writeQueryError(ctx context.Context, w http.ResponseWriter, err error) {
-	if qe, ok := err.(client.QueryError); ok {
+	/*	if qe, ok := err.(client.QueryError); ok {
 		writeError(ctx, w, 400, "query_error", qe.Err)
-	} else {
-		writeError(ctx, w, 500, "internal_error",
-			fmt.Sprintf("Talking to backend: %s", err.Error()))
-	}
-	return
+	} else { */
+	writeError(ctx, w, 500, "internal_error",
+		fmt.Sprintf("Talking to backend: %s", err.Error()))
+	/*	}
+		return */
 }
 
-func extractQuery(ctx context.Context, r *http.Request) (client.Query, error) {
+func extractQuery(ctx context.Context, r *http.Request) (pb.Query, error) {
 	params := r.URL.Query()
-	var query client.Query
+	var query pb.Query
 	var err error
 	if q, ok := params["q"]; ok {
 		query, err = ParseQuery(q[0])
@@ -69,33 +74,55 @@ var (
 	ErrTimedOut = errors.New("timed out talking to backend")
 )
 
-func (s *server) doSearch(ctx context.Context, backend *Backend, q *client.Query) (*api.ReplySearch, error) {
-	var cl client.Client
-	var search client.Search
+func stringSlice(ss []string) []string {
+	if ss != nil {
+		return ss
+	}
+	return []string{}
+}
+
+func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearch, error) {
+	var search *pb.CodeSearchResult
 	var err error
 
-	select {
-	case cl = <-backend.Clients:
-	case <-ctx.Done():
-		return nil, ErrTimedOut
-	}
-	defer backend.CheckIn(cl)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
-	search, err = cl.Query(q)
+	if id, ok := reqid.FromContext(ctx); ok {
+		ctx = metadata.NewContext(ctx, metadata.Pairs("Request-Id", string(id)))
+	}
+
+	search, err = backend.Codesearch.Search(
+		ctx, q,
+		grpc.FailFast(false),
+	)
 	if err != nil {
 		log.Printf(ctx, "error talking to backend err=%s", err)
 		return nil, err
 	}
 
-	reply := &api.ReplySearch{Results: make([]*client.Result, 0)}
+	reply := &api.ReplySearch{Results: make([]*api.Result, 0)}
 
-	for r := range search.Results() {
-		reply.Results = append(reply.Results, r)
+	for _, r := range search.Results {
+		reply.Results = append(reply.Results, &api.Result{
+			Tree:          r.Tree,
+			Version:       r.Version,
+			Path:          r.Path,
+			LineNumber:    int(r.LineNumber),
+			ContextBefore: stringSlice(r.ContextBefore),
+			ContextAfter:  stringSlice(r.ContextAfter),
+			Bounds:        [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+			Line:          r.Line,
+		})
 	}
 
-	reply.Info, err = search.Close()
-	if err != nil {
-		return nil, err
+	reply.Info = &api.Stats{
+		RE2Time:     search.Stats.Re2Time,
+		GitTime:     search.Stats.GitTime,
+		SortTime:    search.Stats.SortTime,
+		IndexTime:   search.Stats.IndexTime,
+		AnalyzeTime: search.Stats.AnalyzeTime,
+		ExitReason:  search.Stats.ExitReason.String(),
 	}
 	return reply, nil
 }
@@ -139,9 +166,6 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		if err == ErrTimedOut {
 			break
 		}
-		if _, ok := err.(client.QueryError); ok {
-			break
-		}
 		log.Printf(ctx, "error querying try=%d err=%q", tries, err)
 	}
 
@@ -162,8 +186,8 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		e.AddField("query_file", q.File)
 		e.AddField("query_repo", q.Repo)
 		e.AddField("query_foldcase", q.FoldCase)
-		e.AddField("query_not_file", q.Not.File)
-		e.AddField("query_not_repo", q.Not.Repo)
+		e.AddField("query_not_file", q.NotFile)
+		e.AddField("query_not_repo", q.NotRepo)
 
 		e.AddField("result_count", len(reply.Results))
 		e.AddField("re2_time", reply.Info.RE2Time)

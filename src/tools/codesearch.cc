@@ -16,6 +16,8 @@
 #include "src/fs_indexer.h"
 
 #include "src/tools/transport.h"
+#include "src/tools/limits.h"
+#include "src/tools/grpc_server.h"
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -38,19 +40,23 @@
 
 #include <json-c/json.h>
 
+#include <grpc++/server.h>
+#include <grpc++/server_builder.h>
+
 DEFINE_int32(concurrency, 16, "Number of concurrent queries to allow.");
 DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 DEFINE_string(load_tags, "", "Load the index built from a tags file.");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_string(listen, "", "Listen on a socket for connections. example: -listen tcp://localhost:9999");
+DEFINE_string(grpc, "", "Listen for GRPC clients. example: -grpc localhost:9999");
 DEFINE_string(listen_tags, "", "Listen on a socket for connections to tag search. example: -listen_tags tcp://localhost:9998");
 
 using namespace std;
 using namespace re2;
 
-const int kMaxProgramSize = 4000;
-const int kMaxWidth       = 200;
+using grpc::Server;
+using grpc::ServerBuilder;
 
 sem_t interact_sem;
 
@@ -86,7 +92,9 @@ struct codesearch_matcher {
 };
 
 struct tagsearch_matcher {
-    tagsearch_matcher(tag_searcher* ts) : ts_(ts) {}
+    tagsearch_matcher(code_searcher *cs, code_searcher *tagdata) : tagdata_(tagdata) {
+        ts_.cache_indexed_files(cs);
+    }
 
     match_stats operator()(code_searcher::search_thread *s, query *q, codesearch_transport *tx) {
         match_stats stats;
@@ -105,16 +113,17 @@ struct tagsearch_matcher {
         sem_wait(&interact_sem);
         s->match(*q,
                  print_match(tx),
-                 boost::bind(&tag_searcher::transform, ts_, &constraints, _1),
+                 boost::bind(&tag_searcher::transform, &ts_, &constraints, _1),
                  &stats);
         sem_post(&interact_sem);
         return stats;
     }
 protected:
-    tag_searcher* ts_;
+    code_searcher *tagdata_;
+    tag_searcher ts_;
 };
 
-std::string pat(const std::unique_ptr<RE2> &p) {
+static std::string pat(const std::unique_ptr<RE2> &p) {
     if (p.get() == 0)
         return "";
     return p->pattern();
@@ -216,7 +225,7 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
 }
 
 void initialize_search(code_searcher *search,
-                       tag_searcher *tags,
+                       code_searcher *tags,
                        int argc, char **argv) {
     if (FLAGS_load_index.size() == 0) {
         if (FLAGS_dump_index.size())
@@ -242,7 +251,6 @@ void initialize_search(code_searcher *search,
     }
     if (FLAGS_load_tags.size() != 0) {
         tags->load_index(FLAGS_load_tags);
-        tags->cache_indexed_files(search);
     }
     if (FLAGS_dump_index.size() && FLAGS_load_index.size())
         search->dump_index(FLAGS_dump_index);
@@ -369,6 +377,16 @@ void listen(code_searcher *search, const string& path, const match_func& match) 
     }
 }
 
+void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr) {
+    CodeSearchImpl service(search, tags);
+
+    ServerBuilder builder;
+    builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
+    builder.RegisterService(&service);
+    std::unique_ptr<Server> server(builder.BuildAndStart());
+    server->Wait();
+}
+
 int main(int argc, char **argv) {
     gflags::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -376,7 +394,7 @@ int main(int argc, char **argv) {
     prctl(PR_SET_PDEATHSIG, SIGINT);
 
     code_searcher search;
-    tag_searcher tags;
+    code_searcher tags;
 
     signal(SIGPIPE, SIG_IGN);
 
@@ -386,15 +404,19 @@ int main(int argc, char **argv) {
         die_errno("sem_init");
 
     std::vector<std::thread> listeners;
+    if (FLAGS_grpc.size()) {
+        listeners.emplace_back(
+            std::thread(boost::bind(&listen_grpc, &search, &tags, FLAGS_grpc)));
+    }
     if (FLAGS_listen.size()) {
         codesearch_matcher matcher;
         listeners.emplace_back(
             std::thread(boost::bind(&listen, &search, FLAGS_listen, matcher)));
     }
     if (FLAGS_listen_tags.size()) {
-        tagsearch_matcher matcher(&tags);
+        tagsearch_matcher matcher(&search, &tags);
         listeners.emplace_back(
-            std::thread(boost::bind(&listen, tags.cs(), FLAGS_listen_tags, matcher)));
+            std::thread(boost::bind(&listen, &tags, FLAGS_listen_tags, matcher)));
     }
     for (auto& listener : listeners) {
         listener.join();

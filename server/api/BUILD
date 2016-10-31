@@ -11,9 +11,6 @@ name = "go_default_library",
     "types.go",
   ],
   deps = [
-    "//client:go_default_library",
   ],
   visibility = ["//visibility:public"],
 )
-
-

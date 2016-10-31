@@ -11,8 +11,10 @@
 #include "src/lib/debug.h"
 
 #include <utility>
+#include <boost/filesystem.hpp>
 
 using re2::RE2;
+using boost::filesystem::path;
 
 namespace {
 
@@ -40,48 +42,47 @@ std::string create_tag_line_regex(
     const std::string& file,
     const std::string& lno,
     const std::string& tags) {
-    // full regex match for a tag line created with ctags using format=2.
-    return std::string("^") + name + "\\t" + file + "\\t" + lno + "\\;\\\"\\t" + tags + "$";
+    // full regex match for a tag line created with
+    //  ctags --format=2 -n --fields=+K
+    return std::string("^") + name + "\t" + file + "\t" + lno + ";\"\t" + tags + "$";
 }
 
 };
-
-void tag_searcher::load_index(const string& path) {
-    cs_.load_index(path);
-}
 
 void tag_searcher::cache_indexed_files(code_searcher* cs) {
     file_alloc_ = cs->alloc_;
     for (auto it = cs->begin_files(); it != cs->end_files(); ++it) {
         auto file = *it;
-        auto key = repo_path_pair(file->tree->name, file->path);
-        path_to_file_map_.insert(std::make_pair(key, file));
+        auto key = path(file->tree->name) / path(file->path);
+        path_to_file_map_.insert(std::make_pair(key.string(), file));
     }
 }
 
 bool tag_searcher::transform(query *q, match_result *m) const {
     static const std::string regex = create_tag_line_regex("(.+)", "(.+)", "(\\d+)", "(.+)");
-    StringPiece name, path, tags;
-    if (!RE2::FullMatch(m->line, regex, &name, &path, &m->lno, &tags)) {
+    StringPiece name, tags_path, tags;
+    if (!RE2::FullMatch(m->line, regex, &name, &tags_path, &m->lno, &tags)) {
         log(q->trace_id, "unknown ctags format: %s\n", m->line.as_string().c_str());
         return false;
     }
 
     // check the negation constraints
     if (q->negate.file_pat &&
-        q->negate.file_pat->Match(path, 0, path.size(), RE2::UNANCHORED, NULL, 0))
+        q->negate.file_pat->Match(tags_path, 0, tags_path.size(), RE2::UNANCHORED, NULL, 0))
         return false;
     if (q->negate.tags_pat &&
         q->negate.tags_pat->Match(tags, 0, tags.size(), RE2::UNANCHORED, NULL, 0))
         return false;
 
     // lookup the indexed_file base on repo and path
-    auto key = repo_path_pair(m->file->tree->name, path.as_string());
-    auto value = path_to_file_map_.find(key);
+    path lookup = path(m->file->tree->name) /
+        path(m->file->path).parent_path() /
+        path(tags_path.as_string());
+    auto value = path_to_file_map_.find(lookup.string());
     if (value == path_to_file_map_.end()) {
         log(q->trace_id,
-            "unable to find a file matching %s from repo %s\n",
-            path.as_string().c_str(), m->file->tree->name.c_str());
+            "unable to find a file matching %s\n",
+            lookup.string().c_str());
         return false;
     }
     auto file = value->second;

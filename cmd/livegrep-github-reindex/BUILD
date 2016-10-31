@@ -13,10 +13,9 @@ name = "livegrep-github-reindex",
   ],
   deps = [
     "//vendor/github.com/google/go-github/github:go_default_library",
-    "//vendor/golang.org/x/net/context:go_default_library",
-    "//vendor/golang.org/x/oauth2:go_default_library",
+
+    "@org_golang_x_oauth2//:go_default_library",
+    "@org_golang_x_net//context:go_default_library",
   ],
   visibility = ["//visibility:public"],
 )
-
-

@@ -1,15 +1,16 @@
 package test
 
 import (
+	"context"
 	"flag"
 	"testing"
 
-	"github.com/livegrep/livegrep/client"
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
 var index = flag.String("index", "", "Path to an index to run benchmarks against")
 
-func benchmarkQuery(b *testing.B, q *client.Query) {
+func benchmarkQuery(b *testing.B, q *pb.Query) {
 	if *index == "" {
 		b.SkipNow()
 	}
@@ -19,68 +20,56 @@ func benchmarkQuery(b *testing.B, q *client.Query) {
 		b.Fatal(e.Error())
 	}
 
+	b.ResetTimer()
 	for i := 0; i < b.N+1; i++ {
-		if i == 1 {
-			// Don't count the first run+setup, to make
-			// sure everything is primed.
-			b.ResetTimer()
-		}
-		if e := c.Err(); e != nil {
-			b.Fatalf("err: %s", e.Error())
-		}
-		s, e := c.Query(q)
+		_, e := c.Search(context.Background(), q)
 		if e != nil {
 			b.Fatalf("query: %s", e.Error())
-		}
-		for _ = range s.Results() {
-		}
-		if _, e := s.Close(); e != nil {
-			b.Fatalf("close: %s", e.Error())
 		}
 	}
 }
 
 func BenchmarkDazed(b *testing.B) {
-	benchmarkQuery(b, &client.Query{Line: `dazed`})
+	benchmarkQuery(b, &pb.Query{Line: `dazed`})
 }
 
 func BenchmarkDazedCaseFold(b *testing.B) {
-	benchmarkQuery(b, &client.Query{Line: `dazed`, FoldCase: true})
+	benchmarkQuery(b, &pb.Query{Line: `dazed`, FoldCase: true})
 }
 
 func BenchmarkDefKmalloc(b *testing.B) {
-	benchmarkQuery(b, &client.Query{Line: `^(\s.*\S)?kmalloc\s*\(`})
+	benchmarkQuery(b, &pb.Query{Line: `^(\s.*\S)?kmalloc\s*\(`})
 }
 
 func BenchmarkSpaceEOL(b *testing.B) {
-	benchmarkQuery(b, &client.Query{Line: `\s$`})
+	benchmarkQuery(b, &pb.Query{Line: `\s$`})
 }
 
 func Benchmark10Space(b *testing.B) {
-	benchmarkQuery(b, &client.Query{Line: `\s{10}$`})
+	benchmarkQuery(b, &pb.Query{Line: `\s{10}$`})
 }
 
 func BenchmarkUUID(b *testing.B) {
-	benchmarkQuery(b, &client.Query{
+	benchmarkQuery(b, &pb.Query{
 		Line: `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,
 	})
 }
 
 func BenchmarkUUIDCaseFold(b *testing.B) {
-	benchmarkQuery(b, &client.Query{
+	benchmarkQuery(b, &pb.Query{
 		Line:     `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,
 		FoldCase: true,
 	})
 }
 
 func BenchmarkAlphanum20(b *testing.B) {
-	benchmarkQuery(b, &client.Query{Line: `[0-9a-f]{20}`})
+	benchmarkQuery(b, &pb.Query{Line: `[0-9a-f]{20}`})
 }
 
 func BenchmarkAlphanum50(b *testing.B) {
-	benchmarkQuery(b, &client.Query{Line: `[0-9a-f]{50}`})
+	benchmarkQuery(b, &pb.Query{Line: `[0-9a-f]{50}`})
 }
 
 func BenchmarkAlphanum100(b *testing.B) {
-	benchmarkQuery(b, &client.Query{Line: `[0-9a-f]{50}`})
+	benchmarkQuery(b, &pb.Query{Line: `[0-9a-f]{50}`})
 }

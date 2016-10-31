@@ -1,10 +1,13 @@
 cc_test(
     name = "codesearch_test",
-    srcs = [ "codesearch_test.cc" ],
+    srcs = [
+      "codesearch_test.cc",
+      "main.cc",
+    ],
     deps = [
-        "@gtest//:main",
-        "//src:codesearch",
-      "@com_github_libgit2//:libgit2",
+      "//src:codesearch",
+      "//src/tools:grpc_server",
+      "@gtest//:gtest",
     ],
     defines = [
         "GTEST_HAS_TR1_TUPLE",

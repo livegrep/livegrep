@@ -14,7 +14,6 @@ import (
 	"github.com/bmizerany/pat"
 	libhoney "github.com/honeycombio/libhoney-go"
 
-	"github.com/livegrep/livegrep/client"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
@@ -182,10 +181,9 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	for _, bk := range srv.config.Backends {
-		addr := bk.Addr
-		be := &Backend{
-			Id:   bk.Id,
-			Dial: func() (client.Client, error) { return client.Dial("tcp", addr) },
+		be, e := NewBackend(bk.Id, bk.Addr)
+		if e != nil {
+			return nil, e
 		}
 		be.Start()
 		srv.bk[be.Id] = be

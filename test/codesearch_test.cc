@@ -3,12 +3,13 @@
 
 #include "src/codesearch.h"
 #include "src/content.h"
+#include "src/tools/grpc_server.h"
 
 class codesearch_test : public ::testing::Test {
 protected:
     codesearch_test() {
         cs_.set_alloc(make_mem_allocator());
-        tree_ = cs_.open_tree("REPO", 0, "REV0");
+        tree_ = cs_.open_tree("repo", 0, "REV0");
     }
 
     code_searcher cs_;
@@ -61,17 +62,6 @@ TEST_F(codesearch_test, NoTrailingNewLine) {
     EXPECT_EQ(string("no newline\n"), content);
 }
 
-struct accumulate_matches {
-    vector<match_result> *results_;
-    accumulate_matches(vector<match_result> *results) : results_(results) {
-        results_->clear();
-    }
-
-    void operator()(const match_result *m) {
-        results_->push_back(*m);
-    }
-};
-
 TEST_F(codesearch_test, DuplicateLinesInFile) {
     cs_.index_file(tree_, "/data/file1",
                    "line 1\n"
@@ -79,18 +69,19 @@ TEST_F(codesearch_test, DuplicateLinesInFile) {
                    "line 2\n");
     cs_.finalize();
 
-    code_searcher::search_thread search(&cs_);
-    match_stats stats;
-    query q;
-    RE2::Options opts;
-    default_re2_options(opts);
-    q.line_pat.reset(new RE2("line 1", opts));
-    vector<match_result> results;
-    search.match(q, accumulate_matches(&results), &stats);
+    CodeSearchImpl srv(&cs_, nullptr);
+    Query request;
+    CodeSearchResult matches;
+    request.set_line("line 1");
 
-    ASSERT_EQ(2, results.size());
-    EXPECT_EQ(1, results[0].lno);
-    EXPECT_EQ(2, results[1].lno);
+    grpc::ServerContext ctx;
+
+    grpc::Status st = srv.Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(2, matches.results_size());
+    EXPECT_EQ(1, matches.results(0).line_number());
+    EXPECT_EQ(2, matches.results(1).line_number());
 }
 
 TEST_F(codesearch_test, LongLines) {
@@ -105,22 +96,23 @@ TEST_F(codesearch_test, LongLines) {
                    string("NEEDLE\n"));
     cs_.finalize();
 
-    code_searcher::search_thread search(&cs_);
-    match_stats stats;
-    query q;
-    RE2::Options opts;
-    default_re2_options(opts);
-    q.line_pat.reset(new RE2("NEEDLE", opts));
-    vector<match_result> results;
-    search.match(q, accumulate_matches(&results), &stats);
+    CodeSearchImpl srv(&cs_, nullptr);
+    Query request;
+    CodeSearchResult matches;
+    request.set_line("NEEDLE");
 
-    ASSERT_EQ(1, results.size());
-    EXPECT_EQ(4, results[0].lno);
+    grpc::ServerContext ctx;
+
+    grpc::Status st = srv.Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(1, matches.results_size());
+    EXPECT_EQ(4, matches.results(0).line_number());
 }
 
 
 TEST_F(codesearch_test, RestrictFiles) {
-    // tree_ is "REPO"
+    // tree_ is "repo"
     cs_.index_file(tree_, "/file1", "contents");
     cs_.index_file(tree_, "/file2", "contents");
     // other is "OTHER"
@@ -129,32 +121,73 @@ TEST_F(codesearch_test, RestrictFiles) {
     cs_.index_file(other, "/file2", "contents");
     cs_.finalize();
 
-    code_searcher::search_thread search(&cs_);
-    match_stats stats;
-    query q;
-    vector<match_result> results;
-    RE2::Options opts;
-    default_re2_options(opts);
+    CodeSearchImpl srv(&cs_, nullptr);
+    Query request;
+    CodeSearchResult matches;
+    grpc::ServerContext ctx;
+    grpc::Status st;
 
-    q.line_pat.reset(new RE2("contents", opts));
-    q.file_pat.reset(new RE2("file1", opts));
+    request.set_line("contents");
+    request.set_file("file1");
 
-    search.match(q, accumulate_matches(&results), &stats);
-    ASSERT_EQ(2, results.size());
-    EXPECT_EQ("/file1", results[0].file->path);
-    EXPECT_EQ("/file1", results[1].file->path);
+    st = srv.Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
 
-    q.file_pat.reset();
-    q.tree_pat.reset(new RE2("REPO", opts));
-    search.match(q, accumulate_matches(&results), &stats);
-    ASSERT_EQ(2, results.size());
-    EXPECT_EQ("REPO", results[0].file->tree->name);
-    EXPECT_EQ("REPO", results[1].file->tree->name);
+    ASSERT_EQ(2, matches.results_size());
+    EXPECT_EQ("/file1", matches.results(0).path());
+    EXPECT_EQ("/file1", matches.results(1).path());
 
-    q.tree_pat.reset();
-    q.negate.file_pat.reset(new RE2("file1", opts));
-    search.match(q, accumulate_matches(&results), &stats);
-    ASSERT_EQ(2, results.size());
-    EXPECT_EQ("/file2", results[0].file->path);
-    EXPECT_EQ("/file2", results[1].file->path);
+    request.clear_file();
+    request.set_repo("repo");
+
+    matches.Clear();
+    st = srv.Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(2, matches.results_size());
+    EXPECT_EQ("repo", matches.results(0).tree());
+    EXPECT_EQ("repo", matches.results(1).tree());
+
+    request.clear_repo();
+    request.set_not_file("file1");
+
+    matches.Clear();
+    st = srv.Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(2, matches.results_size());
+    EXPECT_EQ("/file2", matches.results(0).path());
+    EXPECT_EQ("/file2", matches.results(1).path());
+}
+
+
+TEST_F(codesearch_test, Tags) {
+    cs_.index_file(tree_,
+                   "file.c",
+                   "void do_the_thing(void) {\n"
+                   "}\n"
+                   "do_the_thing()\n");
+    cs_.finalize();
+
+    code_searcher tags;
+    tags.set_alloc(make_mem_allocator());
+    const indexed_tree *tag_tree = cs_.open_tree("", 0, "HEAD");
+    tags.index_file(tag_tree,
+                    "tags",
+                    "do_the_thing\trepo/file.c\t1;\"\tfunction\n");
+    tags.finalize();
+
+    CodeSearchImpl srv(&cs_, &tags);
+    Query request;
+    CodeSearchResult matches;
+    grpc::ServerContext ctx;
+    grpc::Status st;
+
+    request.set_line("do_the_thing");
+    request.set_tags("func");
+
+    st = srv.Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(1, matches.results_size());
 }

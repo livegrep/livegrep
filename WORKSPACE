@@ -1,5 +1,11 @@
 workspace(name = "com_github_livegrep_livegrep")
 
+git_repository(
+  name = "org_pubref_rules_protobuf",
+  remote = "https://github.com/pubref/rules_protobuf",
+  commit = "7d12b7e3f1d40086a2d28ce900cd7980ab8f2758",
+)
+
 load("//tools/build_defs:externals.bzl",
      "new_patched_http_archive",
 )
@@ -18,14 +24,6 @@ git_repository(
   name = "com_googlesource_code_re2",
   remote = "git://github.com/google/re2",
   commit = "ec8dfdfa39233663779f01935124ecc36e840a03",
-)
-
-new_http_archive(
-  name = "gtest",
-  url = "https://github.com/google/googletest/archive/release-1.7.0.tar.gz",
-  sha256 = "f73a6546fdf9fce9ff93a5015e0333a8af3062a152a9ad6bcb772c96687016cc",
-  build_file = "//third_party:BUILD.gtest",
-  strip_prefix = "googletest-release-1.7.0",
 )
 
 git_repository(
@@ -70,11 +68,30 @@ new_patched_http_archive(
 git_repository(
     name = "io_bazel_rules_go",
     remote = "https://github.com/bazelbuild/rules_go.git",
-    commit = "ae8ea32be1af991eef77d6347591dc8ba56c40a2",
+    commit = "3b13b2dba81e09ec213ccbd4da56ad332cb5d3dc",
 )
-load("@io_bazel_rules_go//go:def.bzl", "go_repositories")
+
+load("@io_bazel_rules_go//go:def.bzl",
+     "go_repositories", "new_go_repository")
 
 go_repositories()
+new_go_repository(
+  name = "org_golang_x_net",
+  importpath = "golang.org/x/net",
+  commit = "73058b0420c0c24a7f9ec3eb6f624ac85d2ed035",
+)
+
+new_go_repository(
+  name = "org_golang_google_appengine",
+  importpath = "google.golang.org/appengine/",
+  commit = "46239ca616842c00f41b8cbc6bbf2bd6ffbfcdad",
+)
+
+new_go_repository(
+  name = "org_golang_x_oauth2",
+  importpath = "golang.org/x/oauth2",
+  commit = "25b4fb1468cb89700c7c060cb99f30581a61f5e3",
+)
 
 load("//tools/build_defs:libgit2.bzl",
      "new_libgit2_archive",
@@ -86,4 +103,16 @@ new_libgit2_archive(
   version = "0.24.1",
   sha256 = "60198cbb34066b9b5c1613d15c0479f6cd25f4aef42f7ec515cd1cc13a77fede",
   build_file = "//third_party:BUILD.libgit2",
+)
+
+load("@org_pubref_rules_protobuf//go:rules.bzl", "go_proto_repositories")
+load("@org_pubref_rules_protobuf//cpp:rules.bzl", "cpp_proto_repositories")
+
+go_proto_repositories();
+cpp_proto_repositories();
+
+git_repository(
+    name = "io_bazel_buildifier",
+    commit = "0ca1d7991357ae7a7555589af88930d82cf07c0a",
+    remote = "https://github.com/bazelbuild/buildifier.git",
 )

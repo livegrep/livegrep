@@ -11,7 +11,10 @@ name = "go_default_library",
     "testutil.go",
   ],
   deps = [
-    "//client:go_default_library",
+    "//src/proto:go_proto",
+
+    "@org_golang_x_net//context:go_default_library",
+    "@org_golang_google_grpc//:go_default_library",
   ],
   visibility = ["//visibility:public"],
 )
@@ -22,12 +25,9 @@ go_test(
   srcs = [
     "bench_test.go",
     "integration_test.go",
-    "mock_test.go",
   ],
   deps = [
-    "//client:go_default_library",
     "//vendor/gopkg.in/check.v1:go_default_library",
   ],
   library = ":go_default_library",
 )
-

@@ -1,23 +1,14 @@
 package server
 
 import (
+	"context"
 	"log"
 	"net/url"
 	"sync"
 	"time"
 
-	"github.com/livegrep/livegrep/client"
-)
-
-const (
-	defaultPoolSize = 8
-)
-
-var (
-	// maximum time to wait after a failed connection
-	// attempt. `var` not `const` so it can be retried by the
-	// tests.
-	maxBackoff = 10 * time.Second
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
+	"google.golang.org/grpc"
 )
 
 type Tree struct {
@@ -33,85 +24,45 @@ type I struct {
 }
 
 type Backend struct {
-	Id       string
-	Dial     func() (client.Client, error)
-	PoolSize int
-	I        *I
-	Clients  chan client.Client
+	Id         string
+	Addr       string
+	I          *I
+	Codesearch pb.CodeSearchClient
+}
 
-	pending chan struct{}
-	backoff time.Duration
+func NewBackend(id string, addr string) (*Backend, error) {
+	client, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	bk := &Backend{
+		Id:         id,
+		I:          &I{Name: id},
+		Codesearch: pb.NewCodeSearchClient(client),
+	}
+	return bk, nil
 }
 
 func (bk *Backend) Start() {
-	if bk.PoolSize == 0 {
-		bk.PoolSize = defaultPoolSize
-	}
-	bk.Clients = make(chan client.Client, bk.PoolSize)
-	bk.pending = make(chan struct{}, bk.PoolSize)
-	bk.backoff = 10 * time.Millisecond
 	if bk.I == nil {
 		bk.I = &I{Name: bk.Id}
 	}
-	for i := 0; i < bk.PoolSize; i++ {
-		bk.pending <- struct{}{}
-	}
-	go bk.connectLoop()
+	go bk.poll()
 }
 
-func (bk *Backend) CheckIn(c client.Client) {
-	if c.Err() != nil {
-		c.Close()
-		bk.pending <- struct{}{}
-		return
-	}
-
-	bk.Clients <- c
-}
-
-func (bk *Backend) Close() {
-drain:
+func (bk *Backend) poll() {
 	for {
-		select {
-		case <-bk.pending:
-		default:
-			break drain
-		}
-	}
-	close(bk.pending)
-	for c := range bk.Clients {
-		c.Close()
-	}
-}
-
-func (bk *Backend) connectLoop() {
-	for _ = range bk.pending {
-	retry:
-		cl, err := bk.Dial()
-		if err != nil {
-			log.Printf("Connection error: backend=%s error=%s",
-				bk.Id, err.Error())
-			bk.backoff *= 2
-			if bk.backoff > maxBackoff {
-				bk.backoff = maxBackoff
-			}
-			time.Sleep(bk.backoff)
-			goto retry
-		}
-
-		log.Printf("Connected: backend=%s", bk.Id)
-		bk.backoff = 10 * time.Millisecond
-
-		if info := cl.Info(); info != nil {
+		info, e := bk.Codesearch.Info(context.Background(), &pb.InfoRequest{}, grpc.FailFast(false))
+		if e == nil {
 			bk.refresh(info)
+		} else {
+			log.Printf("refresh %s: %v", bk.Id, e)
 		}
-		bk.Clients <- cl
-
+		time.Sleep(60 * time.Second)
 	}
-	close(bk.Clients)
 }
 
-func (bk *Backend) refresh(info *client.ServerInfo) {
+func (bk *Backend) refresh(info *pb.ServerInfo) {
 	bk.I.Lock()
 	defer bk.I.Unlock()
 
@@ -123,10 +74,10 @@ func (bk *Backend) refresh(info *client.ServerInfo) {
 		for _, r := range info.Trees {
 			pattern := ""
 			if v, ok := r.Metadata["url-pattern"]; ok {
-				pattern = v.(string)
+				pattern = v
 			}
 			if v, ok := r.Metadata["github"]; ok {
-				value := v.(string)
+				value := v
 				base := ""
 				_, err := url.ParseRequestURI(value)
 				if err != nil {
