@@ -69,6 +69,9 @@ int inspect_index(int argc, char **argv) {
     spans.push_back(index_span(0, sizeof(index_header), "global header"));
 
     printf("Index: %s\n", argv[1]);
+    printf("Name: %.*s\n",
+           *reinterpret_cast<uint32_t*>(map + idx->name_off),
+           map + idx->name_off + sizeof(uint32_t));
     printf(" Chunk size: %d ", idx->chunk_size);
     if ((idx->chunk_size & (idx->chunk_size - 1)) == 0) {
         printf("(1 << %d)\n", ffsl(idx->chunk_size) - 1);
