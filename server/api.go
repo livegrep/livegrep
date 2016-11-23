@@ -154,7 +154,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	reply, err = s.doSearch(ctx, backend, &q)
+	reply, err := s.doSearch(ctx, backend, &q)
 
 	if err != nil {
 		log.Printf(ctx, "error in search err=%s", err)
