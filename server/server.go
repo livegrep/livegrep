@@ -154,7 +154,7 @@ func (s *server) ServeOpensearch(ctx context.Context, w http.ResponseWriter, r *
 
 type handler func(c context.Context, w http.ResponseWriter, r *http.Request)
 
-const RequestTimeout = 4 * time.Second
+const RequestTimeout = 8 * time.Second
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()

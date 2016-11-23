@@ -68,8 +68,6 @@ func extractQuery(ctx context.Context, r *http.Request) (pb.Query, error) {
 	return query, err
 }
 
-const MaxRetries = 8
-
 var (
 	ErrTimedOut = errors.New("timed out talking to backend")
 )
@@ -156,18 +154,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	var reply *api.ReplySearch
-
-	for tries := 0; tries < MaxRetries; tries++ {
-		reply, err = s.doSearch(ctx, backend, &q)
-		if err == nil {
-			break
-		}
-		if err == ErrTimedOut {
-			break
-		}
-		log.Printf(ctx, "error querying try=%d err=%q", tries, err)
-	}
+	reply, err = s.doSearch(ctx, backend, &q)
 
 	if err != nil {
 		log.Printf(ctx, "error in search err=%s", err)
