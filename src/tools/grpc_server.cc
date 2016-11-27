@@ -111,7 +111,7 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
         status = extract_regex(&q->negate.tree_pat, "-repo", request->not_repo(), opts);
     if (status.ok())
         status = extract_regex(&q->negate.tags_pat, "-tags", request->not_tags(), opts);
-    return Status::OK;
+    return status;
 }
 
 class add_match {

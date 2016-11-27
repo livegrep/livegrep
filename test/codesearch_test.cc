@@ -41,6 +41,20 @@ TEST_F(codesearch_test, IndexTest) {
     EXPECT_EQ(string(file1), content);
 }
 
+TEST_F(codesearch_test, BadRegex) {
+    cs_.index_file(tree_, "/data/file1", file1);
+    cs_.finalize();
+    CodeSearchImpl srv(&cs_, nullptr);
+    Query request;
+    CodeSearchResult matches;
+    request.set_line("(");
+
+    grpc::ServerContext ctx;
+
+    grpc::Status st = srv.Search(&ctx, &request, &matches);
+    ASSERT_TRUE(!st.ok());
+}
+
 TEST_F(codesearch_test, NoTrailingNewLine) {
     cs_.index_file(tree_, "/data/file1", "no newline");
     cs_.finalize();
