@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 
 	"golang.org/x/net/context"
@@ -36,13 +37,12 @@ func writeError(ctx context.Context, w http.ResponseWriter, status int, code, me
 }
 
 func writeQueryError(ctx context.Context, w http.ResponseWriter, err error) {
-	/*	if qe, ok := err.(client.QueryError); ok {
-		writeError(ctx, w, 400, "query_error", qe.Err)
-	} else { */
-	writeError(ctx, w, 500, "internal_error",
-		fmt.Sprintf("Talking to backend: %s", err.Error()))
-	/*	}
-		return */
+	if code := grpc.Code(err); code == codes.InvalidArgument {
+		writeError(ctx, w, 400, "query", grpc.ErrorDesc(err))
+	} else {
+		writeError(ctx, w, 500, "internal_error",
+			fmt.Sprintf("Talking to backend: %s", err.Error()))
+	}
 }
 
 func extractQuery(ctx context.Context, r *http.Request) (pb.Query, error) {
