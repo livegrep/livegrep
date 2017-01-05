@@ -9,6 +9,7 @@
 #define CODESEARCH_RADIX_SORT_H
 
 #include <algorithm>
+#include <cstdint>
 
 void lsd_radix_sort(uint32_t *left, uint32_t *right);
 
