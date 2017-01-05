@@ -23,7 +23,7 @@ new_patched_http_archive(
 git_repository(
   name = "com_googlesource_code_re2",
   remote = "git://github.com/google/re2",
-  commit = "ec8dfdfa39233663779f01935124ecc36e840a03",
+  commit = "b94b7cd42e9f02673cd748c1ac1d16db4052514c",
 )
 
 git_repository(
