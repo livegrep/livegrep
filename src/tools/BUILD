@@ -8,6 +8,8 @@ cc_library(
   deps = [
     "//src:codesearch",
     "//src/proto:cc_proto",
+
+    "@boost//:bind",
     "@com_github_grpc_grpc//:grpc",
   ],
   visibility = [ "//visibility:public" ],
