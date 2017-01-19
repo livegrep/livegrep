@@ -83,8 +83,27 @@ body {
     font-weight: bold;
 }
 
+.lno {
+    text-align: center;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
+
+.lno:before {
+    content: attr(line_number);
+}
+
+.code {
+    width: 100%;
+}
+
+tr:nth-child(even) {
+    background: #DDDDDD;
+}
+
 .match .contents {
-    white-space: pre;
+    white-space: pre-wrap;
     font-family: monospace;
     background: #eee;
     border: 1px solid black;
@@ -92,8 +111,8 @@ body {
     margin-top: 5px;
 }
 
-.match .code .line {
-   padding-left: 4em;
+.matchstr{
+    background: #FFFF00;
 }
 
 .contents div.lnos {
@@ -108,6 +127,14 @@ body {
 
 .match .lno {
     width: 3em;
+}
+
+.line {
+    word-wrap: break-word;
+}
+
+.code {
+    table-layout: fixed;
 }
 
 .match .matchstr {
