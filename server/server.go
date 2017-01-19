@@ -31,6 +31,7 @@ type Templates struct {
 type server struct {
 	config *config.Config
 	bk     map[string]*Backend
+	bkOrder []string
 	inner  http.Handler
 	T      Templates
 	Layout *template.Template
@@ -55,7 +56,8 @@ func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.R
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	urls := make(map[string]map[string]string, len(s.bk))
 	backends := make([]*Backend, 0, len(s.bk))
-	for _, bk := range s.bk {
+	for _, bkId := range s.bkOrder {
+		bk := s.bk[bkId]
 		backends = append(backends, bk)
 		bk.I.Lock()
 		m := make(map[string]string, len(bk.I.Trees))
@@ -187,6 +189,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 		}
 		be.Start()
 		srv.bk[be.Id] = be
+		srv.bkOrder = append(srv.bkOrder, be.Id)
 	}
 
 	m := pat.New()
