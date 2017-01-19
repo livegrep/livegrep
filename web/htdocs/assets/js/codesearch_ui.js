@@ -87,32 +87,36 @@ var MatchView = Backbone.View.extend({
     var h = new HTMLFactory();
     var i;
     var lnos = [];
-    var lno = this.model.get('lno');
-    for (i = lno - this.model.get('context_before').length;
-         i < lno + this.model.get('context_after').length + 1; i++) {
-      var elt = h.div({cls: 'lno'}, [i]);
-      if (i == lno)
-        elt = h.div({cls: 'matchline'}, [elt]);
-      lnos.push(elt);
-    }
+    var matchlno = this.model.get('lno');
     var lines = [];
+    // Context_before is actually in reverse order...
     for (i = 0; i < this.model.get('context_before').length; i ++) {
-      lines.unshift(h.div({cls: "line"},
-        [this.model.get('context_before')[i], h.br()]));
+      var cells = [];
+      cells.push(h.td({cls: 'lno', line_number: matchlno-(i+1)},[]));
+      cells.push(h.td({cls: 'line'},[this.model.get('context_before')[i]]));
+      lines.unshift(h.tr({cls: 'row'},cells));
     }
+
+    var matchCells = [];
+    // Bringing lno up to the actual match's line number
     var line = this.model.get('line');
     var bounds = this.model.get('bounds');
     var pieces = [line.substring(0, bounds[0]),
                   line.substring(bounds[0], bounds[1]),
                   line.substring(bounds[1])];
-    lines.push(h.div({cls: "line matchline"},[
+    matchCells.push(h.td({cls: 'lno matchline', line_number: matchlno}, []));
+    matchCells.push(h.td({cls: 'line matchline'}, [
                   pieces[0],
                   h.span({cls: 'matchstr'}, [pieces[1]]),
                   pieces[2]
                 ]));
+    lines.push(h.tr({cls: 'matchrow row'},matchCells));
+
     for (i = 0; i < this.model.get('context_after').length; i ++) {
-      lines.push(h.div({cls: "line"},
-        [this.model.get('context_after')[i], h.br()]));
+      var cells = [];
+      cells.push(h.td({cls: 'lno', line_number: matchlno+(i+1)},[]));
+      cells.push(h.td({cls: 'line'},[this.model.get('context_after')[i]]));
+      lines.push(h.tr({cls: 'row'},cells));
     }
 
     var tree = this.model.get('tree');
@@ -121,7 +125,8 @@ var MatchView = Backbone.View.extend({
       tree ? (tree + ":") : "",
       shorten(version),
       ":",
-      this.model.get('path')];
+      this.model.get('path'),
+      " - line " + matchlno + "" ];
     var url = this.model.url();
     if (url !== null) {
       repoLabel = [ h.a({href: this.model.url()}, repoLabel) ];
@@ -130,8 +135,7 @@ var MatchView = Backbone.View.extend({
         h.div({}, [
           h.span({cls: 'label'}, repoLabel)]),
         h.div({cls: 'contents'}, [
-          h.div({cls: "lnos"}, lnos),
-          h.div({cls: "code"}, lines)
+          h.table({cls: 'code'}, lines),
           ])]);
   }
 });
