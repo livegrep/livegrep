@@ -35,7 +35,7 @@ built both `codesearch` and `livegrep`:
 
 In one terminal, start the `codesearch` server like so:
 
-    bazel-bin/src/tools/codesearch -listen tcp://localhost:9999 doc/examples/livegrep/index.json
+    bazel-bin/src/tools/codesearch -grpc localhost:9999 doc/examples/livegrep/index.json
 
 In another, run livegrep:
 
@@ -66,7 +66,7 @@ future runs. Index files are standalone, and you no longer need access
 to the source code repositories, or even a configuration file, once an
 index has been built. You can just launch a search server like so:
 
-    bazel-bin/src/tools/codesearch -load_index livegrep.idx  -listen tcp://localhost:9999
+    bazel-bin/src/tools/codesearch -load_index livegrep.idx -grpc localhost:9999
 
 ## `livegrep`
 
