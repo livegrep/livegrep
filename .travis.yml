@@ -13,12 +13,6 @@ addons:
       - zip
       - unzip
       - zlib1g-dev
-  artifacts:
-    paths:
-      - builds
-    bucket: livegrep
-    target_paths: builds
-    s3_region: us-west-2
 jdk:
   - oraclejdk8
 
@@ -46,14 +40,26 @@ after_success:
   - bash package.sh
 
 deploy:
-  provider: gcs
-  access_key_id: GOOG47VSCMOXXSBAZ2NU
-  secret_access_key:
-    secure: cXh6WQUKjgdW6no2D1hDuk1CwToHA1eXKu6uQSl2sL9u1iAi4szGcu6Eu+H1x6qWK2xY7HFlutBfJ7HgicWe0qiIneCr/tPO88znOAOjuCxTUvZ4R3kjRzYUeS/n+3B3wVT5wAUyKKWzhOkdFFyCx14029a+n8bIuoefq5wOv2U=
-  bucket: livegrep.appspot.com
-  skip_cleanup: true
-  acl: public-read
-  upload_dir: builds
-  local_dir: builds
-  on:
-    all_branches: true
+   - provider: gcs
+     access_key_id: GOOG47VSCMOXXSBAZ2NU
+     secret_access_key:
+       secure: cXh6WQUKjgdW6no2D1hDuk1CwToHA1eXKu6uQSl2sL9u1iAi4szGcu6Eu+H1x6qWK2xY7HFlutBfJ7HgicWe0qiIneCr/tPO88znOAOjuCxTUvZ4R3kjRzYUeS/n+3B3wVT5wAUyKKWzhOkdFFyCx14029a+n8bIuoefq5wOv2U=
+     bucket: livegrep.appspot.com
+     skip_cleanup: true
+     acl: public-read
+     upload_dir: builds
+     local_dir: builds
+     on:
+       all_branches: true
+   - provider: s3
+     access_key_id: AKIAIAQXOJA3S2ZTGLWA
+     secret_access_key:
+       secure: "YK0pGNgQ4Xf+Rcy6cC8Mg14WI5RYZLIbnWRDMG/FUUqF4eS3RSiez8zxEgxMVtp5eYeG77jFRNdTIZA5UwlEr+Bvl9Q12d12ba5t5kVtB1UEuouIH8p4oDp6mNiuWVqkmlOA4IG4Ao6/n78QMuGCZuxaZ+9lMO/wA1vDt9woCJ8="
+     bucket: livegrep
+     skip_cleanup: true
+     acl: public_read
+     upload_dir: builds
+     local_dir: builds
+     region: us-west-2
+     on:
+       all_branches: true
