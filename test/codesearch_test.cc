@@ -44,14 +44,14 @@ TEST_F(codesearch_test, IndexTest) {
 TEST_F(codesearch_test, BadRegex) {
     cs_.index_file(tree_, "/data/file1", file1);
     cs_.finalize();
-    CodeSearchImpl srv(&cs_, nullptr);
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
     Query request;
     CodeSearchResult matches;
     request.set_line("(");
 
     grpc::ServerContext ctx;
 
-    grpc::Status st = srv.Search(&ctx, &request, &matches);
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(!st.ok());
 }
 
@@ -83,14 +83,14 @@ TEST_F(codesearch_test, DuplicateLinesInFile) {
                    "line 2\n");
     cs_.finalize();
 
-    CodeSearchImpl srv(&cs_, nullptr);
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
     Query request;
     CodeSearchResult matches;
     request.set_line("line 1");
 
     grpc::ServerContext ctx;
 
-    grpc::Status st = srv.Search(&ctx, &request, &matches);
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
 
     ASSERT_EQ(2, matches.results_size());
@@ -110,14 +110,14 @@ TEST_F(codesearch_test, LongLines) {
                    string("NEEDLE\n"));
     cs_.finalize();
 
-    CodeSearchImpl srv(&cs_, nullptr);
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
     Query request;
     CodeSearchResult matches;
     request.set_line("NEEDLE");
 
     grpc::ServerContext ctx;
 
-    grpc::Status st = srv.Search(&ctx, &request, &matches);
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
 
     ASSERT_EQ(1, matches.results_size());
@@ -135,7 +135,7 @@ TEST_F(codesearch_test, RestrictFiles) {
     cs_.index_file(other, "/file2", "contents");
     cs_.finalize();
 
-    CodeSearchImpl srv(&cs_, nullptr);
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
     Query request;
     CodeSearchResult matches;
     grpc::ServerContext ctx;
@@ -144,7 +144,7 @@ TEST_F(codesearch_test, RestrictFiles) {
     request.set_line("contents");
     request.set_file("file1");
 
-    st = srv.Search(&ctx, &request, &matches);
+    st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
 
     ASSERT_EQ(2, matches.results_size());
@@ -155,7 +155,7 @@ TEST_F(codesearch_test, RestrictFiles) {
     request.set_repo("repo");
 
     matches.Clear();
-    st = srv.Search(&ctx, &request, &matches);
+    st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
 
     ASSERT_EQ(2, matches.results_size());
@@ -166,7 +166,7 @@ TEST_F(codesearch_test, RestrictFiles) {
     request.set_not_file("file1");
 
     matches.Clear();
-    st = srv.Search(&ctx, &request, &matches);
+    st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
 
     ASSERT_EQ(2, matches.results_size());
@@ -191,7 +191,7 @@ TEST_F(codesearch_test, Tags) {
                     "do_the_thing\trepo/file.c\t1;\"\tfunction\n");
     tags.finalize();
 
-    CodeSearchImpl srv(&cs_, &tags);
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, &tags));
     Query request;
     CodeSearchResult matches;
     grpc::ServerContext ctx;
@@ -200,7 +200,7 @@ TEST_F(codesearch_test, Tags) {
     request.set_line("do_the_thing");
     request.set_tags("func");
 
-    st = srv.Search(&ctx, &request, &matches);
+    st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
 
     ASSERT_EQ(1, matches.results_size());

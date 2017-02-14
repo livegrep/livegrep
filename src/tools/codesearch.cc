@@ -138,11 +138,11 @@ void initialize_search(code_searcher *search,
 }
 
 void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr) {
-    CodeSearchImpl service(search, tags);
+    unique_ptr<CodeSearch::Service> service(build_grpc_server(search, tags));
 
     ServerBuilder builder;
     builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
-    builder.RegisterService(&service);
+    builder.RegisterService(service.get());
     std::unique_ptr<Server> server(builder.BuildAndStart());
     server->Wait();
 }

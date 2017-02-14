@@ -22,6 +22,24 @@ using grpc::StatusCode;
 
 using std::string;
 
+class CodeSearchImpl final : public CodeSearch::Service {
+ public:
+    explicit CodeSearchImpl(code_searcher *cs, code_searcher *tagdata);
+    virtual ~CodeSearchImpl();
+
+    virtual grpc::Status Info(grpc::ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response);
+    virtual grpc::Status Search(grpc::ServerContext* context, const ::Query* request, ::CodeSearchResult* response);
+
+ private:
+    code_searcher *cs_;
+    code_searcher *tagdata_;
+    tag_searcher *tagmatch_;
+};
+
+std::unique_ptr<CodeSearch::Service> build_grpc_server(code_searcher *cs, code_searcher *tagdata) {
+    return std::unique_ptr<CodeSearch::Service>(new CodeSearchImpl(cs, tagdata));
+}
+
 CodeSearchImpl::CodeSearchImpl(code_searcher *cs, code_searcher *tagdata)
     : cs_(cs), tagdata_(tagdata), tagmatch_(nullptr) {
     if (tagdata != nullptr) {

@@ -2,22 +2,11 @@
 #define CODESEARCH_GRPC_SERVER_H
 
 #include "src/proto/livegrep.grpc.pb.h"
+#include <memory>
 
 class code_searcher;
 class tag_searcher;
 
-class CodeSearchImpl final : public CodeSearch::Service {
- public:
-    explicit CodeSearchImpl(code_searcher *cs, code_searcher *tagdata);
-    virtual ~CodeSearchImpl();
-
-    virtual grpc::Status Info(grpc::ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response);
-    virtual grpc::Status Search(grpc::ServerContext* context, const ::Query* request, ::CodeSearchResult* response);
-
- private:
-    code_searcher *cs_;
-    code_searcher *tagdata_;
-    tag_searcher *tagmatch_;
-};
+std::unique_ptr<CodeSearch::Service> build_grpc_server(code_searcher *cs, code_searcher *tagdata);
 
 #endif /* CODESEARCH_GRPC_SERVER_H */
