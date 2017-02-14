@@ -183,6 +183,7 @@ public:
                    match_stats *stats);
     protected:
         struct job {
+            std::string trace_id;
             atomic_int pending;
             searcher *search;
             thread_queue<chunk*> chunks;

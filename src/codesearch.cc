@@ -886,6 +886,7 @@ void code_searcher::search_thread::match(const query &q,
 
     searcher search(cs_, q, func);
     job j;
+    j.trace_id = current_trace_id();
     j.search = &search;
     j.pending = 0;
 
@@ -922,6 +923,8 @@ code_searcher::search_thread::~search_thread() {
 void code_searcher::search_thread::search_one(search_thread *me) {
     job *j;
     while (me->queue_.pop(&j)) {
+        scoped_trace_id trace(j->trace_id);
+
         chunk *c;
         while (j->chunks.pop(&c)) {
             (*j->search)(c);
