@@ -13,11 +13,7 @@
 #include <vector>
 #include <stdio.h>
 
-struct match_result;
-struct match_stats;
 struct json_object;
-struct index_info;
-struct query;
 
 struct path_spec {
     std::string path;
@@ -40,19 +36,6 @@ struct index_spec {
     std::string name;
     std::vector<path_spec> paths;
     std::vector<repo_spec> repos;
-};
-
-class codesearch_transport {
-public:
-    codesearch_transport(FILE *in, FILE *out);
-    void write_match(const match_result *m);
-    void write_error(const std::string &err);
-    void write_ready(const index_info *info);
-    void write_done(timeval, const match_stats *);
-    bool read_query(query *, bool *done);
-protected:
-    void write_frame(const std::string &opcode, json_object *body);
-    FILE *in_, *out_;
 };
 
 struct json_parse_error {
