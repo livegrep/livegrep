@@ -51,6 +51,10 @@ CodeSearchImpl::CodeSearchImpl(code_searcher *cs, code_searcher *tagdata)
 }
 
 CodeSearchImpl::~CodeSearchImpl() {
+    pool_.close();
+    code_searcher::search_thread* thread;
+    while (pool_.pop(&thread))
+        delete thread;
     delete tagmatch_;
 }
 
