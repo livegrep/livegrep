@@ -315,7 +315,7 @@ namespace {
             out->anchor &= ~kAnchorRight;
         }
 
-        debug(kDebugIndexAll, "[%s]\n", out->ToString().c_str());
+        debug(kDebugIndexAll, "[%s]", out->ToString().c_str());
 
         return out;
     }
@@ -323,10 +323,10 @@ namespace {
     IndexKey::Stats TryConcat(intrusive_ptr<IndexKey> *start,
                               intrusive_ptr<IndexKey> *end) {
         IndexKey::Stats st = (*start)->stats();
-        debug(kDebugIndexAll, "TryConcat: Searching suffix of length %d\n",
+        debug(kDebugIndexAll, "TryConcat: Searching suffix of length %d",
               int(end - start));
         if (!*start || !((*start)->anchor & kAnchorRight) || (*start)->empty()) {
-            debug(kDebugIndexAll, "!ConcatRight, returning early.\n");
+            debug(kDebugIndexAll, "!ConcatRight, returning early.");
             return st;
         }
         for (intrusive_ptr<IndexKey> *ptr = start + 1; ptr != end; ptr++) {
@@ -340,7 +340,7 @@ namespace {
             if (((*ptr)->anchor & (kAnchorRepeat|kAnchorRight)) != kAnchorRight)
                 break;
         }
-        debug(kDebugIndexAll, "TryConcat: nodes=%ld, selectivity=%f\n",
+        debug(kDebugIndexAll, "TryConcat: nodes=%ld, selectivity=%f",
               st.nodes_, st.selectivity_);
         return st;
     }
@@ -359,11 +359,11 @@ namespace {
         intrusive_ptr<IndexKey> *end = children + nchildren, *best_start = 0, *ptr;
         IndexKey::Stats best_stats;
 
-        debug(kDebugIndexAll, "Concat: Searching %d positions\n", nchildren);
+        debug(kDebugIndexAll, "Concat: Searching %d positions", nchildren);
         for (ptr = children; ptr != end; ptr++) {
             IndexKey::Stats st = TryConcat(ptr, end);
             if (st.nodes_ > 1 && Prefer(st, best_stats)) {
-                debug(kDebugIndexAll, "Concat: Found new best: %d: %f\n",
+                debug(kDebugIndexAll, "Concat: Found new best: %d: %f",
                       int(ptr - children), st.selectivity_);
                 best_start = ptr;
                 best_stats = st;
@@ -371,7 +371,7 @@ namespace {
         }
 
         if (best_start == 0) {
-            debug(kDebugIndexAll, "Concat: No good results found.\n");
+            debug(kDebugIndexAll, "Concat: No good results found.");
             return Any();
         }
 
@@ -406,7 +406,7 @@ namespace {
               intrusive_ptr<IndexKey> rnext) {
         if (intersects(left, right)) {
             debug(kDebugIndexAll,
-                  "Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>\n",
+                  "Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>",
                   left.first, left.second, right.first, right.second);
             if (left.first < right.first) {
                 out->insert
@@ -609,12 +609,12 @@ IndexWalker::PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
 
     debug(kDebugIndex, "* INDEX %s ==> ", re->ToString().c_str());
     if (key)
-        debug(kDebugIndex, "[weight %d, nodes %ld, depth %d]\n",
+        debug(kDebugIndex, "[weight %d, nodes %ld, depth %d]",
               key->weight(), key->nodes(), key->depth());
     else
-        debug(kDebugIndex, "nul\n");
+        debug(kDebugIndex, "nul");
 
-    debug(kDebugIndexAll, "           ==> [%s]\n",
+    debug(kDebugIndexAll, "           ==> [%s]",
           key ? key->ToString().c_str() : "nul");
 
     if ((debug_enabled & kDebugIndex) && key)
