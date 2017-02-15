@@ -29,5 +29,8 @@ go_test(
   deps = [
     "//vendor/gopkg.in/check.v1:go_default_library",
   ],
+  data = [
+    "//src/tools:codesearch",
+  ],
   library = ":go_default_library",
 )

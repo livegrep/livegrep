@@ -34,7 +34,8 @@ cc_binary(
   copts = [
     "-Wno-deprecated-declarations",
     "-Wno-sign-compare",
-  ]
+  ],
+  visibility = [ "//visibility:public" ],
 )
 
 cc_binary(
