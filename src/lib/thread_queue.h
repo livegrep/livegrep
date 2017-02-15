@@ -39,6 +39,16 @@ public:
         queue_.pop_front();
         return true;
     }
+
+    bool try_pop(T *out) {
+        std::unique_lock<std::mutex> locked(mutex_);
+        if (queue_.empty())
+            return false;
+        *out = queue_.front();
+        queue_.pop_front();
+        return true;
+    }
+
  protected:
     thread_queue(const thread_queue&);
     thread_queue operator=(const thread_queue &);

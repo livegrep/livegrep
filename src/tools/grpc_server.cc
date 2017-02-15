@@ -34,6 +34,8 @@ class CodeSearchImpl final : public CodeSearch::Service {
     code_searcher *cs_;
     code_searcher *tagdata_;
     tag_searcher *tagmatch_;
+
+    thread_queue <code_searcher::search_thread*> pool_;
 };
 
 std::unique_ptr<CodeSearch::Service> build_grpc_server(code_searcher *cs, code_searcher *tagdata) {
@@ -201,8 +203,11 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
 
     match_stats stats;
     if (q.tags_pat == NULL) {
-        code_searcher::search_thread search(cs_);
-        search.match(q, add_match(response), &stats);
+        code_searcher::search_thread *search;
+        if (!pool_.try_pop(&search))
+            search = new code_searcher::search_thread(cs_);
+        search->match(q, add_match(response), &stats);
+        pool_.push(search);
     } else {
         if (tagdata_ == NULL)
             return Status(StatusCode::FAILED_PRECONDITION, "No tags file available.");
