@@ -68,11 +68,9 @@ IndexKey::Stats IndexKey::Stats::concat(const IndexKey::Stats& rhs) const {
 void IndexKey::insert(const value_type& val) {
     stats_ = stats_.insert(val);
 
-    iterator it = edges_.insert(val).first;
-    if (val.second) {
-        tails_.splice(tails_.end(), val.second->tails_);
-    } else {
-        tails_.push_back(it);
+    edges_.insert(val).first;
+    if (val.second && !(val.second->anchor & kAnchorRight)) {
+        anchor &= ~kAnchorRight;
     }
 }
 
@@ -98,7 +96,28 @@ int IndexKey::depth() {
 }
 
 void IndexKey::collect_tails(list<IndexKey::iterator>& tails) {
-    tails.splice(tails.end(), tails_);
+    set<IndexKey*> seen;
+    collect_tails(tails, seen);
+}
+
+void IndexKey::collect_tails(list<IndexKey::const_iterator>& tails) {
+    list<iterator> tmp;
+    collect_tails(tmp);
+    tails.insert(tails.end(), tmp.begin(), tmp.end());
+}
+
+void IndexKey::collect_tails(list<IndexKey::iterator>& tails,
+                             set<IndexKey*> &seen) {
+    if (seen.find(this) != seen.end())
+        return;
+    seen.insert(this);
+
+    for (auto it = begin(); it != end(); ++it) {
+        if (it->second)
+            it->second->collect_tails(tails, seen);
+        else
+            tails.push_back(it);
+    }
 }
 
 void IndexKey::concat(intrusive_ptr<IndexKey> rhs) {
@@ -121,7 +140,6 @@ void IndexKey::concat(intrusive_ptr<IndexKey> rhs) {
         anchor &= ~kAnchorRight;
 
     stats_ = stats_.concat(rhs->stats());
-    rhs->collect_tails(tails_);
 }
 
 static string StrChar(uchar c) {
@@ -248,12 +266,12 @@ namespace {
     }
 
     intrusive_ptr<IndexKey> LexRange(const string &lo, const string& hi) {
-        intrusive_ptr<IndexKey> out(new IndexKey(kAnchorBoth));
-
         if (lo.size() == 0 && hi.size() == 0)
-            return out;
+            return intrusive_ptr<IndexKey>();
         if (lo.size() == 0)
             return Literal(hi);
+
+        intrusive_ptr<IndexKey> out(new IndexKey(kAnchorBoth));
         assert(hi.size() != 0);
         if (lo[0] < hi[0])
             out->insert(IndexKey::value_type
@@ -462,7 +480,7 @@ namespace {
         if (recursion_depth > kMaxRecursion)
             return Any();
 
-        intrusive_ptr<IndexKey> out(new IndexKey(lhs->anchor & rhs->anchor & kAnchorLeft));
+        intrusive_ptr<IndexKey> out(new IndexKey(lhs->anchor & rhs->anchor & (kAnchorLeft|kAnchorRight)));
         IndexKey::const_iterator lit, rit;
         lit = lhs->begin();
         rit = rhs->begin();

@@ -2,6 +2,7 @@ cc_test(
     name = "codesearch_test",
     srcs = [
       "codesearch_test.cc",
+      "indexer_test.cc",
       "main.cc",
     ],
     deps = [

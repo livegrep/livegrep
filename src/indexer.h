@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <list>
+#include <set>
 #include <string>
 #include <atomic>
 #include <map>
@@ -23,6 +24,7 @@
 using std::string;
 using std::vector;
 using std::list;
+using std::set;
 using boost::intrusive_ptr;
 
 enum {
@@ -115,13 +117,16 @@ public:
     void check_rep();
 
     int anchor;
+
+    void collect_tails(list<IndexKey::const_iterator>& tails);
 protected:
     std::map<std::pair<uchar, uchar>, intrusive_ptr<IndexKey> > edges_;
     Stats stats_;
-    list<iterator> tails_;
     std::atomic_int refs_;
 
     void collect_tails(list<IndexKey::iterator>& tails);
+    void collect_tails(list<IndexKey::iterator>& tails,
+                       set<IndexKey*> &seen);
 
 private:
     IndexKey(const IndexKey&);
