@@ -35,7 +35,7 @@ git_repository(
 git_repository(
   name = "com_github_nelhage_boost",
   remote = "git://github.com/nelhage/rules_boost",
-  commit = "c0740579878e84ca98eddc826003b6eecefbb5ff",
+  commit = "fc54c90a5572a8286ded3193ce2382198dfc77dd",
 )
 # local_repository(
 #   name = "com_github_nelhage_boost",
@@ -68,7 +68,7 @@ new_patched_http_archive(
 git_repository(
     name = "io_bazel_rules_go",
     remote = "https://github.com/bazelbuild/rules_go.git",
-    commit = "3b13b2dba81e09ec213ccbd4da56ad332cb5d3dc",
+    commit = "3299996eb81d2115893c2626c12fa2e8ccbb59ba",
 )
 
 load("@io_bazel_rules_go//go:def.bzl",
