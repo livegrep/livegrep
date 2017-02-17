@@ -63,7 +63,6 @@ TEST(IndexKeyTest, CaseFoldRegression) {
 TEST(IndexKeyTest, StressTest) {
     const char *cases[] = {
         "([a-e]:)|[g-k]",
-        "([a-e0-9]:)|[g-kw-z]",
         "([a-e]:)|[a-e]",
         "(([a-e]:)|[a-e])n",
         "([a-e]:)|[d-g]",
@@ -83,6 +82,6 @@ TEST(IndexKeyTest, StressTest) {
         const char *pat = cases[i];
         re2::RE2 re(pat, opts);
         intrusive_ptr<IndexKey> key = indexRE(re);
-        EXPECT_TRUE(key);
+        EXPECT_TRUE(key) << "could not compute key for: " << pat;
     }
 }
