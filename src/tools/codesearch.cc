@@ -47,7 +47,8 @@ DEFINE_string(dump_index, "", "Dump the produced index to a specified file");
 DEFINE_string(load_index, "", "Load the index from a file instead of walking the repository");
 DEFINE_string(load_tags, "", "Load the index built from a tags file.");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
-DEFINE_string(grpc, "localhost:9999", "GRPC listeneder address");
+DEFINE_bool(index_only, false, "Build the index and don't serve queries");
+DEFINE_string(grpc, "localhost:9999", "GRPC listener address");
 
 using namespace std;
 using namespace re2;
@@ -159,6 +160,9 @@ int main(int argc, char **argv) {
     signal(SIGPIPE, SIG_IGN);
 
     initialize_search(&search, &tags, argc, argv);
+
+    if (FLAGS_index_only)
+        return 0;
 
     if (FLAGS_grpc.size()) {
         listen_grpc(&search, &tags, FLAGS_grpc);

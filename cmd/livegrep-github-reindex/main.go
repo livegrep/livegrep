@@ -113,6 +113,7 @@ func main() {
 		"--debug=ui",
 		"--dump_index",
 		tmp,
+		"--index_only",
 	}
 	if *flagRevparse {
 		args = append(args, "--revparse")
