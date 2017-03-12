@@ -177,7 +177,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.loadTemplates()
 
 	if cfg.Honeycomb.WriteKey != "" {
-		log.Printf("Enabling honeycomb dataset=%s", cfg.Honeycomb.Datset)
+		log.Printf(context.Background(),
+			"Enabling honeycomb dataset=%s", cfg.Honeycomb.Dataset)
 		srv.honey = libhoney.NewBuilder()
 		srv.honey.WriteKey = cfg.Honeycomb.WriteKey
 		srv.honey.Dataset = cfg.Honeycomb.Dataset
