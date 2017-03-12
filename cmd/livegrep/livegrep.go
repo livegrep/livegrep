@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 
 	libhoney "github.com/honeycombio/libhoney-go"
 	"github.com/livegrep/livegrep/server"
@@ -33,6 +34,10 @@ func main() {
 		Reload:  *reload,
 		Backends: []config.Backend{
 			{Id: "", Addr: "localhost:9999"},
+		},
+		Honeycomb: config.Honeycomb{
+			WriteKey: os.Getenv("HONEYCOMB_WRITE_KEY"),
+			Dataset:  os.Getenv("HONEYCOMB_DATASET"),
 		},
 	}
 

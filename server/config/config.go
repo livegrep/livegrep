@@ -9,6 +9,11 @@ type Backend struct {
 	Addr string `json:"addr"`
 }
 
+type Honeycomb struct {
+	WriteKey string `json:"write_key"`
+	Dataset  string `json:"dataset"`
+}
+
 type Config struct {
 	// Location of the directory containing templates and static
 	// assets. This should point at the "web" directory of the
@@ -43,8 +48,5 @@ type Config struct {
 	Reload bool `json:"reload"`
 
 	// honeycomb API write key
-	Honeycomb struct {
-		WriteKey string `json:"write_key"`
-		Dataset  string `json:"dataset"`
-	} `json:"honeycomb"`
+	Honeycomb Honeycomb `json:"honeycomb"`
 }
