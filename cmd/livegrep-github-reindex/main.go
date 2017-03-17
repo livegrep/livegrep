@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -21,10 +22,11 @@ import (
 )
 
 var (
-	flagGithubKey = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
-	flagRepoDir   = flag.String("dir", "repos", "Directory to store repos")
-	flagBlacklist = flag.String("blacklist", "", "File containing a list of repositories to blacklist indexing")
-	flagIndexPath = dynamicDefault{
+	flagApiBaseUrl = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
+	flagGithubKey  = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
+	flagRepoDir    = flag.String("dir", "repos", "Directory to store repos")
+	flagBlacklist  = flag.String("blacklist", "", "File containing a list of repositories to blacklist indexing")
+	flagIndexPath  = dynamicDefault{
 		display: "${dir}/livegrep.idx",
 		fn:      func() string { return path.Join(*flagRepoDir, "livegrep.idx") },
 	}
@@ -80,6 +82,17 @@ func main() {
 	}
 
 	gh := github.NewClient(h)
+
+	if *flagApiBaseUrl != "" {
+		if (*flagApiBaseUrl)[len(*flagApiBaseUrl)-1:] != "/" {
+			log.Fatalf("API base URL must include trailing slash: %s", *flagApiBaseUrl)
+		}
+		baseUrl, err := url.Parse(*flagApiBaseUrl)
+		if err != nil {
+			log.Fatalf("parsing base url %s: ", *flagApiBaseUrl, err)
+		}
+		gh.BaseURL = baseUrl
+	}
 
 	repos, err := loadRepos(gh,
 		flagRepos.strings,
