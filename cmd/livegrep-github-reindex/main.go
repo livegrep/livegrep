@@ -84,14 +84,14 @@ func main() {
 	gh := github.NewClient(h)
 
 	if *flagApiBaseUrl != "" {
-		if (*flagApiBaseUrl)[len(*flagApiBaseUrl)-1:] != "/" {
+		if !strings.HasSuffix(*flagApiBaseUrl, "/") {
 			log.Fatalf("API base URL must include trailing slash: %s", *flagApiBaseUrl)
 		}
-		baseUrl, err := url.Parse(*flagApiBaseUrl)
+		baseURL, err := url.Parse(*flagApiBaseUrl)
 		if err != nil {
-			log.Fatalf("parsing base url %s: ", *flagApiBaseUrl, err)
+			log.Fatalf("parsing base url %s: %v", *flagApiBaseUrl, err)
 		}
-		gh.BaseURL = baseUrl
+		gh.BaseURL = baseURL
 	}
 
 	repos, err := loadRepos(gh,
