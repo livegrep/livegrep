@@ -35,7 +35,7 @@ git_repository(
 git_repository(
   name = "com_github_nelhage_boost",
   remote = "git://github.com/nelhage/rules_boost",
-  commit = "fc54c90a5572a8286ded3193ce2382198dfc77dd",
+  commit = "ead0110ff90d5d90d2eb67e7e78f34f42d8486a1",
 )
 # local_repository(
 #   name = "com_github_nelhage_boost",
