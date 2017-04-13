@@ -480,7 +480,7 @@ func buildConfig(name string,
 			Name:      *r.FullName,
 			Revisions: []string{revision},
 			Metadata: map[string]string{
-				"github": *r.FullName,
+				"github": *r.HTMLURL,
 			},
 		})
 	}
