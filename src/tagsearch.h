@@ -13,7 +13,6 @@
 #include <map>
 #include <string>
 
-class RE2;
 class chunk_allocator;
 
 class tag_searcher {

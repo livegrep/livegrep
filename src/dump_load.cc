@@ -184,9 +184,11 @@ public:
             madvise((*it)->data, (*it)->size, MADV_DONTNEED);
             madvise((*it)->suffixes, (*it)->size * sizeof(*(*it)->suffixes), MADV_DONTNEED);
         }
+#ifdef POSIX_FADV_DONTNEED
         posix_fadvise(fd_, hdr_->chunks_off,
                       chunks_.size() * chunk_size_ * (1 + sizeof(uint32_t)),
                       POSIX_FADV_DONTNEED);
+#endif
     }
 
     void load(code_searcher *cs);

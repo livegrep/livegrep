@@ -1,3 +1,8 @@
+config_setting(
+    name = "darwin",
+    values = {"host_cpu": "darwin"},
+)
+
 cc_test(
     name = "codesearch_test",
     srcs = [
@@ -10,9 +15,14 @@ cc_test(
       "//src/tools:grpc_server",
       "@gtest//:gtest",
     ],
-    defines = [
+    defines = select({
+      ":darwin": [
+        "GTEST_HAS_TR1_TUPLE=0",
+        "GTEST_USE_OWN_TR1_TUPLE=1",
+      ],
+      "//conditions:default": [
         "GTEST_HAS_TR1_TUPLE",
         "GTEST_USE_OWN_TR1_TUPLE=0",
-    ],
+      ]}),
     size = "small",
 )
