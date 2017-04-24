@@ -16,7 +16,8 @@ import (
 
 var (
 	server      = flag.String("server", "http://localhost:8910", "The livegrep server to connect to")
-	unix_socket = flag.String("unix_socket", "", "unix socket path to connect() to as a proxy")
+	unixSocket  = flag.String("unix_socket", "", "unix socket path to connect() to as a proxy")
+	showVersion = flag.Bool("show_version", false, "Show versions of matched packages")
 )
 
 func main() {
@@ -51,11 +52,11 @@ func main() {
 	uri.RawQuery = url.Values{"q": []string{flag.Arg(0)}}.Encode()
 
 	var transport http.RoundTripper
-	if *unix_socket == "" {
+	if *unixSocket == "" {
 		transport = http.DefaultTransport
 	} else {
 		dialUnix := func(network, addr string) (net.Conn, error) {
-			return net.Dial("unix", *unix_socket)
+			return net.Dial("unix", *unixSocket)
 		}
 		transport = &http.Transport{
 			Dial:              dialUnix,
@@ -95,7 +96,7 @@ func main() {
 		if r.Tree != "" {
 			fmt.Printf("%s:", r.Tree)
 		}
-		if r.Version != "" {
+		if *showVersion && r.Version != "" {
 			fmt.Printf("%s:", r.Version)
 		}
 		fmt.Printf("%s:%d: ", r.Path, r.LineNumber)
