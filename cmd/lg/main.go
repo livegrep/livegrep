@@ -4,17 +4,19 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
-	"github.com/nelhage/go.cli/config"
 	"github.com/livegrep/livegrep/server/api"
+	"github.com/nelhage/go.cli/config"
 )
 
 var (
-	server = flag.String("server", "http://localhost:8910", "The livegrep server to connect to")
+	server      = flag.String("server", "http://localhost:8910", "The livegrep server to connect to")
+	unix_socket = flag.String("unix_socket", "", "unix socket path to connect() to as a proxy")
 )
 
 func main() {
@@ -46,9 +48,24 @@ func main() {
 	}
 
 	uri.Path = "/api/v1/search/"
-	uri.RawQuery = url.Values{"line": []string{flag.Arg(0)}}.Encode()
+	uri.RawQuery = url.Values{"q": []string{flag.Arg(0)}}.Encode()
 
-	resp, err := http.Get(uri.String())
+	var transport http.RoundTripper
+	if *unix_socket == "" {
+		transport = http.DefaultTransport
+	} else {
+		dialUnix := func(network, addr string) (net.Conn, error) {
+			return net.Dial("unix", *unix_socket)
+		}
+		transport = &http.Transport{
+			Dial:              dialUnix,
+			DialTLS:           dialUnix,
+			DisableKeepAlives: true,
+		}
+	}
+	client := http.Client{Transport: transport}
+
+	resp, err := client.Get(uri.String())
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Requesting %s: %s\n", uri.String(), err.Error())
