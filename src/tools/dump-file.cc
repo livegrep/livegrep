@@ -16,7 +16,7 @@
 void dump_file(code_searcher *cs, indexed_file *f) {
     for (auto it = f->content->begin(cs->alloc());
          it != f->content->end(cs->alloc()); ++it) {
-        printf("%.*s\n", it->size(), it->data());
+        printf("%.*s\n", (int)it->size(), it->data());
     }
 }
 
