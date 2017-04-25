@@ -25,7 +25,6 @@
 #include <netdb.h>
 #include <sys/un.h>
 #include <sys/wait.h>
-#include <sys/prctl.h>
 #include <semaphore.h>
 
 #include <iostream>
@@ -151,8 +150,6 @@ void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr)
 int main(int argc, char **argv) {
     gflags::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-    prctl(PR_SET_PDEATHSIG, SIGINT);
 
     code_searcher search;
     code_searcher tags;

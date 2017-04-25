@@ -67,6 +67,29 @@ namespace {
     metric idx_index_file_time("timer.index.index_file");
 };
 
+#ifdef __APPLE__
+/*
+ * Reverse memchr()
+ * Find the last occurrence of 'c' in the buffer 's' of size 'n'.
+ */
+void *
+memrchr(const void *s,
+        int c,
+        size_t n)
+{
+    const unsigned char *cp;
+
+    if (n != 0) {
+	cp = (unsigned char *)s + n;
+	do {
+	    if (*(--cp) == (unsigned char)c)
+		return (void *)cp;
+	} while (--n != 0);
+    }
+    return (void *)0;
+}
+#endif
+
 bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
     if (lhs.data() == NULL && rhs.data() == NULL)
         return true;
