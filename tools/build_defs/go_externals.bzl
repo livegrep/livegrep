@@ -28,7 +28,7 @@ _externals = [
     remote = "https://github.com/golang/appengine",
     vcs = "git",
   ),
-  _github("google/go-github", "63f6986f05c3e857d0bd9d7245b24c12a6c11147"),
+  _github("google/go-github", "e8d46665e050742f457a58088b1e6b794b2ae966"),
   _github("honeycombio/libhoney-go", "a8716c5861ae19c1e2baaad52dd59ba64b902bde"),
   _github("nelhage/go.cli", "2aeb96ef8025f3646befae8353b90f95e9e79bdc"),
   _github("bmizerany/pat", "c068ca2f0aacee5ac3681d68e4d0a003b7d1fd2c"),
@@ -40,7 +40,12 @@ _externals = [
     name = "in_gopkg_alexcesaro_statsd_v2",
     importpath = "gopkg.in/alexcesaro/statsd.v2",
     commit = "7fea3f0d2fab1ad973e641e51dba45443a311a90",
-  )
+  ),
+  struct(
+    name = "in_gopkg_check_v1",
+    importpath = "gopkg.in/check.v1",
+    commit = "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec",
+  ),
 ]
 
 def go_externals():

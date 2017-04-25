@@ -1,3 +1,4 @@
+# gazelle:ignore
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
@@ -5,7 +6,7 @@ go_library(
     srcs = ["testutil.go"],
     visibility = ["//visibility:public"],
     deps = [
-        "//src/proto/go_proto:go_default_library",
+        "//src/proto:go_proto",
         "@org_golang_google_grpc//:go_default_library",
     ],
 )
@@ -18,7 +19,7 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//src/proto/go_proto:go_default_library",
+        "//src/proto:go_proto",
         "@in_gopkg_check_v1//:go_default_library",
     ],
 )

@@ -148,7 +148,7 @@ func main() {
 	}
 }
 
-type ReposByName []github.Repository
+type ReposByName []*github.Repository
 
 func (r ReposByName) Len() int           { return len(r) }
 func (r ReposByName) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
@@ -170,11 +170,11 @@ func loadBlacklist(path string) (map[string]struct{}, error) {
 
 type loadJob struct {
 	obj string
-	get func(*github.Client, string) ([]github.Repository, error)
+	get func(*github.Client, string) ([]*github.Repository, error)
 }
 
 type maybeRepo struct {
-	repos []github.Repository
+	repos []*github.Repository
 	err   error
 }
 
@@ -182,7 +182,7 @@ func loadRepos(
 	client *github.Client,
 	repos []string,
 	orgs []string,
-	users []string) ([]github.Repository, error) {
+	users []string) ([]*github.Repository, error) {
 
 	jobc := make(chan loadJob)
 	done := make(chan struct{})
@@ -220,7 +220,7 @@ func loadRepos(
 		wg.Wait()
 		close(repoc)
 	}()
-	var out []github.Repository
+	var out []*github.Repository
 	for repo := range repoc {
 		if repo.err != nil {
 			close(done)
@@ -254,10 +254,10 @@ func runJobs(client *github.Client, jobc <-chan loadJob, done <-chan struct{}, o
 	}
 }
 
-func filterRepos(repos []github.Repository,
+func filterRepos(repos []*github.Repository,
 	blacklist map[string]struct{},
-	excludeForks bool) []github.Repository {
-	var out []github.Repository
+	excludeForks bool) []*github.Repository {
+	var out []*github.Repository
 
 	for _, r := range repos {
 		if excludeForks && r.Fork != nil && *r.Fork {
@@ -275,26 +275,26 @@ func filterRepos(repos []github.Repository,
 	return out
 }
 
-func getOneRepo(client *github.Client, repo string) ([]github.Repository, error) {
+func getOneRepo(client *github.Client, repo string) ([]*github.Repository, error) {
 	bits := strings.SplitN(repo, "/", 2)
 	if len(bits) != 2 {
 		return nil, fmt.Errorf("Bad repository: %s", repo)
 	}
 
-	ghRepo, _, err := client.Repositories.Get(bits[0], bits[1])
+	ghRepo, _, err := client.Repositories.Get(context.TODO(), bits[0], bits[1])
 	if err != nil {
 		return nil, err
 	}
-	return []github.Repository{*ghRepo}, nil
+	return []*github.Repository{ghRepo}, nil
 }
 
-func getOrgRepos(client *github.Client, org string) ([]github.Repository, error) {
-	var buf []github.Repository
+func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error) {
+	var buf []*github.Repository
 	opt := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{PerPage: 50},
 	}
 	for {
-		repos, resp, err := client.Repositories.ListByOrg(org, opt)
+		repos, resp, err := client.Repositories.ListByOrg(context.TODO(), org, opt)
 		if err != nil {
 			return nil, err
 		}
@@ -307,13 +307,13 @@ func getOrgRepos(client *github.Client, org string) ([]github.Repository, error)
 	return buf, nil
 }
 
-func getUserRepos(client *github.Client, user string) ([]github.Repository, error) {
-	var buf []github.Repository
+func getUserRepos(client *github.Client, user string) ([]*github.Repository, error) {
+	var buf []*github.Repository
 	opt := &github.RepositoryListOptions{
 		ListOptions: github.ListOptions{PerPage: 50},
 	}
 	for {
-		repos, resp, err := client.Repositories.List(user, opt)
+		repos, resp, err := client.Repositories.List(context.TODO(), user, opt)
 		if err != nil {
 			return nil, err
 		}
@@ -326,7 +326,7 @@ func getUserRepos(client *github.Client, user string) ([]github.Repository, erro
 	return buf, nil
 }
 
-func checkoutRepos(repos []github.Repository, dir string, depth int, http bool) error {
+func checkoutRepos(repos []*github.Repository, dir string, depth int, http bool) error {
 	repoc := make(chan *github.Repository)
 	errc := make(chan error, Workers)
 	stop := make(chan struct{})
@@ -343,7 +343,7 @@ func checkoutRepos(repos []github.Repository, dir string, depth int, http bool) 
 Repos:
 	for i := range repos {
 		select {
-		case repoc <- &repos[i]:
+		case repoc <- repos[i]:
 		case err = <-errc:
 			close(stop)
 			break Repos
@@ -453,7 +453,7 @@ func writeConfig(config []byte, file string) error {
 
 func buildConfig(name string,
 	dir string,
-	repos []github.Repository,
+	repos []*github.Repository,
 	revision string) ([]byte, error) {
 	cfg := IndexConfig{
 		Name: name,
