@@ -68,7 +68,7 @@ new_patched_http_archive(
 git_repository(
     name = "io_bazel_rules_go",
     remote = "https://github.com/bazelbuild/rules_go.git",
-    commit = "84382d5163b44286680176fb1fdf00e4afdb2b88",
+    commit = "805fd1566500997379806373feb05e138a4dfe28",
 )
 
 load("@io_bazel_rules_go//go:def.bzl",
