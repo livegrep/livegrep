@@ -75,30 +75,11 @@ load("@io_bazel_rules_go//go:def.bzl",
      "go_repositories", "new_go_repository")
 
 go_repositories()
-new_go_repository(
-  name = "org_golang_x_net",
-  importpath = "golang.org/x/net",
-  commit = "d212a1ef2de2f5d441c327b8f26cf3ea3ea9f265",
-)
-new_go_repository(
-  name = "org_golang_x_text",
-  importpath = "golang.org/x/text",
-  commit = "a9a820217f98f7c8a207ec1e45a874e1fe12c478",
-)
 
-new_go_repository(
-  name = "org_golang_google_appengine",
-  importpath = "google.golang.org/appengine/",
-  commit = "170382fa85b10b94728989dfcf6cc818b335c952",
-  remote = "https://github.com/golang/appengine",
-  vcs = "git",
-)
+load("//tools/build_defs:go_externals.bzl",
+     "go_externals")
 
-new_go_repository(
-  name = "org_golang_x_oauth2",
-  importpath = "golang.org/x/oauth2",
-  commit = "a6bd8cefa1811bd24b86f8902872e4e8225f74c4",
-)
+go_externals()
 
 load("//tools/build_defs:libgit2.bzl",
      "new_libgit2_archive",

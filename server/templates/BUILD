@@ -1,18 +1,7 @@
-
-load("@io_bazel_rules_go//go:def.bzl",
-  "go_binary",
-  "go_library",
-  "go_test",
-)
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-name = "go_default_library",
-  srcs = [
-    "templates.go",
-  ],
-  deps = [
-  ],
-  visibility = ["//visibility:public"],
+    name = "go_default_library",
+    srcs = ["templates.go"],
+    visibility = ["//visibility:public"],
 )
-
-
