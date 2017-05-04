@@ -258,9 +258,9 @@ namespace {
     intrusive_ptr<IndexKey> CaseFoldLiteral(Rune *runes, int nrunes) {
         if (nrunes == 0)
             return Empty();
-        intrusive_ptr<IndexKey> keys[nrunes];
+        std::vector<intrusive_ptr<IndexKey> > keys;
         for (int i = 0; i < nrunes; ++i) {
-            keys[i] = CaseFoldLiteral(runes[i]);
+            keys.push_back(CaseFoldLiteral(runes[i]));
         }
         return Concat(&keys[0], nrunes);
     }
