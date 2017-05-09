@@ -31,7 +31,7 @@ func main() {
 	}
 	flag.Parse()
 
-	if len(flag.Args()) != 1 {
+	if len(flag.Args()) == 0 {
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -49,7 +49,7 @@ func main() {
 	}
 
 	uri.Path = "/api/v1/search/"
-	uri.RawQuery = url.Values{"q": []string{flag.Arg(0)}}.Encode()
+	uri.RawQuery = url.Values{"q": []string{strings.Join(flag.Args(), " ")}}.Encode()
 
 	var transport http.RoundTripper
 	if *unixSocket == "" {
