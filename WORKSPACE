@@ -6,7 +6,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl",
 git_repository(
   name = "org_pubref_rules_protobuf",
   remote = "https://github.com/pubref/rules_protobuf",
-  commit = "7d12b7e3f1d40086a2d28ce900cd7980ab8f2758",
+  commit = "1a559c005859642894aa7b5ebf94b61fe781fb1d",
 )
 
 load("//tools/build_defs:externals.bzl",
