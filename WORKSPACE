@@ -25,19 +25,19 @@ new_patched_http_archive(
 
 git_repository(
   name = "com_googlesource_code_re2",
-  remote = "git://github.com/google/re2",
+  remote = "https://github.com/google/re2",
   commit = "b94b7cd42e9f02673cd748c1ac1d16db4052514c",
 )
 
 git_repository(
   name = "gflags",
-  remote = "git://github.com/gflags/gflags",
+  remote = "https://github.com/gflags/gflags",
   commit = "a69b2544d613b4bee404988710503720c487119a"
 )
 
 git_repository(
   name = "com_github_nelhage_boost",
-  remote = "git://github.com/nelhage/rules_boost",
+  remote = "https://github.com/nelhage/rules_boost",
   commit = "ead0110ff90d5d90d2eb67e7e78f34f42d8486a1",
 )
 # local_repository(
