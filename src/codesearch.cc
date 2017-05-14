@@ -47,6 +47,7 @@ const int kMinFilterRatio = 50;
 const int kMaxScan        = (1 << 20);
 
 DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
+DEFINE_bool(compress, true, "Compress file contents linewise");
 DEFINE_bool(drop_cache, false, "Drop caches before each search");
 DEFINE_bool(search, true, "Actually do the search.");
 DEFINE_int32(max_matches, 50, "The maximum number of results to return for a single query.");
@@ -444,7 +445,7 @@ void code_searcher::index_file(const indexed_tree *tree,
             memcpy(alloc, p, f - p);
             alloc[f - p] = '\n';
             line = StringPiece((char*)alloc, f - p);
-            {
+            if (FLAGS_compress) {
                 metric::timer tm(idx_hash_time);
                 if (alloc_->current_chunk() != prev)
                     lines_.clear();
