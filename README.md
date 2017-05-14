@@ -57,9 +57,10 @@ repositories specified in its configuration file. You can, however,
 also instruct it to save the index to a file on disk. This the dual
 advantages of allowing indexes that are too large to fit in RAM, and
 of allowing an index file to be reused. You instruct `codesearch` to
-generate an index file via the `-dump_index` flag:
+generate an index file via the `-dump_index` flag and to not launch
+a search server via the `-index_only` flag:
 
-    bazel-bin/src/tools/codesearch -dump_index livegrep.idx doc/examples/livegrep/index.json </dev/null
+    bazel-bin/src/tools/codesearch -index_only -dump_index livegrep.idx doc/examples/livegrep/index.json </dev/null
 
 Once `codeseach` has built the index, this index file can be used for
 future runs. Index files are standalone, and you no longer need access
