@@ -30,7 +30,7 @@ public:
         void pause() {
             tm_.pause();
             timeval elapsed = tm_.elapsed();
-            m_->inc(elapsed.tv_sec * 1000 + elapsed.tv_usec / 1000);
+            m_->inc(elapsed.tv_sec * 1000000 + elapsed.tv_usec);
             tm_.reset();
         }
 
