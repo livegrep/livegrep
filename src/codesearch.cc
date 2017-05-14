@@ -66,6 +66,8 @@ namespace {
     metric idx_content_ranges("index.content.ranges");
     metric idx_hash_time("timer.index.dedup.hash");
     metric idx_index_file_time("timer.index.index_file");
+    metric idx_add_chunk_file_time("timer.index.add_chunk_file");
+    metric idx_finish_file_time("timer.index.finish_file");
 };
 
 #ifdef __APPLE__
@@ -457,7 +459,10 @@ void code_searcher::index_file(const indexed_tree *tree,
             c = alloc_->chunk_from_string
                 (reinterpret_cast<const unsigned char*>(line.data()));
         }
-        c->add_chunk_file(sf, line);
+        {
+            metric::timer tm(idx_add_chunk_file_time);
+            c->add_chunk_file(sf, line);
+        }
         content.extend(c, line);
         p = min(end, f + 1);
     }
@@ -480,9 +485,13 @@ void code_searcher::index_file(const indexed_tree *tree,
     idx_content_ranges.inc(sf->content->size());
     assert(sf->content->size() <= 3*lines);
 
-    for (auto it = alloc_->begin();
-         it != alloc_->end(); it++)
-        (*it)->finish_file();
+    {
+        metric::timer tm(idx_finish_file_time);
+        for (auto it = alloc_->begin();
+             it != alloc_->end(); it++) {
+            (*it)->finish_file();
+        }
+    }
 }
 
 void searcher::operator()(const chunk *chunk)
