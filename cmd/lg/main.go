@@ -79,7 +79,7 @@ func main() {
 			fmt.Fprintf(os.Stderr,
 				"Error reading reply (status=%d): %s\n", resp.StatusCode, e.Error())
 		} else {
-			fmt.Fprintf(os.Stderr, "Error: %s: %s", reply.Err.Code, reply.Err.Message)
+			fmt.Fprintf(os.Stderr, "Error: %s: %s\n", reply.Err.Code, reply.Err.Message)
 		}
 		os.Exit(1)
 	}
