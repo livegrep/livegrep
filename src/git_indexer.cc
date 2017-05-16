@@ -43,7 +43,10 @@ git_indexer::~git_indexer() {
 void git_indexer::walk(const string& ref) {
     smart_object<git_commit> commit;
     smart_object<git_tree> tree;
-    git_revparse_single(commit, repo_, (ref + "^0").c_str());
+    if (0 != git_revparse_single(commit, repo_, (ref + "^0").c_str())) {
+        fprintf(stderr, "ref %s not found, skipping (empty repo?)\n", ref.c_str());
+        return;
+    }
     git_commit_tree(tree, commit);
 
     char oidstr[GIT_OID_HEXSZ+1];
