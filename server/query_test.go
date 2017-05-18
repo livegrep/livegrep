@@ -104,6 +104,10 @@ func TestParseQuery(t *testing.T) {
 			`lit:.`,
 			pb.Query{Line: `\.`, FoldCase: false},
 		},
+		{
+			`std::string`,
+			pb.Query{Line: `std::string`, FoldCase: true},
+		},
 	}
 
 	for _, tc := range cases {

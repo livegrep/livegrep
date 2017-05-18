@@ -12,6 +12,17 @@ import (
 
 var pieceRE = regexp.MustCompile(`\(|(?:^([a-zA-Z0-9-]+):|\\.)| `)
 
+var knownTags = map[string]bool{
+	"file":  true,
+	"-file": true,
+	"repo":  true,
+	"-repo": true,
+	"tags":  true,
+	"-tags": true,
+	"case":  true,
+	"lit":   true,
+}
+
 func ParseQuery(query string) (pb.Query, error) {
 	ops := make(map[string]string)
 	key := ""
@@ -70,8 +81,9 @@ func ParseQuery(query string) (pb.Query, error) {
 			ops[key] += match
 		} else {
 			// An operator. The key is in match group 1
-			if key == "" {
-				key = match[m[2]-m[0] : m[3]-m[0]]
+			newKey := match[m[2]-m[0] : m[3]-m[0]]
+			if key == "" && knownTags[newKey] {
+				key = newKey
 			} else {
 				ops[key] += match
 			}
