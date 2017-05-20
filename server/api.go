@@ -175,6 +175,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		e.AddField("query_foldcase", q.FoldCase)
 		e.AddField("query_not_file", q.NotFile)
 		e.AddField("query_not_repo", q.NotRepo)
+		e.AddField("max_matches", q.MaxMatches)
 
 		e.AddField("result_count", len(reply.Results))
 		e.AddField("re2_time", reply.Info.RE2Time)
