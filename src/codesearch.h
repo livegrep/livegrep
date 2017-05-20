@@ -119,6 +119,7 @@ struct match_result {
 // constraint"
 struct query {
     std::string trace_id;
+    int32_t max_matches;
 
     std::unique_ptr<RE2> line_pat;
     std::unique_ptr<RE2> file_pat;

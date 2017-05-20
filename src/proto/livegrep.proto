@@ -9,6 +9,7 @@ message Query {
     string not_file = 6;
     string not_repo = 7;
     string not_tags = 8;
+    int32 max_matches = 9;
 }
 
 message Bounds {

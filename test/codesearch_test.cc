@@ -205,3 +205,33 @@ TEST_F(codesearch_test, Tags) {
 
     ASSERT_EQ(1, matches.results_size());
 }
+
+
+TEST_F(codesearch_test, MaxMatches) {
+    cs_.index_file(tree_, "/file1", "contents");
+    cs_.index_file(tree_, "/file2", "contents");
+    cs_.index_file(tree_, "/file3", "contents");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
+    {
+        CodeSearchResult all_matches;
+        Query request;
+        request.set_line("contents");
+        request.set_max_matches(0);
+        grpc::ServerContext ctx;
+        grpc::Status st = srv->Search(&ctx, &request, &all_matches);
+        ASSERT_TRUE(st.ok());
+        ASSERT_EQ(3, all_matches.results_size());
+    }
+    {
+        CodeSearchResult limited_matches;
+        Query request;
+        request.set_line("contents");
+        request.set_max_matches(2);
+        grpc::ServerContext ctx;
+        grpc::Status st = srv->Search(&ctx, &request, &limited_matches);
+        ASSERT_TRUE(st.ok());
+        ASSERT_EQ(request.max_matches(), limited_matches.results_size());
+    }
+}
