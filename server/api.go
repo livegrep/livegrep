@@ -154,6 +154,10 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
+	if q.MaxMatches == 0 {
+		q.MaxMatches = s.config.DefaultMaxMatches
+	}
+
 	reply, err := s.doSearch(ctx, backend, &q)
 
 	if err != nil {
