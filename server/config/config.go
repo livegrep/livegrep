@@ -49,4 +49,6 @@ type Config struct {
 
 	// honeycomb API write key
 	Honeycomb Honeycomb `json:"honeycomb"`
+
+	DefaultMaxMatches int32 `json:"default_max_matches"`
 }

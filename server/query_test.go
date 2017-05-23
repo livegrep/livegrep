@@ -108,6 +108,14 @@ func TestParseQuery(t *testing.T) {
 			`std::string`,
 			pb.Query{Line: `std::string`, FoldCase: true},
 		},
+		{
+			`a max_matches:100`,
+			pb.Query{Line: "a", FoldCase: true, MaxMatches: 100},
+		},
+		{
+			`a max_matches:`,
+			pb.Query{Line: "a", FoldCase: true},
+		},
 	}
 
 	for _, tc := range cases {
@@ -124,5 +132,23 @@ func TestParseQuery(t *testing.T) {
 	_, err := ParseQuery(`hello case:foo`)
 	if err == nil {
 		t.Errorf("parse multiple regexes, no error")
+	}
+}
+
+func TestParseQueryError(t *testing.T) {
+	cases := []struct {
+		in  string
+	}{
+		{ "case:a b" },
+		{ "lit:a b" },
+		{ "case:a lit:b" },
+		{ "a max_matches:a" },
+	}
+
+	for _, tc := range cases {
+		parsed, err := ParseQuery(tc.in)
+		if err == nil {
+			t.Errorf("expected an error parsing (%v), got %#v", tc.in, parsed)
+		}
 	}
 }

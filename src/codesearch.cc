@@ -128,6 +128,12 @@ public:
             index_ = indexRE(*query_->line_pat);
         }
 
+        if (FLAGS_max_matches && !query_->max_matches) {
+            max_matches_ = FLAGS_max_matches;
+        } else {
+            max_matches_ = std::min(FLAGS_max_matches, query_->max_matches);
+        }
+
         if (FLAGS_timeout <= 0) {
             limit_.tv_sec = numeric_limits<time_t>::max();
         } else {
@@ -298,7 +304,7 @@ protected:
         if (exit_reason_)
             return true;
 
-        if (FLAGS_max_matches && matches_.load() >= FLAGS_max_matches) {
+        if (max_matches_ && matches_.load() >= max_matches_) {
             exit_reason_ = kExitMatchLimit;
             return true;
         }
@@ -323,6 +329,7 @@ protected:
     const code_searcher::search_thread::transform_func transform_;
     thread_queue<match_result*> queue_;
     atomic_int matches_;
+    int max_matches_;
     intrusive_ptr<IndexKey> index_;
     timer re2_time_;
     timer git_time_;

@@ -182,17 +182,19 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         return st;
 
     q.trace_id = current_trace_id();
+    q.max_matches = request->max_matches();
 
     log(q.trace_id,
         "processing query line='%s' file='%s' tree='%s' tags='%s' "
-        "not_file='%s' not_tree='%s' not_tags='%s'",
+        "not_file='%s' not_tree='%s' not_tags='%s' max_matches='%d'",
         pat(q.line_pat).c_str(),
         pat(q.file_pat).c_str(),
         pat(q.tree_pat).c_str(),
         pat(q.tags_pat).c_str(),
         pat(q.negate.file_pat).c_str(),
         pat(q.negate.tree_pat).c_str(),
-        pat(q.negate.tags_pat).c_str());
+        pat(q.negate.tags_pat).c_str(),
+        q.max_matches);
 
     if (q.line_pat->ProgramSize() > kMaxProgramSize) {
         log("program too large size=%d", q.line_pat->ProgramSize());

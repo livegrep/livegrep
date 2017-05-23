@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
-var pieceRE = regexp.MustCompile(`\(|(?:^([a-zA-Z0-9-]+):|\\.)| `)
+var pieceRE = regexp.MustCompile(`\(|(?:^([a-zA-Z0-9-_]+):|\\.)| `)
 
 var knownTags = map[string]bool{
 	"file":  true,
@@ -21,6 +22,7 @@ var knownTags = map[string]bool{
 	"-tags": true,
 	"case":  true,
 	"lit":   true,
+	"max_matches": true,
 }
 
 func ParseQuery(query string) (pb.Query, error) {
@@ -114,6 +116,16 @@ func ParseQuery(query string) (pb.Query, error) {
 		out.FoldCase = false
 	} else {
 		out.FoldCase = strings.IndexAny(out.Line, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") == -1
+	}
+	if v, ok := ops["max_matches"]; ok && v != "" {
+		i, err := strconv.Atoi(v)
+		if err == nil {
+			out.MaxMatches = int32(i)
+		} else {
+			return out, errors.New("Value given to max_matches: must be a valid integer");
+		}
+	} else {
+		out.MaxMatches = 0
 	}
 
 	if len(bits) > 1 {
