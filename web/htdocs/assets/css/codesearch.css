@@ -55,8 +55,6 @@ body {
 
 #resultbox {
     width: 100%;
-    border: 1px solid black;
-    padding: 5px;
 }
 
 .label {
@@ -67,8 +65,59 @@ body {
     clear: both;
 }
 
+#results {
+    margin-top: 10px;
+}
+
+.file-group {
+    background: rgba(34, 76, 89, 0.05);
+    margin-bottom: 15px;
+    border: solid 1px rgba(0, 0, 0, 0.1);
+    border-left: solid 3px #A0D1FA;
+}
+
+.file-group .header {
+    color: #3d464d;
+    font-family: monospace;
+    font-weight: normal;
+    display: block;
+    background: rgba(0, 126, 229, 0.04);
+    padding: 3px 5px;
+}
+
+.file-group .header .filename {
+    font-weight: bold;
+}
+
+.file-group .header .repo, .file-group .header .version {
+    color: rgba(0, 0, 0, 0.5);
+}
+
 .match {
-    margin: 1em 2em;
+    display: block;
+    border: solid 0 rgba(0, 0, 0, 0.15);
+    border-top-width: 1px;
+    margin-top: 5px;
+    text-decoration: none;
+    background-color: #fff;
+}
+
+.match:first-of-type {
+    border-top-width: 0;
+    margin-top: 0px;
+}
+
+.match.clip-before {
+    margin-top: 0;
+    border-top: none;
+}
+
+.match.clip-before .contents {
+    padding-top: 0;
+}
+
+.match.clip-after .contents {
+    padding-bottom: 0;
 }
 
 .match .label {
@@ -84,7 +133,10 @@ body {
 }
 
 .lno {
-    text-align: center;
+    display: inline-block;
+    width: 3em;
+    margin-right: 1em;
+    text-align: right;
     -moz-user-select: none;
     -webkit-user-select: none;
     -ms-user-select: none;
@@ -105,10 +157,9 @@ tr:nth-child(even) {
 .match .contents {
     white-space: pre-wrap;
     font-family: monospace;
-    background: #eee;
-    border: 1px solid black;
-    margin-left: 1em;
-    margin-top: 5px;
+    padding: 10px 5px;
+    color: #000;
+    margin: 0;
 }
 
 .matchstr{
@@ -123,10 +174,6 @@ tr:nth-child(even) {
 
 .contents div.code {
     padding: 3px 0px;
-}
-
-.match .lno {
-    width: 3em;
 }
 
 .line {
