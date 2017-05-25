@@ -51,11 +51,6 @@ func main() {
 		log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 	}
 
-	err = exec.Command("ssh-add", "-l").Run()
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-
 	if err := checkoutRepos(&cfg.Repositories); err != nil {
 		log.Fatalln(err.Error())
 	}
