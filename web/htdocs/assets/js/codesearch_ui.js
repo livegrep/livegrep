@@ -303,7 +303,7 @@ var ResultView = Backbone.View.extend({
     }
 
     var results = '' + this.model.matches.size();
-    if (this.model.get('why') === 'limit')
+    if (this.model.get('why') === 'MATCH_LIMIT')
       results = results + '+';
     this.results.text(results);
 
