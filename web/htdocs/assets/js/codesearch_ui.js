@@ -185,10 +185,19 @@ var FileGroup = Backbone.Model.extend({
       var num_intersecting_lines = (last_line_of_prev_context - first_line_of_this_context) + 1;
       if(num_intersecting_lines >= 0) {
         // The matches are intersecting or share a boundary.
-        // Split the context between the previous match and this one. Uneven splits should leave
-        // the latter element with the larger piece.
-        var clip_for_previous = parseInt(Math.ceil(num_intersecting_lines / 2.0), 10);
-        var clip_for_this = parseInt(Math.floor(num_intersecting_lines / 2.0), 10);
+        // Try to split the context between the previous match and this one.
+        // Uneven splits should leave the latter element with the larger piece.
+
+        // split_at will be the first line number grouped with the latter element.
+        var split_at = parseInt(Math.ceil((previous_match.get('lno') + this_match.get('lno')) / 2.0), 10);
+        if (split_at < first_line_of_this_context) {
+            split_at = first_line_of_this_context;
+        } else if (last_line_of_prev_context + 1 < split_at) {
+            split_at = last_line_of_prev_context + 1;
+        }
+
+        var clip_for_previous = last_line_of_prev_context - (split_at - 1);
+        var clip_for_this = split_at - first_line_of_this_context;
         previous_match.set('clip_after', clip_for_previous);
         this_match.set('clip_before', clip_for_this);
       } else {
