@@ -46,7 +46,7 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	var cfg IndexConfig;
+	var cfg IndexConfig
 	if err = json.Unmarshal(data, &cfg); err != nil {
 		log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 	}
@@ -178,7 +178,7 @@ func checkoutOne(r *RepoConfig) error {
 	}
 
 	if err := exec.Command("git", "-C", r.Path, "remote", "set-url", "origin", remote).Run(); err != nil {
-		return err;
+		return err
 	}
 
 	return retryCommand("git", []string{"-C", r.Path, "fetch", "-p"})
