@@ -137,12 +137,12 @@ func TestParseQuery(t *testing.T) {
 
 func TestParseQueryError(t *testing.T) {
 	cases := []struct {
-		in  string
+		in string
 	}{
-		{ "case:a b" },
-		{ "lit:a b" },
-		{ "case:a lit:b" },
-		{ "a max_matches:a" },
+		{"case:a b"},
+		{"lit:a b"},
+		{"case:a lit:b"},
+		{"a max_matches:a"},
 	}
 
 	for _, tc := range cases {

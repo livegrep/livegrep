@@ -17,7 +17,7 @@ type page struct {
 }
 
 type Template interface {
-  Execute(wr io.Writer, data interface{}) error
+	Execute(wr io.Writer, data interface{}) error
 }
 
 func executeTemplate(t Template, context interface{}) ([]byte, error) {
