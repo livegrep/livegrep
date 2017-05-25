@@ -14,14 +14,14 @@ import (
 var pieceRE = regexp.MustCompile(`\(|(?:^([a-zA-Z0-9-_]+):|\\.)| `)
 
 var knownTags = map[string]bool{
-	"file":  true,
-	"-file": true,
-	"repo":  true,
-	"-repo": true,
-	"tags":  true,
-	"-tags": true,
-	"case":  true,
-	"lit":   true,
+	"file":        true,
+	"-file":       true,
+	"repo":        true,
+	"-repo":       true,
+	"tags":        true,
+	"-tags":       true,
+	"case":        true,
+	"lit":         true,
 	"max_matches": true,
 }
 
@@ -122,7 +122,7 @@ func ParseQuery(query string) (pb.Query, error) {
 		if err == nil {
 			out.MaxMatches = int32(i)
 		} else {
-			return out, errors.New("Value given to max_matches: must be a valid integer");
+			return out, errors.New("Value given to max_matches: must be a valid integer")
 		}
 	} else {
 		out.MaxMatches = 0
