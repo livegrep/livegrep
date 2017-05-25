@@ -26,6 +26,7 @@ type RepoConfig struct {
 }
 
 var (
+	flagCodesearch  = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
 	flagIndexPath   = flag.String("out", "livegrep.idx", "Path to write the index")
 	flagRevparse    = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
 	flagSkipMissing = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
@@ -68,10 +69,7 @@ func main() {
 	}
 	args = append(args, flag.Arg(0))
 
-	cmd := exec.Command(
-		path.Join(path.Dir(path.Dir(path.Dir(os.Args[0]))), "src", "tools", "codesearch"),
-		args...,
-	)
+	cmd := exec.Command(*flagCodesearch, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
