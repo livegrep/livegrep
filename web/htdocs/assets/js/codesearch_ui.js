@@ -58,7 +58,7 @@ var MatchView = Backbone.View.extend({
     return this;
   },
   _renderLno: function(n, isMatch) {
-    return h.a({cls: 'lno', href: this.model.url()}, [n.toString(), isMatch ? ":" : "-"]);
+    return h.a({cls: 'lno', href: this.model.url(n)}, [n.toString(), isMatch ? ":" : "-"]);
   },
   _render: function() {
     var i;
@@ -124,7 +124,7 @@ var Match = Backbone.Model.extend({
     }
   },
 
-  url: function() {
+  url: function(lno) {
     var name = this.get('tree');
     var ref = this.get('version');
 
@@ -138,9 +138,13 @@ var Match = Backbone.Model.extend({
       return null;
     }
 
+    if (lno === undefined) {
+        lno = this.get('lno');
+    }
+
     // the order of these replacements is used to minimize conflicts
     var url = repo_map[name];
-    url = url.replace('{lno}', this.get('lno'));
+    url = url.replace('{lno}', lno);
     url = url.replace('{version}', shorten(ref));
     url = url.replace('{name}', name);
     url = url.replace('{path}', this.get('path'));
