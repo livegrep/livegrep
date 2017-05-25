@@ -57,6 +57,9 @@ var MatchView = Backbone.View.extend({
     this.setElement(div);
     return this;
   },
+  _renderLno: function(n, isMatch) {
+    return h.a({cls: 'lno', href: this.model.url()}, [n.toString(), isMatch ? ":" : "-"]);
+  },
   _render: function() {
     var i;
     var ctx_before = [], ctx_after = [];
@@ -67,14 +70,14 @@ var MatchView = Backbone.View.extend({
     var lines_to_display_before = Math.max(0, ctxBefore.length - (clip_before || 0));
     for (i = 0; i < lines_to_display_before; i ++) {
       ctx_before.unshift(h.div([
-                                 h.span({cls: 'lno'}, [(lno - i - 1).toString(), "-"]),
+                                 this._renderLno(lno - i - 1, false),
                                  this.model.get('context_before')[i]
                                ]));
     }
     var lines_to_display_after = Math.max(0, ctxAfter.length - (clip_after || 0));
     for (i = 0; i < lines_to_display_after; i ++) {
       ctx_after.push(h.div([
-                             h.span({cls: 'lno'}, [(lno + i + 1).toString(), "-"]),
+                             this._renderLno(lno + i + 1, false),
                              this.model.get('context_after')[i]
                            ]));
     }
@@ -88,13 +91,11 @@ var MatchView = Backbone.View.extend({
     if(clip_before !== undefined) classes.push('clip-before');
     if(clip_after !== undefined) classes.push('clip-after');
 
-    var browseUrl = this.model.url();
-
-    var matchElement = h.a({cls: classes.join(' '), href: browseUrl}, [
+    var matchElement = h.div({cls: classes.join(' ')}, [
         h.div({cls: 'contents'}, [
                 ctx_before,
                 h.div({cls: 'matchline'}, [
-                  h.span({cls: 'lno'}, [lno + ":"]),
+                  this._renderLno(lno, true),
                   pieces[0],
                   h.span({cls: 'matchstr'}, [pieces[1]]),
                   pieces[2]
@@ -338,7 +339,7 @@ var FileGroupView = Backbone.View.extend({
       dirname,
       h.span({cls: "filename"}, [basename])
     ];
-    return h.span({cls: 'label header'}, repoLabel);
+    return h.a({cls: 'label header', href: this.model.matches[0].url()}, repoLabel);
   },
 
   render: function() {

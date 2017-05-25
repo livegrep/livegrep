@@ -3,6 +3,14 @@ body {
     font-family: sans-serif;
 }
 
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
 #searcharea {
     width: 40em;
     margin: auto;
@@ -21,10 +29,6 @@ body {
 .querybox {
     font-size: 80%;
     text-align: center;
-}
-
-.querybox .help a {
-    text-decoration: none;
 }
 
 #searcharea input {
@@ -98,7 +102,6 @@ body {
     border: solid 0 rgba(0, 0, 0, 0.15);
     border-top-width: 1px;
     margin-top: 5px;
-    text-decoration: none;
     background-color: #fff;
 }
 
@@ -134,16 +137,13 @@ body {
 
 .lno {
     display: inline-block;
+    color: #3d464d;
     width: 3em;
-    margin-right: 1em;
+    padding-right: 1em;
     text-align: right;
     -moz-user-select: none;
     -webkit-user-select: none;
     -ms-user-select: none;
-}
-
-.lno:before {
-    content: attr(line_number);
 }
 
 .code {
