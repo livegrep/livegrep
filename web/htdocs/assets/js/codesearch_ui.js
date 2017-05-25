@@ -130,6 +130,16 @@ var Match = Backbone.Model.extend({
   },
 
   url: function(lno) {
+    if (this.get('tree') in CodesearchUI.intervalViewRepos) {
+      return this.internalUrl(lno);
+    } else {
+      return this.externalUrl(lno);
+    }
+  },
+  internalUrl: function(lno) {
+    return "/view/" + this.get('tree') + "/" + this.get('path') + "#L" + this.get('lno');
+  },
+  externalUrl: function(lno) {
     var name = this.get('tree');
     var ref = this.get('version');
 
@@ -550,6 +560,5 @@ var CodesearchUI = function() {
     repo_urls: {}
   };
 }();
-CodesearchUI.onload();
 window.CodesearchUI = CodesearchUI;
 });

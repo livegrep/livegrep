@@ -4,6 +4,7 @@
   <head>
     <title>code search ⋅ {{.Title}}</title>
     <link rel="stylesheet" href='/assets/css/codesearch.css' />
+    <link rel="stylesheet" href="/assets/css/3d/hljs/tomorrow.css" />
     <script language="javascript" type="text/javascript" src="/assets/js/3d/jquery.js"></script>
     <script language="javascript" type="text/javascript" src="/assets/js/3d/underscore.js"></script>
     <script language="javascript" type="text/javascript" src="/assets/js/3d/backbone.js"></script>
@@ -38,6 +39,7 @@
     {{.Config.HeaderHTML}}
     {{end}}
     </div>
+    {{if .IncludeHeader}}
     <div id='header'>
       <ul>
         <li><a href="/">search</a></li>
@@ -49,6 +51,7 @@
         <li class='first'>livegrep is a project by <a href="http://blog.nelhage.com/">Nelson Elhage</a></li>
       </ul>
     </div>
+    {{end}}
     {{ .Body}}
   </body>
 </html>

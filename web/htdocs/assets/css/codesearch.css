@@ -1,5 +1,5 @@
 body {
-    margin: 1em 3em;
+    margin: 0;
     font-family: sans-serif;
 }
 
@@ -187,6 +187,241 @@ a:hover {
 #resultarea {
     display: none;
 }
+
+/* File viewer */
+.file-viewer {
+    border-collapse: collapse;
+    margin: 0;
+    line-height: 1.3;
+    width: 100%;
+    overflow: visible; /* Allow code content to overflow */
+    font-family: monospace;
+}
+
+.file-viewer .header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1;
+
+    padding-top: 8px;
+    padding-right: 5px;
+    padding-bottom: 8px;
+    /* The left padding should be the width of the .line-number column + the left margin
+       of the code block. This will align the header content with the code. */
+    padding-left: 95px;
+
+    background-color: white;
+    border-bottom: solid 1px rgba(0,0,0,0.15);
+    box-shadow: 0 0 5px rgba(0,0,0,0.15);
+}
+
+.file-viewer .header .repo {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.file-viewer .header .repo:hover {
+    color: rgba(0, 0, 0, 1.0);
+}
+
+.file-viewer .header-title {
+    font-size: 14px;
+    padding: 0;
+    margin: 0 0 5px 0;
+    font-weight: normal;
+    overflow: auto;
+}
+
+.file-viewer .content-wrapper {
+    /* Offset the content so that the overlapping header doesn't occlude it. */
+    position: relative;
+    margin-top: 5em;
+}
+
+.file-viewer .file-content {
+    position: relative;
+    font-family: monospace;
+}
+
+.file-viewer .line-numbers {
+    top: 0;
+    left: 0;
+    width: 75px;
+    text-align: right;
+}
+
+.file-viewer .line-numbers > .line:focus {
+    outline: none;
+}
+
+.file-viewer .line-numbers a:focus {
+    outline: solid 1px rgba(255, 234, 170, 0.5);
+    background: rgba(255, 234, 170, 0.33);
+}
+
+.file-viewer .line-numbers .highlighted {
+    background: rgba(255, 234, 170, 0.75);
+    left: 0;
+    width: 100%;
+}
+
+.file-viewer .line-numbers a.highlighted:focus {
+    background: rgba(255, 234, 170, 0.75);
+}
+
+.file-viewer .line-numbers a {
+    display: block;
+    width: 100%;
+    color: rgba(0, 0, 0, 0.25);
+    text-decoration: none;
+}
+
+.file-viewer .line-numbers a:hover {
+    color: rgba(0, 0, 0, 1);
+    text-decoration: underline;
+}
+.file-viewer .code {
+    position: absolute;
+    top: 0;
+    left: 75px;
+    width: 30%;
+    overflow: visible;
+    margin: 0 0 0 20px;
+    white-space: pre;
+    padding: 0 !important; /* Cancel out the padding added by HLJS */
+    color: #4d4d4c; /* Match the text color of HLJS to avoid shift when the JS has finished */
+}
+
+.file-viewer .code.hljs {
+    background: transparent !important; /* Override HLJS default styling */
+}
+
+.file-viewer .help-screen .u-modal-content {
+    width: 600px;
+    padding: 20px;
+}
+
+.file-viewer .help-screen li {
+    margin-top: 20px;
+}
+
+.file-viewer .help-screen li:first-child {
+    margin-top: 0px;
+}
+
+.file-viewer .help-screen .keyboard-shortcut {
+    display: inline-block;
+    background: rgba(0,0,0,0.05);
+    border: solid 1px rgba(0,0,0,0.05);
+    padding: 3px;
+    margin: 0;
+    font-weight: bold;
+}
+
+.file-viewer .query {
+    width: 100%;
+    max-width: 800px;
+    padding: 20px 30px;
+}
+
+.file-viewer .query:focus {
+    outline: none;
+}
+
+/* Header actions */
+.header-actions {
+    margin: 0;
+    padding: 0 0 0 5px;
+    color: rgba(0, 0, 0, 0.5);
+    border-left: solid 2px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.8s;
+}
+
+.header-actions:hover {
+    border-color: rgba(0, 0, 0, 0.25);
+}
+
+.header-action {
+    margin: 0;
+    display: inline-block;
+    list-style: none;
+}
+
+.header-action .keyboard-hint {
+    color: rgba(0, 0, 0, 0.25);
+    font-size: 10px;
+}
+
+.header-action a {
+    text-decoration: none;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.header-action a:hover, .header-action a:focus {
+    color: rgba(0, 0, 0, 1);
+}
+/* END */
+
+/* File list */
+.file-list {
+    margin: 0;
+    padding: 20px 40px 0;
+    list-style: none;
+}
+
+.file-list-entry {
+    margin: 2px 0 0 0;
+}
+
+.file-list-entry.is-directory {
+    font-weight: bold;
+}
+
+.file-list-entry.is-symlink {
+    color: rgba(0, 0, 0, 0.75);
+}
+
+.file-list-entry .symlink-target {
+    color: rgba(0, 0, 0, 0.55);
+}
+/* END */
+
+/* Utility */
+.hidden {
+    display: none !important;
+}
+
+.noscroll {
+    overflow: hidden;
+}
+
+.u-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 1;
+    padding: 60px;
+    margin: 0;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.u-modal-content {
+    z-index: 1;
+    background: white;
+    border:  solid 1px rgba(0,0,0,0.25);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.25);
+    text-align: left;
+    display: inline-block;
+}
+
+.u-right {
+    float: right;
+}
+/* END */
+
 
 /* /help */
 

@@ -51,4 +51,20 @@ type Config struct {
 	Honeycomb Honeycomb `json:"honeycomb"`
 
 	DefaultMaxMatches int32 `json:"default_max_matches"`
+
+	// Same json config structure that the backend uses when building indexes;
+	// used here for repository browsing.
+	IndexConfig IndexConfig `json:"index_config"`
+}
+
+type IndexConfig struct {
+	Name         string       `json:"name"`
+	Repositories []RepoConfig `json:"repositories"`
+}
+
+type RepoConfig struct {
+	Path      string            `json:"path"`
+	Name      string            `json:"name"`
+	Revisions []string          `json:"revisions"`
+	Metadata  map[string]string `json:"metadata"`
 }

@@ -17,6 +17,13 @@ func templatePath(f reflect.StructField) string {
 	return strings.ToLower(f.Name) + ".html"
 }
 
+func getFuncs() map[string]interface{} {
+	return map[string]interface{}{
+		"loop":      func(n int) []struct{} { return make([]struct{}, n) },
+		"toLineNum": func(n int) int { return n + 1 },
+	}
+}
+
 func Load(base string, templates interface{}) error {
 	v := reflect.ValueOf(templates)
 	if v.Kind() != reflect.Ptr {
@@ -37,12 +44,13 @@ func Load(base string, templates interface{}) error {
 		}
 
 		p := templatePath(f)
+		name := path.Base(p)
 		var err error
 		var tpl interface{}
 		if is_html_template {
-			tpl, err = template.ParseFiles(path.Join(base, p))
+			tpl, err = template.New(name).Funcs(getFuncs()).ParseFiles(path.Join(base, p))
 		} else {
-			tpl, err = texttemplate.ParseFiles(path.Join(base, p))
+			tpl, err = texttemplate.New(name).Funcs(getFuncs()).ParseFiles(path.Join(base, p))
 		}
 
 		if err != nil {
