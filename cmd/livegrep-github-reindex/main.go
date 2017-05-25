@@ -22,6 +22,7 @@ import (
 )
 
 var (
+	flagCodesearch = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
 	flagApiBaseUrl = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
 	flagGithubKey  = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
 	flagRepoDir    = flag.String("dir", "repos", "Directory to store repos")
@@ -133,10 +134,7 @@ func main() {
 	}
 	args = append(args, configPath)
 
-	cmd := exec.Command(
-		path.Join(path.Dir(os.Args[0]), "codesearch"),
-		args...,
-	)
+	cmd := exec.Command(*flagCodesearch, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
