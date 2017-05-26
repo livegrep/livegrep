@@ -72,16 +72,16 @@ var MatchView = Backbone.View.extend({
 
     var lines_to_display_before = Math.max(0, ctxBefore.length - (clip_before || 0));
     for (i = 0; i < lines_to_display_before; i ++) {
-      ctx_before.unshift(h.div([
+      ctx_before.unshift(h.div({cls: 'line'}, [
                                  this._renderLno(lno - i - 1, false),
-                                 this.model.get('context_before')[i]
+                                 h.span([this.model.get('context_before')[i]]),
                                ]));
     }
     var lines_to_display_after = Math.max(0, ctxAfter.length - (clip_after || 0));
     for (i = 0; i < lines_to_display_after; i ++) {
-      ctx_after.push(h.div([
+      ctx_after.push(h.div({cls: 'line'}, [
                              this._renderLno(lno + i + 1, false),
-                             this.model.get('context_after')[i]
+                             h.span([this.model.get('context_after')[i]]),
                            ]));
     }
     var line = this.model.get('line');
@@ -97,11 +97,9 @@ var MatchView = Backbone.View.extend({
     var matchElement = h.div({cls: classes.join(' ')}, [
         h.div({cls: 'contents'}, [
                 ctx_before,
-                h.div({cls: 'matchline'}, [
+                h.div({cls: 'line matchline'}, [
                   this._renderLno(lno, true),
-                  pieces[0],
-                  h.span({cls: 'matchstr'}, [pieces[1]]),
-                  pieces[2]
+                  h.span([pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]]),
                 ]),
                 ctx_after])]);
 

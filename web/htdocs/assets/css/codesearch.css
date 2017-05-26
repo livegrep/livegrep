@@ -179,6 +179,8 @@ tr:nth-child(even) {
 
 .line {
     word-wrap: break-word;
+    display: grid;
+    grid-template-columns: 4em auto;
 }
 
 .code {
