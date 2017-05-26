@@ -123,16 +123,14 @@ a:hover {
     padding-bottom: 0;
 }
 
-.match .label {
+.match .contents {
+    display: grid;
+    grid-template-columns: 4em auto;
+    white-space: pre-wrap;
     font-family: monospace;
-}
-
-.match .more {
-    font-size: 90%;
-}
-
-.matchline .lno {
-    font-weight: bold;
+    padding: 10px 5px;
+    color: #000;
+    margin: 0;
 }
 
 .lno-link {
@@ -145,43 +143,12 @@ a:hover {
     content: attr(aria-label);
 }
 
-.code {
-    width: 100%;
+.matchlno {
+    font-weight: bold;
 }
 
-tr:nth-child(even) {
-    background: #DDDDDD;
-}
-
-.match .contents {
-    display: grid;
-    grid-template-columns: 4em auto;
-    white-space: pre-wrap;
-    font-family: monospace;
-    padding: 10px 5px;
-    color: #000;
-    margin: 0;
-}
-
-.matchstr{
+.matchstr {
     background: #FFFF00;
-}
-
-.contents div.lnos {
-    float: left;
-    border-right: 1px solid grey;
-    padding: 3px 0px 3px 3px;
-}
-
-.contents div.code {
-    padding: 3px 0px;
-}
-
-.code {
-    table-layout: fixed;
-}
-
-.match .matchstr {
     font-weight: bold;
 }
 

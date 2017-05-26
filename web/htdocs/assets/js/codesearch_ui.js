@@ -59,10 +59,10 @@ var MatchView = Backbone.View.extend({
   },
   _renderLno: function(n, isMatch) {
     var lnoStr = n.toString() + (isMatch ? ":" : "-");
-    var classes = ['lno-link'];
-    if (isMatch) classes.push('matchline');
-    return h.a({cls: classes.join(' '), href: this.model.url(n)}, [
-      h.span({cls: 'lno', 'aria-label': lnoStr}, []),
+    var classes = ['lno'];
+    if (isMatch) classes.push('matchlno');
+    return h.a({cls: 'lno-link', href: this.model.url(n)}, [
+      h.span({cls: classes.join(' '), 'aria-label': lnoStr}, []),
     ]);
   },
   _render: function() {
