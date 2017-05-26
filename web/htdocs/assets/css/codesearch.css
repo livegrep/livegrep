@@ -135,15 +135,16 @@ a:hover {
     font-weight: bold;
 }
 
-.lno {
+.lno-link {
     display: inline-block;
     color: #3d464d;
     width: 3em;
     padding-right: 1em;
     text-align: right;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
+}
+
+.lno:before {
+    content: attr(aria-label);
 }
 
 .code {
