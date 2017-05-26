@@ -154,6 +154,8 @@ tr:nth-child(even) {
 }
 
 .match .contents {
+    display: grid;
+    grid-template-columns: 4em auto;
     white-space: pre-wrap;
     font-family: monospace;
     padding: 10px 5px;
@@ -173,12 +175,6 @@ tr:nth-child(even) {
 
 .contents div.code {
     padding: 3px 0px;
-}
-
-.line {
-    word-wrap: break-word;
-    display: grid;
-    grid-template-columns: 4em auto;
 }
 
 .code {

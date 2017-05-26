@@ -59,7 +59,9 @@ var MatchView = Backbone.View.extend({
   },
   _renderLno: function(n, isMatch) {
     var lnoStr = n.toString() + (isMatch ? ":" : "-");
-    return h.a({cls: 'lno-link', href: this.model.url(n)}, [
+    var classes = ['lno-link'];
+    if (isMatch) classes.push('matchline');
+    return h.a({cls: classes.join(' '), href: this.model.url(n)}, [
       h.span({cls: 'lno', 'aria-label': lnoStr}, []),
     ]);
   },
@@ -72,17 +74,17 @@ var MatchView = Backbone.View.extend({
 
     var lines_to_display_before = Math.max(0, ctxBefore.length - (clip_before || 0));
     for (i = 0; i < lines_to_display_before; i ++) {
-      ctx_before.unshift(h.div({cls: 'line'}, [
-                                 this._renderLno(lno - i - 1, false),
-                                 h.span([this.model.get('context_before')[i]]),
-                               ]));
+      ctx_before.unshift(
+        this._renderLno(lno - i - 1, false),
+        h.span([this.model.get('context_before')[i]]),
+      );
     }
     var lines_to_display_after = Math.max(0, ctxAfter.length - (clip_after || 0));
     for (i = 0; i < lines_to_display_after; i ++) {
-      ctx_after.push(h.div({cls: 'line'}, [
-                             this._renderLno(lno + i + 1, false),
-                             h.span([this.model.get('context_after')[i]]),
-                           ]));
+      ctx_after.push(
+        this._renderLno(lno + i + 1, false),
+        h.span([this.model.get('context_after')[i]]),
+      );
     }
     var line = this.model.get('line');
     var bounds = this.model.get('bounds');
@@ -95,13 +97,15 @@ var MatchView = Backbone.View.extend({
     if(clip_after !== undefined) classes.push('clip-after');
 
     var matchElement = h.div({cls: classes.join(' ')}, [
-        h.div({cls: 'contents'}, [
-                ctx_before,
-                h.div({cls: 'line matchline'}, [
-                  this._renderLno(lno, true),
-                  h.span([pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]]),
-                ]),
-                ctx_after])]);
+      h.div({cls: 'contents'}, [].concat(
+        ctx_before,
+        [
+            this._renderLno(lno, true),
+            h.span({cls: 'matchline'}, [pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]]),
+        ],
+        ctx_after,
+      )),
+    ]);
 
     return matchElement;
   }
