@@ -62,7 +62,7 @@ var MatchView = Backbone.View.extend({
     var classes = ['lno'];
     if (isMatch) classes.push('matchlno');
     return h.a({cls: 'lno-link', href: this.model.url(n)}, [
-      h.span({cls: classes.join(' '), 'aria-label': lnoStr}, []),
+      h.span({cls: classes.join(' '), 'aria-label': lnoStr}, [])
     ]);
   },
   _render: function() {
@@ -76,14 +76,14 @@ var MatchView = Backbone.View.extend({
     for (i = 0; i < lines_to_display_before; i ++) {
       ctx_before.unshift(
         this._renderLno(lno - i - 1, false),
-        h.span([this.model.get('context_before')[i]]),
+        h.span([this.model.get('context_before')[i]])
       );
     }
     var lines_to_display_after = Math.max(0, ctxAfter.length - (clip_after || 0));
     for (i = 0; i < lines_to_display_after; i ++) {
       ctx_after.push(
         this._renderLno(lno + i + 1, false),
-        h.span([this.model.get('context_after')[i]]),
+        h.span([this.model.get('context_after')[i]])
       );
     }
     var line = this.model.get('line');
@@ -101,10 +101,10 @@ var MatchView = Backbone.View.extend({
         ctx_before,
         [
             this._renderLno(lno, true),
-            h.span({cls: 'matchline'}, [pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]]),
+            h.span({cls: 'matchline'}, [pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]])
         ],
-        ctx_after,
-      )),
+        ctx_after
+      ))
     ]);
 
     return matchElement;
@@ -125,7 +125,7 @@ var Match = Backbone.Model.extend({
       id: tree + ':' + version + ':' + path,
       tree: tree,
       version: version,
-      path: path,
+      path: path
     }
   },
 
