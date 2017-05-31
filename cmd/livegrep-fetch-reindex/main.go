@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,6 +12,9 @@ import (
 	"path"
 	"strings"
 	"sync"
+
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
+	"google.golang.org/grpc"
 )
 
 type IndexConfig struct {
@@ -26,10 +30,11 @@ type RepoConfig struct {
 }
 
 var (
-	flagCodesearch  = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
-	flagIndexPath   = flag.String("out", "livegrep.idx", "Path to write the index")
-	flagRevparse    = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
-	flagSkipMissing = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
+	flagCodesearch    = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
+	flagIndexPath     = flag.String("out", "livegrep.idx", "Path to write the index")
+	flagRevparse      = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
+	flagSkipMissing   = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
+	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to")
 )
 
 const Workers = 8
@@ -78,6 +83,12 @@ func main() {
 
 	if err := os.Rename(tmp, *flagIndexPath); err != nil {
 		log.Fatalln("rename:", err.Error())
+	}
+
+	if *flagReloadBackend != "" {
+		if err := reloadBackend(*flagReloadBackend); err != nil {
+			log.Fatalln("reload:", err.Error())
+		}
 	}
 }
 
@@ -175,4 +186,18 @@ func checkoutOne(r *RepoConfig) error {
 	}
 
 	return retryCommand("git", []string{"-C", r.Path, "fetch", "-p"})
+}
+
+func reloadBackend(addr string) error {
+	client, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+
+	codesearch := pb.NewCodeSearchClient(client)
+
+	if _, err = codesearch.Reload(context.Background(), &pb.Empty{}, grpc.FailFast(false)); err != nil {
+		return err
+	}
+	return nil
 }
