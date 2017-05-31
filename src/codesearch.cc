@@ -33,6 +33,7 @@
 
 #include "re2/re2.h"
 #include "gflags/gflags.h"
+#include <json-c/json.h>
 
 #include "utf8.h"
 
@@ -368,6 +369,15 @@ code_searcher::~code_searcher() {
     if (alloc_)
         alloc_->cleanup();
     delete alloc_;
+    for (auto tree : trees_) {
+        if (tree->metadata != NULL) {
+            json_object_put(tree->metadata);
+        }
+        delete tree;
+    }
+    for (auto file : files_) {
+        delete file;
+    }
 }
 
 void code_searcher::finalize() {

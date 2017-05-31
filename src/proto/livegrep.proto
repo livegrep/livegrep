@@ -61,7 +61,11 @@ message CodeSearchResult {
 message InfoRequest {
 }
 
+message Empty {
+}
+
 service CodeSearch {
     rpc Info(InfoRequest) returns (ServerInfo);
     rpc Search(Query) returns (CodeSearchResult);
+    rpc Reload(Empty) returns (Empty);
 }
