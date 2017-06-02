@@ -44,7 +44,7 @@ TEST_F(codesearch_test, IndexTest) {
 TEST_F(codesearch_test, BadRegex) {
     cs_.index_file(tree_, "/data/file1", file1);
     cs_.finalize();
-    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
     Query request;
     CodeSearchResult matches;
     request.set_line("(");
@@ -83,7 +83,7 @@ TEST_F(codesearch_test, DuplicateLinesInFile) {
                    "line 2\n");
     cs_.finalize();
 
-    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
     Query request;
     CodeSearchResult matches;
     request.set_line("line 1");
@@ -110,7 +110,7 @@ TEST_F(codesearch_test, LongLines) {
                    string("NEEDLE\n"));
     cs_.finalize();
 
-    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
     Query request;
     CodeSearchResult matches;
     request.set_line("NEEDLE");
@@ -135,7 +135,7 @@ TEST_F(codesearch_test, RestrictFiles) {
     cs_.index_file(other, "/file2", "contents");
     cs_.finalize();
 
-    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
     Query request;
     CodeSearchResult matches;
     grpc::ServerContext ctx;
@@ -191,7 +191,7 @@ TEST_F(codesearch_test, Tags) {
                     "do_the_thing\trepo/file.c\t1;\"\tfunction\n");
     tags.finalize();
 
-    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, &tags));
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, &tags, nullptr));
     Query request;
     CodeSearchResult matches;
     grpc::ServerContext ctx;
@@ -213,7 +213,7 @@ TEST_F(codesearch_test, MaxMatches) {
     cs_.index_file(tree_, "/file3", "contents");
     cs_.finalize();
 
-    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr));
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
     {
         CodeSearchResult all_matches;
         Query request;

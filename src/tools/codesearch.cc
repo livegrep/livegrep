@@ -29,6 +29,7 @@
 
 #include <iostream>
 #include <functional>
+#include <future>
 #include <thread>
 
 #include <gflags/gflags.h>
@@ -48,6 +49,7 @@ DEFINE_string(load_tags, "", "Load the index built from a tags file.");
 DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_bool(index_only, false, "Build the index and don't serve queries");
 DEFINE_string(grpc, "localhost:9999", "GRPC listener address");
+DEFINE_bool(reload_rpc, false, "Enable the Reload RPC");
 
 using namespace std;
 using namespace re2;
@@ -138,32 +140,45 @@ void initialize_search(code_searcher *search,
 }
 
 void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr) {
-    unique_ptr<CodeSearch::Service> service(build_grpc_server(search, tags));
+    promise<void> reload_request;
+    auto reload_request_ptr = FLAGS_reload_rpc ? &reload_request : NULL;
+
+    unique_ptr<CodeSearch::Service> service(build_grpc_server(search, tags, reload_request_ptr));
 
     ServerBuilder builder;
     builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
     builder.RegisterService(service.get());
     std::unique_ptr<Server> server(builder.BuildAndStart());
-    server->Wait();
+
+    if (FLAGS_reload_rpc) {
+        thread shutdown_thread([&]() {
+            reload_request.get_future().wait();
+            server->Shutdown();
+        });
+        server->Wait();
+        shutdown_thread.join();
+    } else {
+        server->Wait();
+    }
 }
 
 int main(int argc, char **argv) {
     gflags::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    code_searcher search;
-    code_searcher tags;
-
     signal(SIGPIPE, SIG_IGN);
 
-    initialize_search(&search, &tags, argc, argv);
+    while (true) {
+        code_searcher search;
+        code_searcher tags;
 
-    if (FLAGS_index_only)
-        return 0;
+        initialize_search(&search, &tags, argc, argv);
 
-    if (FLAGS_grpc.size()) {
-        listen_grpc(&search, &tags, FLAGS_grpc);
+        if (FLAGS_index_only)
+            return 0;
+
+        if (FLAGS_grpc.size()) {
+            listen_grpc(&search, &tags, FLAGS_grpc);
+        }
     }
-
-    return 0;
 }

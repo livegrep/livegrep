@@ -53,6 +53,15 @@ struct chunk_file_node {
     int right_limit;
 
     chunk_file_node *left, *right;
+
+    ~chunk_file_node() {
+        if (left != NULL) {
+            delete left;
+        }
+        if (right != NULL) {
+            delete right;
+        }
+    }
 };
 
 struct chunk {
@@ -71,6 +80,7 @@ struct chunk {
           suffixes(suffixes), data(data) { }
 
     ~chunk() {
+        delete cf_root;
     }
 
     void add_chunk_file(indexed_file *sf, const StringPiece& line);

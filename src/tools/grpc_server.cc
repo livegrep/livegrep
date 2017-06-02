@@ -13,6 +13,7 @@
 #include <string>
 #include <algorithm>
 #include <functional>
+#include <future>
 
 #include <boost/bind.hpp>
 
@@ -24,26 +25,30 @@ using std::string;
 
 class CodeSearchImpl final : public CodeSearch::Service {
  public:
-    explicit CodeSearchImpl(code_searcher *cs, code_searcher *tagdata);
+    explicit CodeSearchImpl(code_searcher *cs, code_searcher *tagdata, std::promise<void> *reload_request);
     virtual ~CodeSearchImpl();
 
     virtual grpc::Status Info(grpc::ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response);
     virtual grpc::Status Search(grpc::ServerContext* context, const ::Query* request, ::CodeSearchResult* response);
+    virtual grpc::Status Reload(grpc::ServerContext* context, const ::Empty* request, ::Empty* response);
 
  private:
     code_searcher *cs_;
     code_searcher *tagdata_;
+    std::promise<void> *reload_request_;
     tag_searcher *tagmatch_;
 
     thread_queue <code_searcher::search_thread*> pool_;
 };
 
-std::unique_ptr<CodeSearch::Service> build_grpc_server(code_searcher *cs, code_searcher *tagdata) {
-    return std::unique_ptr<CodeSearch::Service>(new CodeSearchImpl(cs, tagdata));
+std::unique_ptr<CodeSearch::Service> build_grpc_server(code_searcher *cs,
+                                                       code_searcher *tagdata,
+                                                       std::promise<void> *reload_request) {
+    return std::unique_ptr<CodeSearch::Service>(new CodeSearchImpl(cs, tagdata, reload_request));
 }
 
-CodeSearchImpl::CodeSearchImpl(code_searcher *cs, code_searcher *tagdata)
-    : cs_(cs), tagdata_(tagdata), tagmatch_(nullptr) {
+CodeSearchImpl::CodeSearchImpl(code_searcher *cs, code_searcher *tagdata, std::promise<void> *reload_request)
+    : cs_(cs), tagdata_(tagdata), reload_request_(reload_request), tagmatch_(nullptr) {
     if (tagdata != nullptr) {
         tagmatch_ = new tag_searcher;
         tagmatch_->cache_indexed_files(cs_);
@@ -256,5 +261,14 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         break;
     }
 
+    return Status::OK;
+}
+
+Status CodeSearchImpl::Reload(ServerContext* context, const ::Empty* request, ::Empty* response) {
+    log("Reload()");
+    if (reload_request_ == NULL) {
+      return Status(StatusCode::UNIMPLEMENTED, "reload rpc not enabled");
+    }
+    reload_request_->set_value();
     return Status::OK;
 }
