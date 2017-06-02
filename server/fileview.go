@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/url"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -55,11 +56,12 @@ type directoryListEntry struct {
 }
 
 type fileViewerContext struct {
-	PathSegments []breadCrumbEntry
-	Repo         config.RepoConfig
-	Commit       string
-	DirContent   *directoryContent
-	FileContent  *sourceFileContent
+	PathSegments   []breadCrumbEntry
+	Repo           config.RepoConfig
+	Commit         string
+	DirContent     *directoryContent
+	FileContent    *sourceFileContent
+	ExternalDomain string
 }
 
 type sourceFileContent struct {
@@ -218,11 +220,17 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		}
 	}
 
+	externalDomain := "external viewer"
+	if url, err := url.Parse(repo.Metadata["url-pattern"]); err == nil {
+		externalDomain = url.Hostname()
+	}
+
 	return &fileViewerContext{
-		PathSegments: segments,
-		Repo:         repo,
-		Commit:       commit,
-		DirContent:   dirContent,
-		FileContent:  fileContent,
+		PathSegments:   segments,
+		Repo:           repo,
+		Commit:         commit,
+		DirContent:     dirContent,
+		FileContent:    fileContent,
+		ExternalDomain: externalDomain,
 	}, nil
 }

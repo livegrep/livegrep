@@ -10,7 +10,7 @@
         <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">search</span></a>
       </li>,
       <li class="header-action">
-        <a id="external-link" data-action-name="" title="View file elsewhere. Keyboard shortcut: v" href="#">external viewer</a>
+        <a id="external-link" data-action-name="" title="View file at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">external viewer</a>
       </li>,
       <li class="header-action">
         <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help</a>
@@ -56,7 +56,7 @@
         <li>Shift + click a second line number to highlight a range</li>
         <li>Press <pre class="keyboard-shortcut">/</pre> to start a new search (the selected text will be prefilled)</li>
         <li>Select some text and press <pre class="keyboard-shortcut">enter</pre> to perform a new search with the selected text</li>
-        <li>Press <pre class="keyboard-shortcut">d</pre> to visit this file in diffusion</li>
+        <li>Press <pre class="keyboard-shortcut">v</pre> to visit this file at {{.ExternalDomain}}</li>
       </ul>
       <a href="/about" class="u-right">About Code Search</a>
     </div>

@@ -240,10 +240,6 @@
     }
 
     function initializePage() {
-      // update title-text with specific external site
-      var site = $('<a>').attr('href', window.repoInfo.metadata['url-pattern']).prop('hostname');
-      $('#external-link').attr('title', 'View file at ' + site + '. Keyboard shortcut: v');
-
       // Initial range detection for when the page is loaded
       handleHashChange();
 
