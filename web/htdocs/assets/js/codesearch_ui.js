@@ -1,6 +1,8 @@
 $(function() {
 "use strict";
 
+var h = new HTMLFactory();
+
 function vercmp(a, b) {
   var re = /^([0-9]*)([^0-9]*)(.*)$/;
   var abits, bbits;
@@ -45,10 +47,89 @@ function shorten(ref) {
   return ref;
 }
 
-var Match = Backbone.Model.extend({
+var MatchView = Backbone.View.extend({
+  tagName: 'div',
   initialize: function() {
+    this.model.on('change', this.render, this);
   },
-  url: function() {
+  render: function() {
+    var div = this._render();
+    this.setElement(div);
+    return this;
+  },
+  _renderLno: function(n, isMatch) {
+    var lnoStr = n.toString() + (isMatch ? ":" : "-");
+    var classes = ['lno'];
+    if (isMatch) classes.push('matchlno');
+    return h.a({cls: 'lno-link', href: this.model.url(n)}, [
+      h.span({cls: classes.join(' '), 'aria-label': lnoStr}, [])
+    ]);
+  },
+  _render: function() {
+    var i;
+    var ctx_before = [], ctx_after = [];
+    var lno = this.model.get('lno');
+    var ctxBefore = this.model.get('context_before'), clip_before = this.model.get('clip_before');
+    var ctxAfter = this.model.get('context_after'), clip_after = this.model.get('clip_after');
+
+    var lines_to_display_before = Math.max(0, ctxBefore.length - (clip_before || 0));
+    for (i = 0; i < lines_to_display_before; i ++) {
+      ctx_before.unshift(
+        this._renderLno(lno - i - 1, false),
+        h.span([this.model.get('context_before')[i]])
+      );
+    }
+    var lines_to_display_after = Math.max(0, ctxAfter.length - (clip_after || 0));
+    for (i = 0; i < lines_to_display_after; i ++) {
+      ctx_after.push(
+        this._renderLno(lno + i + 1, false),
+        h.span([this.model.get('context_after')[i]])
+      );
+    }
+    var line = this.model.get('line');
+    var bounds = this.model.get('bounds');
+    var pieces = [line.substring(0, bounds[0]),
+                  line.substring(bounds[0], bounds[1]),
+                  line.substring(bounds[1])];
+
+    var classes = ['match'];
+    if(clip_before !== undefined) classes.push('clip-before');
+    if(clip_after !== undefined) classes.push('clip-after');
+
+    var matchElement = h.div({cls: classes.join(' ')}, [
+      h.div({cls: 'contents'}, [].concat(
+        ctx_before,
+        [
+            this._renderLno(lno, true),
+            h.span({cls: 'matchline'}, [pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]])
+        ],
+        ctx_after
+      ))
+    ]);
+
+    return matchElement;
+  }
+});
+
+/**
+ * A Match represents a single match in the code base.
+ *
+ * This model wraps the JSON response from the Codesearch backend for an individual match.
+ */
+var Match = Backbone.Model.extend({
+  path_info: function() {
+    var tree = this.get('tree');
+    var version = this.get('version');
+    var path = this.get('path');
+    return {
+      id: tree + ':' + version + ':' + path,
+      tree: tree,
+      version: version,
+      path: path
+    }
+  },
+
+  url: function(lno) {
     var name = this.get('tree');
     var ref = this.get('version');
 
@@ -62,9 +143,13 @@ var Match = Backbone.Model.extend({
       return null;
     }
 
+    if (lno === undefined) {
+        lno = this.get('lno');
+    }
+
     // the order of these replacements is used to minimize conflicts
     var url = repo_map[name];
-    url = url.replace('{lno}', this.get('lno'));
+    url = url.replace('{lno}', lno);
     url = url.replace('{version}', shorten(ref));
     url = url.replace('{name}', name);
     url = url.replace('{path}', this.get('path'));
@@ -72,76 +157,87 @@ var Match = Backbone.Model.extend({
   }
 });
 
-var MatchView = Backbone.View.extend({
-  tagName: 'div',
-  initialize: function() {
-    this.model.on('change', this.render, this);
+/** A set of Matches at a single path. */
+var FileGroup = Backbone.Model.extend({
+  initialize: function(path_info) {
+    // The id attribute is used by collections to fetch models
+    this.id = path_info.id;
+    this.path_info = path_info;
+    this.matches = [];
   },
-  render: function() {
-    var div = this._render();
-    this.$el.empty();
-    this.$el.append(div);
-    return this;
+
+  add_match: function(match) {
+    this.matches.push(match);
   },
-  _render: function() {
-    var h = new HTMLFactory();
-    var i;
-    var lnos = [];
-    var matchlno = this.model.get('lno');
-    var lines = [];
-    // Context_before is actually in reverse order...
-    for (i = 0; i < this.model.get('context_before').length; i ++) {
-      var cells = [];
-      cells.push(h.td({cls: 'lno', line_number: matchlno-(i+1)},[]));
-      cells.push(h.td({cls: 'line'},[this.model.get('context_before')[i]]));
-      lines.unshift(h.tr({cls: 'row'},cells));
+
+  /** Prepare the matches for rendering by clipping the context of matches to avoid duplicate
+   *  lines being displayed in the search results.
+   *
+   * This function operates under these assumptions:
+   * - The matches are all for the same file
+   * - Two matches cannot have the same line number
+   */
+  process_context_overlaps: function() {
+    if(!(this.matches) || this.matches.length < 2) {
+      return; // We don't have overlaps unless we have at least two things
     }
 
-    var matchCells = [];
-    // Bringing lno up to the actual match's line number
-    var line = this.model.get('line');
-    var bounds = this.model.get('bounds');
-    var pieces = [line.substring(0, bounds[0]),
-                  line.substring(bounds[0], bounds[1]),
-                  line.substring(bounds[1])];
-    matchCells.push(h.td({cls: 'lno matchline', line_number: matchlno}, []));
-    matchCells.push(h.td({cls: 'line matchline'}, [
-                  pieces[0],
-                  h.span({cls: 'matchstr'}, [pieces[1]]),
-                  pieces[2]
-                ]));
-    lines.push(h.tr({cls: 'matchrow row'},matchCells));
+    // NOTE: The logic below requires matches to be sorted by line number.
+    this.matches.sort(function(a, b) {
+      return a.get('lno') - b.get('lno');
+    });
 
-    for (i = 0; i < this.model.get('context_after').length; i ++) {
-      var cells = [];
-      cells.push(h.td({cls: 'lno', line_number: matchlno+(i+1)},[]));
-      cells.push(h.td({cls: 'line'},[this.model.get('context_after')[i]]));
-      lines.push(h.tr({cls: 'row'},cells));
-    }
+    for(var i = 1, len = this.matches.length; i < len; i++) {
+      var previous_match = this.matches[i - 1], this_match = this.matches[i];
+      var last_line_of_prev_context = previous_match.get('lno') + previous_match.get('context_after').length;
+      var first_line_of_this_context = this_match.get('lno') - this_match.get('context_before').length;
+      var num_intersecting_lines = (last_line_of_prev_context - first_line_of_this_context) + 1;
+      if(num_intersecting_lines >= 0) {
+        // The matches are intersecting or share a boundary.
+        // Try to split the context between the previous match and this one.
+        // Uneven splits should leave the latter element with the larger piece.
 
-    var tree = this.model.get('tree');
-    var version = this.model.get('version');
-    var repoLabel = [
-      tree ? (tree + ":") : "",
-      shorten(version),
-      ":",
-      this.model.get('path'),
-      " - line " + matchlno + "" ];
-    var url = this.model.url();
-    if (url !== null) {
-      repoLabel = [ h.a({href: this.model.url()}, repoLabel) ];
+        // split_at will be the first line number grouped with the latter element.
+        var split_at = parseInt(Math.ceil((previous_match.get('lno') + this_match.get('lno')) / 2.0), 10);
+        if (split_at < first_line_of_this_context) {
+            split_at = first_line_of_this_context;
+        } else if (last_line_of_prev_context + 1 < split_at) {
+            split_at = last_line_of_prev_context + 1;
+        }
+
+        var clip_for_previous = last_line_of_prev_context - (split_at - 1);
+        var clip_for_this = split_at - first_line_of_this_context;
+        previous_match.set('clip_after', clip_for_previous);
+        this_match.set('clip_before', clip_for_this);
+      } else {
+        previous_match.unset('clip_after');
+        this_match.unset('clip_before');
+      }
     }
-    return h.div({cls: 'match'}, [
-        h.div({}, [
-          h.span({cls: 'label'}, repoLabel)]),
-        h.div({cls: 'contents'}, [
-          h.table({cls: 'code'}, lines),
-          ])]);
   }
 });
 
-var MatchSet = Backbone.Collection.extend({
-  model: Match
+/** A set of matches that are automatically grouped by path. */
+var SearchResultSet = Backbone.Collection.extend({
+  comparator: function(file_group) {
+    return file_group.id;
+  },
+
+  add_match: function(match) {
+    var path_info = match.path_info();
+    var file_group = this.get(path_info.id);
+    if(!file_group) {
+      file_group = new FileGroup(path_info);
+      this.add(file_group);
+    }
+    file_group.add_match(match);
+  },
+
+  num_matches: function() {
+    return this.reduce(function(memo, file_group) {
+      return memo + file_group.matches.length;
+    }, 0);
+  }
 });
 
 var SearchState = Backbone.Model.extend({
@@ -156,7 +252,7 @@ var SearchState = Backbone.Model.extend({
 
   initialize: function() {
     this.search_map = {};
-    this.matches = new MatchSet();
+    this.search_results = new SearchResultSet();
     this.search_id = 0;
     this.on('change:displaying', this.new_search, this);
   },
@@ -167,7 +263,7 @@ var SearchState = Backbone.Model.extend({
         time: null,
         why: null
     });
-    this.matches.reset();
+    this.search_results.reset();
     for (var k in this.search_map) {
       if (parseInt(k) < this.get('displaying'))
         delete this.search_map[k];
@@ -231,27 +327,66 @@ var SearchState = Backbone.Model.extend({
     this.set('displaying', search);
     var m = _.clone(match);
     m.backend = this.search_map[search].backend;
-    this.matches.add(m);
+    this.search_results.add_match(new Match(m));
   },
   handle_done: function (search, time, why) {
     this.set('displaying', search);
     this.set({time: time, why: why});
+    this.search_results.trigger('search-complete');
+  }
+});
+
+var FileGroupView = Backbone.View.extend({
+  tagName: 'div',
+
+  render_header: function(tree, version, path) {
+    var basename, dirname;
+    var indexOfLastPathSep = path.lastIndexOf('/');
+
+    if(indexOfLastPathSep !== -1) {
+      basename = path.substring(indexOfLastPathSep + 1, path.length);
+      dirname = path.substring(0, indexOfLastPathSep + 1);
+    } else {
+      basename = path; // path doesn't contain any dir parts, only the basename
+      dirname = '';
+    }
+
+    var repoLabel = [
+      h.span({cls: "repo"}, [tree, ':']),
+      h.span({cls: "version"}, [shorten(version), ':']),
+      dirname,
+      h.span({cls: "filename"}, [basename])
+    ];
+    return h.a({cls: 'label header', href: this.model.matches[0].url()}, repoLabel);
+  },
+
+  render: function() {
+    var matches = this.model.matches;
+    var el = this.$el;
+    el.empty();
+    el.append(this.render_header(this.model.path_info.tree, this.model.path_info.version, this.model.path_info.path));
+    matches.forEach(function(match) {
+      el.append(
+        new MatchView({model:match}).render().el
+      );
+    });
+    el.addClass('file-group');
+    return this;
   }
 });
 
 var MatchesView = Backbone.View.extend({
   el: $('#results'),
   initialize: function() {
-    this.model.matches.bind('add', this.add_one, this);
-    this.model.matches.bind('reset', this.add_all, this);
+    this.model.search_results.on('search-complete', this.render, this);
   },
-  add_one: function(model) {
-    var view = new MatchView({model: model});
-    this.$el.append(view.render().el);
-  },
-  add_all: function() {
+  render: function() {
     this.$el.empty();
-    this.model.matches.each(this.add_one);
+    this.model.search_results.each(function(file_group) {
+      file_group.process_context_overlaps();
+      var view = new FileGroupView({model: file_group});
+      this.$el.append(view.render().el);
+    }, this);
   }
 });
 
@@ -266,7 +401,7 @@ var ResultView = Backbone.View.extend({
     this.last_url  = null;
 
     this.model.on('all', this.render, this);
-    this.model.matches.on('all', this.render, this);
+    this.model.search_results.on('all', this.render, this);
   },
 
   render: function() {
@@ -302,7 +437,7 @@ var ResultView = Backbone.View.extend({
       this.$('#searchtimebox').hide();
     }
 
-    var results = '' + this.model.matches.size();
+    var results = '' + this.model.search_results.num_matches();
     if (this.model.get('why') === 'MATCH_LIMIT')
       results = results + '+';
     this.results.text(results);
