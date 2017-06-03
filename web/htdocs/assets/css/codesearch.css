@@ -58,7 +58,7 @@ a:hover {
 }
 
 #resultbox {
-    width: 100%;
+    margin: 1em 3em;
 }
 
 .label {
