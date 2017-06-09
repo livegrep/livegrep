@@ -178,6 +178,15 @@ public:
         result->set_line(m->line.ToString());
     }
 
+    void operator()(const file_result *f) const {
+        auto result = response_->add_file_results();
+        result->set_tree(f->file->tree->name);
+        result->set_version(f->file->tree->version);
+        result->set_path(f->file->path);
+        result->mutable_bounds()->set_left(f->matchleft);
+        result->mutable_bounds()->set_right(f->matchright);
+    }
+
 private:
     CodeSearchResult* response_;
 };
@@ -230,7 +239,8 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         code_searcher::search_thread *search;
         if (!pool_.try_pop(&search))
             search = new code_searcher::search_thread(cs_);
-        search->match(q, add_match(response), &stats);
+        add_match cb(response);
+        search->match(q, cb, cb, &stats);
         pool_.push(search);
     } else {
         if (tagdata_ == NULL)
@@ -250,8 +260,10 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         q.file_pat.reset();
         q.tags_pat.reset();
 
+        add_match cb(response);
         search.match(q,
-                     add_match(response),
+                     cb,
+                     cb,
                      boost::bind(&tag_searcher::transform, tagmatch_, &constraints, _1),
                      &stats);
     }

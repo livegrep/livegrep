@@ -109,8 +109,98 @@ size_t hashstr::operator()(const StringPiece& str) const {
 
 const StringPiece empty_string(NULL, 0);
 
+class search_limiter {
+public:
+    search_limiter(int query_max_matches) : exit_reason_(kExitNone) {
+        if (FLAGS_max_matches && !query_max_matches) {
+            max_matches_ = FLAGS_max_matches;
+        } else {
+            max_matches_ = std::min(FLAGS_max_matches, query_max_matches);
+        }
+
+        if (FLAGS_timeout <= 0) {
+            deadline_.tv_sec = numeric_limits<time_t>::max();
+        } else {
+            timeval timeout = {
+                0, FLAGS_timeout * 1000
+            }, now;
+            gettimeofday(&now, NULL);
+            timeval_add(&deadline_, &now, &timeout);
+        }
+    }
+
+    exit_reason why() {
+        return exit_reason_;
+    }
+
+    bool exit_early(int matches) {
+        if (exit_reason_)
+            return true;
+
+        if (max_matches_ && matches >= max_matches_) {
+            exit_reason_ = kExitMatchLimit;
+            return true;
+        }
+#ifdef CODESEARCH_SLOWGTOD
+        static int counter = 1000;
+        if (--counter)
+            return false;
+        counter = 1000;
+#endif
+        timeval now;
+        gettimeofday(&now, NULL);
+        if (now.tv_sec > deadline_.tv_sec ||
+            (now.tv_sec == deadline_.tv_sec && now.tv_usec > deadline_.tv_usec)) {
+            exit_reason_ = kExitTimeout;
+            return true;
+        }
+        return false;
+    }
+
+protected:
+    int max_matches_;
+    timeval deadline_;
+    exit_reason exit_reason_;
+};
+
 class code_searcher;
 struct match_finger;
+
+bool accept(const query *q, const indexed_file *file) {
+    if (q->file_pat &&
+        !q->file_pat->Match(file->path, 0, file->path.size(),
+                            RE2::UNANCHORED, 0, 0))
+        return false;
+
+    if (q->tree_pat &&
+        !q->tree_pat->Match(file->tree->name, 0,
+                            file->tree->name.size(),
+                            RE2::UNANCHORED, 0, 0))
+        return false;
+
+    if (q->negate.file_pat &&
+        q->negate.file_pat->Match(file->path, 0,
+                                  file->path.size(),
+                                  RE2::UNANCHORED, 0, 0))
+        return false;
+
+    if (q->negate.tree_pat &&
+        q->negate.tree_pat->Match(file->tree->name, 0,
+                                  file->tree->name.size(),
+                                  RE2::UNANCHORED, 0, 0))
+        return false;
+
+    return true;
+}
+
+bool accept(const query *q, const list<indexed_file *> &sfs) {
+    for (list<indexed_file *>::const_iterator it = sfs.begin();
+         it != sfs.end(); ++it) {
+        if (accept(q, *it))
+            return true;
+    }
+    return false;
+}
 
 class searcher {
 public:
@@ -118,31 +208,15 @@ public:
              const query &q,
              const code_searcher::search_thread::transform_func& func) :
         cc_(cc), query_(&q), transform_(func), queue_(),
-        matches_(0), re2_time_(false), git_time_(false),
-        index_time_(false), sort_time_(false), analyze_time_(false),
-        exit_reason_(kExitNone), files_(new uint8_t[cc->files_.size()]),
+        matches_(0), limiter_(q.max_matches), re2_time_(false),
+        git_time_(false), index_time_(false), sort_time_(false),
+        analyze_time_(false), files_(new uint8_t[cc->files_.size()]),
         files_density_(-1)
     {
         memset(files_, 0xff, cc->files_.size());
         {
             run_timer run(analyze_time_);
             index_ = indexRE(*query_->line_pat);
-        }
-
-        if (FLAGS_max_matches && !query_->max_matches) {
-            max_matches_ = FLAGS_max_matches;
-        } else {
-            max_matches_ = std::min(FLAGS_max_matches, query_->max_matches);
-        }
-
-        if (FLAGS_timeout <= 0) {
-            limit_.tv_sec = numeric_limits<time_t>::max();
-        } else {
-            timeval timeout = {
-                0, FLAGS_timeout * 1000
-            }, now;
-            gettimeofday(&now, NULL);
-            timeval_add(&limit_, &now, &timeout);
         }
     }
 
@@ -177,7 +251,7 @@ public:
     }
 
     exit_reason why() {
-        return exit_reason_;
+        return limiter_.why();
     }
 
 protected:
@@ -189,42 +263,6 @@ protected:
     void filtered_search(const chunk *chunk);
     void search_lines(uint32_t *left, int count, const chunk *chunk);
 
-    bool accept(const indexed_file *file) {
-        if (query_->file_pat &&
-            !query_->file_pat->Match(file->path, 0, file->path.size(),
-                                     RE2::UNANCHORED, 0, 0))
-            return false;
-
-        if (query_->tree_pat &&
-            !query_->tree_pat->Match(file->tree->name, 0,
-                                     file->tree->name.size(),
-                                     RE2::UNANCHORED, 0, 0))
-            return false;
-
-        if (query_->negate.file_pat &&
-            query_->negate.file_pat->Match(file->path, 0,
-                                           file->path.size(),
-                                           RE2::UNANCHORED, 0, 0))
-            return false;
-
-        if (query_->negate.tree_pat &&
-            query_->negate.tree_pat->Match(file->tree->name, 0,
-                                           file->tree->name.size(),
-                                           RE2::UNANCHORED, 0, 0))
-            return false;
-
-        return true;
-    }
-
-    bool accept(const list<indexed_file *> &sfs) {
-        for (list<indexed_file *>::const_iterator it = sfs.begin();
-             it != sfs.end(); ++it) {
-            if (accept(*it))
-                return true;
-        }
-        return false;
-    }
-
     double files_density(void) {
         std::unique_lock<std::mutex> locked(mtx_);
         if (files_density_ >= 0)
@@ -233,7 +271,7 @@ protected:
         int hits = 0;
         int sample = min(1000, int(cc_->files_.size()));
         for (int i = 0; i < sample; i++) {
-            if (accept(cc_->files_[rand() % cc_->files_.size()]))
+            if (accept(query_, cc_->files_[rand() % cc_->files_.size()]))
                 hits++;
         }
         return (files_density_ = double(hits) / sample);
@@ -302,27 +340,7 @@ protected:
     }
 
     bool exit_early() {
-        if (exit_reason_)
-            return true;
-
-        if (max_matches_ && matches_.load() >= max_matches_) {
-            exit_reason_ = kExitMatchLimit;
-            return true;
-        }
-#ifdef CODESEARCH_SLOWGTOD
-        static int counter = 1000;
-        if (--counter)
-            return false;
-        counter = 1000;
-#endif
-        timeval now;
-        gettimeofday(&now, NULL);
-        if (now.tv_sec > limit_.tv_sec ||
-            (now.tv_sec == limit_.tv_sec && now.tv_usec > limit_.tv_usec)) {
-            exit_reason_ = kExitTimeout;
-            return true;
-        }
-        return false;
+        return limiter_.exit_early(matches_.load());
     }
 
     const code_searcher *cc_;
@@ -330,15 +348,13 @@ protected:
     const code_searcher::search_thread::transform_func transform_;
     thread_queue<match_result*> queue_;
     atomic_int matches_;
-    int max_matches_;
+    search_limiter limiter_;
     intrusive_ptr<IndexKey> index_;
     timer re2_time_;
     timer git_time_;
     timer index_time_;
     timer sort_time_;
     timer analyze_time_;
-    timeval limit_;
-    exit_reason exit_reason_;
     uint8_t *files_;
 
     /*
@@ -351,6 +367,49 @@ protected:
 
     friend class code_searcher::search_thread;
 };
+
+class filename_searcher {
+public:
+    filename_searcher(const code_searcher *cc,
+                      const query &q) :
+        cc_(cc), query_(&q), queue_(), matches_(0), limiter_(q.max_matches) {}
+
+    void operator()(indexed_file *file);
+
+protected:
+    const code_searcher *cc_;
+    const query *query_;
+    thread_queue<file_result*> queue_;
+    atomic_int matches_;
+    search_limiter limiter_;
+
+    friend class code_searcher::search_thread;
+};
+
+void filename_searcher::operator()(indexed_file *file)
+{
+    if (limiter_.why())
+        return;
+
+    if (!accept(query_, file))
+        return;
+
+    StringPiece filepath = StringPiece(file->path);
+    StringPiece match;
+    if (!query_->line_pat->Match(filepath, 0, filepath.size(),
+                                 RE2::UNANCHORED, &match, 1))
+        return;
+
+    file_result *f = new file_result;
+    f->file = file;
+    f->matchleft = utf8::distance(filepath.data(), match.data());
+    f->matchright = f->matchleft + utf8::distance(match.data(), match.data() + match.size());
+
+    queue_.push(f);
+
+    matches_++;
+    limiter_.exit_early(matches_.load());
+}
 
 code_searcher::code_searcher()
     : alloc_(0), finalized_(false)
@@ -518,7 +577,7 @@ void code_searcher::index_file(const indexed_tree *tree,
 
 void searcher::operator()(const chunk *chunk)
 {
-    if (exit_reason_)
+    if (limiter_.why())
         return;
 
     if (FLAGS_index && index_ && !index_->empty())
@@ -691,7 +750,7 @@ void searcher::next_range(match_finger *finger,
 
     /* Find the first matching range that intersects [pos, maxpos) */
     while (it != end &&
-           (it->right < pos || !accept(it->files)) &&
+           (it->right < pos || !accept(query_, it->files)) &&
            it->left < maxpos)
         ++it;
 
@@ -712,7 +771,7 @@ void searcher::next_range(match_finger *finger,
     do {
         if (it->left >= endpos + kMinSkip)
             break;
-        if (it->right >= endpos && accept(it->files)) {
+        if (it->right >= endpos && accept(query_, it->files)) {
             endpos = max(endpos, it->right);
             if (endpos >= maxpos)
                 /*
@@ -777,7 +836,7 @@ void searcher::find_match_brute(const chunk *chunk,
         if (off >= it->left && off <= it->right) {
             for (list<indexed_file *>::const_iterator fit = it->files.begin();
                  fit != it->files.end(); ++fit) {
-                if (!accept(*fit))
+                if (!accept(query_, *fit))
                     continue;
                 searched++;
                 if (exit_early())
@@ -811,7 +870,7 @@ void searcher::find_match(const chunk *chunk,
 
     debug(kDebugSearch, "find_match(%d)", loff);
 
-    while (!stack.empty() && !exit_reason_) {
+    while (!stack.empty() && !limiter_.why()) {
         chunk_file_node *n = stack.back();
         stack.pop_back();
 
@@ -829,7 +888,7 @@ void searcher::find_match(const chunk *chunk,
                 assert(loff >= n->chunk->left && loff <= n->chunk->right);
                 for (list<indexed_file *>::const_iterator it = n->chunk->files.begin();
                      it != n->chunk->files.end(); ++it) {
-                    if (!accept(*it))
+                    if (!accept(query_, *it))
                         continue;
                     if (exit_early())
                         break;
@@ -917,16 +976,21 @@ void searcher::try_match(const StringPiece& line,
 code_searcher::search_thread::search_thread(code_searcher *cs)
     : cs_(cs) {
     if (FLAGS_search) {
-        for (int i = 0; i < FLAGS_threads; ++i)
+        // We're now actually creating 2 * FLAGS_threads. Maybe bad?
+        for (int i = 0; i < FLAGS_threads; ++i) {
             threads_.push_back(std::move(std::thread(search_one, this)));
+            threads_.push_back(std::move(std::thread(search_file_one, this)));
+        }
     }
 }
 
 void code_searcher::search_thread::match(const query &q,
                                          const callback_func& cb,
+                                         const file_callback_func& fcb,
                                          const transform_func& func,
                                          match_stats *stats) {
     match_result *m;
+    file_result *f;
     int matches = 0;
 
     assert(cs_->finalized_);
@@ -940,14 +1004,19 @@ void code_searcher::search_thread::match(const query &q,
     }
 
     searcher search(cs_, q, func);
+    filename_searcher file_search(cs_, q);
     job j;
     j.trace_id = current_trace_id();
     j.search = &search;
+    j.file_search = &file_search;
     j.pending = 0;
+    j.file_pending = 0;
 
     for (int i = 0; i < FLAGS_threads; ++i) {
         ++j.pending;
         queue_.push(&j);
+        ++j.file_pending;
+        file_queue_.push(&j);
     }
 
     for (auto it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
@@ -955,12 +1024,22 @@ void code_searcher::search_thread::match(const query &q,
     }
     j.chunks.close();
 
+    for (auto it = cs_->files_.begin(); it != cs_->files_.end(); it++) {
+        j.files.push(*it);
+    }
+    j.files.close();
+
     memset(stats, 0, sizeof *stats);
 
     while (search.queue_.pop(&m)) {
         matches++;
         cb(m);
         delete m;
+    }
+
+    while (file_search.queue_.pop(&f)) {
+        fcb(f);
+        delete f;
     }
 
     search.get_stats(stats);
@@ -987,6 +1066,21 @@ void code_searcher::search_thread::search_one(search_thread *me) {
 
         if (--j->pending == 0)
             j->search->queue_.close();
+    }
+}
+
+void code_searcher::search_thread::search_file_one(search_thread *me) {
+    job *j;
+    while (me->file_queue_.pop(&j)) {
+        scoped_trace_id trace(j->trace_id);
+
+        indexed_file *f;
+        while (j->files.pop(&f)) {
+            (*j->file_search)(f);
+        }
+
+        if (--j->file_pending == 0)
+            j->file_search->queue_.close();
     }
 }
 

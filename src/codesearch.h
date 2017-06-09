@@ -30,6 +30,7 @@
 #include "src/lib/thread_queue.h"
 
 class searcher;
+class filename_searcher;
 class chunk_allocator;
 class file_contents;
 struct match_result;
@@ -114,6 +115,11 @@ struct match_result {
     int matchleft, matchright;
 };
 
+struct file_result {
+    indexed_file *file;
+    int matchleft, matchright;
+};
+
 // A query specification passed to match(). line_pat is required to be
 // non-NULL; file_pat, tree_pat and tag_pat may be NULL to specify "no
 // constraint"
@@ -174,31 +180,42 @@ public:
 
         // function that will be called to record a match
         typedef std::function<void (const struct match_result*)> callback_func;
+        // function that will be called to record a filename match
+        typedef std::function<void (const struct file_result*)> file_callback_func;
         // function that will be called to transform a match
         typedef std::function<bool (struct match_result*)> transform_func;
 
         /* file_pat may be NULL */
-        void match(const query& q, const callback_func& cb, match_stats *stats)
+        void match(const query& q,
+                   const callback_func& cb,
+                   const file_callback_func& fcb,
+                   match_stats *stats)
         {
-            match(q, cb, transform_func(), stats);
+            match(q, cb, fcb, transform_func(), stats);
         }
         void match(const query& q,
                    const callback_func& cb,
+                   const file_callback_func& fcb,
                    const transform_func& func,
                    match_stats *stats);
     protected:
         struct job {
             std::string trace_id;
             atomic_int pending;
+            atomic_int file_pending;
             searcher *search;
+            filename_searcher *file_search;
             thread_queue<chunk*> chunks;
+            thread_queue<indexed_file*> files;
         };
 
         const code_searcher *cs_;
         vector<std::thread> threads_;
         thread_queue<job*> queue_;
+        thread_queue<job*> file_queue_;
 
         static void search_one(search_thread *);
+        static void search_file_one(search_thread *);
     private:
         search_thread(const search_thread&);
         void operator=(const search_thread&);
@@ -227,6 +244,7 @@ protected:
 
     friend class search_thread;
     friend class searcher;
+    friend class filename_searcher;
     friend class codesearch_index;
     friend class load_allocator;
     friend class tag_searcher;
