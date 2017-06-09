@@ -99,7 +99,10 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 		return nil, err
 	}
 
-	reply := &api.ReplySearch{Results: make([]*api.Result, 0)}
+	reply := &api.ReplySearch{
+		Results:     make([]*api.Result, 0),
+		FileResults: make([]*api.FileResult, 0),
+	}
 
 	for _, r := range search.Results {
 		reply.Results = append(reply.Results, &api.Result{
@@ -111,6 +114,15 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 			ContextAfter:  stringSlice(r.ContextAfter),
 			Bounds:        [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
 			Line:          r.Line,
+		})
+	}
+
+	for _, r := range search.FileResults {
+		reply.FileResults = append(reply.FileResults, &api.FileResult{
+			Tree:    r.Tree,
+			Version: r.Version,
+			Path:    r.Path,
+			Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
 		})
 	}
 

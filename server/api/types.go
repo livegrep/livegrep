@@ -12,8 +12,9 @@ type ReplyError struct {
 
 // ReplySearch is returned to /api/v1/search/:backend
 type ReplySearch struct {
-	Info    *Stats    `json:"info"`
-	Results []*Result `json:"results"`
+	Info        *Stats        `json:"info"`
+	Results     []*Result     `json:"results"`
+	FileResults []*FileResult `json:"file_results"`
 }
 
 type Stats struct {
@@ -34,4 +35,11 @@ type Result struct {
 	ContextAfter  []string `json:"context_after"`
 	Bounds        [2]int   `json:"bounds"`
 	Line          string   `json:"line"`
+}
+
+type FileResult struct {
+	Tree    string `json:"tree"`
+	Version string `json:"version"`
+	Path    string `json:"path"`
+	Bounds  [2]int `json:"bounds"`
 }
