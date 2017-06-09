@@ -250,6 +250,79 @@ var SearchResultSet = Backbone.Collection.extend({
   }
 });
 
+/**
+ * A FileMatch represents a single filename match in the code base.
+ *
+ * This model wraps the JSON response from the Codesearch backend for an individual match.
+ *
+ * XXX almost identical to Match
+ */
+var FileMatch = Backbone.Model.extend({
+  path_info: function() {
+    var tree = this.get('tree');
+    var version = this.get('version');
+    var path = this.get('path');
+    return {
+      id: tree + ':' + version + ':' + path,
+      tree: tree,
+      version: version,
+      path: path,
+      bounds: this.get('bounds')
+    }
+  },
+
+  url: function() {
+    var name = this.get('tree');
+    var ref = this.get('version');
+
+    var repo_map;
+    var backend = Codesearch.in_flight.backend;
+    repo_map = CodesearchUI.repo_urls[backend];
+    if (!repo_map) {
+      return null;
+    }
+    if (!repo_map[name]) {
+      return null;
+    }
+
+    var lno = 1;
+
+    // the order of these replacements is used to minimize conflicts
+    var url = repo_map[name];
+    url = url.replace('{lno}', lno);
+    url = url.replace('{version}', shorten(ref));
+    url = url.replace('{name}', name);
+    url = url.replace('{path}', this.get('path'));
+    return url;
+  }
+});
+
+var FileMatchView = Backbone.View.extend({
+  tagName: 'div',
+
+  render: function() {
+    var path_info = this.model.path_info();
+    var pieces = [
+      path_info.path.substring(0, path_info.bounds[0]),
+      path_info.path.substring(path_info.bounds[0], path_info.bounds[1]),
+      path_info.path.substring(path_info.bounds[1])
+    ];
+    var repoLabel = [
+      h.span({cls: "repo"}, [path_info.tree, ':']),
+      h.span({cls: "version"}, [shorten(path_info.version), ':']),
+      pieces[0],
+      h.span({cls: "matchstr"}, [pieces[1]]),
+      pieces[2]
+    ];
+
+    var el = this.$el;
+    el.empty();
+    el.addClass('filename-match');
+    el.append(h.a({cls: 'label header result-path', href: this.model.url()}, repoLabel));
+    return this;
+  }
+});
+
 var SearchState = Backbone.Model.extend({
   defaults: function() {
     return {
@@ -263,6 +336,7 @@ var SearchState = Backbone.Model.extend({
   initialize: function() {
     this.search_map = {};
     this.search_results = new SearchResultSet();
+    this.file_search_results = new Backbone.Collection();
     this.search_id = 0;
     this.on('change:displaying', this.new_search, this);
   },
@@ -274,6 +348,7 @@ var SearchState = Backbone.Model.extend({
         why: null
     });
     this.search_results.reset();
+    this.file_search_results.reset();
     for (var k in this.search_map) {
       if (parseInt(k) < this.get('displaying'))
         delete this.search_map[k];
@@ -339,6 +414,14 @@ var SearchState = Backbone.Model.extend({
     m.backend = this.search_map[search].backend;
     this.search_results.add_match(new Match(m));
   },
+  handle_file_match: function (search, file_match) {
+    if (search < this.get('displaying'))
+      return false;
+    this.set('displaying', search);
+    var fm = _.clone(file_match);
+    fm.backend = this.search_map[search].backend;
+    this.file_search_results.add(new FileMatch(fm));
+  },
   handle_done: function (search, time, why) {
     this.set('displaying', search);
     this.set({time: time, why: why});
@@ -367,7 +450,7 @@ var FileGroupView = Backbone.View.extend({
       dirname,
       h.span({cls: "filename"}, [basename])
     ];
-    return h.a({cls: 'label header', href: this.model.matches[0].url()}, repoLabel);
+    return h.a({cls: 'label header result-path', href: this.model.matches[0].url()}, repoLabel);
   },
 
   render: function() {
@@ -392,6 +475,14 @@ var MatchesView = Backbone.View.extend({
   },
   render: function() {
     this.$el.empty();
+
+    var pathResults = h.div({'cls': 'path-results'});
+    this.model.file_search_results.each(function(file) {
+        var view = new FileMatchView({model: file});
+        pathResults.append(view.render().el);
+    }, this);
+    this.$el.append(pathResults);
+
     this.model.search_results.each(function(file_group) {
       file_group.process_context_overlaps();
       var view = new FileGroupView({model: file_group});
@@ -553,6 +644,9 @@ var CodesearchUI = function() {
     },
     match: function(search, match) {
       CodesearchUI.state.handle_match(search, match);
+    },
+    file_match: function(search, file_match) {
+      CodesearchUI.state.handle_file_match(search, file_match);
     },
     search_done: function(search, time, why) {
       CodesearchUI.state.handle_done(search, time, why);

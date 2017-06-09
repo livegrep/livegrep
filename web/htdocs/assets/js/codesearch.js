@@ -39,6 +39,9 @@ var Codesearch = function() {
         data.results.forEach(function (r) {
           Codesearch.delegate.match(opts.id, r);
         });
+        data.file_results.forEach(function (r) {
+          Codesearch.delegate.file_match(opts.id, r);
+        });
         Codesearch.delegate.search_done(opts.id, elapsed, data.info.why);
       });
       xhr.error(function(data) {

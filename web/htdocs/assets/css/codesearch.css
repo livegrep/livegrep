@@ -73,6 +73,10 @@ a:hover {
     margin-top: 10px;
 }
 
+.path-results {
+    margin-bottom: 15px;
+}
+
 .file-group {
     background: rgba(34, 76, 89, 0.05);
     margin-bottom: 15px;
@@ -81,19 +85,22 @@ a:hover {
 }
 
 .file-group .header {
-    color: #3d464d;
-    font-family: monospace;
-    font-weight: normal;
     display: block;
     background: rgba(0, 126, 229, 0.04);
     padding: 3px 5px;
 }
 
-.file-group .header .filename {
+.result-path {
+    color: #3d464d;
+    font-family: monospace;
+    font-weight: normal;
+}
+
+.result-path .filename {
     font-weight: bold;
 }
 
-.file-group .header .repo, .file-group .header .version {
+.result-path .repo, .result-path .version {
     color: rgba(0, 0, 0, 0.5);
 }
 
