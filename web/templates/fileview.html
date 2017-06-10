@@ -1,0 +1,76 @@
+<section class="file-viewer">
+  <header class="header">
+    <nav class="header-title">
+      {{$repo := .Repo.Name}}
+      <a href="/view/{{$repo}}/" class="path-segment repo" title="Repository: {{$repo}}">{{$repo}}</a>:
+      {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
+    </nav>
+    <ul class="header-actions">
+      <li class="header-action">
+        <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">search</span></a>
+      </li>,
+      <li class="header-action">
+        <a id="external-link" data-action-name="" title="View file at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">external viewer</a>
+      </li>,
+      <li class="header-action">
+        <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help</a>
+      </li>
+    </ul>
+  </header>
+
+  <div class="content-wrapper">
+      {{with .DirContent}}
+      <ul class="file-list">
+          {{range $child := .Entries}}
+          <li class="file-list-entry{{if $child.IsDir}} is-directory{{end}}{{if $child.SymlinkTarget}} is-symlink{{end}}">
+            {{if $child.Path}}<a href="{{$child.Path}}">{{$child.Name}}{{if $child.IsDir}}/{{end}}</a>{{else}}{{$child.Name}}{{end}}
+            {{if .SymlinkTarget}}&rarr; (<span class="symlink-target">{{.SymlinkTarget}}</span>){{end}}
+          </li>
+          {{end}}
+      </ul>
+      {{end}}
+      {{with .FileContent}}
+      <div class="file-content">
+        <code id="source-code" class="code {{.Language}}">{{.Content}}</code>
+        <!--
+        NOTE: The reason the line number links are after the code block above is because
+        they take a significant amount of time to render for large files. If we keep
+        them before the code block, we'll block the rendering of the important content until
+        the line numbers are done. Placing them after the code block and absolutely positioning them
+        to be rendered before seems to work well though.
+        -->
+        <div id="line-numbers" class="line-numbers hide-links" style="display:none">
+          {{range $index, $element := loop .LineCount}}
+            {{$lineNum := toLineNum $index}}
+            <a id="L{{$lineNum}}" href="#L{{$lineNum}}">{{$lineNum}}</a>
+          {{end}}
+        </div>
+      </div>
+      {{end}}
+  </div>
+
+  <section class="help-screen u-modal-overlay hidden">
+    <div class="help-screen-card u-modal-content">
+      <ul>
+        <li>Click on a line number to highlight it</li>
+        <li>Shift + click a second line number to highlight a range</li>
+        <li>Press <pre class="keyboard-shortcut">/</pre> to start a new search (the selected text will be prefilled)</li>
+        <li>Select some text and press <pre class="keyboard-shortcut">enter</pre> to perform a new search with the selected text</li>
+        <li>Press <pre class="keyboard-shortcut">v</pre> to visit this file at {{.ExternalDomain}}</li>
+      </ul>
+      <a href="/about" class="u-right">About Code Search</a>
+    </div>
+  </section>
+
+  <div class="search-input hidden u-modal-overlay">
+    <input class="query u-modal-content" type="text" id="query"></input>
+  </div>
+</section>
+
+<script language="javascript" type="text/javascript">
+  // Distasteful. Someday pass this to the fileview code more cleanly.
+  window.repoInfo = {{.Repo}};
+  window.commit = {{.Commit}};
+</script>
+<script language="javascript" type="text/javascript" src="/assets/js/3d/highlight.pack.js"></script>
+<script language="javascript" type="text/javascript" src="/assets/js/fileview.js"></script>

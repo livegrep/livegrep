@@ -23,6 +23,7 @@ import (
 type Templates struct {
 	Layout,
 	Index,
+	FileView,
 	About,
 	Help *template.Template
 	OpenSearch *texttemplate.Template `template:"opensearch.xml"`
@@ -32,6 +33,7 @@ type server struct {
 	config  *config.Config
 	bk      map[string]*Backend
 	bkOrder []string
+	repos   map[string]config.RepoConfig
 	inner   http.Handler
 	T       Templates
 	Layout  *template.Template
@@ -68,9 +70,10 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		bk.I.Unlock()
 	}
 	data := &struct {
-		RepoUrls map[string]map[string]string
-		Backends []*Backend
-	}{urls, backends}
+		RepoUrls          map[string]map[string]string
+		InternalViewRepos map[string]config.RepoConfig
+		Backends          []*Backend
+	}{urls, s.repos, backends}
 
 	body, err := executeTemplate(s.T.Index, data)
 	if err != nil {
@@ -78,8 +81,46 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 	s.renderPage(w, &page{
-		Title: "search",
-		Body:  template.HTML(body),
+		Title:         "search",
+		IncludeHeader: true,
+		Body:          template.HTML(body),
+	})
+}
+
+func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	repoName := r.URL.Query().Get(":repo")
+	path := pat.Tail("/view/:repo/", r.URL.Path)
+	commit := r.URL.Query().Get("commit")
+	if commit == "" {
+		commit = "HEAD"
+	}
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	data, err := buildFileData(path, repo, commit)
+	if err != nil {
+		http.Error(w, "Error reading file", 500)
+		return
+	}
+
+	body, err := executeTemplate(s.T.FileView, data)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	s.renderPage(w, &page{
+		Title:         "file",
+		IncludeHeader: false,
+		Body:          template.HTML(body),
 	})
 }
 
@@ -90,8 +131,9 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 	s.renderPage(w, &page{
-		Title: "about",
-		Body:  template.HTML(body),
+		Title:         "about",
+		IncludeHeader: true,
+		Body:          template.HTML(body),
 	})
 }
 
@@ -109,8 +151,9 @@ func (s *server) ServeHelp(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 	s.renderPage(w, &page{
-		Title: "query syntax",
-		Body:  template.HTML(body),
+		Title:         "query syntax",
+		IncludeHeader: true,
+		Body:          template.HTML(body),
 	})
 }
 
@@ -173,7 +216,11 @@ func (s *server) Handler(f func(c context.Context, w http.ResponseWriter, r *htt
 }
 
 func New(cfg *config.Config) (http.Handler, error) {
-	srv := &server{config: cfg, bk: make(map[string]*Backend)}
+	srv := &server{
+		config: cfg,
+		bk:     make(map[string]*Backend),
+		repos:  make(map[string]config.RepoConfig),
+	}
 	srv.loadTemplates()
 
 	if cfg.Honeycomb.WriteKey != "" {
@@ -194,10 +241,15 @@ func New(cfg *config.Config) (http.Handler, error) {
 		srv.bkOrder = append(srv.bkOrder, be.Id)
 	}
 
+	for _, r := range srv.config.IndexConfig.Repositories {
+		srv.repos[r.Name] = r
+	}
+
 	m := pat.New()
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
+	m.Add("GET", "/view/:repo/", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))

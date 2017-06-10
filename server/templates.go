@@ -11,9 +11,10 @@ import (
 )
 
 type page struct {
-	Title  string
-	Body   template.HTML
-	Config *config.Config
+	Title         string
+	IncludeHeader bool
+	Body          template.HTML
+	Config        *config.Config
 }
 
 type Template interface {

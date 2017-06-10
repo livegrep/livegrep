@@ -1,5 +1,9 @@
 <script type="text/javascript">
-  $(function(){CodesearchUI.repo_urls = {{.RepoUrls}};});
+  $(function(){
+    CodesearchUI.repo_urls = {{.RepoUrls}};
+    CodesearchUI.intervalViewRepos = {{.InternalViewRepos}};
+    CodesearchUI.onload();
+  });
 </script>
 <div id='searcharea'>
   <div id='searchinput'>
