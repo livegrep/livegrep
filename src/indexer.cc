@@ -289,7 +289,7 @@ namespace {
         intrusive_ptr<IndexKey> k(new IndexKey(kAnchorBoth));
 
         for (CharClass::iterator i = cc->begin(); i != cc->end(); ++i) {
-            if (i->lo < Runeself && i->lo < Runeself)
+            if (i->hi < Runeself)
                 k->insert(IndexKey::value_type
                           (pair<uchar, uchar>(i->lo, i->hi),
                            (IndexKey*)0));
