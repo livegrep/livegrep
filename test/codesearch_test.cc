@@ -235,3 +235,64 @@ TEST_F(codesearch_test, MaxMatches) {
         ASSERT_EQ(request.max_matches(), limited_matches.results_size());
     }
 }
+
+TEST_F(codesearch_test, LineCaseAndFileCaseAreIndependent) {
+    cs_.index_file(tree_, "/file1", "contents");
+    cs_.index_file(tree_, "/FILE2", "CONTENTS");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    {
+        CodeSearchResult matches;
+        Query request;
+        request.set_line("c");
+        request.set_fold_case(true);
+        request.set_file("FILE1");
+        grpc::ServerContext ctx;
+        grpc::Status st = srv->Search(&ctx, &request, &matches);
+        ASSERT_TRUE(st.ok());
+        ASSERT_EQ(0, matches.results_size());
+    }
+    {
+        CodeSearchResult matches;
+        Query request;
+        request.set_line("CONTENTS");
+        request.set_fold_case(false);
+        request.set_file("file2");
+        grpc::ServerContext ctx;
+        grpc::Status st = srv->Search(&ctx, &request, &matches);
+        ASSERT_TRUE(st.ok());
+        ASSERT_EQ(1, matches.results_size());
+    }
+}
+
+TEST_F(codesearch_test, LineCaseAndRepoCaseAreIndependent) {
+    const indexed_tree *other = cs_.open_tree("OTHER", 0, "REV0");
+    cs_.index_file(tree_, "/file1", "contents");
+    cs_.index_file(other, "/file1", "CONTENTS");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    {
+        CodeSearchResult matches;
+        Query request;
+        request.set_line("c");
+        request.set_fold_case(true);
+        request.set_repo("REPO");
+        grpc::ServerContext ctx;
+        grpc::Status st = srv->Search(&ctx, &request, &matches);
+        ASSERT_TRUE(st.ok());
+        ASSERT_EQ(0, matches.results_size());
+    }
+    {
+        CodeSearchResult matches;
+        Query request;
+        request.set_line("CONTENTS");
+        request.set_fold_case(false);
+        request.set_repo("other");
+        grpc::ServerContext ctx;
+        grpc::Status st = srv->Search(&ctx, &request, &matches);
+        ASSERT_TRUE(st.ok());
+        ASSERT_EQ(1, matches.results_size());
+    }
+}

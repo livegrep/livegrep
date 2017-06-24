@@ -10,10 +10,11 @@
 
 #include <json-c/json.h>
 
-#include <string>
 #include <algorithm>
+#include <cctype>
 #include <functional>
 #include <future>
+#include <string>
 
 #include <boost/bind.hpp>
 
@@ -107,12 +108,16 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
 Status extract_regex(std::unique_ptr<RE2> *out,
                      const std::string &label,
                      const std::string &input,
-                     RE2::Options &opts) {
-
+                     bool case_sensitive) {
     if (input.empty()) {
         out->reset(nullptr);
         return Status::OK;
     }
+
+    RE2::Options opts;
+    default_re2_options(opts);
+    opts.set_case_sensitive(case_sensitive);
+
     std::unique_ptr<RE2> re(new RE2(input, opts));
     if (!re->ok()) {
         return Status(StatusCode::INVALID_ARGUMENT, label + ": " + re->error());
@@ -121,25 +126,32 @@ Status extract_regex(std::unique_ptr<RE2> *out,
     return Status::OK;
 }
 
-Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* response) {
-    RE2::Options opts;
-    default_re2_options(opts);
-    opts.set_case_sensitive(!request->fold_case());
+Status extract_regex(std::unique_ptr<RE2> *out,
+                     const std::string &label,
+                     const std::string &input) {
+    if (input.empty()) {
+        out->reset(nullptr);
+        return Status::OK;
+    }
+    bool case_sensitive = std::any_of(input.begin(), input.end(), isupper);
+    return extract_regex(out, label, input, case_sensitive);
+}
 
+Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* response) {
     Status status = Status::OK;
-    status = extract_regex(&q->line_pat, "line", request->line(), opts);
+    status = extract_regex(&q->line_pat, "line", request->line(), !request->fold_case());
     if (status.ok())
-        status = extract_regex(&q->file_pat, "file", request->file(), opts);
+        status = extract_regex(&q->file_pat, "file", request->file());
     if (status.ok())
-        status = extract_regex(&q->tree_pat, "repo", request->repo(), opts);
+        status = extract_regex(&q->tree_pat, "repo", request->repo());
     if (status.ok())
-        status = extract_regex(&q->tags_pat, "tags", request->tags(), opts);
+        status = extract_regex(&q->tags_pat, "tags", request->tags());
     if (status.ok())
-        status = extract_regex(&q->negate.file_pat, "-file", request->not_file(), opts);
+        status = extract_regex(&q->negate.file_pat, "-file", request->not_file());
     if (status.ok())
-        status = extract_regex(&q->negate.tree_pat, "-repo", request->not_repo(), opts);
+        status = extract_regex(&q->negate.tree_pat, "-repo", request->not_repo());
     if (status.ok())
-        status = extract_regex(&q->negate.tags_pat, "-tags", request->not_tags(), opts);
+        status = extract_regex(&q->negate.tags_pat, "-tags", request->not_tags());
     return status;
 }
 
