@@ -86,10 +86,23 @@ protected:
     size_t chunk_size_;
     vector<chunk*> chunks_;
     vector<buffer> content_chunks_;
+
+    // Subsequent fields are transient (only used during index creation).
+
+    // Tracks how much of the current content chunk has been allocated by
+    // alloc_content_data().
     uint8_t *content_finger_;
+
+    // Points to the chunk currently being filled (which is also chunks_.back()).
     chunk *current_;
+
+    // Machinery to finalize chunks (i.e. build the suffix array from the data)
+    // in the background.
     thread_queue<chunk*> finalize_queue_;
     vector<std::thread> threads_;
+
+    // Used by chunk_from_string() to efficiently find the chunk containing an
+    // already-indexed line of code.
     map<const unsigned char*, chunk*> by_data_;
 };
 

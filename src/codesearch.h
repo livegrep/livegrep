@@ -202,9 +202,19 @@ public:
 
 protected:
     string name_;
+
+    // Transient structure used during index construction to dedup lines.
+    // Looking up a StringPiece here will find an equivalent StringPiece
+    // already stored in some existing chunk's data, if such a StringPiece is
+    // present.
     string_hash lines_;
+
     chunk_allocator *alloc_;
+
+    // Indicates that everything all is ready for searching--we are done creating
+    // index or initializing it from a file.
     bool finalized_;
+
     vector<indexed_tree*> trees_;
     vector<indexed_file*> files_;
 

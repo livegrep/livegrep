@@ -65,14 +65,33 @@ struct chunk_file_node {
 };
 
 struct chunk {
+    // total number of chunk_file objects across all chunks.
     static int chunk_files;
 
     int id;     // Sequential id
     int size;
+
+    // Collects references to all files which contain lines stored in this
+    // chunk's data. Sorted (and compacted) at the very end of index creation.
     vector<chunk_file> files;
+
+    // Transient during index creation. Collects references to the file
+    // currently being processed by the code_searcher, when that file contains
+    // lines stored in this chunk's data. One the code_searcher finishes
+    // processing each file, any references here are merged into `files` by
+    // finish_file(), and this vector is cleared.
     vector<chunk_file> cur_file;
+
+    // BST constructed from `files` at the very end of index creation. Used to
+    // efficiently find, given a substring of this chunk's data, the files
+    // might contain that substring.
     chunk_file_node *cf_root;
+
+    // The suffix array; constructed from `data` during finalization (once the
+    // chunk's data block is full, but before all files have been processed).
     uint32_t *suffixes;
+
+    // Many lines of code, from many files, concatenated together.
     unsigned char *data;
 
     chunk(unsigned char *data, uint32_t *suffixes)
