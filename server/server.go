@@ -161,6 +161,29 @@ func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "ok\n")
 }
 
+type stats struct {
+	IndexAge int64 `json:"index_age"`
+}
+
+func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	// For index age, report the age of the stalest backend's index.
+	now := time.Now()
+	maxBkAge := time.Duration(-1) * time.Second
+	for _, bk := range s.bk {
+		if bk.I.IndexTime == time.Unix(0, 0) {
+			// backend didn't report index time
+			continue
+		}
+		bkAge := now.Sub(bk.I.IndexTime)
+		if bkAge > maxBkAge {
+			maxBkAge = bkAge
+		}
+	}
+	replyJSON(ctx, w, 200, &stats{
+		IndexAge: int64(maxBkAge / time.Second),
+	})
+}
+
 func (s *server) requestProtocol(r *http.Request) string {
 	if s.config.ReverseProxy {
 		if proto := r.Header.Get("X-Real-Proto"); len(proto) > 0 {
@@ -247,6 +270,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m := pat.New()
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
+	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/view/:repo/", srv.Handler(srv.ServeFile))

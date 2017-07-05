@@ -21,6 +21,7 @@ type I struct {
 	Name  string
 	Trees []Tree
 	sync.Mutex
+	IndexTime time.Time
 }
 
 type Backend struct {
@@ -69,6 +70,7 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 	if info.Name != "" {
 		bk.I.Name = info.Name
 	}
+	bk.I.IndexTime = time.Unix(info.IndexTime, 0)
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil
 		for _, r := range info.Trees {

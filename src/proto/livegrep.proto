@@ -51,6 +51,8 @@ message ServerInfo {
     }
     repeated Tree trees = 2;
     bool has_tags = 3;
+    // unix timestamp (seconds)
+    int64 index_time = 4;
 }
 
 message CodeSearchResult {
