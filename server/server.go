@@ -170,7 +170,7 @@ func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.
 	now := time.Now()
 	maxBkAge := time.Duration(-1) * time.Second
 	for _, bk := range s.bk {
-		if bk.I.IndexTime.isZero() {
+		if bk.I.IndexTime.IsZero() {
 			// backend didn't report index time
 			continue
 		}
