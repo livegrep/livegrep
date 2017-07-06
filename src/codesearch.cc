@@ -112,7 +112,7 @@ const StringPiece empty_string(NULL, 0);
 
 class search_limiter {
 public:
-    search_limiter(int query_max_matches) : exit_reason_(kExitNone) {
+    search_limiter(int query_max_matches) : matches_(0), exit_reason_(kExitNone) {
         if (FLAGS_max_matches && !query_max_matches) {
             max_matches_ = FLAGS_max_matches;
         } else {
@@ -134,14 +134,10 @@ public:
         return exit_reason_;
     }
 
-    bool exit_early(int matches) {
+    bool exit_early() {
         if (exit_reason_)
             return true;
 
-        if (max_matches_ && matches >= max_matches_) {
-            exit_reason_ = kExitMatchLimit;
-            return true;
-        }
 #ifdef CODESEARCH_SLOWGTOD
         static int counter = 1000;
         if (--counter)
@@ -158,7 +154,17 @@ public:
         return false;
     }
 
+    void record_match() {
+        int matches = ++matches_;
+        if (exit_reason_)
+            return;
+        if (max_matches_ && matches >= max_matches_) {
+            exit_reason_ = kExitMatchLimit;
+        }
+    }
+
 protected:
+    atomic_int matches_;
     int max_matches_;
     timeval deadline_;
     exit_reason exit_reason_;
@@ -210,7 +216,7 @@ public:
              const intrusive_ptr<IndexKey> index_key,
              const code_searcher::search_thread::transform_func& func) :
         cc_(cc), query_(&q), transform_(func), queue_(),
-        matches_(0), limiter_(q.max_matches), index_key_(index_key), re2_time_(false),
+        limiter_(q.max_matches), index_key_(index_key), re2_time_(false),
         git_time_(false), index_time_(false), sort_time_(false),
         analyze_time_(false), files_(new uint8_t[cc->files_.size()]),
         files_density_(-1)
@@ -334,15 +340,10 @@ protected:
         return StringPiece(start, end - start);
     }
 
-    bool exit_early() {
-        return limiter_.exit_early(matches_.load());
-    }
-
     const code_searcher *cc_;
     const query *query_;
     const code_searcher::search_thread::transform_func transform_;
     thread_queue<match_result*> queue_;
-    atomic_int matches_;
     search_limiter limiter_;
     intrusive_ptr<IndexKey> index_key_;
     timer re2_time_;
@@ -368,7 +369,7 @@ public:
     filename_searcher(const code_searcher *cc,
                       const query &q,
                       intrusive_ptr<IndexKey> index_key) :
-        cc_(cc), query_(&q), index_key_(index_key), queue_(), matches_(0), limiter_(q.max_matches)
+        cc_(cc), query_(&q), index_key_(index_key), queue_(), limiter_(q.max_matches)
     {}
 
     void operator()();
@@ -380,7 +381,6 @@ protected:
     const query *query_;
     intrusive_ptr<IndexKey> index_key_;
     thread_queue<file_result*> queue_;
-    atomic_int matches_;
     search_limiter limiter_;
 
     friend class code_searcher::search_thread;
@@ -403,7 +403,7 @@ void filename_searcher::operator()()
 
     if (count > indexes->size()) {
         for (auto it = cc_->files_.begin(); it < cc_->files_.end(); it++) {
-            if (limiter_.exit_early(matches_.load())) {
+            if (limiter_.exit_early()) {
                 return;
             }
             match_filename(*it);
@@ -421,7 +421,7 @@ void filename_searcher::operator()()
     auto left_bound = cc_->filename_positions_.begin();
 
     for (int i = 0; i < count; i++) {
-        if (limiter_.exit_early(matches_.load())) {
+        if (limiter_.exit_early()) {
             break;
         }
 
@@ -458,8 +458,7 @@ void filename_searcher::match_filename(indexed_file *file) {
     f->matchright = f->matchleft + utf8::distance(match.data(), match.data() + match.size());
 
     queue_.push(f);
-
-    matches_++;
+    limiter_.record_match();
 }
 
 code_searcher::code_searcher()
@@ -658,7 +657,7 @@ void code_searcher::index_file(const indexed_tree *tree,
 
 void searcher::operator()(const chunk *chunk)
 {
-    if (limiter_.why())
+    if (limiter_.exit_early())
         return;
 
     if (FLAGS_index && index_key_ && !index_key_->empty())
@@ -802,7 +801,7 @@ void searcher::search_lines(uint32_t *indexes, int count,
     StringPiece search((char*)chunk->data, chunk->size);
     uint32_t max = indexes[0];
     uint32_t min = line_start(chunk, indexes[0]);
-    for (int i = 0; i <= count && !exit_early(); i++) {
+    for (int i = 0; i <= count && !limiter_.exit_early(); i++) {
         if (i != count) {
             if (indexes[i] < max) continue;
             if (indexes[i] < max + kMinSkip) {
@@ -881,7 +880,7 @@ void searcher::full_search(match_finger *finger,
     StringPiece str((char*)chunk->data, chunk->size);
     StringPiece match;
     int pos = minpos, new_pos, end = minpos;
-    while (pos < maxpos && !exit_early()) {
+    while (pos < maxpos && !limiter_.exit_early()) {
         if (pos >= end) {
             end = maxpos;
             next_range(finger, pos, end, maxpos);
@@ -929,7 +928,7 @@ void searcher::find_match_brute(const chunk *chunk,
                 if (!accept(query_, *fit))
                     continue;
                 searched++;
-                if (exit_early())
+                if (limiter_.exit_early())
                     break;
                 try_match(line, match, *fit);
             }
@@ -960,7 +959,7 @@ void searcher::find_match(const chunk *chunk,
 
     debug(kDebugSearch, "find_match(%d)", loff);
 
-    while (!stack.empty() && !limiter_.why()) {
+    while (!stack.empty() && !limiter_.exit_early()) {
         chunk_file_node *n = stack.back();
         stack.pop_back();
 
@@ -980,7 +979,7 @@ void searcher::find_match(const chunk *chunk,
                      it != n->chunk->files.end(); ++it) {
                     if (!accept(query_, *it))
                         continue;
-                    if (exit_early())
+                    if (limiter_.exit_early())
                         break;
                     try_match(line, match, *it);
                 }
@@ -1053,9 +1052,9 @@ void searcher::try_match(const StringPiece& line,
 
         if (!transform_ || transform_(m)) {
             queue_.push(m);
-            ++matches_;
+            limiter_.record_match();
         }
-        if (exit_early())
+        if (limiter_.exit_early())
             break;
 
         ++it;
