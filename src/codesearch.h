@@ -163,6 +163,10 @@ public:
         return files_.end();
     }
 
+    int64_t index_timestamp() {
+        return index_timestamp_;
+    }
+
     class search_thread {
     public:
         search_thread(code_searcher *cs);
@@ -214,6 +218,9 @@ protected:
     // Indicates that everything all is ready for searching--we are done creating
     // index or initializing it from a file.
     bool finalized_;
+
+    // Timestamp representing the end of index construction.
+    int64_t index_timestamp_;
 
     vector<indexed_tree*> trees_;
     vector<indexed_file*> files_;

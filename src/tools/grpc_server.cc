@@ -102,6 +102,7 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
         }
     }
     response->set_has_tags(tagdata_ != nullptr);
+    response->set_index_time(cs_->index_timestamp());
     return Status::OK;
 }
 
