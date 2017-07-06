@@ -207,10 +207,10 @@ class searcher {
 public:
     searcher(const code_searcher *cc,
              const query &q,
-             const intrusive_ptr<IndexKey> index,
+             const intrusive_ptr<IndexKey> index_key,
              const code_searcher::search_thread::transform_func& func) :
         cc_(cc), query_(&q), transform_(func), queue_(),
-        matches_(0), limiter_(q.max_matches), index_(index), re2_time_(false),
+        matches_(0), limiter_(q.max_matches), index_key_(index_key), re2_time_(false),
         git_time_(false), index_time_(false), sort_time_(false),
         analyze_time_(false), files_(new uint8_t[cc->files_.size()]),
         files_density_(-1)
@@ -344,7 +344,7 @@ protected:
     thread_queue<match_result*> queue_;
     atomic_int matches_;
     search_limiter limiter_;
-    intrusive_ptr<IndexKey> index_;
+    intrusive_ptr<IndexKey> index_key_;
     timer re2_time_;
     timer git_time_;
     timer index_time_;
@@ -367,8 +367,9 @@ class filename_searcher {
 public:
     filename_searcher(const code_searcher *cc,
                       const query &q,
-                      intrusive_ptr<IndexKey> index) :
-        cc_(cc), query_(&q), index_(index), queue_(), matches_(0), limiter_(q.max_matches) {}
+                      intrusive_ptr<IndexKey> index_key) :
+        cc_(cc), query_(&q), index_key_(index_key), queue_(), matches_(0), limiter_(q.max_matches)
+    {}
 
     void operator()();
 
@@ -377,7 +378,7 @@ protected:
 
     const code_searcher *cc_;
     const query *query_;
-    intrusive_ptr<IndexKey> index_;
+    intrusive_ptr<IndexKey> index_key_;
     thread_queue<file_result*> queue_;
     atomic_int matches_;
     search_limiter limiter_;
@@ -398,7 +399,7 @@ void filename_searcher::operator()()
         indexes.put(new vector<uint32_t>(cc_->filename_data_size_ / kMinFilterRatio / 10));
     }
 
-    int count = suffix_search(cc_->filename_data_, cc_->filename_suffixes_, cc_->filename_data_size_, index_, *indexes);
+    int count = suffix_search(cc_->filename_data_, cc_->filename_suffixes_, cc_->filename_data_size_, index_key_, *indexes);
 
     if (count > indexes->size()) {
         for (auto it = cc_->files_.begin(); it < cc_->files_.end(); it++) {
@@ -660,7 +661,7 @@ void searcher::operator()(const chunk *chunk)
     if (limiter_.why())
         return;
 
-    if (FLAGS_index && index_ && !index_->empty())
+    if (FLAGS_index && index_key_ && !index_key_->empty())
         filtered_search(chunk);
     else
         full_search(chunk);
@@ -759,7 +760,7 @@ void searcher::filtered_search(const chunk *chunk)
     int count;
     {
         run_timer run(index_time_);
-        count = suffix_search(chunk->data, chunk->suffixes, chunk->size, index_, *indexes);
+        count = suffix_search(chunk->data, chunk->suffixes, chunk->size, index_key_, *indexes);
     }
 
     search_lines(&(*indexes)[0], count, chunk);
