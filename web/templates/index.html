@@ -6,38 +6,102 @@
   });
 </script>
 <div id='searcharea'>
-  <div id='searchinput'>
-    <div class='querybox'>
-    <span class='label'>query:</span>
-    <input type="text" id='searchbox'></input>
-    <span class='help'><a href="/help" target="_blank">help</a></span>
-    <span id='whatbox'>
-      {{if gt (.Backends | len) 1 }}
-      <span class='what'> Search:
-      <select id='backend'>
-        {{range .Backends}}
-        <option value="{{.Id}}">{{.I.Name}}</option>
-        {{end}}
-      </select>
-      </span>
-      {{else}}
-      {{with index .Backends 0}}
-      <span class='what'> Searching: {{ .I.Name }}</span>
-      <select id='backend' style='display: none;'>
-        <option value="{{.Id}}">{{.I.Name}}</option>
-      </select>
-      {{end}}
-      {{end}}
-    </span>
+  <div class="search-inputs">
+    <div class="prefixed-input filter-code">
+      <label class="prefix-label" for="searchbox">Query:</label>
+      <input type="text" id='searchbox' tabindex="1" required="required" />
     </div>
-    <div class='clear'> </div>
+    <div id='regex-error'>
+      <span id='errortext'></span>
+    </div>
+
+    <div class='query-hint'>
+      Special terms:
+      <code>path:</code>
+      <code>-path:</code>
+      <code>repo:</code>
+      <code>-repo:</code>
+    </div>
   </div>
-  <div id='regex-error'>
-    <span class='label'> error: </span>
-    <span id='errortext'> </span>
-    </div>  
+
+  <div class="search-options">
+    <div class="search-option">
+      <span class="label">Case:</span>
+      <input type='radio' name='fold_case' value='false' id='case-match' tabindex="3" />
+      <label for='case-match'>match</label>
+      <input type='radio' name='fold_case' value='auto' id='case-auto' tabindex="4" />
+      <label for='case-auto'>auto</label>
+      [<span class="tooltip-target">?<div class="tooltip">
+        Case-sensitive if the query contains capital letters
+      </div></span>]
+      <input type='radio' name='fold_case' value='true' id='case-ignore' tabindex="5" />
+      <label for='case-ignore'>ignore</label>
+    </div>
+
+    <div class="search-option">
+      <span class="label">Regex:</span>
+      <input type='checkbox' name='regex' id='regex' tabindex="6" />
+      <label for='regex'>on</label>
+    </div>
+
+    {{if gt (.Backends | len) 1 }}
+      <div class="search-option">
+        <span class="label">Search:</span>
+        <select id='backend' tabindex="7">
+        {{range .Backends}}
+          <option value="{{.Id}}">{{.I.Name}}</option>
+        {{end}}
+        </select>
+      </div>
+    {{else}}
+      {{with index .Backends 0}}
+        {{if ne (.I.Name) "-"}}
+          <div class="search-option">
+            <span class="label">Searching:</span>
+            {{.I.Name}}
+          </div>
+        {{end}}
+      {{end}}
+    {{end}}
+  </div>
 </div>
+
 <div id='resultbox'>
+<div id='helparea'>
+  <div class='helpsection'><h5>Special query terms</h5></div>
+  <table>
+    <tr>
+      <td><code>path:</code></td>
+      <td>Only include results from matching files.</td>
+      <td><a href="/search?q=hello+path:test">example</a></td>
+    </tr>
+    <tr>
+      <td><code>-path:</code></td>
+      <td>Exclude results from matching files.</td>
+      <td><a href="/search?q=hello+-path:test">example</a></td>
+    </tr>
+    <tr>
+      <td><code>repo:</code></td>
+      <td>Only include results from matching repositories.</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>-repo:</code></td>
+      <td>Exclude results from matching repositories.</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>(<em>special-term</em>:)</code></td>
+      <td>Escape one of the above terms by wrapping it in parentheses (with regex enabled).</td>
+      <td><a href="/search?q=(file:)&regex=true">example</a></td>
+    </tr>
+  </table>
+  <div class='helpsection'><h5>Regular Expressions</h5></div>
+  <p>
+    See <a href="https://github.com/google/re2/wiki/Syntax">the RE2
+    documentation</a> for a complete listing of supported regex syntax.
+  </p>
+</div>
 <div id='resultarea'>
   <a href="/search" id='permalink'>[link to results]</a>
   <div id='countarea'>

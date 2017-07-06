@@ -363,6 +363,8 @@ var SearchState = Backbone.Model.extend({
     var cur = this.search_map[this.get('displaying')];
     if (cur &&
         cur.q === search.q &&
+        cur.fold_case === search.fold_case &&
+        cur.regex === search.regex &&
         cur.backend === search.backend) {
       return false;
     }
@@ -370,6 +372,8 @@ var SearchState = Backbone.Model.extend({
     search.id = id;
     this.search_map[id] = {
       q: search.q,
+      fold_case: search.fold_case,
+      regex: search.regex,
       backend: search.backend
     };
     if (!search.q.length) {
@@ -388,6 +392,8 @@ var SearchState = Backbone.Model.extend({
 
     if (current.q !== "") {
       q.q = current.q;
+      q.fold_case = current.fold_case;
+      q.regex = current.regex;
     }
 
     if (current.backend) {
@@ -530,10 +536,12 @@ var ResultView = Backbone.View.extend({
     if (this.model.search_map[this.model.get('displaying')].q === '' ||
        this.model.get('error')) {
       this.$el.hide();
+      $('#helparea').show();
       return this;
     }
 
     this.$el.show();
+    $('#helparea').hide();
 
     if (this.model.get('time')) {
       this.$('#searchtimebox').show();
@@ -566,6 +574,13 @@ var CodesearchUI = function() {
       CodesearchUI.input_backend = $('#backend');
       if (CodesearchUI.input_backend.length == 0)
         CodesearchUI.input_backend = null;
+      CodesearchUI.inputs_case = $('input[name=fold_case]');
+      CodesearchUI.input_regex = $('input[name=regex]');
+
+      if (CodesearchUI.inputs_case.filter(':checked').length == 0) {
+          CodesearchUI.inputs_case.filter('[value=auto]').attr('checked', true);
+      }
+
       CodesearchUI.parse_url();
 
       CodesearchUI.input.keydown(CodesearchUI.keypress);
@@ -574,23 +589,26 @@ var CodesearchUI = function() {
       if (CodesearchUI.input_backend)
         CodesearchUI.input_backend.change(CodesearchUI.select_backend);
 
+      CodesearchUI.inputs_case.change(CodesearchUI.keypress);
+      CodesearchUI.input_regex.change(CodesearchUI.keypress);
+
       Codesearch.connect(CodesearchUI);
     },
     parse_url: function() {
       var parms = CodesearchUI.parse_query_params();
-      var q = []
-      if (parms.q) {
-        if (parms.fold_case === 'true')
-          q.push('case:' + parms.q);
-        else
-          q.push(parms.q);
-      }
       if (parms.file)
         q.push("file:" + parms.file)
       if (parms.repo)
         q.push("repo:" + parms.repo)
 
-      CodesearchUI.input.val(q.join(' '));
+      CodesearchUI.input.val(parms.q)
+
+     if (parms.fold_case) {
+       CodesearchUI.inputs_case.filter('[value='+parms.fold_case+']').attr('checked', true);
+     }
+     if (parms.regex === "true") {
+       CodesearchUI.input_regex.prop('checked', true);
+     }
 
       var backend = null;
       if (parms.backend)
@@ -632,6 +650,8 @@ var CodesearchUI = function() {
       CodesearchUI.clear_timer();
       var search = {
         q: CodesearchUI.input.val(),
+        fold_case: CodesearchUI.inputs_case.filter(':checked').val(),
+        regex: CodesearchUI.input_regex.is(':checked'),
       };
       if (CodesearchUI.input_backend)
         search.backend = CodesearchUI.input_backend.val();
