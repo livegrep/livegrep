@@ -31,6 +31,7 @@
 #include "src/indexer.h"
 #include "src/content.h"
 
+#include "divsufsort.h"
 #include "re2/re2.h"
 #include "gflags/gflags.h"
 #include <json-c/json.h>
@@ -206,18 +207,15 @@ class searcher {
 public:
     searcher(const code_searcher *cc,
              const query &q,
+             const intrusive_ptr<IndexKey> index,
              const code_searcher::search_thread::transform_func& func) :
         cc_(cc), query_(&q), transform_(func), queue_(),
-        matches_(0), limiter_(q.max_matches), re2_time_(false),
+        matches_(0), limiter_(q.max_matches), index_(index), re2_time_(false),
         git_time_(false), index_time_(false), sort_time_(false),
         analyze_time_(false), files_(new uint8_t[cc->files_.size()]),
         files_density_(-1)
     {
         memset(files_, 0xff, cc->files_.size());
-        {
-            run_timer run(analyze_time_);
-            index_ = indexRE(*query_->line_pat);
-        }
     }
 
     ~searcher() {
@@ -235,9 +233,6 @@ public:
         debug(kDebugProfile, "sort time: %d.%06ds",
               int(sort_time_.elapsed().tv_sec),
               int(sort_time_.elapsed().tv_usec));
-        debug(kDebugProfile, "analyze time: %d.%06ds",
-              int(analyze_time_.elapsed().tv_sec),
-              int(analyze_time_.elapsed().tv_usec));
     }
 
     void operator()(const chunk *chunk);
@@ -371,14 +366,18 @@ protected:
 class filename_searcher {
 public:
     filename_searcher(const code_searcher *cc,
-                      const query &q) :
-        cc_(cc), query_(&q), queue_(), matches_(0), limiter_(q.max_matches) {}
+                      const query &q,
+                      intrusive_ptr<IndexKey> index) :
+        cc_(cc), query_(&q), index_(index), queue_(), matches_(0), limiter_(q.max_matches) {}
 
-    void operator()(indexed_file *file);
+    void operator()();
 
 protected:
+    void match_filename(indexed_file *file);
+
     const code_searcher *cc_;
     const query *query_;
+    intrusive_ptr<IndexKey> index_;
     thread_queue<file_result*> queue_;
     atomic_int matches_;
     search_limiter limiter_;
@@ -386,11 +385,63 @@ protected:
     friend class code_searcher::search_thread;
 };
 
-void filename_searcher::operator()(indexed_file *file)
-{
-    if (limiter_.why())
-        return;
+int suffix_search(const unsigned char *data,
+                  uint32_t *suffixes,
+                  int size,
+                  intrusive_ptr<IndexKey> index,
+                  vector<uint32_t> &indexes_out);
 
+void filename_searcher::operator()()
+{
+    static per_thread<vector<uint32_t> > indexes;
+    if (!indexes.get()) {
+        indexes.put(new vector<uint32_t>(cc_->filename_data_size_ / kMinFilterRatio / 10));
+    }
+
+    int count = suffix_search(cc_->filename_data_, cc_->filename_suffixes_, cc_->filename_data_size_, index_, *indexes);
+
+    if (count > indexes->size()) {
+        for (auto it = cc_->files_.begin(); it < cc_->files_.end(); it++) {
+            if (limiter_.exit_early(matches_.load())) {
+                return;
+            }
+            match_filename(*it);
+        }
+        return;
+    }
+
+    lsd_radix_sort(indexes->data(), indexes->data() + count);
+
+    // find candidate indexed_files from the positions of the candidate matches.
+    // This is O(candidate_matches * log(indexed_files)), but it could probably
+    // be done more cleverly in something like O(candidate_matches + log(indexed_files))
+
+    // moving the left bound as we go isn't a big-O improvement, but may help a little bit.
+    auto left_bound = cc_->filename_positions_.begin();
+
+    for (int i = 0; i < count; i++) {
+        if (limiter_.exit_early(matches_.load())) {
+            break;
+        }
+
+        int target_index = (*indexes)[i];
+        pair<int, indexed_file*> target(target_index, NULL);
+        auto lb = lower_bound(left_bound, cc_->filename_positions_.end(), target);
+
+        if (lb->first != target_index) {
+            assert(lb->first > target_index);
+            assert(lb != left_bound);
+            lb--;
+        }
+        assert(lb->first <= (*indexes)[i]);
+        assert((*indexes)[i] < lb->first + lb->second->path.size());
+        match_filename(lb->second);
+
+        left_bound = lb;
+    }
+}
+
+void filename_searcher::match_filename(indexed_file *file) {
     if (!accept(query_, file))
         return;
 
@@ -408,11 +459,10 @@ void filename_searcher::operator()(indexed_file *file)
     queue_.push(f);
 
     matches_++;
-    limiter_.exit_early(matches_.load());
 }
 
 code_searcher::code_searcher()
-    : alloc_(0), finalized_(false)
+    : alloc_(0), finalized_(false), filename_data_(NULL), filename_suffixes_(NULL)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
@@ -437,6 +487,34 @@ code_searcher::~code_searcher() {
     for (auto file : files_) {
         delete file;
     }
+    if (filename_data_ != NULL) {
+        delete[] filename_data_;
+    }
+    if (filename_suffixes_ != NULL) {
+        delete[] filename_suffixes_;
+    }
+}
+
+void code_searcher::index_filenames() {
+    log("Building filename index...");
+    filename_positions_.reserve(files_.size());
+
+    filename_data_size_ = 0;
+    for (auto it = files_.begin(); it != files_.end(); ++it) {
+        filename_data_size_ += (*it)->path.size() + 1;
+    }
+
+    filename_data_ = new unsigned char[filename_data_size_];
+    int offset = 0;
+    for (auto it = files_.begin(); it != files_.end(); ++it) {
+        memcpy(filename_data_ + offset, (*it)->path.data(), (*it)->path.size());
+        filename_data_[offset + (*it)->path.size()] = '\0';
+        filename_positions_.emplace_back(offset, *it);
+        offset += (*it)->path.size() + 1;
+    }
+
+    filename_suffixes_ = new uint32_t[filename_data_size_];
+    divsufsort(filename_data_, reinterpret_cast<saidx_t*>(filename_suffixes_), filename_data_size_);
 }
 
 void code_searcher::finalize() {
@@ -447,6 +525,8 @@ void code_searcher::finalize() {
     timeval now;
     gettimeofday(&now, NULL);
     index_timestamp_ = now.tv_sec;
+
+    index_filenames();
 
     idx_data_chunks.inc(alloc_->end() - alloc_->begin());
     idx_content_chunks.inc(alloc_->end_content() - alloc_->begin_content());
@@ -593,7 +673,7 @@ struct walk_state {
 };
 
 struct lt_index {
-    const chunk *chunk_;
+    const unsigned char *data_;
     int idx_;
 
     bool operator()(uint32_t lhs, unsigned char rhs) {
@@ -605,13 +685,70 @@ struct lt_index {
     }
 
     int cmp(uint32_t lhs, unsigned char rhs) {
-        unsigned char lc = chunk_->data[lhs + idx_];
+        unsigned char lc = data_[lhs + idx_];
         if (lc == '\n')
             return -1;
         return (int)lc - (int)rhs;
     }
 };
 
+int suffix_search(const unsigned char *data,
+                  uint32_t *suffixes,
+                  int size,
+                  intrusive_ptr<IndexKey> index,
+                  vector<uint32_t> &indexes_out) {
+    int count = 0;
+    vector<walk_state> stack;
+    stack.push_back((walk_state){
+            suffixes, suffixes + size, index, 0});
+
+    while (!stack.empty()) {
+        walk_state st = stack.back();
+        stack.pop_back();
+        if (!st.key || st.key->empty() || (st.right - st.left) <= 100) {
+            if ((count + st.right - st.left) > indexes_out.size()) {
+                count = indexes_out.size() + 1;
+                break;
+            }
+            memcpy(&indexes_out[count], st.left,
+                   (st.right - st.left) * sizeof(uint32_t));
+            count += (st.right - st.left);
+            continue;
+        }
+        lt_index lt = {data, st.depth};
+        for (IndexKey::iterator it = st.key->begin();
+             it != st.key->end(); ++it) {
+            uint32_t *l, *r;
+            l = lower_bound(st.left, st.right, it->first.first, lt);
+            uint32_t *right = lower_bound(l, st.right,
+                                          (unsigned char)(it->first.second + 1),
+                                          lt);
+            if (l == right)
+                continue;
+
+            if (st.depth)
+                assert(data[*l + st.depth - 1] ==
+                       data[*(right - 1) + st.depth - 1]);
+
+            assert(l == st.left ||
+                   data[*(l-1) + st.depth] == '\n' ||
+                   data[*(l-1) + st.depth] < it->first.first);
+            assert(data[*l + st.depth] >= it->first.first);
+            assert(right == st.right ||
+                   data[*right + st.depth] > it->first.second);
+
+            for (unsigned char ch = it->first.first; ch <= it->first.second;
+                 ch++, l = r) {
+                r = lower_bound(l, right, (unsigned char)(ch + 1), lt);
+
+                if (r != l) {
+                    stack.push_back((walk_state){l, r, it->second, st.depth + 1});
+                }
+            }
+        }
+    }
+    return count;
+}
 
 void searcher::filtered_search(const chunk *chunk)
 {
@@ -619,58 +756,10 @@ void searcher::filtered_search(const chunk *chunk)
     if (!indexes.get()) {
         indexes.put(new vector<uint32_t>(cc_->alloc_->chunk_size() / kMinFilterRatio));
     }
-    int count = 0;
+    int count;
     {
         run_timer run(index_time_);
-        vector<walk_state> stack;
-        stack.push_back((walk_state){
-                chunk->suffixes, chunk->suffixes + chunk->size, index_, 0});
-
-        while (!stack.empty()) {
-            walk_state st = stack.back();
-            stack.pop_back();
-            if (!st.key || st.key->empty() || (st.right - st.left) <= 100) {
-                if ((count + st.right - st.left) > indexes->size()) {
-                    count = indexes->size() + 1;
-                    break;
-                }
-                memcpy(&(*indexes)[count], st.left,
-                       (st.right - st.left) * sizeof(uint32_t));
-                count += (st.right - st.left);
-                continue;
-            }
-            lt_index lt = {chunk, st.depth};
-            for (IndexKey::iterator it = st.key->begin();
-                 it != st.key->end(); ++it) {
-                uint32_t *l, *r;
-                l = lower_bound(st.left, st.right, it->first.first, lt);
-                uint32_t *right = lower_bound(l, st.right,
-                                              (unsigned char)(it->first.second + 1),
-                                              lt);
-                if (l == right)
-                    continue;
-
-                if (st.depth)
-                    assert(chunk->data[*l + st.depth - 1] ==
-                           chunk->data[*(right - 1) + st.depth - 1]);
-
-                assert(l == st.left ||
-                       chunk->data[*(l-1) + st.depth] == '\n' ||
-                       chunk->data[*(l-1) + st.depth] < it->first.first);
-                assert(chunk->data[*l + st.depth] >= it->first.first);
-                assert(right == st.right ||
-                       chunk->data[*right + st.depth] > it->first.second);
-
-                for (unsigned char ch = it->first.first; ch <= it->first.second;
-                     ch++, l = r) {
-                    r = lower_bound(l, right, (unsigned char)(ch + 1), lt);
-
-                    if (r != l) {
-                        stack.push_back((walk_state){l, r, it->second, st.depth + 1});
-                    }
-                }
-            }
-        }
+        count = suffix_search(chunk->data, chunk->suffixes, chunk->size, index_, *indexes);
     }
 
     search_lines(&(*indexes)[0], count, chunk);
@@ -976,11 +1065,10 @@ void searcher::try_match(const StringPiece& line,
 code_searcher::search_thread::search_thread(code_searcher *cs)
     : cs_(cs) {
     if (FLAGS_search) {
-        // We're now actually creating 2 * FLAGS_threads. Maybe bad?
         for (int i = 0; i < FLAGS_threads; ++i) {
             threads_.push_back(std::move(std::thread(search_one, this)));
-            threads_.push_back(std::move(std::thread(search_file_one, this)));
         }
+        threads_.push_back(std::move(std::thread(search_file_one, this)));
     }
 }
 
@@ -1003,31 +1091,34 @@ void code_searcher::search_thread::match(const query &q,
         cs_->alloc_->drop_caches();
     }
 
-    searcher search(cs_, q, func);
-    filename_searcher file_search(cs_, q);
+    timer analyze_time(false);
+    intrusive_ptr<IndexKey> index_key;
+    {
+        run_timer run(analyze_time);
+        index_key = indexRE(*q.line_pat);
+    }
+    debug(kDebugProfile, "analyze time: %d.%06ds",
+          int(analyze_time.elapsed().tv_sec),
+          int(analyze_time.elapsed().tv_usec));
+
+    searcher search(cs_, q, index_key, func);
+    filename_searcher file_search(cs_, q, index_key);
     job j;
     j.trace_id = current_trace_id();
     j.search = &search;
     j.file_search = &file_search;
     j.pending = 0;
-    j.file_pending = 0;
 
     for (int i = 0; i < FLAGS_threads; ++i) {
         ++j.pending;
         queue_.push(&j);
-        ++j.file_pending;
-        file_queue_.push(&j);
     }
+    file_queue_.push(&j);
 
     for (auto it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
         j.chunks.push(*it);
     }
     j.chunks.close();
-
-    for (auto it = cs_->files_.begin(); it != cs_->files_.end(); it++) {
-        j.files.push(*it);
-    }
-    j.files.close();
 
     memset(stats, 0, sizeof *stats);
 
@@ -1043,6 +1134,7 @@ void code_searcher::search_thread::match(const query &q,
     }
 
     search.get_stats(stats);
+    stats->analyze_time = analyze_time.elapsed();
     stats->why = search.why();
     stats->matches = matches;
 }
@@ -1050,6 +1142,7 @@ void code_searcher::search_thread::match(const query &q,
 
 code_searcher::search_thread::~search_thread() {
     queue_.close();
+    file_queue_.close();
     for (auto it = threads_.begin(); it != threads_.end(); ++it)
         it->join();
 }
@@ -1073,14 +1166,8 @@ void code_searcher::search_thread::search_file_one(search_thread *me) {
     job *j;
     while (me->file_queue_.pop(&j)) {
         scoped_trace_id trace(j->trace_id);
-
-        indexed_file *f;
-        while (j->files.pop(&f)) {
-            (*j->file_search)(f);
-        }
-
-        if (--j->file_pending == 0)
-            j->file_search->queue_.close();
+        (*j->file_search)();
+        j->file_search->queue_.close();
     }
 }
 

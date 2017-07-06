@@ -202,11 +202,9 @@ public:
         struct job {
             std::string trace_id;
             atomic_int pending;
-            atomic_int file_pending;
             searcher *search;
             filename_searcher *file_search;
             thread_queue<chunk*> chunks;
-            thread_queue<indexed_file*> files;
         };
 
         const code_searcher *cs_;
@@ -239,8 +237,19 @@ protected:
     // Timestamp representing the end of index construction.
     int64_t index_timestamp_;
 
+    // Structures for fast filename search; somewhat similar to a single chunk.
+    // Built from files_ at finalization, not serialized or anything like that.
+    unsigned char *filename_data_;
+    int filename_data_size_;
+    uint32_t *filename_suffixes_;
+    // pairs (i, file), where file->path starts at filename_data_[i]
+    vector<pair<int, indexed_file*>> filename_positions_;
+
     vector<indexed_tree*> trees_;
     vector<indexed_file*> files_;
+
+private:
+    void index_filenames();
 
     friend class search_thread;
     friend class searcher;
