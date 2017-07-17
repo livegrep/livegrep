@@ -28,6 +28,13 @@ message SearchResult {
     string line = 8;
 }
 
+message FileResult {
+    string tree = 1;
+    string version = 2;
+    string path = 3;
+    Bounds bounds = 4;
+}
+
 message SearchStats {
     int64 re2_time = 1;
     int64 git_time = 2;
@@ -58,6 +65,7 @@ message ServerInfo {
 message CodeSearchResult {
     SearchStats stats = 1;
     repeated SearchResult results = 2;
+    repeated FileResult file_results = 3;
 }
 
 message InfoRequest {

@@ -471,6 +471,8 @@ void load_allocator::load(code_searcher *cs) {
     assert(fstat(fd_, &st) == 0);
     cs->index_timestamp_ = st.st_mtime;
 
+    cs->index_filenames();
+
     cs->finalized_ = true;
 }
 

@@ -150,6 +150,8 @@ void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr)
     builder.RegisterService(service.get());
     std::unique_ptr<Server> server(builder.BuildAndStart());
 
+    log("Serving...");
+
     if (FLAGS_reload_rpc) {
         thread shutdown_thread([&]() {
             reload_request.get_future().wait();

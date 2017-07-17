@@ -30,6 +30,7 @@
 #include "src/lib/thread_queue.h"
 
 class searcher;
+class filename_searcher;
 class chunk_allocator;
 class file_contents;
 struct match_result;
@@ -114,6 +115,11 @@ struct match_result {
     int matchleft, matchright;
 };
 
+struct file_result {
+    indexed_file *file;
+    int matchleft, matchright;
+};
+
 // A query specification passed to match(). line_pat is required to be
 // non-NULL; file_pat, tree_pat and tag_pat may be NULL to specify "no
 // constraint"
@@ -174,16 +180,22 @@ public:
 
         // function that will be called to record a match
         typedef std::function<void (const struct match_result*)> callback_func;
+        // function that will be called to record a filename match
+        typedef std::function<void (const struct file_result*)> file_callback_func;
         // function that will be called to transform a match
         typedef std::function<bool (struct match_result*)> transform_func;
 
         /* file_pat may be NULL */
-        void match(const query& q, const callback_func& cb, match_stats *stats)
+        void match(const query& q,
+                   const callback_func& cb,
+                   const file_callback_func& fcb,
+                   match_stats *stats)
         {
-            match(q, cb, transform_func(), stats);
+            match(q, cb, fcb, transform_func(), stats);
         }
         void match(const query& q,
                    const callback_func& cb,
+                   const file_callback_func& fcb,
                    const transform_func& func,
                    match_stats *stats);
     protected:
@@ -191,14 +203,17 @@ public:
             std::string trace_id;
             atomic_int pending;
             searcher *search;
+            filename_searcher *file_search;
             thread_queue<chunk*> chunks;
         };
 
         const code_searcher *cs_;
         vector<std::thread> threads_;
         thread_queue<job*> queue_;
+        thread_queue<job*> file_queue_;
 
         static void search_one(search_thread *);
+        static void search_file_one(search_thread *);
     private:
         search_thread(const search_thread&);
         void operator=(const search_thread&);
@@ -222,11 +237,23 @@ protected:
     // Timestamp representing the end of index construction.
     int64_t index_timestamp_;
 
+    // Structures for fast filename search; somewhat similar to a single chunk.
+    // Built from files_ at finalization, not serialized or anything like that.
+    unsigned char *filename_data_;
+    int filename_data_size_;
+    uint32_t *filename_suffixes_;
+    // pairs (i, file), where file->path starts at filename_data_[i]
+    vector<pair<int, indexed_file*>> filename_positions_;
+
     vector<indexed_tree*> trees_;
     vector<indexed_file*> files_;
 
+private:
+    void index_filenames();
+
     friend class search_thread;
     friend class searcher;
+    friend class filename_searcher;
     friend class codesearch_index;
     friend class load_allocator;
     friend class tag_searcher;
