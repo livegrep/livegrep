@@ -78,15 +78,14 @@ a:hover {
 }
 
 .file-group {
-    background: rgba(34, 76, 89, 0.05);
+    background: rgba(19, 61, 153, 0.09);   
     margin-bottom: 15px;
     border: solid 1px rgba(0, 0, 0, 0.1);
     border-left: solid 3px #A0D1FA;
 }
 
 .file-group .header {
-    display: block;
-    background: rgba(0, 126, 229, 0.04);
+    display: inline-block;
     padding: 3px 5px;
 }
 
