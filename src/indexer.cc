@@ -316,6 +316,15 @@ namespace {
         return true;
     }
 
+    bool Prefer(const IndexKey::Stats& lhs,
+                const IndexKey::Stats& rhs) {
+        return (lhs.selectivity_ < rhs.selectivity_);
+        /*
+        return (kRECost * lhs.selectivity_ + kNodeCost * lhs.nodes_ <
+                kRECost * rhs.selectivity_ + kNodeCost * rhs.nodes_);
+        */
+    }
+
     intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> lhs, intrusive_ptr<IndexKey> rhs) {
         assert(lhs);
         intrusive_ptr<IndexKey> out = lhs;
@@ -329,8 +338,11 @@ namespace {
 
         if (ShouldConcat(lhs, rhs)) {
             out->concat(rhs);
-        } else  {
+        } else if(Prefer(lhs->stats(), rhs->stats()))  {
             out->anchor &= ~kAnchorRight;
+        } else {
+            out = rhs;
+            out->anchor &= ~kAnchorLeft;
         }
 
         debug(kDebugIndexAll, "[%s]", out->ToString().c_str());
@@ -350,26 +362,19 @@ namespace {
         for (intrusive_ptr<IndexKey> *ptr = start + 1; ptr != end; ptr++) {
             if (!*(ptr) || !((*ptr)->anchor & kAnchorLeft))
                 break;
+            IndexKey::Stats concat = st.concat((*ptr)->stats());
 
-            st = st.concat((*ptr)->stats());
-
-            if (st.nodes_ >= kMaxNodes)
+            if (concat.nodes_ >= kMaxNodes)
                 break;
+
+            st = concat;
+
             if (((*ptr)->anchor & (kAnchorRepeat|kAnchorRight)) != kAnchorRight)
                 break;
         }
         debug(kDebugIndexAll, "TryConcat: nodes=%ld, selectivity=%f",
               st.nodes_, st.selectivity_);
         return st;
-    }
-
-    bool Prefer(const IndexKey::Stats& lhs,
-                const IndexKey::Stats& rhs) {
-        return (lhs.selectivity_ < rhs.selectivity_);
-        /*
-        return (kRECost * lhs.selectivity_ + kNodeCost * lhs.nodes_ <
-                kRECost * rhs.selectivity_ + kNodeCost * rhs.nodes_);
-        */
     }
 
     intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> *children,
@@ -548,8 +553,6 @@ IndexWalker::PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
                        intrusive_ptr<IndexKey> *child_args,
                        int nchild_args) {
     intrusive_ptr<IndexKey> key;
-
-    /* assert(!(re->parse_flags() & Regexp::FoldCase)); */
 
     switch (re->op()) {
     case kRegexpNoMatch:

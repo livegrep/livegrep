@@ -3,6 +3,7 @@
 
 #include "re2/re2.h"
 
+#include "src/codesearch.h"
 #include "src/indexer.h"
 #include "src/lib/debug.h"
 
@@ -58,6 +59,17 @@ TEST(IndexKeyTest, CaseFoldRegression) {
     intrusive_ptr<IndexKey> key = indexRE(re);
     EXPECT_TRUE(key->anchor & kAnchorLeft);
     EXPECT_TRUE(key->anchor & kAnchorRight);
+}
+
+TEST(IndexKeyTest, LongCaseFoldedLiteral) {
+    re2::RE2::Options opts;
+    default_re2_options(opts);
+    opts.set_case_sensitive(false);
+
+    re2::RE2 re("sxxxxxxxxxxxxxxxxxxxxxxxxx", opts);
+    intrusive_ptr<IndexKey> key = indexRE(re);
+    EXPECT_TRUE(key);
+    EXPECT_GT(key->depth(), 2);
 }
 
 TEST(IndexKeyTest, StressTest) {
