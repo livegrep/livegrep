@@ -428,6 +428,8 @@ var SearchState = Backbone.Model.extend({
     }
   },
   handle_done: function (search, time, why) {
+    if (search < this.get('displaying'))
+      return false;
     this.set('displaying', search);
     this.set({time: time, why: why});
     this.search_results.trigger('search-complete');
