@@ -162,6 +162,7 @@ a:hover {
     width: 60em;
     margin: auto;
     color: #999;
+    padding-bottom: 100px;
 }
 
 .helpsection {
@@ -171,6 +172,12 @@ a:hover {
 
 #helparea table {
     width: 100%;
+}
+
+.credit {
+    text-align: center;
+    font-size: smaller;
+    color: #999;
 }
 
 .label {
@@ -270,6 +277,10 @@ a:hover {
     float: right;
 }
 
+#header ul {
+    padding: 0;
+}
+
 #header li {
     display: inline;
 }
@@ -290,8 +301,9 @@ a:hover {
 #header {
     font-size: 80%;
     color: #999;
-    margin: auto;
+    margin: 1em auto;
     width: 40em;
+    text-align: center;
 }
 
 #permalink {
