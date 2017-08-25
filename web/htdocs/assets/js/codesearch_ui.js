@@ -272,6 +272,16 @@ var FileMatch = Backbone.Model.extend({
   },
 
   url: function() {
+    if (this.get('tree') in CodesearchUI.intervalViewRepos) {
+      return this.internalUrl();
+    } else {
+      return this.externalUrl();
+    }
+  },
+  internalUrl: function() {
+    return "/view/" + this.get('tree') + "/" + this.get('path');
+  },
+  externalUrl: function() {
     var name = this.get('tree');
     var ref = this.get('version');
 
