@@ -10,7 +10,11 @@
   }
 
   function doSearch(query) {
-    window.location.href = '/search/codesearch?q=' + encodeURIComponent(query);
+    if (query !== undefined) {
+      window.location.href = '/search?q=' + encodeURIComponent(query);
+    } else {
+      window.location.href = '/search';
+    }
   }
 
   function scrollToRange(range, elementContainer) {
@@ -98,8 +102,6 @@
     var root = $('.file-content');
     var lineNumberContainer = root.find('.line-numbers');
     var helpScreen = $('.help-screen');
-    var searchContainer = $('.search-input');
-    var searchInput = searchContainer.find('#query');
 
     function showHelp() {
       helpScreen.removeClass('hidden').children().on('click', function(event) {
@@ -115,24 +117,6 @@
       helpScreen.addClass('hidden').children().off('click');
       $(document).off('click', hideHelp);
       return true;
-    }
-
-    function showSearch(event, prefilledQuery) {
-      console.log(prefilledQuery);
-      searchContainer.removeClass('hidden');
-      searchInput.val(prefilledQuery).select().focus().on('blur', function() {
-        searchContainer.addClass('hidden');
-      }).on('keydown', function(event) {
-        if(event.which === KeyCodes.ENTER) {
-          var query = searchInput.val();
-          if(query) {
-            doSearch(query);
-          }
-        } else if(event.which === KeyCodes.ESCAPE) {
-          event.preventDefault();
-          searchInput.blur();
-        }
-      });
     }
 
     function handleHashChange(scrollElementIntoView) {
@@ -185,7 +169,7 @@
 
     function processKeyEvent(event) {
       if(event.which === KeyCodes.ENTER) {
-        // Perform a new search witht the selected text, if any
+        // Perform a new search with the selected text, if any
         var selectedText = getSelectedText();
         if(selectedText) {
           doSearch(selectedText);
@@ -196,7 +180,7 @@
             showHelp();
           } else {
             hideHelp();
-            showSearch(event, getSelectedText());
+            doSearch(getSelectedText());
           }
       } else if(event.which === KeyCodes.ESCAPE) {
         // Avoid swallowing the important escape key event unless we're sure we want to
@@ -218,7 +202,7 @@
       // Map out action name to function call, and automate the details of actually hooking
       // up the event handling.
       var ACTION_MAP = {
-        search: showSearch,
+        search: doSearch,
         help: showHelp,
       };
 

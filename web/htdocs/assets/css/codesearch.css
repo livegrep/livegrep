@@ -366,6 +366,11 @@ a:hover {
 .header-action a:hover, .header-action a:focus {
     color: rgba(0, 0, 0, 1);
 }
+
+.header-action .shortcut {
+    font-weight: bolder;
+    text-decoration: underline;
+}
 /* END */
 
 /* File list */
