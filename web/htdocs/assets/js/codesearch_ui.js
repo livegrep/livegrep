@@ -47,6 +47,45 @@ function shorten(ref) {
   return ref;
 }
 
+function url(tree, version, path, lno) {
+  if (tree in CodesearchUI.intervalViewRepos) {
+    return internalUrl(tree, path, lno);
+  } else {
+    return externalUrl(tree, version, path, lno);
+  }
+}
+
+function internalUrl(tree, path, lno) {
+  var url = "/view/" + tree + "/" + path;
+  if (lno !== undefined) {
+    url += "#L" + lno;
+  }
+  return url;
+}
+
+function externalUrl(tree, version, path, lno) {
+  var backend = Codesearch.in_flight.backend;
+  var repo_map = CodesearchUI.repo_urls[backend];
+  if (!repo_map) {
+    return null;
+  }
+  if (!repo_map[tree]) {
+    return null;
+  }
+
+  if (lno === undefined) {
+      lno = 1;
+  }
+
+  // the order of these replacements is used to minimize conflicts
+  var url = repo_map[tree];
+  url = url.replace('{lno}', lno);
+  url = url.replace('{version}', shorten(version));
+  url = url.replace('{name}', tree);
+  url = url.replace('{path}', path);
+  return url;
+}
+
 var MatchView = Backbone.View.extend({
   tagName: 'div',
   initialize: function() {
@@ -130,41 +169,11 @@ var Match = Backbone.Model.extend({
   },
 
   url: function(lno) {
-    if (this.get('tree') in CodesearchUI.intervalViewRepos) {
-      return this.internalUrl(lno);
-    } else {
-      return this.externalUrl(lno);
-    }
-  },
-  internalUrl: function(lno) {
-    return "/view/" + this.get('tree') + "/" + this.get('path') + "#L" + this.get('lno');
-  },
-  externalUrl: function(lno) {
-    var name = this.get('tree');
-    var ref = this.get('version');
-
-    var repo_map;
-    var backend = Codesearch.in_flight.backend;
-    repo_map = CodesearchUI.repo_urls[backend];
-    if (!repo_map) {
-      return null;
-    }
-    if (!repo_map[name]) {
-      return null;
-    }
-
     if (lno === undefined) {
-        lno = this.get('lno');
+      lno = this.get('lno');
     }
-
-    // the order of these replacements is used to minimize conflicts
-    var url = repo_map[name];
-    url = url.replace('{lno}', lno);
-    url = url.replace('{version}', shorten(ref));
-    url = url.replace('{name}', name);
-    url = url.replace('{path}', this.get('path'));
-    return url;
-  }
+    return url(this.get('tree'), this.get('version'), this.get('path'), lno);
+  },
 });
 
 /** A set of Matches at a single path. */
@@ -272,29 +281,8 @@ var FileMatch = Backbone.Model.extend({
   },
 
   url: function() {
-    var name = this.get('tree');
-    var ref = this.get('version');
-
-    var repo_map;
-    var backend = Codesearch.in_flight.backend;
-    repo_map = CodesearchUI.repo_urls[backend];
-    if (!repo_map) {
-      return null;
-    }
-    if (!repo_map[name]) {
-      return null;
-    }
-
-    var lno = 1;
-
-    // the order of these replacements is used to minimize conflicts
-    var url = repo_map[name];
-    url = url.replace('{lno}', lno);
-    url = url.replace('{version}', shorten(ref));
-    url = url.replace('{name}', name);
-    url = url.replace('{path}', this.get('path'));
-    return url;
-  }
+    return url(this.get('tree'), this.get('version'), this.get('path'));
+  },
 });
 
 var FileMatchView = Backbone.View.extend({
