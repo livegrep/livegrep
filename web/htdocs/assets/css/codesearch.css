@@ -12,45 +12,140 @@ a:hover {
 }
 
 #searcharea {
-    width: 40em;
-    margin: auto;
-    margin-bottom: 1em;
-    border: 1px solid black;
+    width: 100%;
+    max-width: 1200px;
+    margin-top: 30px;
+    margin-bottom: 20px;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    padding: 20px;
+    background: white;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    box-sizing: border-box;
 }
 
-#searcharea p {
-    margin: 10px;
+#searcharea > div {
+    flex: 1 1 auto;
 }
 
-#searchinput {
-    margin: 10px;
+#searcharea input[type=text] {
+    vertical-align: bottom;
+    border: none;
+    border-bottom: solid 2px rgba(0, 0, 0, 0.1);
+    padding: 10px 0 5px 0;
+    transition: border 150ms;
+    width: 100%;
 }
 
-.querybox {
-    font-size: 80%;
-    text-align: center;
+#searcharea input[type=text]:hover {
+    outline: none;
+    border-color: rgba(0, 126, 229, 0.1);
 }
 
-#searcharea input {
-    width: 20em;
+#searcharea input[type=text]:focus {
+    outline: none;
+    border-color: rgba(0, 126, 229, 0.25);
 }
 
-#whatbox {
-    padding-left: 1em;
+#searcharea input[type=text]:valid {
+    border-color: rgba(0, 0, 0, 0.4);
 }
 
-.what {
-    color: #999;
+#searcharea input[type=text]:valid:hover {
+    border-color: rgba(0, 126, 229, 0.45);
+}
+
+#searcharea input[type=text]:valid:focus {
+    border-color: rgba(0, 126, 229, 0.75);
+}
+
+#searcharea #searchbox {
+    font-size: 16px;
+}
+
+.query-hint {
+    padding-top: 5px;
+    font-size: 11px;
+    font-style: italic;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.query-hint code {
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    border-radius: 3px;
+    background: #f8f8f8;
+    font-style: normal;
+    margin: 0px 1px;
+    padding: 1px 3px;
+}
+
+.search-options {
+    width: 250px;
+    max-width: 250px;
+    margin: 0;
+    font-size: 12px;
+    line-height: 20px;
+}
+
+.search-option {
+    white-space: nowrap;
 }
 
 #regex-error {
+    padding-top: 3px;
     display: none;
-    text-align: center;
-    margin: 10px;
 }
 
 #errortext {
-    color: red;
+    color: #DD3B38;
+    font-size: 14px;
+}
+
+/* Prefixed inputs are text inputs where the label appears before the input  */
+.prefixed-input {
+    width: calc(100% - 20px);
+    position: relative;
+}
+
+.prefixed-input .prefix-label {
+    position: absolute;
+    top: 12px;
+    color: #000;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.prefixed-input.filter-code .prefix-label {
+    top: 14px;
+}
+
+.prefixed-input input[type=text] {
+    text-indent: 50px;
+    background-color: transparent;
+}
+/* END */
+
+.tooltip-target {
+    border-bottom: 1px dotted #000;
+    position: relative;
+    cursor: help;
+}
+
+.tooltip {
+    display: none;
+    position: absolute;
+    top: 20px;
+    border: 1px solid black;
+    border-radius: 3px;
+    padding: 0px 4px;
+    background-color: #fff;
+}
+
+.tooltip-target:hover .tooltip {
+    display: block;
 }
 
 #searchtimebox {
@@ -58,15 +153,28 @@ a:hover {
 }
 
 #resultbox {
-    margin: 1em 3em;
+    padding: 1em 3em;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#helparea {
+    width: 60em;
+    margin: auto;
+    color: #999;
+}
+
+.helpsection {
+    margin: auto;
+    text-align: center;
+}
+
+#helparea table {
+    width: 100%;
 }
 
 .label {
     font-weight: bold;
-}
-
-.clear {
-    clear: both;
 }
 
 #results {
@@ -433,6 +541,16 @@ a:hover {
 }
 /* END */
 
+.textarea {
+    width: 40em;
+    margin: auto;
+    margin-bottom: 1em;
+    border: 1px solid black;
+}
+
+.textarea p {
+    margin: 10px;
+}
 
 /* /help */
 

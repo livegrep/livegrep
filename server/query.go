@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,6 +17,8 @@ var pieceRE = regexp.MustCompile(`\(|(?:^([a-zA-Z0-9-_]+):|\\.)| `)
 var knownTags = map[string]bool{
 	"file":        true,
 	"-file":       true,
+	"path":        true,
+	"-path":       true,
 	"repo":        true,
 	"-repo":       true,
 	"tags":        true,
@@ -23,6 +26,16 @@ var knownTags = map[string]bool{
 	"case":        true,
 	"lit":         true,
 	"max_matches": true,
+}
+
+func onlyOneSynonym(ops map[string]string, op1 string, op2 string) (string, error) {
+	if ops[op1] != "" && ops[op2] != "" {
+		return "", fmt.Errorf("Cannot provide both %s: and %s:, because they are synonyms", op1, op2)
+	}
+	if ops[op1] != "" {
+		return ops[op1], nil
+	}
+	return ops[op2], nil
 }
 
 func ParseQuery(query string) (pb.Query, error) {
@@ -93,10 +106,15 @@ func ParseQuery(query string) (pb.Query, error) {
 	}
 
 	var out pb.Query
-	out.File = ops["file"]
+	var err error
+	if out.File, err = onlyOneSynonym(ops, "file", "path"); err != nil {
+		return out, err
+	}
 	out.Repo = ops["repo"]
 	out.Tags = ops["tags"]
-	out.NotFile = ops["-file"]
+	if out.NotFile, err = onlyOneSynonym(ops, "-file", "-path"); err != nil {
+		return out, err
+	}
 	out.NotRepo = ops["-repo"]
 	out.NotTags = ops["-tags"]
 	var bits []string

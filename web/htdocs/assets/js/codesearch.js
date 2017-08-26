@@ -24,11 +24,15 @@ var Codesearch = function() {
 
       var opts = Codesearch.in_flight;
 
-      var url = "/api/v1/search/"
+      var url = "/api/v1/search/";
       if ('backend' in opts) {
         url = url + opts.backend;
       }
-      var q = {q: opts.q};
+      var q = {
+        q: opts.q,
+        fold_case: opts.fold_case,
+        regex: opts.regex
+      };
 
       url = url + "?" + $.param(q);
 

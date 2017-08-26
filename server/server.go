@@ -24,8 +24,7 @@ type Templates struct {
 	Layout,
 	Index,
 	FileView,
-	About,
-	Help *template.Template
+	About *template.Template
 	OpenSearch *texttemplate.Template `template:"opensearch.xml"`
 }
 
@@ -58,6 +57,7 @@ func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.R
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	urls := make(map[string]map[string]string, len(s.bk))
 	backends := make([]*Backend, 0, len(s.bk))
+	sampleRepo := ""
 	for _, bkId := range s.bkOrder {
 		bk := s.bk[bkId]
 		backends = append(backends, bk)
@@ -65,6 +65,9 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		m := make(map[string]string, len(bk.I.Trees))
 		urls[bk.Id] = m
 		for _, r := range bk.I.Trees {
+			if sampleRepo == "" {
+				sampleRepo = r.Name
+			}
 			m[r.Name] = r.Url
 		}
 		bk.I.Unlock()
@@ -73,7 +76,8 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		RepoUrls          map[string]map[string]string
 		InternalViewRepos map[string]config.RepoConfig
 		Backends          []*Backend
-	}{urls, s.repos, backends}
+		SampleRepo        string
+	}{urls, s.repos, backends, sampleRepo}
 
 	body, err := executeTemplate(s.T.Index, data)
 	if err != nil {
@@ -138,23 +142,8 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 }
 
 func (s *server) ServeHelp(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	d := struct{ SampleRepo string }{}
-	for _, bk := range s.bk {
-		if len(bk.I.Trees) > 1 {
-			d.SampleRepo = bk.I.Trees[0].Name
-		}
-	}
-
-	body, err := executeTemplate(s.T.Help, d)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	s.renderPage(w, &page{
-		Title:         "query syntax",
-		IncludeHeader: true,
-		Body:          template.HTML(body),
-	})
+	// Help is now shown in the main search page when no search has been entered.
+	http.Redirect(w, r, "/search", 303)
 }
 
 func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
