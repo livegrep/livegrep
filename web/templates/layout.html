@@ -34,22 +34,21 @@
     <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Stripe Code Search" />
   </head>
   <body>
-    <div id='customization'>
-    {{if .Config.HeaderHTML}}
-    {{.Config.HeaderHTML}}
-    {{end}}
-    </div>
     {{if .IncludeHeader}}
     <div id='header'>
-      <ul>
-        <li><a href="/">search</a></li>
-        <li><a href="/about">about</a></li>
-        <li><a href="https://github.com/livegrep/livegrep">source</a></li>
-        {{if .Config.Feedback.MailTo}}
-        <li><a id='feedbacklink' href="mailto:{{.Config.Feedback.MailTo}}">feedback</a></li>
-        {{end}}
-        <li class='first'>livegrep is a project by <a href="http://blog.nelhage.com/">Nelson Elhage</a></li>
-      </ul>
+      {{if .Config.HeaderHTML}}
+        {{.Config.HeaderHTML}}
+      {{else}}
+        <ul>
+          <li><a href="/">search</a></li>
+          <li><a href="/about">about</a></li>
+          <li><a href="https://github.com/livegrep/livegrep">source</a></li>
+          {{if .Config.Feedback.MailTo}}
+          <li><a id='feedbacklink' href="mailto:{{.Config.Feedback.MailTo}}">feedback</a></li>
+          {{end}}
+          <li class='first'>livegrep is a project by <a href="http://blog.nelhage.com/">Nelson Elhage</a></li>
+        </ul>
+      {{end}}
     </div>
     {{end}}
     {{ .Body}}
