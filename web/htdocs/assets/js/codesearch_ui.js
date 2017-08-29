@@ -586,19 +586,22 @@ var CodesearchUI = function() {
     },
     parse_url: function() {
       var parms = CodesearchUI.parse_query_params();
+
+      var q = [];
+      if (parms.q)
+        q.push(parms.q)
       if (parms.file)
         q.push("file:" + parms.file)
       if (parms.repo)
         q.push("repo:" + parms.repo)
+      CodesearchUI.input.val(q.join(' ')):
 
-      CodesearchUI.input.val(parms.q)
-
-     if (parms.fold_case) {
-       CodesearchUI.inputs_case.filter('[value='+parms.fold_case+']').attr('checked', true);
-     }
-     if (parms.regex === "true") {
-       CodesearchUI.input_regex.prop('checked', true);
-     }
+      if (parms.fold_case) {
+        CodesearchUI.inputs_case.filter('[value='+parms.fold_case+']').attr('checked', true);
+      }
+      if (parms.regex === "true") {
+        CodesearchUI.input_regex.prop('checked', true);
+      }
 
       var backend = null;
       if (parms.backend)
