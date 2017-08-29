@@ -55,6 +55,9 @@
       </div>
     {{else}}
       {{with index .Backends 0}}
+        <select id='backend' style='display: none;'>
+          <option value="{{.Id}}">{{.I.Name}}</option>
+        </select>
         {{if ne (.I.Name) "-"}}
           <div class="search-option">
             <span class="label">Searching:</span>
