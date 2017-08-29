@@ -589,12 +589,12 @@ var CodesearchUI = function() {
 
       var q = [];
       if (parms.q)
-        q.push(parms.q)
+        q.push(parms.q);
       if (parms.file)
-        q.push("file:" + parms.file)
+        q.push("file:" + parms.file);
       if (parms.repo)
-        q.push("repo:" + parms.repo)
-      CodesearchUI.input.val(q.join(' ')):
+        q.push("repo:" + parms.repo);
+      CodesearchUI.input.val(q.join(' '));
 
       if (parms.fold_case) {
         CodesearchUI.inputs_case.filter('[value='+parms.fold_case+']').attr('checked', true);
