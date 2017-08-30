@@ -9,7 +9,7 @@
     return window.getSelection ? window.getSelection().toString() : null;
   }
 
-  function doSearch(query) {
+  function doSearch(event, query) {
     if (query !== undefined) {
       window.location.href = '/search?q=' + encodeURIComponent(query);
     } else {
@@ -172,7 +172,7 @@
         // Perform a new search with the selected text, if any
         var selectedText = getSelectedText();
         if(selectedText) {
-          doSearch(selectedText);
+          doSearch(event, selectedText);
         }
       } else if(event.which === KeyCodes.SLASH_OR_QUESTION_MARK) {
           event.preventDefault();
@@ -180,7 +180,7 @@
             showHelp();
           } else {
             hideHelp();
-            doSearch(getSelectedText());
+            doSearch(event, getSelectedText());
           }
       } else if(event.which === KeyCodes.ESCAPE) {
         // Avoid swallowing the important escape key event unless we're sure we want to
