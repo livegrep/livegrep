@@ -497,7 +497,6 @@ var ResultView = Backbone.View.extend({
   el: $('#resultarea'),
   initialize: function() {
     this.matches_view = new MatchesView({model: this.model});
-    this.permalink = this.$('#permalink');
     this.results   = this.$('#numresults');
     this.errorbox  = $('#regex-error');
     this.time      = this.$('#searchtime');
@@ -517,7 +516,6 @@ var ResultView = Backbone.View.extend({
 
     var url = this.model.url();
     if (this.last_url !== url ) {
-      this.permalink.attr('href', url);
       if (history.replaceState) {
         history.replaceState(null, '', url);
       }
