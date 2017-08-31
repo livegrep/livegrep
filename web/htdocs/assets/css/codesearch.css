@@ -304,7 +304,7 @@ a:hover {
 }
 
 #countarea {
-    float: right;
+    text-align: right;
 }
 
 #header ul {
@@ -334,10 +334,6 @@ a:hover {
     margin: 1em auto;
     width: 40em;
     text-align: center;
-}
-
-#permalink {
-    font-size: 80%;
 }
 
 #resultarea {
