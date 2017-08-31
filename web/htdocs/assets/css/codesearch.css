@@ -254,6 +254,36 @@ a:hover {
     margin: 0;
 }
 
+#results.no-context .match .contents > * {
+    display: none;
+}
+
+#results.no-context .match .contents > .matchlno {
+    display: inline;
+}
+
+#results.no-context .match .contents > .matchline {
+    display: inline;
+}
+
+.no-context .match {
+    border-top: none;
+    margin-top: 0;
+}
+
+.no-context .match .contents {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.no-context .match:first-of-type .contents {
+    padding-top: 10px;
+}
+
+.no-context .match:last-of-type .contents {
+    padding-bottom: 10px;
+}
+
 .lno-link {
     color: #3d464d;
     padding-right: 1em;
