@@ -98,10 +98,10 @@ var MatchView = Backbone.View.extend({
   },
   _renderLno: function(n, isMatch) {
     var lnoStr = n.toString() + (isMatch ? ":" : "-");
-    var classes = ['lno'];
+    var classes = ['lno-link'];
     if (isMatch) classes.push('matchlno');
-    return h.a({cls: 'lno-link', href: this.model.url(n)}, [
-      h.span({cls: classes.join(' '), 'aria-label': lnoStr}, [])
+    return h.a({cls: classes.join(' '), href: this.model.url(n)}, [
+      h.span({cls: 'lno', 'aria-label': lnoStr}, [])
     ]);
   },
   _render: function() {
@@ -473,6 +473,7 @@ var MatchesView = Backbone.View.extend({
   el: $('#results'),
   initialize: function() {
     this.model.search_results.on('search-complete', this.render, this);
+    this.model.search_results.on('rerender', this.render, this);
   },
   render: function() {
     this.$el.empty();
@@ -581,6 +582,11 @@ var CodesearchUI = function() {
 
       CodesearchUI.inputs_case.change(CodesearchUI.keypress);
       CodesearchUI.input_regex.change(CodesearchUI.keypress);
+
+      CodesearchUI.input_context = $('input[name=context]');
+      CodesearchUI.input_context.change(function(){
+        $('#results').toggleClass('no-context', !CodesearchUI.input_context.attr('checked'));
+      });
 
       Codesearch.connect(CodesearchUI);
     },
