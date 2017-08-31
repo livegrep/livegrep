@@ -314,6 +314,7 @@ var FileMatchView = Backbone.View.extend({
 var SearchState = Backbone.Model.extend({
   defaults: function() {
     return {
+      context: true,
       displaying: null,
       error: null,
       time: null,
@@ -382,6 +383,7 @@ var SearchState = Backbone.Model.extend({
       q.q = current.q;
       q.fold_case = current.fold_case;
       q.regex = current.regex;
+      q.context = this.get('context');
     }
 
     if (current.backend) {
@@ -508,6 +510,9 @@ var ResultView = Backbone.View.extend({
   },
 
   render: function() {
+    if (this.model.get('displaying') === null) {
+      return;
+    }
     if (this.model.get('error')) {
       this.errorbox.find('#errortext').text(this.model.get('error'));
       this.errorbox.show();
@@ -530,6 +535,8 @@ var ResultView = Backbone.View.extend({
       $('#helparea').show();
       return this;
     }
+
+    $('#results').toggleClass('no-context', !this.model.get('context'));
 
     this.$el.show();
     $('#helparea').hide();
@@ -567,6 +574,7 @@ var CodesearchUI = function() {
         CodesearchUI.input_backend = null;
       CodesearchUI.inputs_case = $('input[name=fold_case]');
       CodesearchUI.input_regex = $('input[name=regex]');
+      CodesearchUI.input_context = $('input[name=context]');
 
       if (CodesearchUI.inputs_case.filter(':checked').length == 0) {
           CodesearchUI.inputs_case.filter('[value=auto]').attr('checked', true);
@@ -582,13 +590,13 @@ var CodesearchUI = function() {
 
       CodesearchUI.inputs_case.change(CodesearchUI.keypress);
       CodesearchUI.input_regex.change(CodesearchUI.keypress);
-
-      CodesearchUI.input_context = $('input[name=context]');
-      CodesearchUI.input_context.change(function(){
-        $('#results').toggleClass('no-context', !CodesearchUI.input_context.attr('checked'));
-      });
+      CodesearchUI.input_context.change(CodesearchUI.toggle_context);
+      CodesearchUI.toggle_context();
 
       Codesearch.connect(CodesearchUI);
+    },
+    toggle_context: function(){
+        CodesearchUI.state.set('context', CodesearchUI.input_context.attr('checked') == 'checked');
     },
     parse_url: function() {
       var parms = CodesearchUI.parse_query_params();
@@ -607,6 +615,9 @@ var CodesearchUI = function() {
       }
       if (parms.regex === "true") {
         CodesearchUI.input_regex.prop('checked', true);
+      }
+      if (parms.context) {
+        CodesearchUI.input_context.prop('checked', parms.context === 'true');
       }
 
       var backend = null;
