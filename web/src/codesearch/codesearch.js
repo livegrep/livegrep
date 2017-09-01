@@ -1,3 +1,6 @@
+$ = require('jquery');
+_ = require('underscore');
+
 "use strict";
 var Codesearch = function() {
   return {
@@ -48,7 +51,7 @@ var Codesearch = function() {
         });
         Codesearch.delegate.search_done(opts.id, elapsed, data.search_type, data.info.why);
       });
-      xhr.error(function(data) {
+      xhr.fail(function(data) {
         window._err = data;
         if (data.status >= 400 && data.status < 500) {
           var err = JSON.parse(data.responseText);
@@ -64,3 +67,7 @@ var Codesearch = function() {
     }
   };
 }();
+
+module.exports = {
+  Codesearch: Codesearch
+}

@@ -112,3 +112,7 @@ _(('A ABBR ACRONYM B BDO BIG BLOCKQUOTE BR BUTTON CAPTION CITE CODE COL ' +
      };
    });
 })();
+
+module.exports = {
+  HTMLFactory: HTMLFactory
+}

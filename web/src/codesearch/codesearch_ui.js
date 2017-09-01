@@ -1,7 +1,12 @@
-$(function() {
+html = require('html');
+Backbone = require('backbone');
+
+Codesearch = require('codesearch/codesearch.js').Codesearch;
+
+function init(initData) {
 "use strict";
 
-var h = new HTMLFactory();
+var h = new html.HTMLFactory();
 
 function vercmp(a, b) {
   var re = /^([0-9]*)([^0-9]*)(.*)$/;
@@ -48,7 +53,7 @@ function shorten(ref) {
 }
 
 function url(tree, version, path, lno) {
-  if (tree in CodesearchUI.intervalViewRepos) {
+  if (tree in CodesearchUI.internalViewRepos) {
     return internalUrl(tree, path, lno);
   } else {
     return externalUrl(tree, version, path, lno);
@@ -706,5 +711,12 @@ var CodesearchUI = function() {
     repo_urls: {}
   };
 }();
-window.CodesearchUI = CodesearchUI;
-});
+
+CodesearchUI.repo_urls = initData.repo_urls;
+CodesearchUI.internalViewRepos = initData.internal_view_repos;
+CodesearchUI.onload();
+}
+
+module.exports = {
+  init: init
+}

@@ -12,6 +12,8 @@ import (
 
 type page struct {
 	Title         string
+	ScriptName    string
+	ScriptData    interface{}
 	IncludeHeader bool
 	Body          template.HTML
 	Config        *config.Config

@@ -1,0 +1,11 @@
+{
+  "name": "npm-gen-highlight.js",
+  "version": "9.12.0",
+  "dependencies": {
+    "highlight.js": {
+      "version": "9.12.0",
+      "from": "highlight.js@9.12.0",
+      "resolved": "https://registry.npmjs.org/highlight.js/-/highlight.js-9.12.0.tgz"
+    }
+  }
+}

@@ -28,7 +28,9 @@ go_library(
         "@org_golang_x_net//context:go_default_library",
     ],
     data = [
-        '//web:web_files',
+        '//web:htdocs',
+        '//web:templates',
+        '//web:webpack_build',
     ],
 )
 
