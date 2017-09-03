@@ -374,6 +374,10 @@ public:
 
     void operator()();
 
+    exit_reason why() {
+        return limiter_.why();
+    }
+
 protected:
     void match_filename(indexed_file *file);
 
@@ -1079,7 +1083,7 @@ void code_searcher::search_thread::match(const query &q,
                                          match_stats *stats) {
     match_result *m;
     file_result *f;
-    int matches = 0;
+    int matches = 0, file_matches = 0;
 
     assert(cs_->finalized_);
 
@@ -1109,34 +1113,45 @@ void code_searcher::search_thread::match(const query &q,
     j.file_search = &file_search;
     j.pending = 0;
 
-    for (int i = 0; i < FLAGS_threads; ++i) {
-        ++j.pending;
-        queue_.push(&j);
-    }
-    file_queue_.push(&j);
+    if (!q.filename_only) {
+        for (int i = 0; i < FLAGS_threads; ++i) {
+            ++j.pending;
+            queue_.push(&j);
+        }
 
-    for (auto it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
-        j.chunks.push(*it);
+        for (auto it = cs_->alloc_->begin(); it != cs_->alloc_->end(); it++) {
+            j.chunks.push(*it);
+        }
+        j.chunks.close();
     }
-    j.chunks.close();
+
+    file_queue_.push(&j);
 
     memset(stats, 0, sizeof *stats);
 
-    while (search.queue_.pop(&m)) {
-        matches++;
-        cb(m);
-        delete m;
+    if (!q.filename_only) {
+        while (search.queue_.pop(&m)) {
+            matches++;
+            cb(m);
+            delete m;
+        }
     }
 
     while (file_search.queue_.pop(&f)) {
+        file_matches++;
         fcb(f);
         delete f;
     }
 
-    search.get_stats(stats);
+    if (q.filename_only) {
+        stats->why = file_search.why();
+        stats->matches = matches;
+    } else {
+        search.get_stats(stats);
+        stats->why = search.why();
+        stats->matches = matches;
+    }
     stats->analyze_time = analyze_time.elapsed();
-    stats->why = search.why();
-    stats->matches = matches;
 }
 
 

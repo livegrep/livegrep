@@ -298,7 +298,6 @@ TEST_F(codesearch_test, LineCaseAndRepoCaseAreIndependent) {
 }
 
 TEST_F(codesearch_test, FilenameTest) {
-    const indexed_tree *other = cs_.open_tree("OTHER", 0, "REV0");
     cs_.index_file(tree_, "/file1", "contents");
     cs_.index_file(tree_, "/file2", "mention of file1");
     cs_.finalize();
@@ -310,6 +309,25 @@ TEST_F(codesearch_test, FilenameTest) {
     grpc::ServerContext ctx;
     grpc::Status st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
+    ASSERT_EQ(1, matches.results_size());
+    ASSERT_EQ(1, matches.file_results_size());
+    ASSERT_EQ("/file1", matches.file_results(0).path());
+}
+
+TEST_F(codesearch_test, FilenameOnlyTest) {
+    cs_.index_file(tree_, "/file1", "contents");
+    cs_.index_file(tree_, "/file2", "mention of file1");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    CodeSearchResult matches;
+    Query request;
+    request.set_line("file1");
+    request.set_filename_only(true);
+    grpc::ServerContext ctx;
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+    ASSERT_EQ(0, matches.results_size());
     ASSERT_EQ(1, matches.file_results_size());
     ASSERT_EQ("/file1", matches.file_results(0).path());
 }
