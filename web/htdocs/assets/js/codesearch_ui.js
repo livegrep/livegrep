@@ -541,7 +541,7 @@ var ResultView = Backbone.View.extend({
     }
 
     var results = '' + this.model.search_results.num_matches();
-    if (this.model.get('why') === 'MATCH_LIMIT')
+    if (this.model.get('why') !== 'NONE')
       results = results + '+';
     this.results.text(results);
 
