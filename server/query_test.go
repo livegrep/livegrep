@@ -116,6 +116,14 @@ func TestParseQuery(t *testing.T) {
 			`a max_matches:`,
 			pb.Query{Line: "a", FoldCase: true},
 		},
+		{
+			`file:hello`,
+			pb.Query{Line: "hello", FoldCase: true, FilenameOnly: true},
+		},
+		{
+			`file:HELLO`,
+			pb.Query{Line: "HELLO", FoldCase: false, FilenameOnly: true},
+		},
 	}
 
 	for _, tc := range cases {

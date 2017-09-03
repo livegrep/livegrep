@@ -127,7 +127,21 @@ func ParseQuery(query string) (pb.Query, error) {
 			bits = append(bits, bit)
 		}
 	}
-	out.Line = strings.Join(bits, "")
+
+	if len(bits) > 1 {
+		return out, errors.New("You cannot provide multiple of case:, lit:, and a bare regex")
+	}
+
+	if len(bits) > 0 {
+		out.Line = bits[0]
+	}
+
+	if out.Line == "" && out.File != "" {
+		out.Line = out.File
+		out.File = ""
+		out.FilenameOnly = true
+	}
+
 	if _, ok := ops["case"]; ok {
 		out.FoldCase = false
 	} else if _, ok := ops["lit"]; ok {
@@ -146,8 +160,5 @@ func ParseQuery(query string) (pb.Query, error) {
 		out.MaxMatches = 0
 	}
 
-	if len(bits) > 1 {
-		return out, errors.New("You cannot provide multiple of case:, lit:, and a bare regex")
-	}
 	return out, nil
 }
