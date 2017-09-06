@@ -10,6 +10,7 @@ message Query {
     string not_repo = 7;
     string not_tags = 8;
     int32 max_matches = 9;
+    bool filename_only = 10;
 }
 
 message Bounds {

@@ -136,6 +136,8 @@ struct query {
         std::unique_ptr<RE2> tree_pat;
         std::unique_ptr<RE2> tags_pat;
     } negate;
+
+    bool filename_only;
 };
 
 class code_searcher {

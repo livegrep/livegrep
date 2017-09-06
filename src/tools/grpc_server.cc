@@ -153,6 +153,7 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
         status = extract_regex(&q->negate.tree_pat, "-repo", request->not_repo());
     if (status.ok())
         status = extract_regex(&q->negate.tags_pat, "-tags", request->not_tags());
+    q->filename_only = request->filename_only();
     return status;
 }
 
