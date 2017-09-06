@@ -85,7 +85,7 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 	s.renderPage(w, &page{
-		Title:         "search",
+		Title:         "code search",
 		IncludeHeader: true,
 		Body:          template.HTML(body),
 	})
@@ -122,7 +122,7 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 	s.renderPage(w, &page{
-		Title:         "file",
+		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
 		IncludeHeader: false,
 		Body:          template.HTML(body),
 	})
