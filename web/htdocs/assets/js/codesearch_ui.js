@@ -416,10 +416,12 @@ var SearchState = Backbone.Model.extend({
     this.set('displaying', search);
     var fm = _.clone(file_match);
     fm.backend = this.search_map[search].backend;
-    // TODO: Currently we hackily limit the display to 10 file-path results.
+    // TODO: Currently we very hackily limit the display to 10 file-path
+    // results, unless there are no normal results; then we show all the
+    // file-path results.
     // We should do something nicer, like a "..." the user can click to extend
     // the list.
-    if (this.file_search_results.length < 10) {
+    if (this.file_search_results.length < 10 || this.search_results.length == 0) {
         this.file_search_results.add(new FileMatch(fm));
     }
   },

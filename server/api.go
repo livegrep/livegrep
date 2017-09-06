@@ -181,10 +181,16 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	if q.Line == "" {
+	if q.Line == "" && q.File == "" {
 		writeError(ctx, w, 400, "bad_query",
 			"You must specify a regex to match")
 		return
+	}
+
+	fileOnlySearch := false
+	if q.Line == "" && q.File != "" {
+		fileOnlySearch = true
+		q.Line = q.File
 	}
 
 	if q.MaxMatches == 0 {
@@ -192,6 +198,10 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	reply, err := s.doSearch(ctx, backend, &q)
+
+	if fileOnlySearch {
+		reply.Results = []*api.Result{}
+	}
 
 	if err != nil {
 		log.Printf(ctx, "error in search err=%s", err)
