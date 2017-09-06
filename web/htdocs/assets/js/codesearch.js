@@ -46,7 +46,7 @@ var Codesearch = function() {
         data.file_results.forEach(function (r) {
           Codesearch.delegate.file_match(opts.id, r);
         });
-        Codesearch.delegate.search_done(opts.id, elapsed, data.info.why);
+        Codesearch.delegate.search_done(opts.id, elapsed, data.search_type, data.info.why);
       });
       xhr.error(function(data) {
         window._err = data;
