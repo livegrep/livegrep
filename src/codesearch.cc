@@ -1145,7 +1145,7 @@ void code_searcher::search_thread::match(const query &q,
 
     if (q.filename_only) {
         stats->why = file_search.why();
-        stats->matches = matches;
+        stats->matches = file_matches;
     } else {
         search.get_stats(stats);
         stats->why = search.why();
