@@ -123,6 +123,11 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 	reply := &api.ReplySearch{
 		Results:     make([]*api.Result, 0),
 		FileResults: make([]*api.FileResult, 0),
+		SearchType:  "normal",
+	}
+
+	if q.FilenameOnly {
+		reply.SearchType = "filename_only"
 	}
 
 	for _, r := range search.Results {

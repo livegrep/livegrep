@@ -317,6 +317,7 @@ var SearchState = Backbone.Model.extend({
       context: true,
       displaying: null,
       error: null,
+      search_type: "",
       time: null,
       why: null
     };
@@ -416,18 +417,13 @@ var SearchState = Backbone.Model.extend({
     this.set('displaying', search);
     var fm = _.clone(file_match);
     fm.backend = this.search_map[search].backend;
-    // TODO: Currently we hackily limit the display to 10 file-path results.
-    // We should do something nicer, like a "..." the user can click to extend
-    // the list.
-    if (this.file_search_results.length < 10) {
-        this.file_search_results.add(new FileMatch(fm));
-    }
+    this.file_search_results.add(new FileMatch(fm));
   },
-  handle_done: function (search, time, why) {
+  handle_done: function (search, time, search_type, why) {
     if (search < this.get('displaying'))
       return false;
     this.set('displaying', search);
-    this.set({time: time, why: why});
+    this.set({time: time, search_type: search_type, why: why});
     this.search_results.trigger('search-complete');
   }
 });
@@ -481,9 +477,13 @@ var MatchesView = Backbone.View.extend({
     this.$el.empty();
 
     var pathResults = h.div({'cls': 'path-results'});
+    var count = 0;
     this.model.file_search_results.each(function(file) {
+      if (this.model.get('search_type') == 'filename_only' || count < 10) {
         var view = new FileMatchView({model: file});
         pathResults.append(view.render().el);
+      }
+      count += 1;
     }, this);
     this.$el.append(pathResults);
 
@@ -547,7 +547,12 @@ var ResultView = Backbone.View.extend({
       this.$('#searchtimebox').hide();
     }
 
-    var results = '' + this.model.search_results.num_matches();
+    var results;
+    if (this.model.get('search_type') == 'filename_only') {
+      results = '' + this.model.file_search_results.length;
+    } else {
+      results = '' + this.model.search_results.num_matches();
+    }
     if (this.model.get('why') !== 'NONE')
       results = results + '+';
     this.results.text(results);
@@ -681,8 +686,8 @@ var CodesearchUI = function() {
     file_match: function(search, file_match) {
       CodesearchUI.state.handle_file_match(search, file_match);
     },
-    search_done: function(search, time, why) {
-      CodesearchUI.state.handle_done(search, time, why);
+    search_done: function(search, time, search_type, why) {
+      CodesearchUI.state.handle_done(search, time, search_type, why);
     },
     repo_urls: {}
   };

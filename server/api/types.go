@@ -15,6 +15,7 @@ type ReplySearch struct {
 	Info        *Stats        `json:"info"`
 	Results     []*Result     `json:"results"`
 	FileResults []*FileResult `json:"file_results"`
+	SearchType  string        `json:"search_type"`
 }
 
 type Stats struct {
