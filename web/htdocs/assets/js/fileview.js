@@ -9,11 +9,17 @@
     return window.getSelection ? window.getSelection().toString() : null;
   }
 
-  function doSearch(event, query) {
+  function doSearch(event, query, newTab) {
+    var url;
     if (query !== undefined) {
-      window.location.href = '/search?q=' + encodeURIComponent(query);
+      url = '/search?q=' + encodeURIComponent(query);
     } else {
-      window.location.href = '/search';
+      url = '/search';
+    }
+    if (newTab === true){
+      window.open(url);
+    } else {
+      window.location.href = url
     }
   }
 
@@ -172,7 +178,7 @@
         // Perform a new search with the selected text, if any
         var selectedText = getSelectedText();
         if(selectedText) {
-          doSearch(event, selectedText);
+          doSearch(event, selectedText, true);
         }
       } else if(event.which === KeyCodes.SLASH_OR_QUESTION_MARK) {
           event.preventDefault();
