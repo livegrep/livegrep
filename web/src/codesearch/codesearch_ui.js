@@ -1,7 +1,8 @@
-html = require('html');
-Backbone = require('backbone');
+var html = require('html');
+var Backbone = require('backbone');
 
-Codesearch = require('codesearch/codesearch.js').Codesearch;
+var Codesearch = require('codesearch/codesearch.js').Codesearch;
+var RepoSelector = require('codesearch/repo_selector.js');
 
 function init(initData) {
 "use strict";
@@ -360,7 +361,8 @@ var SearchState = Backbone.Model.extend({
         cur.q === search.q &&
         cur.fold_case === search.fold_case &&
         cur.regex === search.regex &&
-        cur.backend === search.backend) {
+        cur.backend === search.backend &&
+        _.isEqual(cur.repo, search.repo)) {
       return false;
     }
     var id = this.next_id();
@@ -369,7 +371,8 @@ var SearchState = Backbone.Model.extend({
       q: search.q,
       fold_case: search.fold_case,
       regex: search.regex,
-      backend: search.backend
+      backend: search.backend,
+      repo: search.repo
     };
     if (!search.q.length) {
       this.set('displaying', id);
@@ -390,6 +393,7 @@ var SearchState = Backbone.Model.extend({
       q.fold_case = current.fold_case;
       q.regex = current.regex;
       q.context = this.get('context');
+      q.repo = current.repo;
     }
 
     if (current.backend) {
@@ -591,6 +595,7 @@ var CodesearchUI = function() {
       CodesearchUI.view = new ResultView({model: CodesearchUI.state});
 
       CodesearchUI.input      = $('#searchbox');
+      CodesearchUI.input_repos = $('#repos');
       CodesearchUI.input_backend = $('#backend');
       if (CodesearchUI.input_backend.length == 0)
         CodesearchUI.input_backend = null;
@@ -602,7 +607,10 @@ var CodesearchUI = function() {
           CodesearchUI.inputs_case.filter('[value=auto]').attr('checked', true);
       }
 
-      CodesearchUI.parse_url();
+      RepoSelector.init();
+      CodesearchUI.update_repo_options();
+
+      CodesearchUI.init_query();
 
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
@@ -612,6 +620,7 @@ var CodesearchUI = function() {
 
       CodesearchUI.inputs_case.change(CodesearchUI.keypress);
       CodesearchUI.input_regex.change(CodesearchUI.keypress);
+      CodesearchUI.input_repos.change(CodesearchUI.keypress);
       CodesearchUI.input_context.change(CodesearchUI.toggle_context);
       CodesearchUI.toggle_context();
 
@@ -620,26 +629,38 @@ var CodesearchUI = function() {
     toggle_context: function(){
         CodesearchUI.state.set('context', CodesearchUI.input_context.attr('checked') == 'checked');
     },
-    parse_url: function() {
+    // Initialize query from URL or user's saved preferences
+    init_query: function() {
       var parms = CodesearchUI.parse_query_params();
 
+      var hasParms = false;
+      for (var p in parms) {
+        hasParms = true;
+        break;
+      }
+
+      if (hasParms) {
+        CodesearchUI.init_query_from_parms(parms);
+      } else {
+        CodesearchUI.init_query_from_prefs();
+      }
+    },
+    init_query_from_parms: function(parms) {
       var q = [];
       if (parms.q)
-        q.push(parms.q);
+        q.push(parms.q[0]);
       if (parms.file)
-        q.push("file:" + parms.file);
-      if (parms.repo)
-        q.push("repo:" + parms.repo);
+        q.push("file:" + parms.file[0]);
       CodesearchUI.input.val(q.join(' '));
 
       if (parms.fold_case) {
-        CodesearchUI.inputs_case.filter('[value='+parms.fold_case+']').attr('checked', true);
+        CodesearchUI.inputs_case.filter('[value='+parms.fold_case[0]+']').attr('checked', true);
       }
-      if (parms.regex === "true") {
+      if (parms.regex && parms.regex[0] === "true") {
         CodesearchUI.input_regex.prop('checked', true);
       }
       if (parms.context) {
-        CodesearchUI.input_context.prop('checked', parms.context === 'true');
+        CodesearchUI.input_context.prop('checked', parms.context[0] === 'true');
       }
 
       var backend = null;
@@ -649,9 +670,31 @@ var CodesearchUI = function() {
       if (m = (new RegExp("/search/([^\/]+)/?").exec(window.location.pathname))) {
         backend = m[1];
       }
-      if (backend && CodesearchUI.input_backend)
+      if (backend && CodesearchUI.input_backend) {
+        var old_backend = CodesearchUI.input_backend.val();
         CodesearchUI.input_backend.val(backend);
+
+        // Something (bootstrap-select?) messes with the behaviour of val() on
+        // normal select elements, so that trying to set an invalid value sets
+        // null, rather than leaving the value unchanged. We manually check and
+        // roll back if that happens (e.g. because someone navigated to a URL
+        // like "/search/bogus?q=foo").
+        if (CodesearchUI.input_backend.val() === null) {
+            CodesearchUI.input_backend.val(old_backend);
+        }
+      }
+
+      var repos = [];
+      if (parms.repo)
+        repos = repos.concat(parms.repo);
+      if (parms['repo[]'])
+        repos = repos.concat(parms['repo[]']);
+      RepoSelector.updateSelected(repos);
+
       setTimeout(CodesearchUI.select_backend, 0);
+    },
+    init_query_from_prefs: function() {
+      // TODO: store/load using cookies
     },
     parse_query_params: function() {
       var urlParams = {};
@@ -661,8 +704,13 @@ var CodesearchUI = function() {
           d = function (s) { return decodeURIComponent(s.replace(a, " ")); },
           q = window.location.search.substring(1);
 
-      while (e = r.exec(q))
-        urlParams[d(e[1])] = d(e[2]);
+      while (e = r.exec(q)) {
+        if (urlParams[d(e[1])]) {
+           urlParams[d(e[1])].push(d(e[2]));
+        } else {
+           urlParams[d(e[1])] = [d(e[2])];
+        }
+      }
       return urlParams;
     },
     on_connect: function() {
@@ -671,8 +719,14 @@ var CodesearchUI = function() {
     select_backend: function() {
       if (!CodesearchUI.input_backend)
         return;
-      var backend = CodesearchUI.input_backend.val();
+      CodesearchUI.update_repo_options();
       CodesearchUI.keypress();
+    },
+    update_repo_options: function(repos) {
+      if (!CodesearchUI.input_backend)
+        return;
+      var backend = CodesearchUI.input_backend.val();
+      RepoSelector.updateOptions(_.keys(CodesearchUI.repo_urls[backend]));
     },
     keypress: function() {
       CodesearchUI.clear_timer();
@@ -684,6 +738,7 @@ var CodesearchUI = function() {
         q: CodesearchUI.input.val(),
         fold_case: CodesearchUI.inputs_case.filter(':checked').val(),
         regex: CodesearchUI.input_regex.is(':checked'),
+        repo: CodesearchUI.input_repos.val()
       };
       if (CodesearchUI.input_backend)
         search.backend = CodesearchUI.input_backend.val();

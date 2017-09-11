@@ -31,7 +31,7 @@ a:hover {
     flex: 1 1 auto;
 }
 
-#searcharea input[type=text] {
+.prefixed-input input[type=text] {
     vertical-align: bottom;
     border: none;
     border-bottom: solid 2px rgba(0, 0, 0, 0.1);
@@ -40,25 +40,25 @@ a:hover {
     width: 100%;
 }
 
-#searcharea input[type=text]:hover {
+.prefixed-input input[type=text]:hover {
     outline: none;
     border-color: rgba(0, 126, 229, 0.1);
 }
 
-#searcharea input[type=text]:focus {
+.prefixed-input input[type=text]:focus {
     outline: none;
     border-color: rgba(0, 126, 229, 0.25);
 }
 
-#searcharea input[type=text]:valid {
+.prefixed-input input[type=text]:valid {
     border-color: rgba(0, 0, 0, 0.4);
 }
 
-#searcharea input[type=text]:valid:hover {
+.prefixed-input input[type=text]:valid:hover {
     border-color: rgba(0, 126, 229, 0.45);
 }
 
-#searcharea input[type=text]:valid:focus {
+.prefixed-input input[type=text]:valid:focus {
     border-color: rgba(0, 126, 229, 0.75);
 }
 
@@ -331,7 +331,7 @@ a:hover {
 #header .first {}
 
 #header {
-    font-size: 80%;
+    font-size: 12px;
     color: #999;
     margin: 1em auto;
     width: 40em;
@@ -489,6 +489,7 @@ a:hover {
 
 /* Header actions */
 .header-actions {
+    font-size: 13px;
     margin: 0;
     padding: 0 0 0 5px;
     color: rgba(0, 0, 0, 0.5);
@@ -614,4 +615,19 @@ div.example {
 .example .link {
     font-size: 80%;
     float: right;
+}
+
+/* limit the damage bootstrap does to our styling */
+
+.btn, .dropdown-menu {
+    font-size: 12px;
+}
+
+#searcharea, #results {
+    line-height: normal;
+    font-size: 13px;
+}
+
+.file-content code, .file-content .line-numbers {
+    font-size: 12px;
 }
