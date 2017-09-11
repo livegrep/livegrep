@@ -396,6 +396,13 @@ var SearchState = Backbone.Model.extend({
     return base + (qs ? "?" + qs : "");
   },
 
+  title: function() {
+    var current = this.search_map[this.get('displaying')];
+    if (!current || !current.q)
+      return "code search";
+    return current.q + " ⋅ search";
+  },
+
   handle_error: function (search, error) {
     if (search === this.search_id) {
       this.set('displaying', search);
@@ -499,10 +506,11 @@ var ResultView = Backbone.View.extend({
   el: $('#resultarea'),
   initialize: function() {
     this.matches_view = new MatchesView({model: this.model});
-    this.results   = this.$('#numresults');
-    this.errorbox  = $('#regex-error');
-    this.time      = this.$('#searchtime');
-    this.last_url  = null;
+    this.results      = this.$('#numresults');
+    this.errorbox     = $('#regex-error');
+    this.time         = this.$('#searchtime');
+    this.last_url     = null;
+    this.last_title   = null;
 
     this.model.on('all', this.render, this);
     this.model.search_results.on('all', this.render, this);
@@ -525,6 +533,12 @@ var ResultView = Backbone.View.extend({
         history.replaceState(null, '', url);
       }
       this.last_url = url;
+    }
+
+    var title = this.model.title();
+    if (this.last_title !== title) {
+      document.title = title;
+      this.last_title = title;
     }
 
     if (this.model.search_map[this.model.get('displaying')].q === '' ||
