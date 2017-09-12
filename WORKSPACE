@@ -92,7 +92,7 @@ new_libgit2_archive(
   name = "com_github_libgit2",
   url = "https://github.com/libgit2/libgit2/archive/v0.24.1.tar.gz",
   version = "0.24.1",
-  sha256 = "60198cbb34066b9b5c1613d15c0479f6cd25f4aef42f7ec515cd1cc13a77fede",
+  sha256 = "0269ec198c54e44f275f8f51e7391681a03aa45555e2ab6ce60b0757b6bde3de",
   build_file = "//third_party:BUILD.libgit2",
 )
 
