@@ -38,6 +38,7 @@ func NewBackend(id string, addr string) (*Backend, error) {
 	}
 	bk := &Backend{
 		Id:         id,
+		Addr:       addr,
 		I:          &I{Name: id},
 		Codesearch: pb.NewCodeSearchClient(client),
 	}

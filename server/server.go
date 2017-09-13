@@ -147,6 +147,16 @@ func (s *server) ServeHelp(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
+	// All backends must have (at some point) reported an index age for us to
+	// report as healthy.
+	// TODO: report as unhealthy if a backend goes down after we've spoken to
+	// it.
+	for _, bk := range s.bk {
+		if bk.I.IndexTime.IsZero() {
+			http.Error(w, fmt.Sprintf("unhealthy backend '%s' '%s'\n", bk.Id, bk.Addr), 500)
+			return
+		}
+	}
 	io.WriteString(w, "ok\n")
 }
 
