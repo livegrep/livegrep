@@ -1,5 +1,3 @@
-require('fileview/3d/tomorrow.css');
-
 $ = require('jquery');
 
 // TODO: would be nicer to load hljs asynchronously, to show text as early as
