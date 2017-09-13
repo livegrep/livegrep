@@ -72,20 +72,24 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		}
 		bk.I.Unlock()
 	}
-	data := &struct {
-		RepoUrls          map[string]map[string]string
-		InternalViewRepos map[string]config.RepoConfig
-		Backends          []*Backend
-		SampleRepo        string
-	}{urls, s.repos, backends, sampleRepo}
+	page_data := &struct {
+		Backends   []*Backend
+		SampleRepo string
+	}{backends, sampleRepo}
+	script_data := &struct {
+		RepoUrls          map[string]map[string]string `json:"repo_urls"`
+		InternalViewRepos map[string]config.RepoConfig `json:"internal_view_repos"`
+	}{urls, s.repos}
 
-	body, err := executeTemplate(s.T.Index, data)
+	body, err := executeTemplate(s.T.Index, page_data)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	s.renderPage(w, &page{
 		Title:         "code search",
+		ScriptName:    "codesearch",
+		ScriptData:    script_data,
 		IncludeHeader: true,
 		Body:          template.HTML(body),
 	})
@@ -116,6 +120,11 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
+	script_data := &struct {
+		RepoInfo config.RepoConfig `json:"repo_info"`
+		Commit   string            `json:"commit"`
+	}{repo, commit}
+
 	body, err := executeTemplate(s.T.FileView, data)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -123,6 +132,8 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 	s.renderPage(w, &page{
 		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
+		ScriptName:    "fileview",
+		ScriptData:    script_data,
 		IncludeHeader: false,
 		Body:          template.HTML(body),
 	})

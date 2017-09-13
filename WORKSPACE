@@ -107,3 +107,14 @@ git_repository(
     commit = "0ca1d7991357ae7a7555589af88930d82cf07c0a",
     remote = "https://github.com/bazelbuild/buildifier.git",
 )
+
+git_repository(
+        name = "org_dropbox_rules_node",
+        remote = "https://github.com/dropbox/rules_node.git",
+        commit = "4835c72b07a65e9972fde308c25d2c8d08175c09",
+)
+
+load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
+
+node_repositories()
+
