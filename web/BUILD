@@ -27,6 +27,5 @@ webpack_build(
         '//web/npm/style-loader',
 
         '//web/3d:html',
-        '//web/npm/highlight.js',
     ],
 )
