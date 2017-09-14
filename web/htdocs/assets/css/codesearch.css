@@ -206,7 +206,8 @@ a:hover {
 
 .result-path {
     color: #3d464d;
-    font-family: monospace;
+    font-family: "Menlo", "Consolas", "Monaco", monospace;
+    font-size: 12px;
     font-weight: normal;
 }
 
@@ -248,7 +249,8 @@ a:hover {
     display: grid;
     grid-template-columns: 4em auto;
     white-space: pre-wrap;
-    font-family: monospace;
+    font-family: "Menlo", "Consolas", "Monaco", monospace;
+    font-size: 12px;
     padding: 10px 5px;
     color: #000;
     margin: 0;
@@ -299,7 +301,7 @@ a:hover {
 }
 
 .matchstr {
-    background: #FFFF00;
+    background: rgba(255, 234, 170, 0.75);
     font-weight: bold;
 }
 
@@ -344,10 +346,11 @@ a:hover {
 .file-viewer {
     border-collapse: collapse;
     margin: 0;
-    line-height: 1.3;
+    line-height: 1.2;
     width: 100%;
     overflow: visible; /* Allow code content to overflow */
-    font-family: monospace;
+    font-family: "Menlo", "Consolas", "Monaco", monospace;
+    font-size: 12px;
 }
 
 .file-viewer .header {
@@ -377,7 +380,7 @@ a:hover {
 }
 
 .file-viewer .header-title {
-    font-size: 14px;
+    font-size: 13px;
     padding: 0;
     margin: 0 0 5px 0;
     font-weight: normal;
@@ -392,7 +395,11 @@ a:hover {
 
 .file-viewer .file-content {
     position: relative;
-    font-family: monospace;
+}
+
+.file-viewer .file-content, .file-viewer .file-content code {
+    font-family: "Menlo", "Consolas", "Monaco", monospace;
+    font-size: 12px;
 }
 
 .file-viewer .line-numbers {
@@ -599,7 +606,8 @@ div.example {
 }
 
 .query {
-    font-family: monospace;
+    font-family: "Menlo", "Consolas", "Monaco", monospace;
+    font-size: 12px;
     font-weight: bold;
 }
 
