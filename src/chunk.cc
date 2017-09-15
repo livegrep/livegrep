@@ -9,6 +9,7 @@
 #include "src/lib/metrics.h"
 
 #include "src/chunk.h"
+#include "src/codesearch.h"
 
 #include "divsufsort.h"
 #include "re2/re2.h"
@@ -109,7 +110,17 @@ void chunk::finalize_files() {
         ++out;
     }
     files.resize(out - files.begin());
+
+    build_tree_names();
     build_tree();
+}
+
+void chunk::build_tree_names() {
+    for (auto it = files.begin(); it != files.end(); it++) {
+        for (auto it2 = it->files.begin(); it2 != it->files.end(); it2++) {
+            tree_names.insert((*it2)->tree->name);
+        }
+    }
 }
 
 void chunk::build_tree() {
