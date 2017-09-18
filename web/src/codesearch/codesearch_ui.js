@@ -695,6 +695,10 @@ var CodesearchUI = function() {
     },
     init_query_from_prefs: function() {
       // TODO: store/load using cookies
+
+      if (CodesearchUI.defaultSearchRepos !== undefined) {
+        RepoSelector.updateSelected(CodesearchUI.defaultSearchRepos);
+      }
     },
     parse_query_params: function() {
       var urlParams = {};
@@ -769,6 +773,7 @@ var CodesearchUI = function() {
 
 CodesearchUI.repo_urls = initData.repo_urls;
 CodesearchUI.internalViewRepos = initData.internal_view_repos;
+CodesearchUI.defaultSearchRepos = initData.default_search_repos;
 CodesearchUI.onload();
 }
 
