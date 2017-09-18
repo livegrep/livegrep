@@ -111,10 +111,9 @@ git_repository(
 git_repository(
         name = "org_dropbox_rules_node",
         remote = "https://github.com/dropbox/rules_node.git",
-        commit = "4835c72b07a65e9972fde308c25d2c8d08175c09",
+        commit = "4fe6494f3f8d1a272d47d32ecc66698f6c43ed09",
 )
 
 load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
 
 node_repositories()
-
