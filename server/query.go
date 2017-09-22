@@ -38,11 +38,11 @@ func onlyOneSynonym(ops map[string]string, op1 string, op2 string) (string, erro
 	return ops[op2], nil
 }
 
-func ParseQuery(query string) (pb.Query, error) {
+func ParseQuery(query string, globalRegex bool) (pb.Query, error) {
 	ops := make(map[string]string)
 	key := ""
 	q := strings.TrimSpace(query)
-	inRegex := true
+	inRegex := globalRegex
 
 	for {
 		m := pieceRE.FindStringSubmatchIndex(q)
@@ -61,10 +61,10 @@ func ParseQuery(query string) (pb.Query, error) {
 				ops[key] += " "
 			} else {
 				key = ""
-				inRegex = true
+				inRegex = globalRegex
 			}
 		} else if match == "(" {
-			if !inRegex {
+			if !(inRegex) {
 				ops[key] += "("
 			} else {
 				// A parenthesis. Nothing is special until the
@@ -129,7 +129,7 @@ func ParseQuery(query string) (pb.Query, error) {
 	var bits []string
 	for _, k := range []string{"", "case", "lit"} {
 		bit := strings.TrimSpace(ops[k])
-		if k == "lit" {
+		if k == "lit" || !globalRegex {
 			bit = regexp.QuoteMeta(bit)
 		}
 		if len(bit) != 0 {
@@ -143,6 +143,13 @@ func ParseQuery(query string) (pb.Query, error) {
 
 	if len(bits) > 0 {
 		out.Line = bits[0]
+	}
+
+	if !globalRegex {
+		out.File = regexp.QuoteMeta(out.File)
+		out.NotFile = regexp.QuoteMeta(out.NotFile)
+		out.Repo = regexp.QuoteMeta(out.Repo)
+		out.NotRepo = regexp.QuoteMeta(out.NotRepo)
 	}
 
 	if out.Line == "" && out.File != "" {
