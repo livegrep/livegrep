@@ -42,6 +42,7 @@ func ParseQuery(query string) (pb.Query, error) {
 	ops := make(map[string]string)
 	key := ""
 	q := strings.TrimSpace(query)
+	inRegex := true
 
 	for {
 		m := pieceRE.FindStringSubmatchIndex(q)
@@ -60,38 +61,43 @@ func ParseQuery(query string) (pb.Query, error) {
 				ops[key] += " "
 			} else {
 				key = ""
+				inRegex = true
 			}
 		} else if match == "(" {
-			// A parenthesis. Nothing is special until the
-			// end of a balanced set of parenthesis
-			p := 1
-			i := 0
-			esc := false
-			var w bytes.Buffer
-			for i < len(q) {
-				// We decode runes ourselves instead
-				// of using range because exiting the
-				// loop with i = len(q) makes the edge
-				// cases simpler.
-				r, l := utf8.DecodeRuneInString(q[i:])
-				i += l
-				switch {
-				case esc:
-					esc = false
-				case r == '\\':
-					esc = true
-				case r == '(':
-					p++
-				case r == ')':
-					p--
+			if !inRegex {
+				ops[key] += "("
+			} else {
+				// A parenthesis. Nothing is special until the
+				// end of a balanced set of parenthesis
+				p := 1
+				i := 0
+				esc := false
+				var w bytes.Buffer
+				for i < len(q) {
+					// We decode runes ourselves instead
+					// of using range because exiting the
+					// loop with i = len(q) makes the edge
+					// cases simpler.
+					r, l := utf8.DecodeRuneInString(q[i:])
+					i += l
+					switch {
+					case esc:
+						esc = false
+					case r == '\\':
+						esc = true
+					case r == '(':
+						p++
+					case r == ')':
+						p--
+					}
+					w.WriteRune(r)
+					if p == 0 {
+						break
+					}
 				}
-				w.WriteRune(r)
-				if p == 0 {
-					break
-				}
+				ops[key] += match + w.String()
+				q = q[i:]
 			}
-			ops[key] += match + w.String()
-			q = q[i:]
 		} else if match[0] == '\\' {
 			ops[key] += match
 		} else {
@@ -101,6 +107,9 @@ func ParseQuery(query string) (pb.Query, error) {
 				key = newKey
 			} else {
 				ops[key] += match
+			}
+			if key == "lit" {
+				inRegex = false
 			}
 		}
 	}

@@ -124,6 +124,14 @@ func TestParseQuery(t *testing.T) {
 			`file:HELLO`,
 			pb.Query{Line: "HELLO", FoldCase: false, FilenameOnly: true},
 		},
+		{
+			`lit:a( file:b`,
+			pb.Query{Line: `a\(`, File: "b", FoldCase: false},
+		},
+		{
+			`lit:a(b file:c`,
+			pb.Query{Line: `a\(b`, File: "c", FoldCase: false},
+		},
 	}
 
 	for _, tc := range cases {
