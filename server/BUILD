@@ -31,6 +31,7 @@ go_library(
         '//web:htdocs',
         '//web:templates',
         '//web:webpack_build',
+        '//web:asset_hashes',
     ],
 )
 
