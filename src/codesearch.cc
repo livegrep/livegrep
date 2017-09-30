@@ -661,18 +661,19 @@ void code_searcher::index_file(const indexed_tree *tree,
 }
 
 bool searcher::should_search_chunk(const chunk *chunk) {
-    if (query_->tree_pat) {
-        // skip chunks that don't contain any repos we're looking for
-        for (auto it = chunk->tree_names.begin(); it != chunk->tree_names.end(); it++) {
-            if (query_->tree_pat->Match(*it, 0,
-                                        it->size(),
-                                        RE2::UNANCHORED, 0, 0)) {
-                return true;
-            }
-        }
-        return false;
+    if (!query_->tree_pat) {
+        return true;
     }
-    return true;
+
+    // skip chunks that don't contain any repos we're looking for
+    for (auto it = chunk->tree_names.begin(); it != chunk->tree_names.end(); it++) {
+        if (query_->tree_pat->Match(*it, 0,
+                                    it->size(),
+                                    RE2::UNANCHORED, 0, 0)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void searcher::operator()(const chunk *chunk)
