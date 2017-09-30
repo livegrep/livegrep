@@ -77,9 +77,10 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		SampleRepo string
 	}{backends, sampleRepo}
 	script_data := &struct {
-		RepoUrls          map[string]map[string]string `json:"repo_urls"`
-		InternalViewRepos map[string]config.RepoConfig `json:"internal_view_repos"`
-	}{urls, s.repos}
+		RepoUrls           map[string]map[string]string `json:"repo_urls"`
+		InternalViewRepos  map[string]config.RepoConfig `json:"internal_view_repos"`
+		DefaultSearchRepos []string                     `json:"default_search_repos"`
+	}{urls, s.repos, s.config.DefaultSearchRepos}
 
 	body, err := executeTemplate(s.T.Index, page_data)
 	if err != nil {

@@ -1,0 +1,6 @@
+bootstrap.min.css was generated with the boostrap customizer. We commit the
+customized CSS, but still load the (standard) JS and fonts from cdnjs. Note
+that the CSS is customized to refer explicitly to the fonts hosted on cdnjs.
+
+https://getbootstrap.com/docs/3.3/customize/?id=2af5b28271904f20b716d93bf37253e0
+https://gist.github.com/anonymous/2af5b28271904f20b716d93bf37253e0

@@ -55,6 +55,8 @@ type Config struct {
 	// Same json config structure that the backend uses when building indexes;
 	// used here for repository browsing.
 	IndexConfig IndexConfig `json:"index_config"`
+
+	DefaultSearchRepos []string `json:"default_search_repos"`
 }
 
 type IndexConfig struct {
