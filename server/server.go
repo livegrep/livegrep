@@ -29,20 +29,27 @@ type Templates struct {
 }
 
 type server struct {
-	config  *config.Config
-	bk      map[string]*Backend
-	bkOrder []string
-	repos   map[string]config.RepoConfig
-	inner   http.Handler
-	T       Templates
-	Layout  *template.Template
+	config      *config.Config
+	bk          map[string]*Backend
+	bkOrder     []string
+	repos       map[string]config.RepoConfig
+	inner       http.Handler
+	T           Templates
+	AssetHashes map[string]string
+	Layout      *template.Template
 
 	honey *libhoney.Builder
 }
 
 func (s *server) loadTemplates() {
-	if e := templates.Load(path.Join(s.config.DocRoot, "templates"), &s.T); e != nil {
-		panic(fmt.Sprintf("loading templates: %v", e))
+	s.AssetHashes = make(map[string]string)
+	err := templates.Load(
+		path.Join(s.config.DocRoot, "templates"),
+		&s.T,
+		path.Join(s.config.DocRoot, "hashes.txt"),
+		s.AssetHashes)
+	if err != nil {
+		panic(fmt.Sprintf("loading templates: %v", err))
 	}
 }
 
@@ -298,7 +305,10 @@ func New(cfg *config.Config) (http.Handler, error) {
 	if cfg.Reload {
 		h = templates.ReloadHandler(
 			path.Join(srv.config.DocRoot, "templates"),
-			&srv.T, h)
+			&srv.T,
+			path.Join(srv.config.DocRoot, "hashes.txt"),
+			srv.AssetHashes,
+			h)
 	}
 
 	mux := http.NewServeMux()

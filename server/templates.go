@@ -17,6 +17,7 @@ type page struct {
 	IncludeHeader bool
 	Body          template.HTML
 	Config        *config.Config
+	AssetHashes   map[string]string
 }
 
 type Template interface {
@@ -33,6 +34,7 @@ func executeTemplate(t Template, context interface{}) ([]byte, error) {
 
 func (s *server) renderPage(w io.Writer, p *page) {
 	p.Config = s.config
+	p.AssetHashes = s.AssetHashes
 	if e := s.T.Layout.Execute(w, p); e != nil {
 		log.Printf("Error rendering page=%q error=%q",
 			p.Title, e.Error())

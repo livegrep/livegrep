@@ -29,3 +29,13 @@ webpack_build(
         '//web/3d:html',
     ],
 )
+
+genrule(
+    name = 'asset_hashes',
+    srcs = [
+        '//web:htdocs',
+        '//web:webpack_build',
+    ],
+    outs = ['hashes.txt'],
+    cmd = 'sha256sum $(SRCS) | sed "s_ bazel-out/local-fastbuild/bin/_ _" | sed "s_ web/htdocs/_ _"> $@',
+)
