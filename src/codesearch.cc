@@ -257,6 +257,7 @@ public:
 
 protected:
     void next_range(match_finger *finger, int& minpos, int& maxpos, int end);
+    bool should_search_chunk(const chunk *chunk);
     void full_search(const chunk *chunk);
     void full_search(match_finger *finger, const chunk *chunk,
                      size_t minpos, size_t maxpos);
@@ -659,9 +660,27 @@ void code_searcher::index_file(const indexed_tree *tree,
     }
 }
 
+bool searcher::should_search_chunk(const chunk *chunk) {
+    if (query_->tree_pat) {
+        // skip chunks that don't contain any repos we're looking for
+        for (auto it = chunk->tree_names.begin(); it != chunk->tree_names.end(); it++) {
+            if (query_->tree_pat->Match(*it, 0,
+                                        it->size(),
+                                        RE2::UNANCHORED, 0, 0)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    return true;
+}
+
 void searcher::operator()(const chunk *chunk)
 {
     if (limiter_.exit_early())
+        return;
+
+    if (!should_search_chunk(chunk))
         return;
 
     if (FLAGS_index && index_key_ && !index_key_->empty())

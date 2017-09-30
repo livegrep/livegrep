@@ -409,6 +409,7 @@ void load_allocator::load_chunk(code_searcher *cs) {
         cf.left  = load_int32();
         cf.right = load_int32();
     }
+    chunk->build_tree_names();
     chunk->build_tree();
     ++next_chunk_;
 }

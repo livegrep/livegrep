@@ -16,6 +16,7 @@
 #include <string>
 #include <algorithm>
 #include <list>
+#include <set>
 
 #include <stdint.h>
 
@@ -75,6 +76,10 @@ struct chunk {
     // chunk's data. Sorted (and compacted) at the very end of index creation.
     vector<chunk_file> files;
 
+    // Collects the names of all trees indexed in this chunk, to enable
+    // short-circuiting based on a repo constraint.
+    set<string> tree_names;
+
     // Transient during index creation. Collects references to the file
     // currently being processed by the code_searcher, when that file contains
     // lines stored in this chunk's data. One the code_searcher finishes
@@ -106,6 +111,7 @@ struct chunk {
     void finish_file();
     void finalize();
     void finalize_files();
+    void build_tree_names();
     void build_tree();
 
     struct lt_suffix {
