@@ -1,3 +1,5 @@
+package(default_visibility = [ "//visibility:public" ])
+
 cc_library(
   name = "grpc_server",
   srcs = [
@@ -12,7 +14,6 @@ cc_library(
     "@boost//:bind",
     "@com_github_grpc_grpc//:grpc",
   ],
-  visibility = [ "//visibility:public" ],
 )
 
 cc_binary(
@@ -35,7 +36,6 @@ cc_binary(
     "-Wno-deprecated-declarations",
     "-Wno-sign-compare",
   ],
-  visibility = [ "//visibility:public" ],
 )
 
 cc_binary(

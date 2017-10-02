@@ -67,6 +67,7 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
         fprintf(stderr, "Usage: %s [OPTIONS] config.json\n", argv[0].c_str());
         exit(1);
     }
+
     json_object *obj = json_object_from_file(const_cast<char*>(argv[1].c_str()));
     if (is_error(obj)) {
         fprintf(stderr, "Error parsing `%s'\n",

@@ -14,3 +14,4 @@
 config.json
 vendor/re2/obj/libre2.a
 /bazel-*
+compile_commands.json

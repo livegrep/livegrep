@@ -117,3 +117,14 @@ git_repository(
 load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
 
 node_repositories()
+
+new_git_repository(
+  name = "compdb",
+  commit = "02c33ed2c0e86053073080fd215f44356ef5b543",
+  remote = "https://github.com/grailbio/bazel-compilation-database.git",
+  build_file_content = (
+"""
+package(default_visibility = ["//visibility:public"])
+"""
+  ),
+)
