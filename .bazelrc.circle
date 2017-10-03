@@ -1,0 +1,7 @@
+# This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
+startup --host_jvm_args=-Xmx2500m
+startup --host_jvm_args=-Xms2500m
+test --ram_utilization_factor=10
+
+# This is so we understand failures better
+build --verbose_failures
