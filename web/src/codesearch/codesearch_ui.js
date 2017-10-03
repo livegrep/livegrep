@@ -1,5 +1,6 @@
 var html = require('html');
 var Backbone = require('backbone');
+var Cookies = require('js-cookie');
 
 var Codesearch = require('codesearch/codesearch.js').Codesearch;
 var RepoSelector = require('codesearch/repo_selector.js');
@@ -622,12 +623,23 @@ var CodesearchUI = function() {
       CodesearchUI.input_regex.change(CodesearchUI.keypress);
       CodesearchUI.input_repos.change(CodesearchUI.keypress);
       CodesearchUI.input_context.change(CodesearchUI.toggle_context);
+
+      CodesearchUI.input_regex.change(function(){
+        CodesearchUI.set_pref('regex', CodesearchUI.input_regex.prop('checked'));
+      });
+      CodesearchUI.input_repos.change(function(){
+        CodesearchUI.set_pref('repos', CodesearchUI.input_repos.val());
+      });
+      CodesearchUI.input_context.change(function(){
+        CodesearchUI.set_pref('context', CodesearchUI.input_context.prop('checked'));
+      });
+
       CodesearchUI.toggle_context();
 
       Codesearch.connect(CodesearchUI);
     },
     toggle_context: function(){
-        CodesearchUI.state.set('context', CodesearchUI.input_context.attr('checked') == 'checked');
+      CodesearchUI.state.set('context', CodesearchUI.input_context.prop('checked'));
     },
     // Initialize query from URL or user's saved preferences
     init_query: function() {
@@ -642,8 +654,10 @@ var CodesearchUI = function() {
       if (hasParms) {
         CodesearchUI.init_query_from_parms(parms);
       } else {
-        CodesearchUI.init_query_from_prefs();
+        CodesearchUI.init_controls_from_prefs();
       }
+
+      setTimeout(CodesearchUI.keypress, 0);
     },
     init_query_from_parms: function(parms) {
       var q = [];
@@ -690,15 +704,33 @@ var CodesearchUI = function() {
       if (parms['repo[]'])
         repos = repos.concat(parms['repo[]']);
       RepoSelector.updateSelected(repos);
-
-      setTimeout(CodesearchUI.select_backend, 0);
     },
-    init_query_from_prefs: function() {
-      // TODO: store/load using cookies
-
-      if (CodesearchUI.defaultSearchRepos !== undefined) {
+    init_controls_from_prefs: function() {
+      var prefs = Cookies.getJSON('prefs');
+      if (!prefs) {
+        prefs = {};
+      }
+      if (prefs['regex'] !== undefined) {
+        CodesearchUI.input_regex.prop('checked', prefs['regex']);
+      }
+      if (prefs['repos'] !== undefined) {
+        RepoSelector.updateSelected(prefs['repos']);
+      } else if (CodesearchUI.defaultSearchRepos !== undefined) {
         RepoSelector.updateSelected(CodesearchUI.defaultSearchRepos);
       }
+      if (prefs['context'] !== undefined) {
+        CodesearchUI.input_context.prop('checked', prefs['context']);
+      }
+    },
+    set_pref: function(key, value) {
+      // Load from the cookie again every time in case some other pref has been
+      // changed out from under us.
+      var prefs = Cookies.getJSON('prefs');
+      if (!prefs) {
+        prefs = {};
+      }
+      prefs[key] = value;
+      Cookies.set('prefs', prefs);
     },
     parse_query_params: function() {
       var urlParams = {};
