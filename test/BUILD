@@ -26,3 +26,7 @@ cc_test(
       ]}),
     size = "small",
 )
+
+test_suite(
+    name = "test",
+)
