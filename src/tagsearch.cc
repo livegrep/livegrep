@@ -18,21 +18,21 @@ using boost::filesystem::path;
 
 namespace {
 
-std::string create_partial_regex(RE2 *re) {
+std::string create_partial_regex(RE2 *re, const char *wildstar) {
     if (!re)
-        return ".*";
+        return wildstar;
 
     std::string pattern = re->pattern();
 
     if (pattern.front() == '^')
         pattern.erase(pattern.begin());
     else
-        pattern.insert(0, ".*");
+        pattern.insert(0, wildstar);
 
     if (pattern.back() == '$')
         pattern.erase(pattern.size() - 1);
     else
-        pattern.append(".*");
+        pattern.append(wildstar);
 
     return pattern;
 }
@@ -59,7 +59,8 @@ void tag_searcher::cache_indexed_files(code_searcher* cs) {
 }
 
 bool tag_searcher::transform(query *q, match_result *m) const {
-    static const std::string regex = create_tag_line_regex("(.+)", "(.+)", "(\\d+)", "(.+)");
+    static const std::string regex =
+        create_tag_line_regex("([^\t]+)", "([^\t]+)", "(\\d+)", "(.+)");
     StringPiece name, tags_path, tags;
     if (!RE2::FullMatch(m->line, regex, &name, &tags_path, &m->lno, &tags)) {
         log(q->trace_id, "unknown ctags format: %s\n", m->line.as_string().c_str());
@@ -123,8 +124,8 @@ bool tag_searcher::transform(query *q, match_result *m) const {
 }
 
 std::string tag_searcher::create_tag_line_regex_from_query(query *q) {
-    return create_tag_line_regex(create_partial_regex(q->line_pat.get()),
-                                 create_partial_regex(q->file_pat.get()),
+    return create_tag_line_regex(create_partial_regex(q->line_pat.get(), "[^\t]*"),
+                                 create_partial_regex(q->file_pat.get(), "[^\t]*"),
                                  "\\d+",
-                                 create_partial_regex(q->tags_pat.get()));
+                                 create_partial_regex(q->tags_pat.get(), ".*"));
 }
