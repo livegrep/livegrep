@@ -252,10 +252,6 @@ var FileGroup = Backbone.Model.extend({
 
 /** A set of matches that are automatically grouped by path. */
 var SearchResultSet = Backbone.Collection.extend({
-  comparator: function(file_group) {
-    return file_group.id;
-  },
-
   add_match: function(match) {
     var path_info = match.path_info();
     var file_group = this.get(path_info.id);

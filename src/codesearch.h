@@ -127,14 +127,14 @@ struct query {
     std::string trace_id;
     int32_t max_matches;
 
-    std::unique_ptr<RE2> line_pat;
-    std::unique_ptr<RE2> file_pat;
-    std::unique_ptr<RE2> tree_pat;
-    std::unique_ptr<RE2> tags_pat;
+    std::shared_ptr<RE2> line_pat;
+    std::shared_ptr<RE2> file_pat;
+    std::shared_ptr<RE2> tree_pat;
+    std::shared_ptr<RE2> tags_pat;
     struct {
-        std::unique_ptr<RE2> file_pat;
-        std::unique_ptr<RE2> tree_pat;
-        std::unique_ptr<RE2> tags_pat;
+        std::shared_ptr<RE2> file_pat;
+        std::shared_ptr<RE2> tree_pat;
+        std::shared_ptr<RE2> tags_pat;
     } negate;
 
     bool filename_only;
