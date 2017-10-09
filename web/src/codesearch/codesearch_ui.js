@@ -730,7 +730,7 @@ var CodesearchUI = function() {
         prefs = {};
       }
       prefs[key] = value;
-      Cookies.set('prefs', prefs);
+      Cookies.set('prefs', prefs, { expires: 36500 });
     },
     parse_query_params: function() {
       var urlParams = {};
