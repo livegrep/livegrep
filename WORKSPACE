@@ -6,7 +6,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl",
 git_repository(
   name = "org_pubref_rules_protobuf",
   remote = "https://github.com/pubref/rules_protobuf",
-  commit = "1a559c005859642894aa7b5ebf94b61fe781fb1d",
+  commit = "ff3b7e7963daa7cb3b42f8936bc11eda4b960926",
 )
 
 load("//tools/build_defs:externals.bzl",
@@ -71,13 +71,12 @@ new_patched_http_archive(
 git_repository(
     name = "io_bazel_rules_go",
     remote = "https://github.com/bazelbuild/rules_go.git",
-    commit = "805fd1566500997379806373feb05e138a4dfe28",
+    commit = "e254d73bf1181101ed82791fa5d204c4c5b1b105",
 )
 
-load("@io_bazel_rules_go//go:def.bzl",
-     "go_repositories", "new_go_repository")
-
-go_repositories()
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+go_rules_dependencies()
+go_register_toolchains()
 
 load("//tools/build_defs:go_externals.bzl",
      "go_externals")
@@ -99,8 +98,7 @@ new_libgit2_archive(
 load("@org_pubref_rules_protobuf//go:rules.bzl", "go_proto_repositories")
 load("@org_pubref_rules_protobuf//cpp:rules.bzl", "cpp_proto_repositories")
 
-go_proto_repositories();
-cpp_proto_repositories();
+cpp_proto_repositories(excludes=["com_google_protobuf", "org_golang_google_grpc"])
 
 git_repository(
     name = "io_bazel_buildifier",
