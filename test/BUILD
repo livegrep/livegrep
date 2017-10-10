@@ -5,26 +5,27 @@ config_setting(
 
 cc_test(
     name = "codesearch_test",
+    size = "small",
     srcs = [
-      "codesearch_test.cc",
-      "indexer_test.cc",
-      "main.cc",
-    ],
-    deps = [
-      "//src:codesearch",
-      "//src/tools:grpc_server",
-      "@gtest//:gtest",
+        "codesearch_test.cc",
+        "indexer_test.cc",
+        "main.cc",
     ],
     defines = select({
-      ":darwin": [
-        "GTEST_HAS_TR1_TUPLE=0",
-        "GTEST_USE_OWN_TR1_TUPLE=1",
-      ],
-      "//conditions:default": [
-        "GTEST_HAS_TR1_TUPLE",
-        "GTEST_USE_OWN_TR1_TUPLE=0",
-      ]}),
-    size = "small",
+        ":darwin": [
+            "GTEST_HAS_TR1_TUPLE=0",
+            "GTEST_USE_OWN_TR1_TUPLE=1",
+        ],
+        "//conditions:default": [
+            "GTEST_HAS_TR1_TUPLE",
+            "GTEST_USE_OWN_TR1_TUPLE=0",
+        ],
+    }),
+    deps = [
+        "//src:codesearch",
+        "//src/tools:grpc_server",
+        "@com_google_googletest//:gtest",
+    ],
 )
 
 test_suite(
