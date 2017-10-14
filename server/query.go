@@ -39,33 +39,49 @@ func onlyOneSynonym(ops map[string]string, op1 string, op2 string) (string, erro
 }
 
 func ParseQuery(query string, globalRegex bool) (pb.Query, error) {
+	var out pb.Query
+
 	ops := make(map[string]string)
 	key := ""
+	term := ""
 	q := strings.TrimSpace(query)
 	inRegex := globalRegex
+	justGotSpace := true
 
 	for {
 		m := pieceRE.FindStringSubmatchIndex(q)
 		if m == nil {
-			ops[key] += q
+			term += q
+			if _, alreadySet := ops[key]; alreadySet {
+				return out, fmt.Errorf("got term twice: %s", key)
+			}
+			ops[key] = term
 			break
 		}
 
-		ops[key] += q[:m[0]]
+		term += q[:m[0]]
 		match := q[m[0]:m[1]]
 		q = q[m[1]:]
+
+		justGotSpace = justGotSpace && m[0] == 0
 
 		if match == " " {
 			// A space: Ends the operator, if we're in one.
 			if key == "" {
-				ops[key] += " "
+				term += " "
+
 			} else {
+				if _, alreadySet := ops[key]; alreadySet {
+					return out, fmt.Errorf("got term twice: %s", key)
+				}
+				ops[key] = term
 				key = ""
+				term = ""
 				inRegex = globalRegex
 			}
 		} else if match == "(" {
-			if !(inRegex) {
-				ops[key] += "("
+			if !(inRegex || justGotSpace) {
+				term += "("
 			} else {
 				// A parenthesis. Nothing is special until the
 				// end of a balanced set of parenthesis
@@ -95,26 +111,33 @@ func ParseQuery(query string, globalRegex bool) (pb.Query, error) {
 						break
 					}
 				}
-				ops[key] += match + w.String()
+				term += match + w.String()
 				q = q[i:]
 			}
 		} else if match[0] == '\\' {
-			ops[key] += match
+			term += match
 		} else {
 			// An operator. The key is in match group 1
 			newKey := match[m[2]-m[0] : m[3]-m[0]]
 			if key == "" && knownTags[newKey] {
+				if strings.TrimSpace(term) != "" {
+					if _, alreadySet := ops[key]; alreadySet {
+						return out, fmt.Errorf("main search term must be contiguous")
+					}
+					ops[key] = term
+				}
+				term = ""
 				key = newKey
 			} else {
-				ops[key] += match
+				term += match
 			}
 			if key == "lit" {
 				inRegex = false
 			}
 		}
+		justGotSpace = (match == " ")
 	}
 
-	var out pb.Query
 	var err error
 	if out.File, err = onlyOneSynonym(ops, "file", "path"); err != nil {
 		return out, err

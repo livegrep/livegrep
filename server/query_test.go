@@ -64,16 +64,6 @@ func TestParseQuery(t *testing.T) {
 			true,
 		},
 		{
-			"a file:b c",
-			pb.Query{Line: "a c", FoldCase: true, File: "b"},
-			true,
-		},
-		{
-			"a file:((abc()())()) c",
-			pb.Query{Line: "a c", FoldCase: true, File: "((abc()())())"},
-			true,
-		},
-		{
 			"(  () (   ",
 			pb.Query{Line: "(  () (", FoldCase: true},
 			true,
@@ -192,6 +182,8 @@ func TestParseQueryError(t *testing.T) {
 		{"lit:a b"},
 		{"case:a lit:b"},
 		{"a max_matches:a"},
+		{"a file:b c"},
+		{"a file:((abc()())()) c"},
 	}
 
 	for _, tc := range cases {
