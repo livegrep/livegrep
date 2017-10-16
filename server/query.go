@@ -38,74 +38,106 @@ func onlyOneSynonym(ops map[string]string, op1 string, op2 string) (string, erro
 	return ops[op2], nil
 }
 
-func ParseQuery(query string) (pb.Query, error) {
+func ParseQuery(query string, globalRegex bool) (pb.Query, error) {
+	var out pb.Query
+
 	ops := make(map[string]string)
 	key := ""
+	term := ""
 	q := strings.TrimSpace(query)
+	inRegex := globalRegex
+	justGotSpace := true
 
 	for {
 		m := pieceRE.FindStringSubmatchIndex(q)
 		if m == nil {
-			ops[key] += q
+			term += q
+			if _, alreadySet := ops[key]; alreadySet {
+				return out, fmt.Errorf("got term twice: %s", key)
+			}
+			ops[key] = term
 			break
 		}
 
-		ops[key] += q[:m[0]]
+		term += q[:m[0]]
 		match := q[m[0]:m[1]]
 		q = q[m[1]:]
+
+		justGotSpace = justGotSpace && m[0] == 0
 
 		if match == " " {
 			// A space: Ends the operator, if we're in one.
 			if key == "" {
-				ops[key] += " "
+				term += " "
+
 			} else {
+				if _, alreadySet := ops[key]; alreadySet {
+					return out, fmt.Errorf("got term twice: %s", key)
+				}
+				ops[key] = term
 				key = ""
+				term = ""
+				inRegex = globalRegex
 			}
 		} else if match == "(" {
-			// A parenthesis. Nothing is special until the
-			// end of a balanced set of parenthesis
-			p := 1
-			i := 0
-			esc := false
-			var w bytes.Buffer
-			for i < len(q) {
-				// We decode runes ourselves instead
-				// of using range because exiting the
-				// loop with i = len(q) makes the edge
-				// cases simpler.
-				r, l := utf8.DecodeRuneInString(q[i:])
-				i += l
-				switch {
-				case esc:
-					esc = false
-				case r == '\\':
-					esc = true
-				case r == '(':
-					p++
-				case r == ')':
-					p--
+			if !(inRegex || justGotSpace) {
+				term += "("
+			} else {
+				// A parenthesis. Nothing is special until the
+				// end of a balanced set of parenthesis
+				p := 1
+				i := 0
+				esc := false
+				var w bytes.Buffer
+				for i < len(q) {
+					// We decode runes ourselves instead
+					// of using range because exiting the
+					// loop with i = len(q) makes the edge
+					// cases simpler.
+					r, l := utf8.DecodeRuneInString(q[i:])
+					i += l
+					switch {
+					case esc:
+						esc = false
+					case r == '\\':
+						esc = true
+					case r == '(':
+						p++
+					case r == ')':
+						p--
+					}
+					w.WriteRune(r)
+					if p == 0 {
+						break
+					}
 				}
-				w.WriteRune(r)
-				if p == 0 {
-					break
-				}
+				term += match + w.String()
+				q = q[i:]
 			}
-			ops[key] += match + w.String()
-			q = q[i:]
 		} else if match[0] == '\\' {
-			ops[key] += match
+			term += match
 		} else {
 			// An operator. The key is in match group 1
 			newKey := match[m[2]-m[0] : m[3]-m[0]]
 			if key == "" && knownTags[newKey] {
+				if strings.TrimSpace(term) != "" {
+					if _, alreadySet := ops[key]; alreadySet {
+						return out, fmt.Errorf("main search term must be contiguous")
+					}
+					ops[key] = term
+				}
+				term = ""
 				key = newKey
 			} else {
-				ops[key] += match
+				term += match
+			}
+			if key == "lit" {
+				inRegex = false
 			}
 		}
+		justGotSpace = (match == " ")
 	}
 
-	var out pb.Query
 	var err error
 	if out.File, err = onlyOneSynonym(ops, "file", "path"); err != nil {
 		return out, err
@@ -120,7 +152,7 @@ func ParseQuery(query string) (pb.Query, error) {
 	var bits []string
 	for _, k := range []string{"", "case", "lit"} {
 		bit := strings.TrimSpace(ops[k])
-		if k == "lit" {
+		if k == "lit" || !globalRegex {
 			bit = regexp.QuoteMeta(bit)
 		}
 		if len(bit) != 0 {
@@ -134,6 +166,13 @@ func ParseQuery(query string) (pb.Query, error) {
 
 	if len(bits) > 0 {
 		out.Line = bits[0]
+	}
+
+	if !globalRegex {
+		out.File = regexp.QuoteMeta(out.File)
+		out.NotFile = regexp.QuoteMeta(out.NotFile)
+		out.Repo = regexp.QuoteMeta(out.Repo)
+		out.NotRepo = regexp.QuoteMeta(out.NotRepo)
 	}
 
 	if out.Line == "" && out.File != "" {

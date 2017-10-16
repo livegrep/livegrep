@@ -52,29 +52,34 @@ func extractQuery(ctx context.Context, r *http.Request) (pb.Query, error) {
 	var query pb.Query
 	var err error
 
+	regex := true
+	if re, ok := params["regex"]; ok && re[0] == "false" {
+		regex = false
+	}
+
 	if q, ok := params["q"]; ok {
-		query, err = ParseQuery(q[0])
+		query, err = ParseQuery(q[0], regex)
 		log.Printf(ctx, "parsing query q=%q out=%s", q[0], asJSON{query})
 	}
 
 	// Support old-style query arguments
 	if line, ok := params["line"]; ok {
 		query.Line = line[0]
+		if !regex {
+			query.Line = regexp.QuoteMeta(query.Line)
+		}
 	}
 	if file, ok := params["file"]; ok {
 		query.File = file[0]
+		if !regex {
+			query.File = regexp.QuoteMeta(query.File)
+		}
 	}
 	if repo, ok := params["repo"]; ok {
 		query.Repo = repo[0]
-	}
-
-	// Support explict URL controls for case and regex-ness. Note that these
-	// can interact poorly with in-query control terms (for example: `lit:`
-	// combined with ?regex=false will result in double-escaping).
-	if re, ok := params["regex"]; ok && re[0] == "false" {
-		query.Line = regexp.QuoteMeta(query.Line)
-		query.File = regexp.QuoteMeta(query.File)
-		query.Repo = regexp.QuoteMeta(query.Repo)
+		if !regex {
+			query.Repo = regexp.QuoteMeta(query.Repo)
+		}
 	}
 
 	// New-style repo multiselect, only if "repo:" is not in the query.
