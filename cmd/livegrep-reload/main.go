@@ -9,19 +9,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	flagReloadBackend = flag.String("backend", "", "Backend to reload")
-)
-
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
 
-	if len(flag.Args()) != 0 {
-		log.Fatal("Expected no arguments")
+	if len(flag.Args()) != 1 {
+		log.Fatal("You must provide a HOST:PORT to reload")
 	}
 
-	if err := reloadBackend(*flagReloadBackend); err != nil {
+	if err := reloadBackend(flag.Arg(0)); err != nil {
 		log.Fatalln("reload:", err.Error())
 	}
 }
