@@ -41,7 +41,7 @@ void chunk_allocator::finalize_worker(chunk_allocator *alloc) {
 chunk_allocator::chunk_allocator()  :
     chunk_size_(kChunkSize), content_finger_(0), current_(0) {
     for (int i = 0; i < FLAGS_threads; ++i)
-        threads_.push_back(std::move(std::thread(finalize_worker, this)));
+        threads_.emplace_back(finalize_worker, this);
 }
 
 chunk_allocator::~chunk_allocator() {
