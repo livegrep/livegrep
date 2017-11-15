@@ -57,10 +57,6 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.inner.ServeHTTP(w, r)
 }
 
-func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/search", 303)
-}
-
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	urls := make(map[string]map[string]string, len(s.bk))
 	backends := make([]*Backend, 0, len(s.bk))
@@ -295,7 +291,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
-	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
+	m.Add("GET", "/", srv.Handler(srv.ServeSearch))
 
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
