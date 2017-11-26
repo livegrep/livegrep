@@ -22,7 +22,6 @@ func main() {
 	}
 }
 
-
 func reloadBackend(addr string) error {
 	client, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {

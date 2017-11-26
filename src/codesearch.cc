@@ -1090,9 +1090,9 @@ code_searcher::search_thread::search_thread(code_searcher *cs)
     : cs_(cs) {
     if (FLAGS_search) {
         for (int i = 0; i < FLAGS_threads; ++i) {
-            threads_.push_back(std::move(std::thread(search_one, this)));
+            threads_.emplace_back(search_one, this);
         }
-        threads_.push_back(std::move(std::thread(search_file_one, this)));
+        threads_.emplace_back(search_file_one, this);
     }
 }
 
