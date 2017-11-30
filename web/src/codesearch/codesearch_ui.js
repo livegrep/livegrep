@@ -63,6 +63,7 @@ function url(tree, version, path, lno) {
 }
 
 function internalUrl(tree, path, lno) {
+  path = path.replace(/^\/+/, '');  // Trim any leading slashes
   var url = "/view/" + tree + "/" + path;
   if (lno !== undefined) {
     url += "#L" + lno;
@@ -86,6 +87,12 @@ function externalUrl(tree, version, path, lno) {
 
   // the order of these replacements is used to minimize conflicts
   var url = repo_map[tree];
+
+  // If {path} already has a slash in front of it, trim extra leading
+  // slashes from `path` to avoid a double-slash in the URL.
+  if (url.indexOf('/{path}') !== -1)
+    path = path.replace(/^\/+/, '');
+
   url = url.replace('{lno}', lno);
   url = url.replace('{version}', shorten(version));
   url = url.replace('{name}', tree);

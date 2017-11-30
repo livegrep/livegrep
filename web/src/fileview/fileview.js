@@ -170,6 +170,12 @@ function init(initData) {
     var pathInRepo = path.slice(repoName.length + 1);
 
     url = initData.repo_info.metadata['url-pattern']
+
+    // If {path} already has a slash in front of it, trim extra leading
+    // slashes from `pathInRepo` to avoid a double-slash in the URL.
+    if (url.indexOf('/{path}') !== -1)
+      pathInRepo = pathInRepo.replace(/^\/+/, '');
+
     // XXX code copied
     url = url.replace('{lno}', lno);
     url = url.replace('{version}', initData.commit);
