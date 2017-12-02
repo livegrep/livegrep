@@ -109,7 +109,6 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
 }
 
 void initialize_search(code_searcher *search,
-                       code_searcher *tags,
                        int argc, char **argv) {
     if (FLAGS_load_index.size() == 0) {
         if (FLAGS_dump_index.size())
@@ -132,9 +131,6 @@ void initialize_search(code_searcher *search,
         metric::dump_all();
     } else {
         search->load_index(FLAGS_load_index);
-    }
-    if (FLAGS_load_tags.size() != 0) {
-        tags->load_index(FLAGS_load_tags);
     }
     if (FLAGS_dump_index.size() && FLAGS_load_index.size())
         search->dump_index(FLAGS_dump_index);
@@ -173,15 +169,19 @@ int main(int argc, char **argv) {
 
     while (true) {
         code_searcher search;
-        code_searcher tags;
+        code_searcher *tags = NULL;
 
-        initialize_search(&search, &tags, argc, argv);
+        initialize_search(&search, argc, argv);
+        if (FLAGS_load_tags.size() != 0) {
+            tags = new code_searcher;
+            tags->load_index(FLAGS_load_tags);
+        }
 
         if (FLAGS_index_only)
             return 0;
 
         if (FLAGS_grpc.size()) {
-            listen_grpc(&search, &tags, FLAGS_grpc);
+            listen_grpc(&search, tags, FLAGS_grpc);
         }
     }
 }
