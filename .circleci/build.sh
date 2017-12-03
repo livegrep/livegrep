@@ -9,7 +9,7 @@ fi
 
 cp .bazelrc.circle .bazelrc
 
-bazel fetch cmd/..
+bazel fetch //cmd/...
 
 gofmt=$(bazel info output_base)/external/golang_linux_amd64/bin/gofmt
 format_errors=$(find . -name '*.go' -print0 | xargs -0 "$gofmt" -l -e)
