@@ -10,10 +10,4 @@ jobs:
           keys:
             - bazel-cache
 
-      - run: echo "$GCLOUD_SERVICE_KEY" | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
-      - run: /usr/local/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
-      - run: /usr/local/google-cloud-sdk/bin/gcloud config set project livegrep
-      - run: cp .bazelrc.circle .bazelrc
       - run: ./.circleci/build.sh
-      - run: ./package.sh
-      - run: /usr/local/google-cloud-sdk/bin/gsutil cp -a public-read -r builds/ gs://livegrep.appspot.com/
