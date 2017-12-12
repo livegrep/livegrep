@@ -124,7 +124,7 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 	defer cancel()
 
 	if id, ok := reqid.FromContext(ctx); ok {
-		ctx = metadata.NewContext(ctx, metadata.Pairs("Request-Id", string(id)))
+		ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("Request-Id", string(id)))
 	}
 
 	search, err = backend.Codesearch.Search(
