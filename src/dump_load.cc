@@ -30,7 +30,11 @@ public:
         hdr_() {
         assert(!stream_.fail());
         fd_ = open(path.c_str(), O_RDWR|O_APPEND);
-        assert(fd_ >= 0);
+        if (fd_ == -1) {
+            string message = "Cannot open " + path;
+            perror(message.c_str());
+            exit(1);
+        }
 
         hdr_.magic      = kIndexMagic;
         hdr_.version    = kIndexVersion;
@@ -358,7 +362,11 @@ void codesearch_index::dump() {
 
 load_allocator::load_allocator(code_searcher *cs, const string& path) {
     fd_ = open(path.c_str(), O_RDONLY);
-    assert(fd_ >= 0);
+    if (fd_ == -1) {
+        string message = "Cannot open " + path;
+        perror(message.c_str());
+        exit(1);
+    }
     struct stat st;
     assert(fstat(fd_, &st) == 0);
     map_size_ = st.st_size;
