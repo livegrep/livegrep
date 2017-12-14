@@ -30,7 +30,7 @@ func reloadBackend(addr string) error {
 
 	codesearch := pb.NewCodeSearchClient(client)
 
-	if _, err = codesearch.Reload(context.Background(), &pb.Empty{}, grpc.FailFast(false)); err != nil {
+	if _, err = codesearch.Reload(context.Background(), &pb.Empty{}, grpc.FailFast(true)); err != nil {
 		return err
 	}
 	return nil
