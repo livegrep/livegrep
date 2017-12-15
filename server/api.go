@@ -120,6 +120,8 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 	var search *pb.CodeSearchResult
 	var err error
 
+	start := time.Now()
+
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -174,6 +176,7 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 		SortTime:    search.Stats.SortTime,
 		IndexTime:   search.Stats.IndexTime,
 		AnalyzeTime: search.Stats.AnalyzeTime,
+		TotalTime:   int64(time.Since(start) / time.Millisecond),
 		ExitReason:  search.Stats.ExitReason.String(),
 	}
 	return reply, nil
