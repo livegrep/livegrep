@@ -24,6 +24,7 @@ type Stats struct {
 	SortTime    int64  `json:"sort_time"`
 	IndexTime   int64  `json:"index_time"`
 	AnalyzeTime int64  `json:"analyze_time"`
+	TotalTime   int64  `json:"total_time"`
 	ExitReason  string `json:"why"`
 }
 
