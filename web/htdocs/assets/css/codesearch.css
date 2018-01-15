@@ -188,8 +188,12 @@ a:hover {
     margin-top: 10px;
 }
 
-.path-results {
+.file-extensions, .path-results {
     margin-bottom: 15px;
+}
+
+.file-extensions button {
+    margin-left: 4px;
 }
 
 .file-group {
