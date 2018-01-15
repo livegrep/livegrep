@@ -5,14 +5,14 @@ go_library(
     srcs = [
         "main.go",
     ],
-    deps = [
-        "//src/proto:go_proto",
-        "@org_golang_google_grpc//:go_default_library",
-    ],
     data = [
         "//src/tools:codesearch",
     ],
     visibility = ["//visibility:private"],
+    deps = [
+        "//src/proto:go_proto",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
 )
 
 go_binary(

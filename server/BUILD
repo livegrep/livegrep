@@ -12,6 +12,12 @@ go_library(
         "server.go",
         "templates.go",
     ],
+    data = [
+        "//web:asset_hashes",
+        "//web:htdocs",
+        "//web:templates",
+        "//web:webpack_build",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         "//server/api:go_default_library",
@@ -26,12 +32,6 @@ go_library(
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//metadata:go_default_library",
         "@org_golang_x_net//context:go_default_library",
-    ],
-    data = [
-        '//web:htdocs',
-        '//web:templates',
-        '//web:webpack_build',
-        '//web:asset_hashes',
     ],
 )
 
