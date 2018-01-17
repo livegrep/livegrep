@@ -31,6 +31,7 @@
 #include <functional>
 #include <future>
 #include <thread>
+#include <memory>
 
 #include <gflags/gflags.h>
 
@@ -169,11 +170,11 @@ int main(int argc, char **argv) {
 
     while (true) {
         code_searcher search;
-        code_searcher *tags = NULL;
+        unique_ptr<code_searcher> tags;
 
         initialize_search(&search, argc, argv);
         if (FLAGS_load_tags.size() != 0) {
-            tags = new code_searcher;
+            tags.reset(new code_searcher());
             tags->load_index(FLAGS_load_tags);
         }
 
@@ -181,12 +182,7 @@ int main(int argc, char **argv) {
             return 0;
 
         if (FLAGS_grpc.size()) {
-            listen_grpc(&search, tags, FLAGS_grpc);
-        }
-
-        if (tags) {
-            delete tags;
-            tags = NULL;
+            listen_grpc(&search, tags.get(), FLAGS_grpc);
         }
     }
 }
