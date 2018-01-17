@@ -183,5 +183,10 @@ int main(int argc, char **argv) {
         if (FLAGS_grpc.size()) {
             listen_grpc(&search, tags, FLAGS_grpc);
         }
+
+        if (tags) {
+            delete tags;
+            tags = NULL;
+        }
     }
 }
