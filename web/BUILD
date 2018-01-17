@@ -36,5 +36,5 @@ genrule(
         "//web:webpack_build",
     ],
     outs = ["hashes.txt"],
-    cmd = "sha256sum $(SRCS) | sed \"s_ bazel-out/local-fastbuild/bin/_ _\" | sed \"s_ web/htdocs/_ _\"> $@",
+    cmd = "sha256sum $(SRCS) | sed \"s_ $(BINDIR)/_ _\" | sed \"s_ web/htdocs/_ _\"> $@",
 )
