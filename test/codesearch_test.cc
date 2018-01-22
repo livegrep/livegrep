@@ -314,6 +314,26 @@ TEST_F(codesearch_test, FilenameTest) {
     ASSERT_EQ("/file1", matches.file_results(0).path());
 }
 
+TEST_F(codesearch_test, FilenameWithIndexBoundaryTest) {
+    std::string last_file;
+    for (int i = 0; i < 1000; i++) {
+        std::string name = "file" + std::to_string(i);
+        cs_.index_file(tree_, name, name);
+    }
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    CodeSearchResult matches;
+    Query request;
+    request.set_line("ile999"); // intentionally chosen to match in the middle
+    grpc::ServerContext ctx;
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+    ASSERT_EQ(1, matches.results_size());
+    ASSERT_EQ(1, matches.file_results_size());
+    ASSERT_EQ("file999", matches.file_results(0).path());
+}
+
 TEST_F(codesearch_test, FilenameOnlyTest) {
     cs_.index_file(tree_, "/file1", "contents");
     cs_.index_file(tree_, "/file2", "mention of file1");

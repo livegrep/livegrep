@@ -435,7 +435,8 @@ void filename_searcher::operator()()
         auto lb = lower_bound(left_bound, cc_->filename_positions_.end(), target);
 
         if (lb->first != target_index) {
-            assert(lb->first > target_index);
+            assert(lb == cc_->filename_positions_.end() ||
+                   lb->first > target_index);
             assert(lb != left_bound);
             lb--;
         }
