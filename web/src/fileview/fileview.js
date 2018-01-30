@@ -147,8 +147,27 @@ function init(initData) {
       }
     }
 
-    // Update the external-browse link
+    // Update the blame and external-browse links
+    $('#blame-link').attr('href', getBlameLink(range));
     $('#external-link').attr('href', getExternalLink(range));
+  }
+
+  function getBlameLink(range) {
+    lno = (range == null) ? 1 : range.start;
+
+    // Disassemble the current URL
+    var path = window.location.pathname.slice(6); // Strip "/view/" prefix
+    var repoName = path.split('/')[0];
+    var pathInRepo = path.slice(repoName.length + 1).replace(/^\/+/, '');
+
+    url = '/blame/{name}/{version}/{path}/#{lno}';
+
+    // XXX code copied
+    url = url.replace('{lno}', lno);
+    url = url.replace('{version}', initData.commit);
+    url = url.replace('{name}', repoName);
+    url = url.replace('{path}', pathInRepo);
+    return url;
   }
 
   function getExternalLink(range) {
@@ -206,6 +225,10 @@ function init(initData) {
         hideHelp();
       }
       $('#query').blur();
+    } else if(String.fromCharCode(event.which) == 'B') {
+      // Visually highlight the external link to indicate what happened
+      $('#blame-link').focus();
+      window.location = $('#blame-link').attr('href');
     } else if(String.fromCharCode(event.which) == 'V') {
       // Visually highlight the external link to indicate what happened
       $('#external-link').focus();

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	stdlog "log"
 	"net/http"
 	"path"
+	"strings"
 	texttemplate "text/template"
 	"time"
 
@@ -18,12 +20,15 @@ import (
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
 	"github.com/livegrep/livegrep/server/templates"
+
 )
 
 type Templates struct {
 	Layout,
 	Index,
 	FileView,
+	BlameDiff,
+	BlameFile,
 	About *template.Template
 	OpenSearch *texttemplate.Template `template:"opensearch.xml"`
 }
@@ -143,6 +148,144 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 	})
 }
 
+func (s *server) parseBlameURL(r *http.Request) (string, string, error) {
+	if len(s.repos) == 0 {
+		return "", "", fmt.Errorf("File browsing not enabled")
+	}
+	repoName := r.URL.Query().Get(":repo")
+	hash := r.URL.Query().Get(":hash")
+	return repoName, hash, nil
+}
+
+func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	repoName, hash, err := s.parseBlameURL(r)
+	if err != nil {
+		http.Error(w, fmt.Sprint("404 ", err), 404)
+		return
+	}
+
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	gitHistory, ok := histories[repo.Name]
+	if !ok {
+		http.Error(w, "Repo not configured for blame", 404)
+	}
+
+	rest := pat.Tail("/blame/:repo/:hash/", r.URL.Path)
+	i := strings.LastIndex(rest, "/")
+	if i == -1 {
+		http.Error(w, "Not found", 404)
+		return
+	}
+	path := rest[:i]
+	if i+1 < len(rest) {
+		dest := rest[i+1:]
+		url, err := fileRedirect(gitHistory, repoName, hash, path, dest)
+		if err != nil {
+			http.Error(w, "Not found", 404)
+			return
+		}
+		http.Redirect(w, r, url, 307)
+		return
+	}
+	//commitHash := rest[i+1:]
+
+	//fmt.Print(repoName, " ", hash, " ", path, "\n")
+
+	isDiff := false // TODO: remove
+	data := BlameData{}
+	resolveCommit(repo, hash, &data)
+	if data.CommitHash != hash {
+		pat1 := "/" + hash + "/"
+		pat2 := "/" + data.CommitHash + "/"
+		destURL := strings.Replace(r.URL.Path, pat1, pat2, 1)
+		http.Redirect(w, r, destURL, 307)
+	}
+	err = buildBlameData(repo, hash, gitHistory, path, isDiff, &data)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
+	t := s.T.BlameFile
+	if isDiff {
+		t = s.T.BlameDiff
+	}
+	err = t.Execute(w, map[string]interface{}{
+		"cssTag": templates.LinkTag("stylesheet",
+			"/assets/css/blame.css", s.AssetHashes),
+		"repo": repo,
+		"path": path,
+		"commitHash": hash,
+		"blame": data,
+		"content": data.Content,
+	})
+	if err != nil {
+		stdlog.Print("Cannot render template: ", err)
+	}
+}
+
+func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if len(s.repos) == 0 {
+		http.Error(w, "404 Repository browsing not enabled", 404)
+		return
+	}
+	repoName := r.URL.Query().Get(":repo")
+	hash := r.URL.Query().Get(":hash")
+	fmt.Print("=====", repoName, "\n")
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "404 No such repository", 404)
+		return
+	}
+	rest := pat.Tail("/diff/:repo/:hash/", r.URL.Path)
+	if len(rest) > 0 {
+		diffRedirect(w, r, repoName, hash, rest)
+		return
+	}
+	data := DiffData{}
+	data2 := BlameData{}
+	resolveCommit(repo, hash, &data2)
+	data.CommitHash = data2.CommitHash
+	data.Author = data2.Author
+	data.Date = data2.Date
+	data.Subject = data2.Subject
+	// TODO: fix this
+	// if data.CommitHash != commitHash {
+	// 	http.Redirect(w, r, data.CommitHash, 307)
+	// }
+	fmt.Print(data, "\n")
+
+	j := strings.LastIndex(r.URL.Path, "/")
+	if j < len(r.URL.Path) - 1 {
+		destination := r.URL.Path[j+1:]
+		fmt.Print(destination, "\n")
+		// TODO: figure out redirect
+		return
+	}
+
+	err := buildDiffData(repo, hash, &data)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
+
+	err = s.T.BlameDiff.Execute(w, map[string]interface{}{
+		"cssTag": templates.LinkTag("stylesheet",
+			"/assets/css/blame.css", s.AssetHashes),
+		"repo": repo,
+		"path": "NONE",
+		"commitHash": hash,
+		"blame": data,
+	})
+	if err != nil {
+		stdlog.Print("Cannot render template: ", err)
+	}
+}
+
 func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	body, err := executeTemplate(s.T.About, nil)
 	if err != nil {
@@ -260,6 +403,18 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 	srv.loadTemplates()
 
+	ctx := context.Background()
+
+	log.Printf(ctx, "Loading blame...")
+	start := time.Now()
+	err := initBlame(cfg)
+	if err != nil {
+		log.Printf(ctx, "Error: %s", err)
+		return nil, err
+	}
+	elapsed := time.Since(start)
+	log.Printf(ctx, "Blame loaded in %s", elapsed)
+
 	if cfg.Honeycomb.WriteKey != "" {
 		log.Printf(context.Background(),
 			"Enabling honeycomb dataset=%s", cfg.Honeycomb.Dataset)
@@ -283,6 +438,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	m := pat.New()
+	m.Add("GET", "/blame/:repo/:hash/", srv.Handler(srv.ServeBlame))
+	m.Add("GET", "/diff/:repo/:hash/", srv.Handler(srv.ServeDiff))
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))

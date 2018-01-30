@@ -21,7 +21,7 @@ func templatePath(f reflect.StructField) string {
 	return strings.ToLower(f.Name) + ".html"
 }
 
-func linkTag(rel string, s string, m map[string]string) template.HTML {
+func LinkTag(rel string, s string, m map[string]string) template.HTML {
 	hash := m[strings.TrimPrefix(s, "/")]
 	href := s + "?v=" + hash
 	hashBytes, _ := hex.DecodeString(hash)
@@ -42,7 +42,7 @@ func getFuncs() map[string]interface{} {
 	return map[string]interface{}{
 		"loop":      func(n int) []struct{} { return make([]struct{}, n) },
 		"toLineNum": func(n int) int { return n + 1 },
-		"linkTag":   linkTag,
+		"linkTag":   LinkTag,
 		"scriptTag": scriptTag,
 	}
 }

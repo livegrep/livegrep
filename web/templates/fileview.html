@@ -9,6 +9,11 @@
       <li class="header-action">
         <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">new search [<span class='shortcut'>/</span>]</a>
       </li>,
+      {{if .IsBlameAvailable}}
+      <li class="header-action">
+        <a id="blame-link" data-action-name="blame" title="Blame. Keyboard shortcut: b" href="#">blame [<span class="shortcut">b</span>]</a>
+      </li>,
+      {{end}}
       <li class="header-action">
         <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
       </li>,

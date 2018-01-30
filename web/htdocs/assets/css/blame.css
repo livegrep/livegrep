@@ -1,0 +1,116 @@
+body {
+    position: relative;     /* so #hashes position is based on <body>'s */
+    display: inline-block;  /* allow body to expand to fit wide files */
+    white-space: pre;
+    font-family: "Menlo", "Consolas", "Monaco", monospace;
+    font-size: 12px;
+}
+
+/* Keep the header at the top. */
+#header {
+    position: sticky;
+    top: 0px;
+    background-color: white;
+}
+
+/* Put the content div, that we deliver first, on the right; then
+position the blame div to its left. */
+.rtl {
+    direction: rtl;    /* so we can deliver content first, then blame */
+    text-align: left;  /* but keep against left margin */
+}
+.rtl > * {
+    vertical-align: top;
+    display: inline-block;
+    direction: ltr;             /* reset back to normal */
+}
+
+/* Leave the hash links mostly undecorated, and gray unless the user
+mouses over them and triggers our js to add the "highlight" class: */
+
+#hashes > a {
+    text-decoration: none;
+}
+#hashes > a[href] {           /* leave hash links gray until mouseover*/
+    color: gray;
+}
+#hashes > a.highlight {         /* turn hash links black when moused over */
+    color: black;
+}
+
+/* We have several uses for a box extending right from a #hashes anchor
+to highlight a line of code with a background color; here is the CSS
+that all such boxes have in common (and which has no effect until the
+non-existent ":before" is given a "content"): */
+
+#hashes > a:before {
+    position: absolute;
+    left: 0;
+    z-index: -1;                /* place behind text of file */
+    box-sizing: border-box;     /* so border-width doesn't oversize it */
+    width: 100%;
+    border-width: 0 0 0 39ch;
+    border-style: solid;
+    border-color: white;
+}
+body.wide #hashes > a:before {
+    border-width: 0 0 0 44ch;
+}
+
+/* When a commit hash is being highlighted, paint a green or red
+background behind all of the lines that it adds or deletes: */
+
+#hashes > a.highlight:before {
+    background-color: #c0f8c0;  /* light green highlight */
+    color: green;
+    content: "+";
+}
+#hashes > a.highlight.d:before {
+    background-color: #f8c0c0;  /* light red highlight */
+    color: red;
+    content: "-";
+}
+
+/* Make the line that the mouse is hovering over stand out a little by
+giving it a slightly darker background: */
+
+#hashes > a.highlight:hover:before {
+    background-color: #90EE90;  /* darker green highlight */
+}
+#hashes > a.highlight.d:hover:before {
+    background-color: #EE9090;  /* darker red highlight */
+}
+
+/* When a diff is being viewed, place permanent red and green background
+colors behind the lines it adds and deletes: */
+
+#hashes > b:before {
+    position: absolute;
+    left: 0;
+    box-sizing: border-box;
+    width: 100%;
+    border-width: 0 0 0 44ch;
+    border-style: solid;
+    border-color: white;
+    z-index: -2;                /* place behind text of file and highlights */
+    content: " ";
+}
+#hashes > b.a:before {
+    background-color: #c0f8c0;  /* light green highlight */
+}
+#hashes > b.d:before {
+    background-color: #f8c0c0;  /* light red highlight */
+}
+
+/* Highlight the target line that is named in the URL's fragment ID. */
+
+#hashes > a:target:after {
+    z-index: -1;                /* place behind text of file */
+    position: absolute;
+    left: 0;
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: -2px;
+    border: 2px solid black;
+    content: " ";
+}

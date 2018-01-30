@@ -1,0 +1,25 @@
+<html>
+<head>
+  <link rel="stylesheet" href="/assets/css/blame.css" />
+  <title>Commit {{.commitHash}}</title>
+</head>
+<body class="wide"><div id="header">                                               commit <b>{{.commitHash}}</b>
+{{with .blame}}
+{{if .PreviousCommit}}«Previous commit{{else}}                {{end}}{{if .NextCommit}}     Next commit»{{else}}                 {{end}}              Author: {{.Author}}
+{{if .PreviousCommit}}<a href="{{.PreviousCommit}}">{{.PreviousCommit}}</a>{{else}}                {{end}} {{if .NextCommit}}<a href="{{.NextCommit}}">{{.NextCommit}}</a>{{else}}                {{end}}              Date: {{.Date}}
+                                               “{{.Subject}}”
+ Line added by:  Line deleted by:</div><div class="rtl"><div id="content">{{range .FileDiffs}}
+<b>================ <a href="/blame/{{$.repo.Name}}/{{$.commitHash}}/{{.Path}}/">{{.Path}}</a> ================</b>
+
+{{.Content}}{{end}}</div>&nbsp;&nbsp;<div id="hashes">{{ range $i, $l := .FileDiffs }}
+
+
+{{range .Lines -}}
+{{if eq ' ' (index .PreviousCommit 0)}}{{.PreviousCommit}}{{else}}<a href="{{.PreviousCommit}}.{{$i}}a{{.PreviousLineNumber}}">{{.PreviousCommit}}</a>{{end}} {{if eq ' ' (index .NextCommit 0)}}{{.NextCommit}}{{else}}<a href="{{.NextCommit}}.{{$i}}d{{.NextLineNumber}}">{{.NextCommit}}</a>{{end}}{{if .OldLineNumber}} <a id="{{$i}}d{{.OldLineNumber}}" href="{{$.blame.PreviousCommit}}.{{$i}}f{{.OldLineNumber}}">{{.OldLineNumber | printf "%4d"}}</a>{{else}}     {{end}} {{if .NewLineNumber}}<a id="{{$i}}a{{.NewLineNumber}}" href="{{$.commitHash}}.{{$i}}f{{.NewLineNumber}}">{{.NewLineNumber | printf "%4d"}}</a>{{else}}    {{end}}{{if .Symbol}} <b class="{{if eq .Symbol "+"}}a{{else}}d{{end}}">{{.Symbol}}</b>{{end}}
+{{end}}{{end}}
+</div>{{end}}</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-cookie/2.1.4/js.cookie.min.js" integrity="sha256-NjbogQqosWgor0UBdCURR5dzcvAgHnfUZMcZ8RCwkk8=" crossorigin="anonymous"></script>
+<script src="/assets/raw-js/blame.js"></script>
+</body>
+</html>

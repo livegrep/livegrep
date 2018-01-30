@@ -1,6 +1,7 @@
 package server
 
 import (
+	// "fmt"
 	"net/url"
 	"os/exec"
 	"path"
@@ -61,6 +62,7 @@ type fileViewerContext struct {
 	Commit         string
 	DirContent     *directoryContent
 	FileContent    *sourceFileContent
+	IsBlameAvailable bool
 	ExternalDomain string
 }
 
@@ -100,7 +102,9 @@ func gitObjectType(obj string, repoPath string) (string, error) {
 }
 
 func gitCatBlob(obj string, repoPath string) (string, error) {
-	out, err := exec.Command("git", "-C", repoPath, "cat-file", "blob", obj).Output()
+	cmd := []string{"-C", repoPath, "cat-file", "blob", obj}
+	//fmt.Printf("%v\n", cmd)
+	out, err := exec.Command("git", cmd...).Output()
 	if err != nil {
 		return "", err
 	}
@@ -220,6 +224,8 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		}
 	}
 
+	_, isBlameAvailable := repo.Metadata["blame"]
+
 	externalDomain := "external viewer"
 	if url, err := url.Parse(repo.Metadata["url-pattern"]); err == nil {
 		externalDomain = url.Hostname()
@@ -231,6 +237,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		Commit:         commit,
 		DirContent:     dirContent,
 		FileContent:    fileContent,
+		IsBlameAvailable: isBlameAvailable,
 		ExternalDomain: externalDomain,
 	}, nil
 }
