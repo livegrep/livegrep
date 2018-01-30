@@ -9,6 +9,7 @@ cc_test(
     srcs = [
         "codesearch_test.cc",
         "indexer_test.cc",
+        "tagsearch_test.cc",
         "main.cc",
     ],
     defines = select({
