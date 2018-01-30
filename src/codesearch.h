@@ -113,6 +113,7 @@ struct match_result {
     vector<StringPiece> context_after;
     StringPiece line;
     int matchleft, matchright;
+    int score;
 };
 
 struct file_result {

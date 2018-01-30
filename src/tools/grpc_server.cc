@@ -4,6 +4,7 @@
 #include "src/codesearch.h"
 #include "src/tagsearch.h"
 #include "src/re_width.h"
+#include "src/score.h"
 
 #include "src/tools/limits.h"
 #include "src/tools/grpc_server.h"
@@ -157,6 +158,20 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
     return status;
 }
 
+class collect_match {
+public:
+    collect_match(std::set<std::pair<std::pair<int, string>, const match_result*>> *ordered_matches) : matches_(ordered_matches) {}
+
+    void operator()(const match_result *m) {
+        // Sort matches by score, then repo:filename.
+        auto sort_key = std::make_pair(-m->score, m->file->tree->name + ":" + m->file->path);
+        matches_->insert(std::make_pair(sort_key, new match_result(*m)));
+    }
+
+private:
+    std::set<std::pair<std::pair<int, string>, const match_result*>> *matches_;
+};
+
 class add_match {
 public:
     add_match(CodeSearchResult* response) : response_(response) {}
@@ -236,12 +251,20 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
     }
 
     match_stats stats;
+
+    add_match add_cb(response);
+    std::set<std::pair<std::pair<int, string>, const match_result*>> ordered_matches;
+    collect_match collect_cb(&ordered_matches);
+
     if (q.tags_pat == NULL) {
         code_searcher::search_thread *search;
         if (!pool_.try_pop(&search))
             search = new code_searcher::search_thread(cs_);
-        add_match cb(response);
-        search->match(q, cb, cb, &stats);
+
+        scorer score(&q);
+
+        search->match(q, collect_cb, add_cb, score, &stats);
+
         pool_.push(search);
     } else {
         if (tagdata_ == NULL)
@@ -261,12 +284,16 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         q.file_pat.reset();
         q.tags_pat.reset();
 
-        add_match cb(response);
         search.match(q,
-                     cb,
-                     cb,
+                     collect_cb,
+                     add_cb,
                      boost::bind(&tag_searcher::transform, tagmatch_, &constraints, _1),
                      &stats);
+    }
+
+    for (auto it = ordered_matches.begin(); it != ordered_matches.end(); it++) {
+        add_cb(it->second);
+        delete it->second;
     }
 
     auto out_stats = response->mutable_stats();

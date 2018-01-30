@@ -192,9 +192,9 @@ var Match = Backbone.Model.extend({
 
 /** A set of Matches at a single path. */
 var FileGroup = Backbone.Model.extend({
-  initialize: function(path_info) {
+  initialize: function(id, path_info) {
     // The id attribute is used by collections to fetch models
-    this.id = path_info.id;
+    this.id = id;
     this.path_info = path_info;
     this.matches = [];
   },
@@ -256,11 +256,11 @@ var SearchResultSet = Backbone.Collection.extend({
     return file_group.id;
   },
 
-  add_match: function(match) {
+  add_match: function(id, match) {
     var path_info = match.path_info();
-    var file_group = this.get(path_info.id);
+    var file_group = this.get(id);
     if(!file_group) {
-      file_group = new FileGroup(path_info);
+      file_group = new FileGroup(id, path_info);
       this.add(file_group);
     }
     file_group.add_match(match);
@@ -339,6 +339,8 @@ var SearchState = Backbone.Model.extend({
 
   initialize: function() {
     this.search_map = {};
+    this.id_map = {};
+    this.next_filegroup_id = 1;
     this.search_results = new SearchResultSet();
     this.file_search_results = new Backbone.Collection();
     this.search_id = 0;
@@ -351,6 +353,8 @@ var SearchState = Backbone.Model.extend({
         time: null,
         why: null
     });
+    this.id_map = {};
+    this.next_filegroup_id = 1;
     this.search_results.reset();
     this.file_search_results.reset();
     for (var k in this.search_map) {
@@ -433,7 +437,13 @@ var SearchState = Backbone.Model.extend({
     this.set('displaying', search);
     var m = _.clone(match);
     m.backend = this.search_map[search].backend;
-    this.search_results.add_match(new Match(m));
+    var matchObj = new Match(m);
+    var path_id = matchObj.path_info().id;
+    if (!(path_id in this.id_map)) {
+     this.id_map[path_id] = this.next_filegroup_id;
+     this.next_filegroup_id++;
+    }
+    this.search_results.add_match(this.id_map[path_id], matchObj);
   },
   handle_file_match: function (search, file_match) {
     if (search < this.get('displaying'))
