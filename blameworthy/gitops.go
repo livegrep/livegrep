@@ -32,7 +32,7 @@ type Hunk struct {
 }
 
 func RunGitLog(repository_path string, revision string) (io.ReadCloser, error) {
-	cmd := exec.Command("/usr/bin/git",
+	cmd := exec.Command("git",
 		"-C", repository_path,
 		"log",
 		"-U0",

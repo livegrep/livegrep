@@ -68,18 +68,21 @@ func initBlame(cfg *config.Config) error {
 			var err error
 			gitLogOutput, err = blameworthy.RunGitLog(r.Path, "HEAD")
 			if err != nil {
-				return err
+				log.Print("Skipping blame: ", err)
+				continue
 			}
 		} else {
 			var err error
 			gitLogOutput, err = os.Open(blame)
 			if err != nil {
-				return err
+				log.Print("Skipping blame: ", err)
+				continue
 			}
 		}
 		gitHistory, err := blameworthy.ParseGitLog(gitLogOutput)
 		if err != nil {
-			return err
+			log.Print("Skipping blame: ", err)
+			continue
 		}
 		histories[r.Name] = gitHistory
 	}
