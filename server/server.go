@@ -312,6 +312,16 @@ type stats struct {
 	IndexAge int64 `json:"index_age"`
 }
 
+func (s *server) ReloadIndexes(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if err := initBlame(s.config); err != nil {
+		message := fmt.Sprint("Error reloading blame data: ", err)
+		log.Printf(ctx, message)
+		http.Error(w, message, 500)
+		return
+	}
+	http.Error(w, "OK", 200)
+}
+
 func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// For index age, report the age of the stalest backend's index.
 	now := time.Now()
@@ -393,17 +403,11 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 	srv.loadTemplates()
 
-	ctx := context.Background()
-
-	log.Printf(ctx, "Loading blame...")
-	start := time.Now()
-	err := initBlame(cfg)
-	if err != nil {
+	if err := initBlame(cfg); err != nil {
+		ctx := context.Background()
 		log.Printf(ctx, "Error: %s", err)
 		return nil, err
 	}
-	elapsed := time.Since(start)
-	log.Printf(ctx, "Blame loaded in %s", elapsed)
 
 	if cfg.Honeycomb.WriteKey != "" {
 		log.Printf(context.Background(),
@@ -431,6 +435,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/blame/:repo/:hash/", srv.Handler(srv.ServeBlame))
 	m.Add("GET", "/diff/:repo/:hash/", srv.Handler(srv.ServeDiff))
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
+	m.Add("GET", "/debug/reload-indexes", srv.Handler(srv.ReloadIndexes))
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))

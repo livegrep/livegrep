@@ -58,6 +58,9 @@ const blankHash = "                " // as wide as a displayed hash
 var histories = make(map[string]*blameworthy.GitHistory)
 
 func initBlame(cfg *config.Config) error {
+	log.Printf("Loading blame...")
+	start := time.Now()
+
 	for _, r := range cfg.IndexConfig.Repositories {
 		blame, ok := r.Metadata["blame"]
 		if !ok {
@@ -86,6 +89,9 @@ func initBlame(cfg *config.Config) error {
 		}
 		histories[r.Name] = gitHistory
 	}
+	elapsed := time.Since(start)
+	log.Printf("Blame loaded in %s", elapsed)
+
 	return nil
 }
 
