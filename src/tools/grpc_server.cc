@@ -33,6 +33,7 @@ class CodeSearchImpl final : public CodeSearch::Service {
     virtual ~CodeSearchImpl();
 
     virtual grpc::Status Info(grpc::ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response);
+    void TagsFirstSearch_(::CodeSearchResult* response, query& q, string& line_pat, match_stats& stats);
     virtual grpc::Status Search(grpc::ServerContext* context, const ::Query* request, ::CodeSearchResult* response);
     virtual grpc::Status Reload(grpc::ServerContext* context, const ::Empty* request, ::Empty* response);
 
@@ -177,8 +178,10 @@ public:
         // tags search then again during the main corpus search.
         line_set_key k(m->file, m->lno);
         bool already_inserted = ! unique_lines_->insert(k).second;
-        if (already_inserted)
+        if (already_inserted) {
+            log("DUP");
             return;
+        }
 
         auto result = response_->add_results();
         result->set_tree(m->file->tree->name);
@@ -243,6 +246,40 @@ static std::string pat(const std::shared_ptr<RE2> &p) {
     return p->pattern();
 }
 
+void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, string& line_pat, match_stats& stats) {
+    string regex;
+    int32_t max_matches = q.max_matches;  // remember original value
+
+    add_match cb(response);
+
+    /* To surface the most important matches first, start with tags.
+       First pass: is the pattern an exact match for any tags? */
+    regex = "^" + line_pat + "$";
+    q.line_pat.reset(new RE2(regex, q.line_pat->options()));
+    run_tags_search(q, tagdata_, cb, tagmatch_, stats);
+
+    q.max_matches = max_matches - cb.match_count();
+    if (q.max_matches <= 0)
+        return;
+
+    /* Second pass: is the pattern a prefix match for any tags? */
+    regex = "^" + line_pat + "[^\t]";
+    q.line_pat.reset(new RE2(regex, q.line_pat->options()));
+    run_tags_search(q, tagdata_, cb, tagmatch_, stats);
+
+    q.max_matches = max_matches - cb.match_count();
+    if (q.max_matches <= 0)
+        return;
+
+    /* Third and final pass: full corpus search. */
+    q.line_pat.reset(new RE2(line_pat, q.line_pat->options()));
+    code_searcher::search_thread *search;
+    if (!pool_.try_pop(&search))
+        search = new code_searcher::search_thread(cs_);
+    search->match(q, cb, cb, &stats);
+    pool_.push(search);
+}
+
 Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::CodeSearchResult* response) {
     WidthWalker width;
 
@@ -302,37 +339,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
 
     match_stats stats;
     if (q.tags_pat == NULL && tagdata_ && might_match_tags) {
-        string regex;
-        int32_t max_matches = q.max_matches;  // remember original value
-
-        add_match cb(response);
-
-        /* To surface the most important matches first, start with tags.
-           First pass: is the pattern an exact match for any tags? */
-        regex = "^" + line_pat + "$";
-        q.line_pat.reset(new RE2(regex, q.line_pat->options()));
-        run_tags_search(q, tagdata_, cb, tagmatch_, stats);
-
-        q.max_matches = max_matches - cb.match_count();
-        if (q.max_matches > 0) {
-
-            /* Second pass: is the pattern a prefix match for any tags? */
-            regex = "^" + line_pat + "[^\t]";
-            q.line_pat.reset(new RE2(regex, q.line_pat->options()));
-            run_tags_search(q, tagdata_, cb, tagmatch_, stats);
-
-            q.max_matches = max_matches - cb.match_count();
-            if (q.max_matches > 0) {
-
-              /* Third and final pass: full corpus search. */
-              q.line_pat.reset(new RE2(line_pat, q.line_pat->options()));
-              code_searcher::search_thread *search;
-              if (!pool_.try_pop(&search))
-                search = new code_searcher::search_thread(cs_);
-              search->match(q, cb, cb, &stats);
-              pool_.push(search);
-            }
-        }
+        CodeSearchImpl::TagsFirstSearch_(response, q, line_pat, stats);
     } else if (q.tags_pat == NULL) {
         code_searcher::search_thread *search;
         if (!pool_.try_pop(&search))
