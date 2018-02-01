@@ -235,7 +235,6 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 	repoName := r.URL.Query().Get(":repo")
 	hash := r.URL.Query().Get(":hash")
-	fmt.Print("=====", repoName, "\n")
 	repo, ok := s.repos[repoName]
 	if !ok {
 		http.Error(w, "404 No such repository", 404)
@@ -257,15 +256,6 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	// if data.CommitHash != commitHash {
 	// 	http.Redirect(w, r, data.CommitHash, 307)
 	// }
-	fmt.Print(data, "\n")
-
-	j := strings.LastIndex(r.URL.Path, "/")
-	if j < len(r.URL.Path) - 1 {
-		destination := r.URL.Path[j+1:]
-		fmt.Print(destination, "\n")
-		// TODO: figure out redirect
-		return
-	}
 
 	err := buildDiffData(repo, hash, &data)
 	if err != nil {

@@ -142,7 +142,7 @@ func buildBlameData(
 	}
 
 	elapsed := time.Since(start)
-	log.Print("Whole thing took ", elapsed)
+	log.Print(elapsed, " to prepare blame for ", obj)
 
 	data.PreviousCommit = result.PreviousCommitHash
 	data.NextCommit = result.NextCommitHash
@@ -258,7 +258,7 @@ func buildDiffData(
 	}
 
 	elapsed := time.Since(start)
-	log.Print("Whole thing took ", elapsed)
+	log.Print(elapsed, " to prepare blame for ", commitHash)
 
 	// TODO: add map so this lookup is O(1)?
 	var i int
