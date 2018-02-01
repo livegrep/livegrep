@@ -179,7 +179,6 @@ public:
         line_set_key k(m->file, m->lno);
         bool already_inserted = ! unique_lines_->insert(k).second;
         if (already_inserted) {
-            log("DUP");
             return;
         }
 

@@ -237,11 +237,22 @@ public:
     void operator()(const chunk *chunk);
 
     void get_stats(match_stats *stats) {
-        stats->re2_time = re2_time_.elapsed();
-        stats->git_time = git_time_.elapsed();
-        stats->index_time = index_time_.elapsed();
-        stats->sort_time  = sort_time_.elapsed();
-        stats->analyze_time  = analyze_time_.elapsed();
+        struct timeval t;
+
+        t = re2_time_.elapsed();
+        timeradd(&stats->re2_time, &t, &stats->re2_time);
+
+        t = git_time_.elapsed();
+        timeradd(&stats->git_time, &t, &stats->git_time);
+
+        t = index_time_.elapsed();
+        timeradd(&stats->index_time, &t, &stats->index_time);
+
+        t = sort_time_.elapsed();
+        timeradd(&stats->sort_time , &t, &stats->sort_time);
+
+        t = analyze_time_.elapsed();
+        timeradd(&stats->analyze_time, &t, &stats->analyze_time);
     }
 
     exit_reason why() {
@@ -1141,8 +1152,6 @@ void code_searcher::search_thread::match(const query &q,
 
     file_queue_.push(&j);
 
-    memset(stats, 0, sizeof *stats);
-
     if (!q.filename_only) {
         while (search.queue_.pop(&m)) {
             matches++;
@@ -1159,13 +1168,15 @@ void code_searcher::search_thread::match(const query &q,
 
     if (q.filename_only) {
         stats->why = file_search.why();
-        stats->matches = file_matches;
+        stats->matches += file_matches;
     } else {
         search.get_stats(stats);
         stats->why = search.why();
-        stats->matches = matches;
+        stats->matches += matches;
     }
-    stats->analyze_time = analyze_time.elapsed();
+
+    struct timeval t = analyze_time.elapsed();
+    timeradd(&stats->analyze_time, &t, &stats->analyze_time);
 }
 
 

@@ -82,6 +82,14 @@ struct match_stats {
     timeval analyze_time;
     int matches;
     exit_reason why;
+
+    match_stats() : re2_time((struct timeval){0}),
+        git_time((struct timeval){0}),
+        sort_time((struct timeval){0}),
+        index_time((struct timeval){0}),
+        analyze_time((struct timeval){0}),
+        matches(0),
+        why(kExitNone) {}
 };
 
 struct chunk;
