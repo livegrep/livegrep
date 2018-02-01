@@ -96,6 +96,21 @@ func initBlame(cfg *config.Config) error {
 }
 
 func resolveCommit(repo config.RepoConfig, commitName string, data *BlameData) error {
+	// TODO: this is an awkward fix for a synchronization problem.
+	// The necessary order of operations of a server will be to "git
+	// pull" a new master before then running "git log", which means
+	// there will be a period of time during which HEAD in the repo
+	// has advanced beyond the most recent commit in the blame data.
+	// This would cause a 404 when the user lands on the blame page,
+	// if we didn't artificially change "HEAD" to the final hash in
+	// our list.  Is there some way that we can more organically
+	// prevent this problem, that will also work for named branches
+	// like "master"?
+	if commitName == "HEAD" {
+		h := histories[repo.Name].Hashes
+		commitName = h[len(h) - 1]
+	}
+
 	output, err := gitShowCommit(commitName, repo.Path)
 	if err != nil {
 		return err
