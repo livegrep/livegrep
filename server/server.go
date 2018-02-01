@@ -198,7 +198,7 @@ func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.
 
 	isDiff := false // TODO: remove
 	data := BlameData{}
-	resolveCommit(repo, hash, &data)
+	resolveCommit(repo, hash, path, &data)
 	if data.CommitHash != hash {
 		pat1 := "/" + hash + "/"
 		pat2 := "/" + data.CommitHash + "/"
@@ -247,7 +247,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 	data := DiffData{}
 	data2 := BlameData{}
-	resolveCommit(repo, hash, &data2)
+	resolveCommit(repo, hash, "", &data2)
 	data.CommitHash = data2.CommitHash
 	data.Author = data2.Author
 	data.Date = data2.Date

@@ -95,7 +95,7 @@ func initBlame(cfg *config.Config) error {
 	return nil
 }
 
-func resolveCommit(repo config.RepoConfig, commitName string, data *BlameData) error {
+func resolveCommit(repo config.RepoConfig, commitName, path string, data *BlameData) error {
 	// TODO: this is an awkward fix for a synchronization problem.
 	// The necessary order of operations of a server will be to "git
 	// pull" a new master before then running "git log", which means
@@ -107,10 +107,19 @@ func resolveCommit(repo config.RepoConfig, commitName string, data *BlameData) e
 	// prevent this problem, that will also work for named branches
 	// like "master"?
 	if commitName == "HEAD" {
+		// "HEAD" -> the last commit we know of.
 		h := histories[repo.Name].Hashes
 		commitName = h[len(h) - 1]
-	}
 
+		// If we were given a path then pivot, if possible, to
+		// the last commit of that file.
+		if len(path) > 0 {
+			h, ok := histories[repo.Name].Files[path]
+			if ok {
+				commitName = h[len(h) - 1].Hash
+			}
+		}
+	}
 	output, err := gitShowCommit(commitName, repo.Path)
 	if err != nil {
 		return err
