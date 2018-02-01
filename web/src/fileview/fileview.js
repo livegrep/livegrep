@@ -233,6 +233,13 @@ function init(initData) {
       // Visually highlight the external link to indicate what happened
       $('#external-link').focus();
       window.location = $('#external-link').attr('href');
+    } else if (String.fromCharCode(event.which) == 'Y') {
+      var $a = $('#permalink');
+      var permalink_is_present = $a.length > 0;
+      if (permalink_is_present) {
+        $a.focus();
+        window.location = $a.attr('href');
+      }
     }
 
     return true;

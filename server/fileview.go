@@ -64,6 +64,7 @@ type fileViewerContext struct {
 	FileContent    *sourceFileContent
 	IsBlameAvailable bool
 	ExternalDomain string
+	Permalink      string
 }
 
 type sourceFileContent struct {
@@ -176,11 +177,16 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo c
 }
 
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
+	commitHash := commit
+	out, err := gitShowCommit(commit, repo.Path)
+	if err == nil {
+		commitHash = out[:strings.Index(out, "\n")]
+	}
 	cleanPath := path.Clean(relativePath)
 	if cleanPath == "." {
 		cleanPath = ""
 	}
-	obj := commit + ":" + cleanPath
+	obj := commitHash + ":" + cleanPath
 	pathSplits := strings.Split(cleanPath, "/")
 
 	var fileContent *sourceFileContent
@@ -231,6 +237,11 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		externalDomain = url.Hostname()
 	}
 
+	permalink := ""
+	if !strings.HasPrefix(commitHash, commit) {
+		permalink = "?commit=" + commitHash[:16]
+	}
+
 	return &fileViewerContext{
 		PathSegments:   segments,
 		Repo:           repo,
@@ -239,5 +250,6 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		FileContent:    fileContent,
 		IsBlameAvailable: isBlameAvailable,
 		ExternalDomain: externalDomain,
+		Permalink:      permalink,
 	}, nil
 }

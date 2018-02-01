@@ -17,6 +17,11 @@
       <li class="header-action">
         <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
       </li>,
+      {{if .Permalink}}
+      <li class="header-action">
+        <a id="permalink" data-action-name="" title="Permalink. Keyboard shortcut: y" href="{{.Permalink}}">permalink [<span class='shortcut'>y</span>]</a>
+      </li>,
+      {{end}}
       <li class="header-action">
         <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
       </li>
