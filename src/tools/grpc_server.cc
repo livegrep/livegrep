@@ -165,26 +165,22 @@ public:
     typedef std::set<std::string> line_set;
 
     add_match(CodeSearchResult* response)
-        : unique_lines_(NULL), response_(response) {}
-
-    add_match(line_set* unique_lines, CodeSearchResult* response)
-        : unique_lines_(unique_lines), response_(response) {}
+        : unique_lines_(new line_set), response_(response) {}
 
     int match_count() {
         return response_->results_size();
     }
 
     void operator()(const match_result *m) const {
-        if (unique_lines_ != NULL) {
-            // Avoid a duplicate if a line is returned once from the
-            // tags search then again during the main corpus search.
-            std::string key = std::string(m->file->tree->name)
-              + " " + std::string(m->file->tree->version)
-              + " " + std::string(m->file->path)
-              + " " + std::to_string(m->lno);
-            bool was_inserted = unique_lines_->insert(key).second;
-            if (!was_inserted)
-                return;
+        // Avoid a duplicate if a line is returned once from the
+        // tags search then again during the main corpus search.
+        std::string key = std::string(m->file->tree->name)
+            + " " + std::string(m->file->tree->version)
+            + " " + std::string(m->file->path)
+            + " " + std::to_string(m->lno);
+        bool was_inserted = unique_lines_->insert(key).second;
+        if (!was_inserted) {
+            return;
         }
 
         auto result = response_->add_results();
@@ -312,8 +308,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         string regex;
         int32_t max_matches = q.max_matches;  // remember original value
 
-        add_match::line_set unique_lines;
-        add_match cb(&unique_lines, response);
+        add_match cb(response);
 
         /* To surface the most important matches first, start with tags.
            First pass: is the pattern an exact match for any tags? */
