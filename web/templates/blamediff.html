@@ -3,7 +3,9 @@
   <link rel="stylesheet" href="/assets/css/blame.css" />
   <title>Commit {{.commitHash}}</title>
 </head>
-<body class="wide"><div id="header">                                               commit <b>{{.commitHash}}</b>
+<body class="wide"><div id="header">                                               <b>THIS FEATURE IS IN ALPHA TESTING - PLEASE PING brhodes@ NOT #code-workflows :)</b>
+
+                                               commit <b>{{.commitHash}}</b>
 {{with .blame}}
 {{if .PreviousCommit}}«Previous commit{{else}}                {{end}}{{if .NextCommit}}     Next commit»{{else}}                 {{end}}              Author: {{.Author}}
 {{if .PreviousCommit}}<a href="{{.PreviousCommit}}">{{.PreviousCommit}}</a>{{else}}                {{end}} {{if .NextCommit}}<a href="{{.NextCommit}}">{{.NextCommit}}</a>{{else}}                {{end}}              Date: {{.Date}}
