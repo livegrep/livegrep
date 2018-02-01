@@ -149,20 +149,25 @@ function init(initData) {
 
     // Update the external-browse link
     $('#external-link').attr('href', getExternalLink(range));
+    updateFragments(range, $('#permalink, #back-to-head'));
   }
 
-  function getExternalLink(range) {
+  function getLineNumber(range) {
     if (range == null) {
       // Default to first line if no lines are selected.
-      lno = 1;
+      return 1;
     } else if (range.start == range.end) {
-      lno = range.start;
+      return range.start;
     } else {
       // We blindly assume that the external viewer supports linking to a
       // range of lines. Github doesn't support this, but highlights the
       // first line given, which is close enough.
-      lno = range.start + "-" + range.end;
+      return range.start + "-" + range.end;
     }
+  }
+
+  function getExternalLink(range) {
+    var lno = getLineNumber(range);
 
     // Disassemble the current URL
     var path = window.location.pathname.slice(6); // Strip "/view/" prefix
@@ -182,6 +187,17 @@ function init(initData) {
     url = url.replace('{name}', repoName);
     url = url.replace('{path}', pathInRepo);
     return url;
+  }
+
+  function updateFragments(range, $anchors) {
+    $anchors.each(function() {
+      var $a = $(this);
+      var href = $a.attr('href').split('#')[0];
+      if (range !== null) {
+        href += '#L' + getLineNumber(range);
+      }
+      $a.attr('href', href);
+    });
   }
 
   function processKeyEvent(event) {
@@ -210,6 +226,13 @@ function init(initData) {
       // Visually highlight the external link to indicate what happened
       $('#external-link').focus();
       window.location = $('#external-link').attr('href');
+    } else if (String.fromCharCode(event.which) == 'Y') {
+      var $a = $('#permalink');
+      var permalink_is_present = $a.length > 0;
+      if (permalink_is_present) {
+        $a.focus();
+        window.location = $a.attr('href');
+      }
     }
 
     return true;
