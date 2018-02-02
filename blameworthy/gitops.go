@@ -137,6 +137,8 @@ func ParseGitLog(input_stream io.ReadCloser) (*GitHistory, error) {
 	commits := history.Commits
 	files := history.Files
 
+	authors := map[string]string{} // dedup authors
+
 	var hash string
 	var commit *Commit
 	var diff *Diff
@@ -188,6 +190,18 @@ func ParseGitLog(input_stream io.ReadCloser) (*GitHistory, error) {
 					scanner.Scan()
 				}
 			}
+		} else if len(commit.Author) == 0 && strings.HasPrefix(line, "Author: ") {
+			a := strings.TrimSpace(line[8:])
+			a2, ok := authors[a]
+			if ok {
+				commit.Author = a2
+			} else {
+				authors[a] = a
+			}
+		} else if commit.Date == 0 && strings.HasPrefix(line, "Date: ") {
+			// TODO: also learn to parse normal "git log" dates?
+			n, _ := strconv.Atoi(line[6:])
+			commit.Date = int32(n)
 		}
 	}
 	return &history, scanner.Err()

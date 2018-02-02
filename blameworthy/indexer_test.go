@@ -2,13 +2,15 @@ package blameworthy
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
 func TestStepping(t *testing.T) {
-	c := func (hash string) *Commit {
-		return &Commit{hash, "", 0, nil}
-	}
+	a1 := &Commit{"a1", "", 0, nil}
+	b2 := &Commit{"b2", "", 0, nil}
+	c3 := &Commit{"c3", "", 0, nil}
+
 	var tests = []struct {
 		inputCommits   File
 		expectedOutput string
@@ -17,21 +19,21 @@ func TestStepping(t *testing.T) {
 		"[]",
 	}, {
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
 		},
 		"[[{3 1 a1}]]",
 	}, {
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{c("b2"), "test.txt", []Hunk{
+			{b2, "test.txt", []Hunk{
 				{1, 0, 2, 2},
 				{2, 0, 5, 2},
 			}},
-			{c("c3"), "test.txt", []Hunk{
+			{c3, "test.txt", []Hunk{
 				{1, 1, 1, 0},
 				{4, 2, 3, 1},
 			}},
@@ -41,10 +43,10 @@ func TestStepping(t *testing.T) {
 			" [{2 2 b2} {1 3 c3} {1 6 b2} {1 3 a1}]]",
 	}, {
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{c("b2"), "test.txt", []Hunk{
+			{b2, "test.txt", []Hunk{
 				{1, 1, 0, 0}, // remove 1st line
 				{2, 0, 2, 1}, // add new line 2
 			}},
@@ -52,20 +54,20 @@ func TestStepping(t *testing.T) {
 		"[[{3 1 a1}] [{1 2 a1} {1 2 b2} {1 3 a1}]]",
 	}, {
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{c("b2"), "test.txt", []Hunk{
+			{b2, "test.txt", []Hunk{
 				{1, 3, 0, 0},
 			}},
 		},
 		"[[{3 1 a1}] []]",
 	}, {
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{c("b2"), "test.txt", []Hunk{
+			{b2, "test.txt", []Hunk{
 				{0, 0, 4, 1},
 			}},
 		},
@@ -78,25 +80,34 @@ func TestStepping(t *testing.T) {
 			segments = commit.step(segments)
 			out = append(out, segments)
 		}
-		if fmt.Sprint(out) != test.expectedOutput {
+		s := fmt.Sprint(out)
+
+		// Replace pointer values with commit hashes.
+		s = strings.Replace(s, fmt.Sprintf("%p", a1), "a1", -1)
+		s = strings.Replace(s, fmt.Sprintf("%p", b2), "b2", -1)
+		s = strings.Replace(s, fmt.Sprintf("%p", c3), "c3", -1)
+
+		if s != test.expectedOutput {
 			t.Error("Test", testIndex+1, "failed",
 				"\n  Wanted", test.expectedOutput,
 				"\n  Got   ", fmt.Sprint(out),
 				"\n  From  ", test.inputCommits)
+			return
 		}
 	}
 }
 
 func TestAtMethod(t *testing.T) {
-	c := func (hash string) *Commit {
-		return &Commit{hash, "", 0, nil}
-	}
+	a1 := &Commit{"a1", "", 0, nil}
+	b2 := &Commit{"b2", "", 0, nil}
+	c3 := &Commit{"c3", "", 0, nil}
+
 	var tests = []struct {
 		inputCommits   File
 		expectedOutput string
 	}{{
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
 		}, "" +
@@ -104,14 +115,14 @@ func TestAtMethod(t *testing.T) {
 			"FUTURE [{ 1} { 2} { 3}]",
 	}, {
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{c("b2"), "test.txt", []Hunk{
+			{b2, "test.txt", []Hunk{
 				{1, 0, 2, 2},
 				{2, 0, 5, 2},
 			}},
-			{c("c3"), "test.txt", []Hunk{
+			{c3, "test.txt", []Hunk{
 				{1, 1, 1, 0},
 				{4, 2, 3, 1},
 			}},
@@ -124,10 +135,10 @@ func TestAtMethod(t *testing.T) {
 			"FUTURE [{ 1} { 2} { 3} { 4} { 5}]",
 	}, {
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{c("b2"), "test.txt", []Hunk{
+			{b2, "test.txt", []Hunk{
 				{1, 1, 0, 0}, // remove 1st line
 				{2, 0, 2, 1}, // add new line 2
 			}},
@@ -138,10 +149,10 @@ func TestAtMethod(t *testing.T) {
 			"FUTURE [{ 1} { 2} { 3}]",
 	}, {
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{c("b2"), "test.txt", []Hunk{
+			{b2, "test.txt", []Hunk{
 				{1, 3, 0, 0},
 			}},
 		}, "" +
@@ -151,10 +162,10 @@ func TestAtMethod(t *testing.T) {
 			"FUTURE []",
 	}, {
 		File{
-			{c("a1"), "test.txt", []Hunk{
+			{a1, "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{c("b2"), "test.txt", []Hunk{
+			{b2, "test.txt", []Hunk{
 				{0, 0, 4, 1},
 			}},
 		}, "" +
@@ -185,7 +196,14 @@ func TestAtMethod(t *testing.T) {
 			out += fmt.Sprint("BLAME ", r.BlameVector)
 			out += fmt.Sprint("FUTURE ", r.FutureVector)
 		}
-		if fmt.Sprint(out) != test.expectedOutput {
+
+		// Replace pointer values with commit hashes.
+		out = strings.Replace(out, fmt.Sprintf("%p", a1), "a1", -1)
+		out = strings.Replace(out, fmt.Sprintf("%p", b2), "b2", -1)
+		out = strings.Replace(out, fmt.Sprintf("%p", c3), "c3", -1)
+		out = strings.Replace(out, "<nil>", "", -1)
+
+		if out != test.expectedOutput {
 			t.Error("Test", testIndex+1, "failed",
 				"\n  Wanted", test.expectedOutput,
 				"\n  Got   ", out,
@@ -195,9 +213,9 @@ func TestAtMethod(t *testing.T) {
 }
 
 func TestPreviousAndNext(t *testing.T) {
-	c := func (hash string) *Commit {
-		return &Commit{hash, "", 0, nil}
-	}
+	b2 := &Commit{"b2", "", 0, nil}
+	d4 := &Commit{"d4", "", 0, nil}
+
 	var tests = []struct {
 		history         GitHistory
 		expectedResults []string
@@ -207,8 +225,8 @@ func TestPreviousAndNext(t *testing.T) {
 			nil,
 			map[string]File{
 				"README": {
-					Diff{c("b2"), "test.txt", []Hunk{{0, 0, 1, 2}}},
-					Diff{c("d4"), "test.txt", []Hunk{{2, 1, 2, 1}}},
+					Diff{b2, "test.txt", []Hunk{{0, 0, 1, 2}}},
+					Diff{d4, "test.txt", []Hunk{{2, 1, 2, 1}}},
 				},
 			},
 		},
@@ -224,18 +242,23 @@ func TestPreviousAndNext(t *testing.T) {
 		for i, expectedResult := range test.expectedResults {
 			hash := test.history.Hashes[i]
 			result, err := test.history.FileBlame(hash, "README")
-			output := ""
+			out := ""
 			if err != nil {
-				output = fmt.Sprint(err)
+				out = fmt.Sprint(err)
 			} else {
-				output = fmt.Sprint(*result)
+				out = fmt.Sprint(*result)
 			}
-			if output != expectedResult {
+
+			out = strings.Replace(out, fmt.Sprintf("%p", b2), "b2", -1)
+			out = strings.Replace(out, fmt.Sprintf("%p", d4), "d4", -1)
+			out = strings.Replace(out, "<nil>", "", -1)
+
+			if out != expectedResult {
 				t.Error("Test", testIndex+1,
 					"line", i+1,
 					"failed",
 					"\n  Wanted", expectedResult,
-					"\n  Got   ", output)
+					"\n  Got   ", out)
 			}
 		}
 	}

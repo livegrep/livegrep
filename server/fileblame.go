@@ -161,9 +161,9 @@ func buildBlameData(
 	for i, b := range result.BlameVector {
 		f := result.FutureVector[i]
 		lines = append(lines, BlameLine{
-			orBlank(b.CommitHash),
+			orBlank(b.Commit),
 			b.LineNumber,
-			orStillExists(f.CommitHash),
+			orStillExists(f.Commit),
 			f.LineNumber,
 			i + 1,
 			0,
@@ -353,9 +353,9 @@ func extendDiff(
 
 	both := func() {
 		lines = append(lines, BlameLine{
-			orBlank(blameVector[j].CommitHash),
+			orBlank(blameVector[j].Commit),
 			blameVector[j].LineNumber,
-			orStillExists(futureVector[k].CommitHash),
+			orStillExists(futureVector[k].Commit),
 			futureVector[k].LineNumber,
 			j + 1,
 			k + 1,
@@ -368,7 +368,7 @@ func extendDiff(
 	}
 	left := func() {
 		lines = append(lines, BlameLine{
-			orBlank(blameVector[j].CommitHash),
+			orBlank(blameVector[j].Commit),
 			blameVector[j].LineNumber,
 			//"  (this commit) ",
 			blankHash,
@@ -385,7 +385,7 @@ func extendDiff(
 			//"  (this commit) ",
 			blankHash,
 			0,
-			orStillExists(futureVector[k].CommitHash),
+			orStillExists(futureVector[k].Commit),
 			futureVector[k].LineNumber,
 			0,
 			k + 1,
@@ -459,18 +459,18 @@ func gitShowCommit(commitHash string, repoPath string) (string, error) {
 	return string(out), nil
 }
 
-func orBlank(s string) string {
-	if len(s) > 0 {
-		return s
+func orBlank(c *blameworthy.Commit) string {
+	if c == nil {
+		return blankHash
 	}
-	return blankHash
+	return c.Hash
 }
 
-func orStillExists(s string) string {
-	if len(s) > 0 {
-		return s
+func orStillExists(c *blameworthy.Commit) string {
+	if c == nil {
+		return " (still exists) "
 	}
-	return " (still exists) "
+	return c.Hash
 }
 
 func splitLines(s string) []string {

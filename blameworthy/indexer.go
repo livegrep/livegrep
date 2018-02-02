@@ -5,15 +5,15 @@ import (
 )
 
 type BlameSegment struct {
-	LineCount  int
-	LineStart  int
-	CommitHash string
+	LineCount int
+	LineStart int
+	Commit    *Commit
 }
 
 type BlameSegments []BlameSegment
 
 type BlameLine struct {
-	CommitHash string
+	Commit     *Commit
 	LineNumber int
 }
 
@@ -130,7 +130,7 @@ func getHash(history File, i int) string {
 	return ""
 }
 
-func (commit Diff) step(oldb BlameSegments) BlameSegments {
+func (diff Diff) step(oldb BlameSegments) BlameSegments {
 	newb := BlameSegments{}
 	olineno := 1
 	nlineno := 1
@@ -147,7 +147,7 @@ func (commit Diff) step(oldb BlameSegments) BlameSegments {
 			// fmt.Print(linecount, oldb, oi, "\n")
 			progress := oldb[oi].LineCount - ocount
 			start := oldb[oi].LineStart + progress
-			hash := oldb[oi].CommitHash
+			hash := oldb[oi].Commit
 			newb = append(newb, BlameSegment{ocount, start, hash})
 			nlineno += ocount
 			linecount -= ocount
@@ -161,9 +161,8 @@ func (commit Diff) step(oldb BlameSegments) BlameSegments {
 		if linecount > 0 {
 			progress := oldb[oi].LineCount - ocount
 			start := oldb[oi].LineStart + progress
-			commit_hash := oldb[oi].CommitHash
-			newb = append(newb,
-				BlameSegment{linecount, start, commit_hash})
+			commit := oldb[oi].Commit
+			newb = append(newb, BlameSegment{linecount, start, commit})
 			nlineno += linecount
 			ocount -= linecount
 			olineno += linecount
@@ -185,14 +184,14 @@ func (commit Diff) step(oldb BlameSegments) BlameSegments {
 		// olineno += linecount
 		// fmt.Print("skip done")
 	}
-	add := func(linecount int, commit_hash string) {
+	add := func(linecount int, commit *Commit) {
 		// fmt.Print("add ", linecount, commit_hash, "\n")
 		start := nlineno
-		newb = append(newb, BlameSegment{linecount, start, commit_hash})
+		newb = append(newb, BlameSegment{linecount, start, commit})
 		nlineno += linecount
 	}
 
-	for _, h := range commit.Hunks {
+	for _, h := range diff.Hunks {
 		// fmt.Print("HUNK ", h, "\n")
 		if h.OldLength > 0 {
 			ff(h.OldStart - olineno)
@@ -200,7 +199,7 @@ func (commit Diff) step(oldb BlameSegments) BlameSegments {
 		}
 		if h.NewLength > 0 {
 			ff(h.NewStart - nlineno)
-			add(h.NewLength, commit.Commit.Hash)
+			add(h.NewLength, diff.Commit)
 		}
 	}
 
@@ -220,11 +219,11 @@ func (commit Diff) step(oldb BlameSegments) BlameSegments {
 	return newb
 }
 
-func reverse_in_place(commits File) {
+func reverse_in_place(diffs File) {
 	// Reverse the effect of each hunk.
-	for i := range commits {
-		for j := range commits[i].Hunks {
-			h := &commits[i].Hunks[j]
+	for i := range diffs {
+		for j := range diffs[i].Hunks {
+			h := &diffs[i].Hunks[j]
 			h.OldStart, h.NewStart = h.NewStart, h.OldStart
 			h.OldLength, h.NewLength = h.NewLength, h.OldLength
 		}
@@ -236,7 +235,7 @@ func (segments BlameSegments) wipe() BlameSegments {
 	for _, segment := range segments {
 		n += segment.LineCount
 	}
-	return BlameSegments{{n, 1, ""}}
+	return BlameSegments{{n, 1, nil}}
 }
 
 func (segments BlameSegments) flatten() BlameVector {
@@ -244,7 +243,7 @@ func (segments BlameSegments) flatten() BlameVector {
 	for _, segment := range segments {
 		for i := 0; i < segment.LineCount; i++ {
 			n := segment.LineStart + i
-			v = append(v, BlameLine{segment.CommitHash, n})
+			v = append(v, BlameLine{segment.Commit, n})
 		}
 	}
 	return v
