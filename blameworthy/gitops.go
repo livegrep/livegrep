@@ -15,8 +15,10 @@ const HashLength = 16 // number of hash characters to preserve
 type GitHistory struct {
 	Hashes  []string
 	Commits map[string][]*Diff
-	Files   map[string][]Diff
+	Files   map[string]File
 }
+
+type File []Diff
 
 type Diff struct {
 	Hash  string
@@ -123,7 +125,7 @@ func ParseGitLog(input_stream io.ReadCloser) (*GitHistory, error) {
 
 	history := GitHistory{}
 	history.Commits = make(map[string][]*Diff)
-	history.Files = make(map[string][]Diff)
+	history.Files = make(map[string]File)
 
 	commits := history.Commits
 	files := history.Files

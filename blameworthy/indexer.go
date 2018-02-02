@@ -72,10 +72,10 @@ func (history GitHistory) FileBlame(commitHash string, path string) (*BlameResul
 	return &r, nil
 }
 
-func (history GitHistory) findCommit(commitHash string, path string) ([]Diff, int, error) {
+func (history GitHistory) findCommit(commitHash string, path string) (File, int, error) {
 	fileHistory, ok := history.Files[path]
 	if !ok {
-		return []Diff{}, -1, fmt.Errorf("no such file: %v", path)
+		return File{}, -1, fmt.Errorf("no such file: %v", path)
 	}
 	i := 0
 	j := 0
@@ -89,16 +89,16 @@ func (history GitHistory) findCommit(commitHash string, path string) ([]Diff, in
 		}
 	}
 	if i == len(history.Hashes) {
-		return []Diff{}, -1, fmt.Errorf("no such commit: %v", commitHash)
+		return File{}, -1, fmt.Errorf("no such commit: %v", commitHash)
 	}
 	if j == 0 {
-		return []Diff{}, -1, fmt.Errorf("file %s does not exist at commit %s",
+		return File{}, -1, fmt.Errorf("file %s does not exist at commit %s",
 			path, commitHash)
 	}
 	return fileHistory, j, nil
 }
 
-func blame(history []Diff, end int, bump int) (BlameVector, BlameVector) {
+func blame(history File, end int, bump int) (BlameVector, BlameVector) {
 	segments := BlameSegments{}
 	var i int
 	for i = 0; i < end+bump; i++ {
@@ -123,7 +123,7 @@ func blame(history []Diff, end int, bump int) (BlameVector, BlameVector) {
 
 // Return the hash of the i'th array member if i is in-bounds, else "".
 // This makes the above code slightly less verbose.
-func getHash(history []Diff, i int) string {
+func getHash(history File, i int) string {
 	if i >= 0 && i < len(history) {
 		return history[i].Hash
 	}
@@ -220,7 +220,7 @@ func (commit Diff) step(oldb BlameSegments) BlameSegments {
 	return newb
 }
 
-func reverse_in_place(commits []Diff) {
+func reverse_in_place(commits File) {
 	// Reverse the effect of each hunk.
 	for i := range commits {
 		for j := range commits[i].Hunks {
