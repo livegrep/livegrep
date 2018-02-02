@@ -19,15 +19,16 @@ type GitHistory struct {
 }
 
 type Commit struct {
+	Hash  string
 	Diffs []*Diff
 }
 
 type File []Diff
 
 type Diff struct {
-	Hash  string
-	Path  string
-	Hunks []Hunk
+	Commit *Commit
+	Path   string
+	Hunks  []Hunk
 }
 
 type Hunk struct {
@@ -148,7 +149,7 @@ func ParseGitLog(input_stream io.ReadCloser) (*GitHistory, error) {
 		if strings.HasPrefix(line, "commit ") {
 			hash = line[7 : 7+HashLength]
 			history.Hashes = append(history.Hashes, hash)
-			commit = &Commit{}
+			commit = &Commit{hash, nil}
 			commits[hash] = commit
 		} else if strings.HasPrefix(line, "--- ") {
 			path := line[4:]
@@ -158,7 +159,7 @@ func ParseGitLog(input_stream io.ReadCloser) (*GitHistory, error) {
 				path = line2[4:]
 			}
 			files[path] = append(files[path],
-				Diff{hash, path, []Hunk{}})
+				Diff{commit, path, []Hunk{}})
 			diff = &files[path][len(files[path])-1]
 			commit.Diffs = append(commit.Diffs, diff)
 		} else if strings.HasPrefix(line, "@@ ") {

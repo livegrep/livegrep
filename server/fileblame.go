@@ -116,7 +116,7 @@ func resolveCommit(repo config.RepoConfig, commitName, path string, data *BlameD
 		if len(path) > 0 {
 			h, ok := histories[repo.Name].Files[path]
 			if ok {
-				commitName = h[len(h)-1].Hash
+				commitName = h[len(h)-1].Commit.Hash
 			}
 		}
 	}

@@ -34,7 +34,7 @@ func (history GitHistory) DiffBlame(commitHash string, path string) (*BlameResul
 	}
 	i := 0
 	for i = range commits {
-		if commits[i].Hash == commitHash {
+		if commits[i].Commit.Hash == commitHash {
 			break
 		}
 	}
@@ -46,10 +46,10 @@ func (history GitHistory) DiffBlame(commitHash string, path string) (*BlameResul
 	r.Hunks = commits[i].Hunks
 	r.BlameVector, r.FutureVector = blame(commits, i+1, -1)
 	if i-1 >= 0 {
-		r.PreviousCommitHash = commits[i-1].Hash
+		r.PreviousCommitHash = commits[i-1].Commit.Hash
 	}
 	if i+1 < len(commits) {
-		r.NextCommitHash = commits[i+1].Hash
+		r.NextCommitHash = commits[i+1].Commit.Hash
 	}
 	return &r, nil
 }
@@ -62,7 +62,7 @@ func (history GitHistory) FileBlame(commitHash string, path string) (*BlameResul
 	i-- // TODO: inline findCommit so we don't need this
 	r := BlameResult{}
 	r.BlameVector, r.FutureVector = blame(fileHistory, i+1, 0)
-	if fileHistory[i].Hash == commitHash {
+	if fileHistory[i].Commit.Hash == commitHash {
 		r.PreviousCommitHash = getHash(fileHistory, i-1)
 		r.NextCommitHash = getHash(fileHistory, i+1)
 	} else {
@@ -81,7 +81,7 @@ func (history GitHistory) findCommit(commitHash string, path string) (File, int,
 	j := 0
 	for ; i < len(history.Hashes); i++ {
 		h := history.Hashes[i]
-		if j < len(fileHistory) && fileHistory[j].Hash == h {
+		if j < len(fileHistory) && fileHistory[j].Commit.Hash == h {
 			j++
 		}
 		if h == commitHash {
@@ -125,7 +125,7 @@ func blame(history File, end int, bump int) (BlameVector, BlameVector) {
 // This makes the above code slightly less verbose.
 func getHash(history File, i int) string {
 	if i >= 0 && i < len(history) {
-		return history[i].Hash
+		return history[i].Commit.Hash
 	}
 	return ""
 }
@@ -200,7 +200,7 @@ func (commit Diff) step(oldb BlameSegments) BlameSegments {
 		}
 		if h.NewLength > 0 {
 			ff(h.NewStart - nlineno)
-			add(h.NewLength, commit.Hash)
+			add(h.NewLength, commit.Commit.Hash)
 		}
 	}
 
