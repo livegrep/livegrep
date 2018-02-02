@@ -458,10 +458,18 @@ func gitShowCommit(commitHash string, repoPath string) (string, error) {
 	return string(out), nil
 }
 
+// Make something exactly one column wide.
+func col(s string) string {
+	if len(s) >= 19 {
+		return s
+	}
+	return fmt.Sprintf("%-19s", s)
+}
+
 var (
-	blankCommit = blameworthy.Commit{"", "                ", 0, nil}
-	stillExistsCommit = blameworthy.Commit{"", " (still exists) ", 0, nil}
-	ellipsisCommit = blameworthy.Commit{"", "        .       ", 0, nil}
+	blankCommit       = blameworthy.Commit{"", col(""), 0, nil}
+	stillExistsCommit = blameworthy.Commit{"", col("(still exists)"), 0, nil}
+	ellipsisCommit    = blameworthy.Commit{"", col("    ."), 0, nil}
 )
 
 func orBlank(c *blameworthy.Commit) *blameworthy.Commit {
