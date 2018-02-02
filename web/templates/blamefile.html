@@ -10,7 +10,7 @@
 {{if .PreviousCommit}}«Previous commit{{else}}                {{end}} {{if .NextCommit}}    Next commit»{{else}}                {{end}}       Author: {{.Author}}
 {{if .PreviousCommit}}<a href="{{.PreviousCommit}}">{{.PreviousCommit}}</a>{{else}}                {{end}} {{if .NextCommit}}<a href="{{.NextCommit}}">{{.NextCommit}}</a>{{else}}                {{end}}       Date: {{.Date}}
                                         “{{.Subject}}”
- Line added by:  Line deleted by:</div><div class="rtl"><div id="content">{{$.content}}</div>&nbsp;&nbsp;<div id="hashes">
+Line added by:      Line deleted by:</div><div class="rtl"><div id="content">{{$.content}}</div>&nbsp;&nbsp;<div id="hashes">
 {{- range .Lines -}}
 {{if .PreviousCommit.Hash}}<a href="{{.PreviousCommit.Hash}}.a{{.PreviousLineNumber}}">{{prettyCommit .PreviousCommit}}</a>{{else}}{{.PreviousCommit.Author}}{{end}} {{if .NextCommit.Hash}}<a href="{{.NextCommit.Hash}}.d{{.NextLineNumber}}">{{prettyCommit .NextCommit}}</a>{{else}}{{.NextCommit.Author}}{{end}}{{if .OldLineNumber}} <a id="{{.OldLineNumber}}">{{.OldLineNumber | printf "%4d"}}</a>{{else}}     {{end}}
 {{end}}

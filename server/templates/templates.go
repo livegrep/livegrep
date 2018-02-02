@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -24,7 +25,12 @@ func templatePath(f reflect.StructField) string {
 }
 
 func prettyCommit(c *blameworthy.Commit) string {
-	return c.Hash
+	if len(c.Author) > 0 && c.Date > 0 {
+		return fmt.Sprintf("%04d-%02d-%02d %.8s",
+			c.Date / 10000, c.Date % 10000 / 100, c.Date % 100,
+			c.Author)
+	}
+	return c.Hash + "   " // turn 16 characters into 19
 }
 
 func LinkTag(rel string, s string, m map[string]string) template.HTML {

@@ -49,12 +49,12 @@ non-existent ":before" is given a "content"): */
     z-index: -1;                /* place behind text of file */
     box-sizing: border-box;     /* so border-width doesn't oversize it */
     width: 100%;
-    border-width: 0 0 0 39ch;
+    border-width: 0 0 0 45ch;
     border-style: solid;
     border-color: white;
 }
 body.wide #hashes > a:before {
-    border-width: 0 0 0 44ch;
+    border-width: 0 0 0 49ch;
 }
 
 /* When a commit hash is being highlighted, paint a green or red
@@ -89,7 +89,7 @@ colors behind the lines it adds and deletes: */
     left: 0;
     box-sizing: border-box;
     width: 100%;
-    border-width: 0 0 0 44ch;
+    border-width: 0 0 0 50ch;
     border-style: solid;
     border-color: white;
     z-index: -2;                /* place behind text of file and highlights */
