@@ -6,6 +6,9 @@ import (
 )
 
 func TestStepping(t *testing.T) {
+	c := func (hash string) *Commit {
+		return &Commit{hash, "", 0, nil}
+	}
 	var tests = []struct {
 		inputCommits   File
 		expectedOutput string
@@ -14,21 +17,21 @@ func TestStepping(t *testing.T) {
 		"[]",
 	}, {
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
 		},
 		"[[{3 1 a1}]]",
 	}, {
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{&Commit{"b2", nil}, "test.txt", []Hunk{
+			{c("b2"), "test.txt", []Hunk{
 				{1, 0, 2, 2},
 				{2, 0, 5, 2},
 			}},
-			{&Commit{"c3", nil}, "test.txt", []Hunk{
+			{c("c3"), "test.txt", []Hunk{
 				{1, 1, 1, 0},
 				{4, 2, 3, 1},
 			}},
@@ -38,10 +41,10 @@ func TestStepping(t *testing.T) {
 			" [{2 2 b2} {1 3 c3} {1 6 b2} {1 3 a1}]]",
 	}, {
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{&Commit{"b2", nil}, "test.txt", []Hunk{
+			{c("b2"), "test.txt", []Hunk{
 				{1, 1, 0, 0}, // remove 1st line
 				{2, 0, 2, 1}, // add new line 2
 			}},
@@ -49,20 +52,20 @@ func TestStepping(t *testing.T) {
 		"[[{3 1 a1}] [{1 2 a1} {1 2 b2} {1 3 a1}]]",
 	}, {
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{&Commit{"b2", nil}, "test.txt", []Hunk{
+			{c("b2"), "test.txt", []Hunk{
 				{1, 3, 0, 0},
 			}},
 		},
 		"[[{3 1 a1}] []]",
 	}, {
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{&Commit{"b2", nil}, "test.txt", []Hunk{
+			{c("b2"), "test.txt", []Hunk{
 				{0, 0, 4, 1},
 			}},
 		},
@@ -85,12 +88,15 @@ func TestStepping(t *testing.T) {
 }
 
 func TestAtMethod(t *testing.T) {
+	c := func (hash string) *Commit {
+		return &Commit{hash, "", 0, nil}
+	}
 	var tests = []struct {
 		inputCommits   File
 		expectedOutput string
 	}{{
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
 		}, "" +
@@ -98,14 +104,14 @@ func TestAtMethod(t *testing.T) {
 			"FUTURE [{ 1} { 2} { 3}]",
 	}, {
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{&Commit{"b2", nil}, "test.txt", []Hunk{
+			{c("b2"), "test.txt", []Hunk{
 				{1, 0, 2, 2},
 				{2, 0, 5, 2},
 			}},
-			{&Commit{"c3", nil}, "test.txt", []Hunk{
+			{c("c3"), "test.txt", []Hunk{
 				{1, 1, 1, 0},
 				{4, 2, 3, 1},
 			}},
@@ -118,10 +124,10 @@ func TestAtMethod(t *testing.T) {
 			"FUTURE [{ 1} { 2} { 3} { 4} { 5}]",
 	}, {
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{&Commit{"b2", nil}, "test.txt", []Hunk{
+			{c("b2"), "test.txt", []Hunk{
 				{1, 1, 0, 0}, // remove 1st line
 				{2, 0, 2, 1}, // add new line 2
 			}},
@@ -132,10 +138,10 @@ func TestAtMethod(t *testing.T) {
 			"FUTURE [{ 1} { 2} { 3}]",
 	}, {
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{&Commit{"b2", nil}, "test.txt", []Hunk{
+			{c("b2"), "test.txt", []Hunk{
 				{1, 3, 0, 0},
 			}},
 		}, "" +
@@ -145,10 +151,10 @@ func TestAtMethod(t *testing.T) {
 			"FUTURE []",
 	}, {
 		File{
-			{&Commit{"a1", nil}, "test.txt", []Hunk{
+			{c("a1"), "test.txt", []Hunk{
 				{0, 0, 1, 3},
 			}},
-			{&Commit{"b2", nil}, "test.txt", []Hunk{
+			{c("b2"), "test.txt", []Hunk{
 				{0, 0, 4, 1},
 			}},
 		}, "" +
@@ -189,6 +195,9 @@ func TestAtMethod(t *testing.T) {
 }
 
 func TestPreviousAndNext(t *testing.T) {
+	c := func (hash string) *Commit {
+		return &Commit{hash, "", 0, nil}
+	}
 	var tests = []struct {
 		history         GitHistory
 		expectedResults []string
@@ -198,8 +207,8 @@ func TestPreviousAndNext(t *testing.T) {
 			nil,
 			map[string]File{
 				"README": {
-					Diff{&Commit{"b2", nil}, "test.txt", []Hunk{{0, 0, 1, 2}}},
-					Diff{&Commit{"d4", nil}, "test.txt", []Hunk{{2, 1, 2, 1}}},
+					Diff{c("b2"), "test.txt", []Hunk{{0, 0, 1, 2}}},
+					Diff{c("d4"), "test.txt", []Hunk{{2, 1, 2, 1}}},
 				},
 			},
 		},

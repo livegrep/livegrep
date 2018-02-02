@@ -19,8 +19,10 @@ type GitHistory struct {
 }
 
 type Commit struct {
-	Hash  string
-	Diffs []*Diff
+	Hash   string
+	Author string
+	Date   int32 // YYYYMMDD
+	Diffs  []*Diff
 }
 
 type File []Diff
@@ -149,7 +151,7 @@ func ParseGitLog(input_stream io.ReadCloser) (*GitHistory, error) {
 		if strings.HasPrefix(line, "commit ") {
 			hash = line[7 : 7+HashLength]
 			history.Hashes = append(history.Hashes, hash)
-			commit = &Commit{hash, nil}
+			commit = &Commit{hash, "", 0, nil}
 			commits[hash] = commit
 		} else if strings.HasPrefix(line, "--- ") {
 			path := line[4:]
