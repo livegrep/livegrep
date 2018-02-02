@@ -194,7 +194,7 @@ func fileRedirect(gitHistory *blameworthy.GitHistory, repoName, hash, path, dest
 
 	var k int
 	var diff *blameworthy.Diff
-	for k, diff = range gitHistory.Commits[destHash] {
+	for k, diff = range gitHistory.Commits[destHash].Diffs {
 		if diff.Path == path {
 			break
 		}
@@ -235,7 +235,7 @@ func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash 
 		return
 	}
 	fmt.Print("A\n")
-	path := gitHistory.Commits[hash][commitIndex].Path
+	path := gitHistory.Commits[hash].Diffs[commitIndex].Path
 
 	var fragment, url string
 	fmt.Print(rest[j], "\n")
@@ -257,7 +257,7 @@ func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash 
 }
 
 func indexOfFileInCommit(history *blameworthy.GitHistory, path string, hash string) int {
-	for k, diff := range history.Commits[hash] {
+	for k, diff := range history.Commits[hash].Diffs {
 		if diff.Path == path {
 			return k
 		}
@@ -277,7 +277,7 @@ func buildDiffData(
 		return fmt.Errorf("Repo not configured for blame")
 	}
 
-	for _, diff := range gitHistory.Commits[commitHash] {
+	for _, diff := range gitHistory.Commits[commitHash].Diffs {
 		lines, content_lines, err := extendDiff(repo, commitHash, gitHistory, diff.Path)
 		if err != nil {
 			return err
