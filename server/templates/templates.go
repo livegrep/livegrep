@@ -12,6 +12,8 @@ import (
 	"reflect"
 	"strings"
 	texttemplate "text/template"
+
+	"github.com/livegrep/livegrep/blameworthy"
 )
 
 func templatePath(f reflect.StructField) string {
@@ -19,6 +21,10 @@ func templatePath(f reflect.StructField) string {
 		return path
 	}
 	return strings.ToLower(f.Name) + ".html"
+}
+
+func prettyCommit(c *blameworthy.Commit) string {
+	return c.Hash
 }
 
 func LinkTag(rel string, s string, m map[string]string) template.HTML {
@@ -40,10 +46,11 @@ func scriptTag(s string, m map[string]string) template.HTML {
 
 func getFuncs() map[string]interface{} {
 	return map[string]interface{}{
-		"loop":      func(n int) []struct{} { return make([]struct{}, n) },
-		"toLineNum": func(n int) int { return n + 1 },
-		"linkTag":   LinkTag,
-		"scriptTag": scriptTag,
+		"loop":         func(n int) []struct{} { return make([]struct{}, n) },
+		"toLineNum":    func(n int) int { return n + 1 },
+		"prettyCommit": prettyCommit,
+		"linkTag":      LinkTag,
+		"scriptTag":    scriptTag,
 	}
 }
 

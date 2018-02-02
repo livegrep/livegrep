@@ -12,7 +12,7 @@
                                         “{{.Subject}}”
  Line added by:  Line deleted by:</div><div class="rtl"><div id="content">{{$.content}}</div>&nbsp;&nbsp;<div id="hashes">
 {{- range .Lines -}}
-{{if eq ' ' (index .PreviousCommit 0)}}{{.PreviousCommit}}{{else}}<a href="{{.PreviousCommit}}.a{{.PreviousLineNumber}}">{{.PreviousCommit}}</a>{{end}} {{if eq ' ' (index .NextCommit 0)}}{{.NextCommit}}{{else}}<a href="{{.NextCommit}}.d{{.NextLineNumber}}">{{.NextCommit}}</a>{{end}}{{if .OldLineNumber}} <a id="{{.OldLineNumber}}">{{.OldLineNumber | printf "%4d"}}</a>{{else}}     {{end}}
+{{if .PreviousCommit.Hash}}<a href="{{.PreviousCommit.Hash}}.a{{.PreviousLineNumber}}">{{prettyCommit .PreviousCommit}}</a>{{else}}{{.PreviousCommit.Author}}{{end}} {{if .NextCommit.Hash}}<a href="{{.NextCommit.Hash}}.d{{.NextLineNumber}}">{{prettyCommit .NextCommit}}</a>{{else}}{{.NextCommit.Author}}{{end}}{{if .OldLineNumber}} <a id="{{.OldLineNumber}}">{{.OldLineNumber | printf "%4d"}}</a>{{else}}     {{end}}
 {{end}}
 </div>{{end}}
 </div>

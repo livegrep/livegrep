@@ -45,16 +45,15 @@ type DiffFileData struct {
 }
 
 type BlameLine struct {
-	PreviousCommit     string
+	PreviousCommit     *blameworthy.Commit
 	PreviousLineNumber int
-	NextCommit         string
+	NextCommit         *blameworthy.Commit
 	NextLineNumber     int
 	OldLineNumber      int
 	NewLineNumber      int
 	Symbol             string
 }
 
-const blankHash = "                " // as wide as a displayed hash
 var histories = make(map[string]*blameworthy.GitHistory)
 
 func initBlame(cfg *config.Config) error {
@@ -371,7 +370,7 @@ func extendDiff(
 			orBlank(blameVector[j].Commit),
 			blameVector[j].LineNumber,
 			//"  (this commit) ",
-			blankHash,
+			&blankCommit,
 			0,
 			j + 1,
 			0,
@@ -383,7 +382,7 @@ func extendDiff(
 	right := func() {
 		lines = append(lines, BlameLine{
 			//"  (this commit) ",
-			blankHash,
+			&blankCommit,
 			0,
 			orStillExists(futureVector[k].Commit),
 			futureVector[k].LineNumber,
@@ -408,9 +407,9 @@ func extendDiff(
 			}
 			for i := 0; i < 3; i++ {
 				lines = append(lines, BlameLine{
-					"        .       ",
+					&ellipsisCommit,
 					0,
-					"        .       ",
+					&ellipsisCommit,
 					//blankHash,
 					0,
 					0,
@@ -459,18 +458,24 @@ func gitShowCommit(commitHash string, repoPath string) (string, error) {
 	return string(out), nil
 }
 
-func orBlank(c *blameworthy.Commit) string {
+var (
+	blankCommit = blameworthy.Commit{"", "                ", 0, nil}
+	stillExistsCommit = blameworthy.Commit{"", " (still exists) ", 0, nil}
+	ellipsisCommit = blameworthy.Commit{"", "        .       ", 0, nil}
+)
+
+func orBlank(c *blameworthy.Commit) *blameworthy.Commit {
 	if c == nil {
-		return blankHash
+		return &blankCommit
 	}
-	return c.Hash
+	return c
 }
 
-func orStillExists(c *blameworthy.Commit) string {
+func orStillExists(c *blameworthy.Commit) *blameworthy.Commit {
 	if c == nil {
-		return " (still exists) "
+		return &stillExistsCommit
 	}
-	return c.Hash
+	return c
 }
 
 func splitLines(s string) []string {
