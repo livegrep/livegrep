@@ -61,13 +61,14 @@ func initBlame(cfg *config.Config) error {
 	start := time.Now()
 
 	for _, r := range cfg.IndexConfig.Repositories {
-		blame, ok := r.Metadata["blame"]
+		path, ok := r.Metadata["blame"]
 		if !ok {
 			continue
 		}
 		var gitLogOutput io.ReadCloser
-		if blame == "git" {
+		if path == "git" {
 			var err error
+			log.Print("Running git log on: ", r.Path)
 			gitLogOutput, err = blameworthy.RunGitLog(r.Path, "HEAD")
 			if err != nil {
 				log.Print("Skipping blame: ", err)
@@ -75,9 +76,10 @@ func initBlame(cfg *config.Config) error {
 			}
 		} else {
 			var err error
-			gitLogOutput, err = os.Open(blame)
+			log.Print("Reading git log file: ", path)
+			gitLogOutput, err = os.Open(path)
 			if err != nil {
-				log.Print("Skipping blame: ", err)
+				log.Print("Skipping blame file: ", err)
 				continue
 			}
 		}
