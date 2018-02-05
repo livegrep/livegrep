@@ -91,23 +91,25 @@ func StripGitLog(input io.Reader) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "commit ") {
-			fmt.Print(line + "\n")
+			;
+		} else if strings.HasPrefix(line, "Author: ") {
+			;
+		} else if strings.HasPrefix(line, "Date: ") {
+			;
 		} else if strings.HasPrefix(line, "--- ") {
-			fmt.Print(line + "\n")
+			;
 		} else if strings.HasPrefix(line, "+++ ") {
-			fmt.Print(line + "\n")
+			;
 		} else if strings.HasPrefix(line, "@@ ") {
 			rest := line[3:]
 			i := strings.Index(rest, " @@")
-			fmt.Printf("@@ %s @@-\n", rest[:i])
+			line := fmt.Sprintf("@@ %s @@-", rest[:i])
 
 			result_slice := re.FindStringSubmatch(line)
-			//oldStart, _ := strconv.Atoi(result_slice[1])
 			oldLength := 1
 			if len(result_slice[2]) > 0 {
 				oldLength, _ = strconv.Atoi(result_slice[2])
 			}
-			//newStart, _ := strconv.Atoi(result_slice[3])
 			newLength := 1
 			if len(result_slice[4]) > 0 {
 				newLength, _ = strconv.Atoi(result_slice[4])
@@ -116,6 +118,12 @@ func StripGitLog(input io.Reader) error {
 			for i := 0; i < lines_to_skip; i++ {
 				scanner.Scan()
 			}
+		} else {
+			continue;
+		}
+		_, err := fmt.Print(line, "\n")
+		if err != nil {
+			return nil // be silent about error if piped into head, tail
 		}
 	}
 	return scanner.Err()
