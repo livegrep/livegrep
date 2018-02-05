@@ -163,8 +163,7 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
 
 class add_match {
 public:
-    typedef std::pair<indexed_file*, int> line_set_key;
-    typedef std::set<line_set_key> line_set;
+    typedef std::set<std::pair<indexed_file*, int>> line_set;
 
     add_match(CodeSearchResult* response)
         : unique_lines_(new line_set), response_(response) {}
@@ -176,8 +175,7 @@ public:
     void operator()(const match_result *m) const {
         // Avoid a duplicate if a line is returned once from the
         // tags search then again during the main corpus search.
-        line_set_key k(m->file, m->lno);
-        bool already_inserted = ! unique_lines_->insert(k).second;
+        bool already_inserted = ! unique_lines_->insert(std::make_pair(m->file, m->lno)).second;
         if (already_inserted) {
             return;
         }
