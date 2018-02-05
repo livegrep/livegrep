@@ -33,7 +33,7 @@ class CodeSearchImpl final : public CodeSearch::Service {
     virtual ~CodeSearchImpl();
 
     virtual grpc::Status Info(grpc::ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response);
-    void TagsFirstSearch_(::CodeSearchResult* response, query& q, const string& line_pat, match_stats& stats);
+    void TagsFirstSearch_(::CodeSearchResult* response, query& q, match_stats& stats);
     virtual grpc::Status Search(grpc::ServerContext* context, const ::Query* request, ::CodeSearchResult* response);
     virtual grpc::Status Reload(grpc::ServerContext* context, const ::Empty* request, ::Empty* response);
 
@@ -243,7 +243,8 @@ static std::string pat(const std::shared_ptr<RE2> &p) {
     return p->pattern();
 }
 
-void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, const string& line_pat, match_stats& stats) {
+void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, match_stats& stats) {
+    string line_pat = q.line_pat->pattern();
     string regex;
     int32_t original_max_matches = q.max_matches;  // remember original value
 
@@ -336,7 +337,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
 
     match_stats stats;
     if (q.tags_pat == NULL && tagdata_ && might_match_tags) {
-        CodeSearchImpl::TagsFirstSearch_(response, q, line_pat, stats);
+        CodeSearchImpl::TagsFirstSearch_(response, q, stats);
     } else if (q.tags_pat == NULL) {
         code_searcher::search_thread *search;
         if (!pool_.try_pop(&search))
