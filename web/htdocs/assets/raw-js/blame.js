@@ -43,7 +43,7 @@
             return;
         var y = previous_y;
         if (typeof y === "undefined")
-            y = $(window).height() / 2; // default to middle of viewport
+            y = window.innerHeight / 2; // default to middle of viewport
         scroll_y = target.offset().top - y;
         scroll_y = Math.max(0, scroll_y); // clip to lower bound of 0
         window.scrollTo(0, scroll_y);
