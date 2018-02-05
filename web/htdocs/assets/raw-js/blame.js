@@ -1,11 +1,11 @@
 (function f() {
-    var body = $('body');
+    var $body = $('body');
 
     /* In the file view, highlight the contents of each diff whose
        commit the user mouses over. */
 
-    if (body.hasClass('blamefile')) {
-        body.on('mouseenter', '#hashes > a', function(e) {
+    if ($body.hasClass('blamefile')) {
+        $body.on('mouseenter', '#hashes > a', function(e) {
             var href = $(e.target).attr('href') || "";
             var i = href.indexOf('.');
             if (i == -1) return;
@@ -13,7 +13,7 @@
             var cls = 'highlight ' + href.substr(i + 1, 1);
             $('#hashes a[href^="' + commitHash + '"]').addClass(cls);
         });
-        body.on('mouseleave', '#hashes > a', function(e) {
+        $body.on('mouseleave', '#hashes > a', function(e) {
             var href = $(e.target).attr('href') || "";
             var i = href.indexOf('.');
             if (i == -1) return;
@@ -26,8 +26,8 @@
     /* When the user clicks a hash, remember the line's y coordinate,
        and warp it back to its current location when we land. */
 
-    body.on('click', '#hashes > a', function(e) {
-        var y = $(e.currentTarget).offset().top - body.scrollTop();
+    $body.on('click', '#hashes > a', function(e) {
+        var y = $(e.currentTarget).offset().top - $(window).scrollTop();
         Cookies.set("target_y", y, {expires: 1});
         // (Then, let the click proceed with its usual effect.)
     });
