@@ -33,7 +33,7 @@ class CodeSearchImpl final : public CodeSearch::Service {
     virtual ~CodeSearchImpl();
 
     virtual grpc::Status Info(grpc::ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response);
-    void TagsFirstSearch_(::CodeSearchResult* response, query& q, string& line_pat, match_stats& stats);
+    void TagsFirstSearch_(::CodeSearchResult* response, query& q, const string& line_pat, match_stats& stats);
     virtual grpc::Status Search(grpc::ServerContext* context, const ::Query* request, ::CodeSearchResult* response);
     virtual grpc::Status Reload(grpc::ServerContext* context, const ::Empty* request, ::Empty* response);
 
@@ -243,9 +243,9 @@ static std::string pat(const std::shared_ptr<RE2> &p) {
     return p->pattern();
 }
 
-void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, string& line_pat, match_stats& stats) {
+void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, const string& line_pat, match_stats& stats) {
     string regex;
-    int32_t max_matches = q.max_matches;  // remember original value
+    int32_t original_max_matches = q.max_matches;  // remember original value
 
     add_match cb(response);
 
@@ -255,7 +255,7 @@ void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, st
     q.line_pat.reset(new RE2(regex, q.line_pat->options()));
     run_tags_search(q, tagdata_, cb, tagmatch_, stats);
 
-    q.max_matches = max_matches - cb.match_count();
+    q.max_matches = original_max_matches - cb.match_count();
     if (q.max_matches <= 0)
         return;
 
@@ -264,7 +264,7 @@ void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, st
     q.line_pat.reset(new RE2(regex, q.line_pat->options()));
     run_tags_search(q, tagdata_, cb, tagmatch_, stats);
 
-    q.max_matches = max_matches - cb.match_count();
+    q.max_matches = original_max_matches - cb.match_count();
     if (q.max_matches <= 0)
         return;
 
