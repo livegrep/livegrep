@@ -80,7 +80,7 @@ func RunGitLog(repository_path string, revision string) (io.ReadCloser, error) {
 // this: "@@-") so blameworthy will recognize that the content has been
 // omitted when it reads the log as input.
 func StripGitLog(input io.Reader) error {
-	re, _ := regexp.Compile(`@@ -(\d+),?(\d*) \+(\d+),?(\d*) `)
+	re, _ := regexp.Compile(`^@@ -(\d+),?(\d*) \+(\d+),?(\d*) `)
 
 	scanner := bufio.NewScanner(input)
 
@@ -103,7 +103,7 @@ func StripGitLog(input io.Reader) error {
 		} else if strings.HasPrefix(line, "@@ ") {
 			rest := line[3:]
 			i := strings.Index(rest, " @@")
-			line := fmt.Sprintf("@@ %s @@-", rest[:i])
+			line = fmt.Sprintf("@@ %s @@-", rest[:i])
 
 			result_slice := re.FindStringSubmatch(line)
 			oldLength := 1
