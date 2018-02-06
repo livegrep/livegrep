@@ -9,6 +9,7 @@ function init(initData) {
 "use strict";
 
 var h = new html.HTMLFactory();
+var last_url_update = 0;
 
 function vercmp(a, b) {
   var re = /^([0-9]*)([^0-9]*)(.*)$/;
@@ -605,8 +606,19 @@ var ResultView = Backbone.View.extend({
     if (this.last_url !== url ) {
       if (history.pushState) {
         var browser_url = window.location.pathname + window.location.search;
-        if (browser_url !== url)
-          history.pushState(null, '', url);
+        if (browser_url !== url) {
+          // If the user is typing quickly, just keep replacing the
+          // current URL.  But after they've paused, enroll the URL they
+          // paused at into their browser history.
+          var now = Date.now();
+          var two_seconds = 2000;
+          if (now - last_url_update > two_seconds) {
+            history.pushState(null, '', url);
+          } else {
+            history.replaceState(null, '', url);
+          }
+          last_url_update = now;
+        }
       }
       this.last_url = url;
     }
