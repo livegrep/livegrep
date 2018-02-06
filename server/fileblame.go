@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/livegrep/livegrep/blameworthy"
@@ -55,6 +56,19 @@ type BlameLine struct {
 }
 
 var histories = make(map[string]*blameworthy.GitHistory)
+var historiesLock = sync.RWMutex{}
+
+func getHistory(key string) (*blameworthy.GitHistory) {
+	historiesLock.RLock()
+	defer historiesLock.RUnlock()
+	return histories[key]
+}
+
+func setHistory(key string, value *blameworthy.GitHistory) {
+	historiesLock.Lock()
+	histories[key] = value
+	historiesLock.Unlock()
+}
 
 func initBlame(cfg *config.Config) error {
 	log.Printf("Loading blame...")
@@ -88,7 +102,7 @@ func initBlame(cfg *config.Config) error {
 			log.Print("Skipping blame: ", err)
 			continue
 		}
-		histories[r.Name] = gitHistory
+		setHistory(r.Name, gitHistory)
 	}
 	elapsed := time.Since(start)
 	log.Printf("Blame loaded in %s", elapsed)
@@ -109,13 +123,13 @@ func resolveCommit(repo config.RepoConfig, commitName, path string, data *BlameD
 	// like "master"?
 	if commitName == "HEAD" {
 		// "HEAD" -> the last commit we know of.
-		h := histories[repo.Name].Hashes
+		h := getHistory(repo.Name).Hashes
 		commitName = h[len(h)-1]
 
 		// If we were given a path then pivot, if possible, to
 		// the last commit of that file.
 		if len(path) > 0 {
-			h, ok := histories[repo.Name].Files[path]
+			h, ok := getHistory(repo.Name).Files[path]
 			if ok {
 				commitName = h[len(h)-1].Commit.Hash
 			}
@@ -206,8 +220,8 @@ func fileRedirect(gitHistory *blameworthy.GitHistory, repoName, hash, path, dest
 }
 
 func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash string, rest string) {
-	gitHistory, ok := histories[repoName]
-	if !ok {
+	gitHistory := getHistory(repoName)
+	if gitHistory == nil {
 		http.Error(w, "Repo not configured for blame", 404)
 		return
 	}
@@ -273,8 +287,8 @@ func buildDiffData(
 ) error {
 	start := time.Now()
 
-	gitHistory, ok := histories[repo.Name]
-	if !ok {
+	gitHistory := getHistory(repo.Name)
+	if gitHistory == nil {
 		return fmt.Errorf("Repo not configured for blame")
 	}
 
