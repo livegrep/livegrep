@@ -82,6 +82,14 @@ struct match_stats {
     timeval analyze_time;
     int matches;
     exit_reason why;
+
+    match_stats() : re2_time((struct timeval){0}),
+        git_time((struct timeval){0}),
+        sort_time((struct timeval){0}),
+        index_time((struct timeval){0}),
+        analyze_time((struct timeval){0}),
+        matches(0),
+        why(kExitNone) {}
 };
 
 struct chunk;
@@ -127,14 +135,14 @@ struct query {
     std::string trace_id;
     int32_t max_matches;
 
-    std::unique_ptr<RE2> line_pat;
-    std::unique_ptr<RE2> file_pat;
-    std::unique_ptr<RE2> tree_pat;
-    std::unique_ptr<RE2> tags_pat;
+    std::shared_ptr<RE2> line_pat;
+    std::shared_ptr<RE2> file_pat;
+    std::shared_ptr<RE2> tree_pat;
+    std::shared_ptr<RE2> tags_pat;
     struct {
-        std::unique_ptr<RE2> file_pat;
-        std::unique_ptr<RE2> tree_pat;
-        std::unique_ptr<RE2> tags_pat;
+        std::shared_ptr<RE2> file_pat;
+        std::shared_ptr<RE2> tree_pat;
+        std::shared_ptr<RE2> tags_pat;
     } negate;
 
     bool filename_only;

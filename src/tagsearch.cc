@@ -18,21 +18,21 @@ using boost::filesystem::path;
 
 namespace {
 
-std::string create_partial_regex(RE2 *re, const char *wildstar) {
+std::string create_partial_regex(RE2 *re, const char *wildchar) {
     if (!re)
-        return wildstar;
+        return std::string(wildchar) + "+";
 
     std::string pattern = re->pattern();
 
     if (pattern.front() == '^')
-        pattern.erase(pattern.begin());
+        pattern.erase(0, 1);
     else
-        pattern.insert(0, wildstar);
+        pattern.insert(0, std::string(wildchar) + "*");
 
     if (pattern.back() == '$')
         pattern.erase(pattern.size() - 1);
     else
-        pattern.append(wildstar);
+        pattern.append(std::string(wildchar) + "*");
 
     return pattern;
 }
@@ -124,8 +124,26 @@ bool tag_searcher::transform(query *q, match_result *m) const {
 }
 
 std::string tag_searcher::create_tag_line_regex_from_query(query *q) {
-    return create_tag_line_regex(create_partial_regex(q->line_pat.get(), "[^\t]*"),
-                                 create_partial_regex(q->file_pat.get(), "[^\t]*"),
-                                 "\\d+",
-                                 create_partial_regex(q->tags_pat.get(), ".*"));
+    /* To make tag searches as efficient as possible, we return a
+       pattern that is only as long as it needs to be to specify all of
+       the query constraints.  In particular, it used to be a minor
+       disaster that a simple tags search for a 2-letter string like
+       "Ab" produced an RE that also contained the substring ";\"\t",
+       because that 3-character substring was more attractive to the
+       indexing logic than the 2-character pattern "Ab" but, alas, those
+       3 characters appeared in every single line of the tags file and
+       were therefore worthless for reducing the search space. */
+    std::string regex("^");
+    regex += create_partial_regex(q->line_pat.get(), "[^\t]");
+    regex += "\t";
+    if (q->file_pat || q->tags_pat) {
+        regex += create_partial_regex(q->file_pat.get(), "[^\t]");
+        regex += "\t";
+        if (q->tags_pat) {
+            regex += "\\d+;\"\t";
+            regex += create_partial_regex(q->tags_pat.get(), ".");
+            regex += "$";
+        }
+    }
+    return regex;
 }

@@ -8,6 +8,7 @@
 #include "src/tools/limits.h"
 #include "src/tools/grpc_server.h"
 
+#include "gflags/gflags.h"
 #include <json-c/json.h>
 
 #include <algorithm>
@@ -24,12 +25,15 @@ using grpc::StatusCode;
 
 using std::string;
 
+DEFINE_int32(max_matches, 50, "The default maximum number of matches to return for a single query.");
+
 class CodeSearchImpl final : public CodeSearch::Service {
  public:
     explicit CodeSearchImpl(code_searcher *cs, code_searcher *tagdata, std::promise<void> *reload_request);
     virtual ~CodeSearchImpl();
 
     virtual grpc::Status Info(grpc::ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response);
+    void TagsFirstSearch_(::CodeSearchResult* response, query& q, match_stats& stats);
     virtual grpc::Status Search(grpc::ServerContext* context, const ::Query* request, ::CodeSearchResult* response);
     virtual grpc::Status Reload(grpc::ServerContext* context, const ::Empty* request, ::Empty* response);
 
@@ -106,12 +110,12 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
     return Status::OK;
 }
 
-Status extract_regex(std::unique_ptr<RE2> *out,
+Status extract_regex(std::shared_ptr<RE2> *out,
                      const std::string &label,
                      const std::string &input,
                      bool case_sensitive) {
     if (input.empty()) {
-        out->reset(nullptr);
+        out->reset();
         return Status::OK;
     }
 
@@ -119,7 +123,7 @@ Status extract_regex(std::unique_ptr<RE2> *out,
     default_re2_options(opts);
     opts.set_case_sensitive(case_sensitive);
 
-    std::unique_ptr<RE2> re(new RE2(input, opts));
+    std::shared_ptr<RE2> re(new RE2(input, opts));
     if (!re->ok()) {
         return Status(StatusCode::INVALID_ARGUMENT, label + ": " + re->error());
     }
@@ -127,11 +131,11 @@ Status extract_regex(std::unique_ptr<RE2> *out,
     return Status::OK;
 }
 
-Status extract_regex(std::unique_ptr<RE2> *out,
+Status extract_regex(std::shared_ptr<RE2> *out,
                      const std::string &label,
                      const std::string &input) {
     if (input.empty()) {
-        out->reset(nullptr);
+        out->reset();
         return Status::OK;
     }
     bool case_sensitive = std::any_of(input.begin(), input.end(), isupper);
@@ -159,9 +163,23 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
 
 class add_match {
 public:
-    add_match(CodeSearchResult* response) : response_(response) {}
+    typedef std::set<std::pair<indexed_file*, int>> line_set;
+
+    add_match(line_set* ls, CodeSearchResult* response)
+        : unique_lines_(ls), response_(response) {}
+
+    int match_count() {
+        return response_->results_size();
+    }
 
     void operator()(const match_result *m) const {
+        // Avoid a duplicate if a line is returned once from the
+        // tags search then again during the main corpus search.
+        bool already_inserted = ! unique_lines_->insert(std::make_pair(m->file, m->lno)).second;
+        if (already_inserted) {
+            return;
+        }
+
         auto result = response_->add_results();
         result->set_tree(m->file->tree->name);
         result->set_version(m->file->tree->version);
@@ -189,13 +207,76 @@ public:
     }
 
 private:
+    line_set* unique_lines_;
     CodeSearchResult* response_;
 };
 
-static std::string pat(const std::unique_ptr<RE2> &p) {
+static void run_tags_search(const query& main_query, code_searcher *tagdata,
+                            add_match& cb, tag_searcher* searcher,
+                            match_stats& stats) {
+    // copy of the query we can modify without altering the caller's copy
+    query q = main_query;
+
+    // the negation constraints will be checked when we transform the match
+    // (unfortunately, we can't construct a line query that checks these)
+    query constraints;
+    constraints.negate.file_pat.swap(q.negate.file_pat);
+    constraints.negate.tags_pat.swap(q.negate.tags_pat);
+
+    // modify the line pattern to match the constraints that we can handle now
+    std::string regex = tag_searcher::create_tag_line_regex_from_query(&q);
+    q.line_pat.reset(new RE2(regex, q.line_pat->options()));
+    q.file_pat.reset();
+    q.tags_pat.reset();
+
+    code_searcher::search_thread search(tagdata);
+    search.match(q,
+                 cb,
+                 cb,
+                 boost::bind(&tag_searcher::transform, searcher, &constraints, _1),
+                 &stats);
+}
+
+static std::string pat(const std::shared_ptr<RE2> &p) {
     if (p.get() == 0)
         return "";
     return p->pattern();
+}
+
+void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, match_stats& stats) {
+    string line_pat = q.line_pat->pattern();
+    string regex;
+    int32_t original_max_matches = q.max_matches;  // remember original value
+
+    add_match::line_set ls;
+    add_match cb(&ls, response);
+
+    /* To surface the most important matches first, start with tags.
+       First pass: is the pattern an exact match for any tags? */
+    regex = "^" + line_pat + "$";
+    q.line_pat.reset(new RE2(regex, q.line_pat->options()));
+    run_tags_search(q, tagdata_, cb, tagmatch_, stats);
+
+    q.max_matches = original_max_matches - cb.match_count();
+    if (q.max_matches <= 0)
+        return;
+
+    /* Second pass: is the pattern a prefix match for any tags? */
+    regex = "^" + line_pat + "[^\t]";
+    q.line_pat.reset(new RE2(regex, q.line_pat->options()));
+    run_tags_search(q, tagdata_, cb, tagmatch_, stats);
+
+    q.max_matches = original_max_matches - cb.match_count();
+    if (q.max_matches <= 0)
+        return;
+
+    /* Third and final pass: full corpus search. */
+    q.line_pat.reset(new RE2(line_pat, q.line_pat->options()));
+    code_searcher::search_thread *search;
+    if (!pool_.try_pop(&search))
+        search = new code_searcher::search_thread(cs_);
+    search->match(q, cb, cb, &stats);
+    pool_.push(search);
 }
 
 Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::CodeSearchResult* response) {
@@ -210,7 +291,10 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         return st;
 
     q.trace_id = current_trace_id();
+
     q.max_matches = request->max_matches();
+    if (q.max_matches <= 0 && FLAGS_max_matches)
+        q.max_matches = FLAGS_max_matches;
 
     log(q.trace_id,
         "processing query line='%s' file='%s' tree='%s' tags='%s' "
@@ -235,38 +319,41 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         return Status(StatusCode::INVALID_ARGUMENT, "Parse error");
     }
 
+    string line_pat = q.line_pat->pattern();
+
+    /* Patterns like "User.*Info" and "p\d+" might be genuine attempts
+       to match tags, so we cannot too quickly dismiss odd-looking REs
+       as justifying our skipping the phases of a tags search.  But we
+       can at least special-case a few characters that would not ever
+       appear in a pattern that matches tags.
+       TODO(brandon-rhodes): make this more sophisticated. */
+    bool might_match_tags =
+        // Characters that can't appear in an RE that matches a tag.
+        line_pat.find_first_of(" !\"#%&',-/;<=>@`") == string::npos
+        // If the user anchored the RE, then we can only run it against
+        // whole lines from the corpus, never against tags.
+        && line_pat.front() != '^'
+        && line_pat.back() != '$'
+        ;
+
     match_stats stats;
-    if (q.tags_pat == NULL) {
+    if (q.tags_pat == NULL && tagdata_ && might_match_tags) {
+        CodeSearchImpl::TagsFirstSearch_(response, q, stats);
+    } else if (q.tags_pat == NULL) {
         code_searcher::search_thread *search;
         if (!pool_.try_pop(&search))
             search = new code_searcher::search_thread(cs_);
-        add_match cb(response);
+        add_match::line_set ls;
+        add_match cb(&ls, response);
         search->match(q, cb, cb, &stats);
         pool_.push(search);
     } else {
         if (tagdata_ == NULL)
             return Status(StatusCode::FAILED_PRECONDITION, "No tags file available.");
 
-        code_searcher::search_thread search(tagdata_);
-
-        // the negation constraints will be checked when we transform the match
-        // (unfortunately, we can't construct a line query that checks these)
-        query constraints;
-        constraints.negate.file_pat.swap(q.negate.file_pat);
-        constraints.negate.tags_pat.swap(q.negate.tags_pat);
-
-        // modify the line pattern to match the constraints that we can handle now
-        std::string regex = tag_searcher::create_tag_line_regex_from_query(&q);
-        q.line_pat.reset(new RE2(regex, q.line_pat->options()));
-        q.file_pat.reset();
-        q.tags_pat.reset();
-
-        add_match cb(response);
-        search.match(q,
-                     cb,
-                     cb,
-                     boost::bind(&tag_searcher::transform, tagmatch_, &constraints, _1),
-                     &stats);
+        add_match::line_set ls;
+        add_match cb(&ls, response);
+        run_tags_search(q, tagdata_, cb, tagmatch_, stats);
     }
 
     auto out_stats = response->mutable_stats();

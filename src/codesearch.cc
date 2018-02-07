@@ -52,7 +52,6 @@ DEFINE_bool(index, true, "Create a suffix-array index to speed searches.");
 DEFINE_bool(compress, true, "Compress file contents linewise");
 DEFINE_bool(drop_cache, false, "Drop caches before each search");
 DEFINE_bool(search, true, "Actually do the search.");
-DEFINE_int32(max_matches, 50, "The default maximum number of results to return for a single query.");
 DEFINE_int32(timeout, 1000, "The number of milliseconds a single search may run for.");
 DEFINE_int32(threads, 4, "Number of threads to use.");
 DEFINE_int32(line_limit, 1024, "Maximum line length to index.");
@@ -112,13 +111,7 @@ const StringPiece empty_string(NULL, 0);
 
 class search_limiter {
 public:
-    search_limiter(int query_max_matches) : matches_(0), exit_reason_(kExitNone) {
-        if (FLAGS_max_matches && !query_max_matches) {
-            max_matches_ = FLAGS_max_matches;
-        } else {
-            max_matches_ = query_max_matches;
-        }
-
+    search_limiter(int query_max_matches) : matches_(0), max_matches_(query_max_matches), exit_reason_(kExitNone) {
         if (FLAGS_timeout <= 0) {
             deadline_.tv_sec = numeric_limits<time_t>::max();
         } else {
@@ -244,11 +237,22 @@ public:
     void operator()(const chunk *chunk);
 
     void get_stats(match_stats *stats) {
-        stats->re2_time = re2_time_.elapsed();
-        stats->git_time = git_time_.elapsed();
-        stats->index_time = index_time_.elapsed();
-        stats->sort_time  = sort_time_.elapsed();
-        stats->analyze_time  = analyze_time_.elapsed();
+        struct timeval t;
+
+        t = re2_time_.elapsed();
+        timeradd(&stats->re2_time, &t, &stats->re2_time);
+
+        t = git_time_.elapsed();
+        timeradd(&stats->git_time, &t, &stats->git_time);
+
+        t = index_time_.elapsed();
+        timeradd(&stats->index_time, &t, &stats->index_time);
+
+        t = sort_time_.elapsed();
+        timeradd(&stats->sort_time , &t, &stats->sort_time);
+
+        t = analyze_time_.elapsed();
+        timeradd(&stats->analyze_time, &t, &stats->analyze_time);
     }
 
     exit_reason why() {
@@ -1148,8 +1152,6 @@ void code_searcher::search_thread::match(const query &q,
 
     file_queue_.push(&j);
 
-    memset(stats, 0, sizeof *stats);
-
     if (!q.filename_only) {
         while (search.queue_.pop(&m)) {
             matches++;
@@ -1166,13 +1168,15 @@ void code_searcher::search_thread::match(const query &q,
 
     if (q.filename_only) {
         stats->why = file_search.why();
-        stats->matches = file_matches;
+        stats->matches += file_matches;
     } else {
         search.get_stats(stats);
         stats->why = search.why();
-        stats->matches = matches;
+        stats->matches += matches;
     }
-    stats->analyze_time = analyze_time.elapsed();
+
+    struct timeval t = analyze_time.elapsed();
+    timeradd(&stats->analyze_time, &t, &stats->analyze_time);
 }
 
 
