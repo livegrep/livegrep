@@ -165,8 +165,8 @@ class add_match {
 public:
     typedef std::set<std::pair<indexed_file*, int>> line_set;
 
-    add_match(CodeSearchResult* response)
-        : unique_lines_(new line_set), response_(response) {}
+    add_match(line_set* ls, CodeSearchResult* response)
+        : unique_lines_(ls), response_(response) {}
 
     int match_count() {
         return response_->results_size();
@@ -248,7 +248,8 @@ void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, ma
     string regex;
     int32_t original_max_matches = q.max_matches;  // remember original value
 
-    add_match cb(response);
+    add_match::line_set ls;
+    add_match cb(&ls, response);
 
     /* To surface the most important matches first, start with tags.
        First pass: is the pattern an exact match for any tags? */
@@ -342,14 +343,16 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         code_searcher::search_thread *search;
         if (!pool_.try_pop(&search))
             search = new code_searcher::search_thread(cs_);
-        add_match cb(response);
+        add_match::line_set ls;
+        add_match cb(&ls, response);
         search->match(q, cb, cb, &stats);
         pool_.push(search);
     } else {
         if (tagdata_ == NULL)
             return Status(StatusCode::FAILED_PRECONDITION, "No tags file available.");
 
-        add_match cb(response);
+        add_match::line_set ls;
+        add_match cb(&ls, response);
         run_tags_search(q, tagdata_, cb, tagmatch_, stats);
     }
 
