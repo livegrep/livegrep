@@ -150,23 +150,25 @@ function init(initData) {
     // Update the blame and external-browse links
     $('#blame-link').attr('href', getBlameLink(range));
     $('#external-link').attr('href', getExternalLink(range));
+    updateFragments(range, $('#permalink, #back-to-head'));
   }
 
   function getBlameLink(range) {
-    lno = (range == null) ? 1 : range.start;
-
-    // Disassemble the current URL
+    // Disassemble the current URL.
     var path = window.location.pathname.slice(6); // Strip "/view/" prefix
     var repoName = path.split('/')[0];
     var pathInRepo = path.slice(repoName.length + 1).replace(/^\/+/, '');
 
-    url = '/blame/{name}/{version}/{path}/#{lno}';
-
-    // XXX code copied
-    url = url.replace('{lno}', lno);
+    // Reassemble a new URL.
+    url = '/blame/{name}/{version}/{path}/';
     url = url.replace('{version}', initData.commit);
     url = url.replace('{name}', repoName);
     url = url.replace('{path}', pathInRepo);
+
+    // Maybe add a line number hash.
+    if (range !== null) {
+      url += '#' + range.start;
+    }
     return url;
   }
 
@@ -201,6 +203,17 @@ function init(initData) {
     url = url.replace('{name}', repoName);
     url = url.replace('{path}', pathInRepo);
     return url;
+  }
+
+  function updateFragments(range, $anchors) {
+    $anchors.each(function() {
+      var $a = $(this);
+      var href = $a.attr('href').split('#')[0];
+      if (range !== null) {
+        href += '#L' + range.start;
+      }
+      $a.attr('href', href);
+    });
   }
 
   function processKeyEvent(event) {

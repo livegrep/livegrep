@@ -65,6 +65,7 @@ type fileViewerContext struct {
 	IsBlameAvailable bool
 	ExternalDomain string
 	Permalink      string
+	Headlink       string
 }
 
 type sourceFileContent struct {
@@ -238,8 +239,11 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	}
 
 	permalink := ""
+	headlink := ""
 	if !strings.HasPrefix(commitHash, commit) {
 		permalink = "?commit=" + commitHash[:16]
+	} else {
+		headlink = segments[len(segments) - 1].Name
 	}
 
 	return &fileViewerContext{
@@ -251,5 +255,6 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		IsBlameAvailable: isBlameAvailable,
 		ExternalDomain: externalDomain,
 		Permalink:      permalink,
+		Headlink:       headlink,
 	}, nil
 }
