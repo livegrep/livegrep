@@ -319,6 +319,15 @@ function init(initData) {
       processKeyEvent(event);
     });
 
+    $(document).mouseup(function() {
+      var selectedText = getSelectedText();
+      if(selectedText) {
+        showSelectionReminder(selectedText);
+      } else {
+        hideSelectionReminder();
+      }
+    });
+
     initializeActionButtons($('.header .header-actions'));
   }
 
