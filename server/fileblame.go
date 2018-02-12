@@ -58,7 +58,7 @@ type BlameLine struct {
 var histories = make(map[string]*blameworthy.GitHistory)
 var historiesLock = sync.RWMutex{}
 
-func getHistory(key string) (*blameworthy.GitHistory) {
+func getHistory(key string) *blameworthy.GitHistory {
 	historiesLock.RLock()
 	defer historiesLock.RUnlock()
 	return histories[key]

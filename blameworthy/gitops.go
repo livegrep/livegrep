@@ -91,15 +91,15 @@ func StripGitLog(input io.Reader) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "commit ") {
-			;
+
 		} else if strings.HasPrefix(line, "Author: ") {
-			;
+
 		} else if strings.HasPrefix(line, "Date: ") {
-			;
+
 		} else if strings.HasPrefix(line, "--- ") {
-			;
+
 		} else if strings.HasPrefix(line, "+++ ") {
-			;
+
 		} else if strings.HasPrefix(line, "@@ ") {
 			rest := line[3:]
 			i := strings.Index(rest, " @@")
@@ -119,7 +119,7 @@ func StripGitLog(input io.Reader) error {
 				scanner.Scan()
 			}
 		} else {
-			continue;
+			continue
 		}
 		_, err := fmt.Print(line, "\n")
 		if err != nil {
