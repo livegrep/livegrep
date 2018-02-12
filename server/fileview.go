@@ -1,7 +1,6 @@
 package server
 
 import (
-	// "fmt"
 	"net/url"
 	"os/exec"
 	"path"
@@ -178,10 +177,23 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo c
 }
 
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
+	blameHistory := getHistory(repo.Name)
+
 	commitHash := commit
-	out, err := gitShowCommit(commit, repo.Path)
-	if err == nil {
-		commitHash = out[:strings.Index(out, "\n")]
+	if commitHash == "HEAD" {
+		if blameHistory != nil && len(blameHistory.Hashes) > 0 {
+			// To prevent the `b` blame shortcut from 404'ing,
+			// define "HEAD" as the most recent commit in the
+			// blame history, since the repository might have
+			// an even more recent commit as "HEAD".
+			h := blameHistory.Hashes
+			commitHash = h[len(h) - 1]
+		} else {
+			out, err := gitShowCommit(commit, repo.Path)
+			if err == nil {
+				commitHash = out[:strings.Index(out, "\n")]
+			}
+		}
 	}
 	cleanPath := path.Clean(relativePath)
 	if cleanPath == "." {
@@ -231,8 +243,6 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		}
 	}
 
-	_, isBlameAvailable := repo.Metadata["blame"]
-
 	externalDomain := "external viewer"
 	if url, err := url.Parse(repo.Metadata["url-pattern"]); err == nil {
 		externalDomain = url.Hostname()
@@ -252,7 +262,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		Commit:           commit,
 		DirContent:       dirContent,
 		FileContent:      fileContent,
-		IsBlameAvailable: isBlameAvailable,
+		IsBlameAvailable: blameHistory != nil,
 		ExternalDomain:   externalDomain,
 		Permalink:        permalink,
 		Headlink:         headlink,
