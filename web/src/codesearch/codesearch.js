@@ -58,6 +58,11 @@ var Codesearch = function() {
           var err = JSON.parse(data.responseText);
           Codesearch.delegate.error(opts.id, err.error.message);
         } else {
+          var message = "Cannot connect to server";
+          if (data.status) {
+            message = "Bad response " + data.status + " from server";
+          }
+          Codesearch.delegate.error(opts.id, message);
           console.log("server error", data.status, data.responseText);
         }
       });
