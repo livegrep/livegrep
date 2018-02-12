@@ -57,15 +57,15 @@ type directoryListEntry struct {
 }
 
 type fileViewerContext struct {
-	PathSegments   []breadCrumbEntry
-	Repo           config.RepoConfig
-	Commit         string
-	DirContent     *directoryContent
-	FileContent    *sourceFileContent
+	PathSegments     []breadCrumbEntry
+	Repo             config.RepoConfig
+	Commit           string
+	DirContent       *directoryContent
+	FileContent      *sourceFileContent
 	IsBlameAvailable bool
-	ExternalDomain string
-	Permalink      string
-	Headlink       string
+	ExternalDomain   string
+	Permalink        string
+	Headlink         string
 }
 
 type sourceFileContent struct {
@@ -243,18 +243,18 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	if !strings.HasPrefix(commitHash, commit) {
 		permalink = "?commit=" + commitHash[:16]
 	} else {
-		headlink = segments[len(segments) - 1].Name
+		headlink = segments[len(segments)-1].Name
 	}
 
 	return &fileViewerContext{
-		PathSegments:   segments,
-		Repo:           repo,
-		Commit:         commit,
-		DirContent:     dirContent,
-		FileContent:    fileContent,
+		PathSegments:     segments,
+		Repo:             repo,
+		Commit:           commit,
+		DirContent:       dirContent,
+		FileContent:      fileContent,
 		IsBlameAvailable: isBlameAvailable,
-		ExternalDomain: externalDomain,
-		Permalink:      permalink,
-		Headlink:       headlink,
+		ExternalDomain:   externalDomain,
+		Permalink:        permalink,
+		Headlink:         headlink,
 	}, nil
 }

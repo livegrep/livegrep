@@ -20,7 +20,6 @@ import (
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
 	"github.com/livegrep/livegrep/server/templates"
-
 )
 
 type Templates struct {
@@ -217,11 +216,11 @@ func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.
 	err = t.Execute(w, map[string]interface{}{
 		"cssTag": templates.LinkTag("stylesheet",
 			"/assets/css/blame.css", s.AssetHashes),
-		"repo": repo,
-		"path": path,
+		"repo":       repo,
+		"path":       path,
 		"commitHash": hash,
-		"blame": data,
-		"content": data.Content,
+		"blame":      data,
+		"content":    data.Content,
 	})
 	if err != nil {
 		stdlog.Print("Cannot render template: ", err)
@@ -266,10 +265,10 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	err = s.T.BlameDiff.Execute(w, map[string]interface{}{
 		"cssTag": templates.LinkTag("stylesheet",
 			"/assets/css/blame.css", s.AssetHashes),
-		"repo": repo,
-		"path": "NONE",
+		"repo":       repo,
+		"path":       "NONE",
 		"commitHash": hash,
-		"blame": data,
+		"blame":      data,
 	})
 	if err != nil {
 		stdlog.Print("Cannot render template: ", err)
