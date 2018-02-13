@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 	"reflect"
 	"strings"
 	texttemplate "text/template"
+
+	"github.com/livegrep/livegrep/blameworthy"
 )
 
 func templatePath(f reflect.StructField) string {
@@ -21,7 +24,16 @@ func templatePath(f reflect.StructField) string {
 	return strings.ToLower(f.Name) + ".html"
 }
 
-func linkTag(rel string, s string, m map[string]string) template.HTML {
+func prettyCommit(c *blameworthy.Commit) string {
+	if len(c.Author) > 0 && c.Date > 0 {
+		return fmt.Sprintf("%04d-%02d-%02d %.8s",
+			c.Date/10000, c.Date%10000/100, c.Date%100,
+			c.Author)
+	}
+	return c.Hash + "   " // turn 16 characters into 19
+}
+
+func LinkTag(rel string, s string, m map[string]string) template.HTML {
 	hash := m[strings.TrimPrefix(s, "/")]
 	href := s + "?v=" + hash
 	hashBytes, _ := hex.DecodeString(hash)
@@ -40,10 +52,11 @@ func scriptTag(s string, m map[string]string) template.HTML {
 
 func getFuncs() map[string]interface{} {
 	return map[string]interface{}{
-		"loop":      func(n int) []struct{} { return make([]struct{}, n) },
-		"toLineNum": func(n int) int { return n + 1 },
-		"linkTag":   linkTag,
-		"scriptTag": scriptTag,
+		"loop":         func(n int) []struct{} { return make([]struct{}, n) },
+		"toLineNum":    func(n int) int { return n + 1 },
+		"prettyCommit": prettyCommit,
+		"linkTag":      LinkTag,
+		"scriptTag":    scriptTag,
 	}
 }
 

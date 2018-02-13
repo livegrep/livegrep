@@ -147,8 +147,29 @@ function init(initData) {
       }
     }
 
-    // Update the external-browse link
+    // Update the blame and external-browse links
+    $('#blame-link').attr('href', getBlameLink(range));
     $('#external-link').attr('href', getExternalLink(range));
+    updateFragments(range, $('#permalink, #back-to-head'));
+  }
+
+  function getBlameLink(range) {
+    // Disassemble the current URL.
+    var path = window.location.pathname.slice(6); // Strip "/view/" prefix
+    var repoName = path.split('/')[0];
+    var pathInRepo = path.slice(repoName.length + 1).replace(/^\/+/, '');
+
+    // Reassemble a new URL.
+    url = '/blame/{name}/{version}/{path}/';
+    url = url.replace('{version}', initData.commit);
+    url = url.replace('{name}', repoName);
+    url = url.replace('{path}', pathInRepo);
+
+    // Maybe add a line number hash.
+    if (range !== null) {
+      url += '#' + range.start;
+    }
+    return url;
   }
 
   function getExternalLink(range) {
@@ -184,6 +205,17 @@ function init(initData) {
     return url;
   }
 
+  function updateFragments(range, $anchors) {
+    $anchors.each(function() {
+      var $a = $(this);
+      var href = $a.attr('href').split('#')[0];
+      if (range !== null) {
+        href += '#L' + range.start;
+      }
+      $a.attr('href', href);
+    });
+  }
+
   function processKeyEvent(event) {
     if(event.which === KeyCodes.ENTER) {
       // Perform a new search with the selected text, if any
@@ -206,12 +238,28 @@ function init(initData) {
         hideHelp();
       }
       $('#query').blur();
+    } else if(String.fromCharCode(event.which) == 'B') {
+      // Visually highlight the external link to indicate what happened
+      $('#blame-link').focus();
+      window.location = $('#blame-link').attr('href');
     } else if(String.fromCharCode(event.which) == 'V') {
       // Visually highlight the external link to indicate what happened
       $('#external-link').focus();
       window.location = $('#external-link').attr('href');
+    } else if (String.fromCharCode(event.which) == 'Y') {
+      var $a = $('#permalink');
+      var permalink_is_present = $a.length > 0;
+      if (permalink_is_present) {
+        $a.focus();
+        window.location = $a.attr('href');
+      }
+    } else if (String.fromCharCode(event.which) == 'N' || String.fromCharCode(event.which) == 'P') {
+      var goBackwards = String.fromCharCode(event.which) === 'P';
+      var selectedText = getSelectedText();
+      if (selectedText) {
+        window.find(selectedText, false /* case sensitive */, goBackwards);
+      }
     }
-
     return true;
   }
 

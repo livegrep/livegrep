@@ -6,6 +6,7 @@ go_library(
     srcs = [
         "api.go",
         "backend.go",
+        "fileblame.go",
         "fileview.go",
         "json.go",
         "query.go",
@@ -20,6 +21,7 @@ go_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//blameworthy:go_default_library",
         "//server/api:go_default_library",
         "//server/config:go_default_library",
         "//server/log:go_default_library",

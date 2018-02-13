@@ -56,12 +56,15 @@ type directoryListEntry struct {
 }
 
 type fileViewerContext struct {
-	PathSegments   []breadCrumbEntry
-	Repo           config.RepoConfig
-	Commit         string
-	DirContent     *directoryContent
-	FileContent    *sourceFileContent
-	ExternalDomain string
+	PathSegments     []breadCrumbEntry
+	Repo             config.RepoConfig
+	Commit           string
+	DirContent       *directoryContent
+	FileContent      *sourceFileContent
+	IsBlameAvailable bool
+	ExternalDomain   string
+	Permalink        string
+	Headlink         string
 }
 
 type sourceFileContent struct {
@@ -100,7 +103,9 @@ func gitObjectType(obj string, repoPath string) (string, error) {
 }
 
 func gitCatBlob(obj string, repoPath string) (string, error) {
-	out, err := exec.Command("git", "-C", repoPath, "cat-file", "blob", obj).Output()
+	cmd := []string{"-C", repoPath, "cat-file", "blob", obj}
+	//fmt.Printf("%v\n", cmd)
+	out, err := exec.Command("git", cmd...).Output()
 	if err != nil {
 		return "", err
 	}
@@ -172,11 +177,29 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo c
 }
 
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
+	blameHistory := getHistory(repo.Name)
+
+	commitHash := commit
+	if commitHash == "HEAD" {
+		if blameHistory != nil && len(blameHistory.Hashes) > 0 {
+			// To prevent the `b` blame shortcut from 404'ing,
+			// define "HEAD" as the most recent commit in the
+			// blame history, since the repository might have
+			// an even more recent commit as "HEAD".
+			h := blameHistory.Hashes
+			commitHash = h[len(h) - 1]
+		} else {
+			out, err := gitShowCommit(commit, repo.Path)
+			if err == nil {
+				commitHash = out[:strings.Index(out, "\n")]
+			}
+		}
+	}
 	cleanPath := path.Clean(relativePath)
 	if cleanPath == "." {
 		cleanPath = ""
 	}
-	obj := commit + ":" + cleanPath
+	obj := commitHash + ":" + cleanPath
 	pathSplits := strings.Split(cleanPath, "/")
 
 	var fileContent *sourceFileContent
@@ -225,12 +248,23 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		externalDomain = url.Hostname()
 	}
 
+	permalink := ""
+	headlink := ""
+	if !strings.HasPrefix(commitHash, commit) {
+		permalink = "?commit=" + commitHash[:16]
+	} else {
+		headlink = segments[len(segments)-1].Name
+	}
+
 	return &fileViewerContext{
-		PathSegments:   segments,
-		Repo:           repo,
-		Commit:         commit,
-		DirContent:     dirContent,
-		FileContent:    fileContent,
-		ExternalDomain: externalDomain,
+		PathSegments:     segments,
+		Repo:             repo,
+		Commit:           commit,
+		DirContent:       dirContent,
+		FileContent:      fileContent,
+		IsBlameAvailable: blameHistory != nil,
+		ExternalDomain:   externalDomain,
+		Permalink:        permalink,
+		Headlink:         headlink,
 	}, nil
 }

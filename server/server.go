@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	stdlog "log"
 	"net/http"
 	"path"
+	"strings"
 	texttemplate "text/template"
 	"time"
 
@@ -24,6 +26,8 @@ type Templates struct {
 	Layout,
 	Index,
 	FileView,
+	BlameDiff,
+	BlameFile,
 	About *template.Template
 	OpenSearch *texttemplate.Template `template:"opensearch.xml"`
 }
@@ -55,10 +59,6 @@ func (s *server) loadTemplates() {
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.inner.ServeHTTP(w, r)
-}
-
-func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/search", 303)
 }
 
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -124,7 +124,7 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	data, err := buildFileData(path, repo, commit)
 	if err != nil {
-		http.Error(w, "Error reading file", 500)
+		http.Error(w, fmt.Sprint("500 Error reading file: ", err), 500)
 		return
 	}
 
@@ -145,6 +145,134 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		IncludeHeader: false,
 		Body:          template.HTML(body),
 	})
+}
+
+func (s *server) parseBlameURL(r *http.Request) (string, string, error) {
+	if len(s.repos) == 0 {
+		return "", "", fmt.Errorf("File browsing not enabled")
+	}
+	repoName := r.URL.Query().Get(":repo")
+	hash := r.URL.Query().Get(":hash")
+	return repoName, hash, nil
+}
+
+func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	repoName, hash, err := s.parseBlameURL(r)
+	if err != nil {
+		http.Error(w, fmt.Sprint("404 ", err), 404)
+		return
+	}
+
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	gitHistory, ok := histories[repo.Name]
+	if !ok {
+		http.Error(w, "Repo not configured for blame", 404)
+	}
+
+	rest := pat.Tail("/blame/:repo/:hash/", r.URL.Path)
+	i := strings.LastIndex(rest, "/")
+	if i == -1 {
+		http.Error(w, "Not found", 404)
+		return
+	}
+	path := rest[:i]
+	if i+1 < len(rest) {
+		dest := rest[i+1:]
+		url, err := fileRedirect(gitHistory, repoName, hash, path, dest)
+		if err != nil {
+			http.Error(w, "Not found", 404)
+			return
+		}
+		http.Redirect(w, r, url, 307)
+		return
+	}
+	//commitHash := rest[i+1:]
+
+	//fmt.Print(repoName, " ", hash, " ", path, "\n")
+
+	isDiff := false // TODO: remove
+	data := BlameData{}
+	resolveCommit(repo, hash, path, &data)
+	if data.CommitHash != hash {
+		pat1 := "/" + hash + "/"
+		pat2 := "/" + data.CommitHash + "/"
+		destURL := strings.Replace(r.URL.Path, pat1, pat2, 1)
+		http.Redirect(w, r, destURL, 307)
+	}
+	err = buildBlameData(repo, hash, gitHistory, path, isDiff, &data)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
+	t := s.T.BlameFile
+	if isDiff {
+		t = s.T.BlameDiff
+	}
+	err = t.Execute(w, map[string]interface{}{
+		"cssTag": templates.LinkTag("stylesheet",
+			"/assets/css/blame.css", s.AssetHashes),
+		"repo":       repo,
+		"path":       path,
+		"commitHash": hash,
+		"blame":      data,
+		"content":    data.Content,
+	})
+	if err != nil {
+		stdlog.Print("Cannot render template: ", err)
+	}
+}
+
+func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if len(s.repos) == 0 {
+		http.Error(w, "404 Repository browsing not enabled", 404)
+		return
+	}
+	repoName := r.URL.Query().Get(":repo")
+	hash := r.URL.Query().Get(":hash")
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "404 No such repository", 404)
+		return
+	}
+	rest := pat.Tail("/diff/:repo/:hash/", r.URL.Path)
+	if len(rest) > 0 {
+		diffRedirect(w, r, repoName, hash, rest)
+		return
+	}
+	data := DiffData{}
+	data2 := BlameData{}
+	resolveCommit(repo, hash, "", &data2)
+	data.CommitHash = data2.CommitHash
+	data.Author = data2.Author
+	data.Date = data2.Date
+	data.Subject = data2.Subject
+	// TODO: fix this
+	// if data.CommitHash != commitHash {
+	// 	http.Redirect(w, r, data.CommitHash, 307)
+	// }
+
+	err := buildDiffData(repo, hash, &data)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
+
+	err = s.T.BlameDiff.Execute(w, map[string]interface{}{
+		"cssTag": templates.LinkTag("stylesheet",
+			"/assets/css/blame.css", s.AssetHashes),
+		"repo":       repo,
+		"path":       "NONE",
+		"commitHash": hash,
+		"blame":      data,
+	})
+	if err != nil {
+		stdlog.Print("Cannot render template: ", err)
+	}
 }
 
 func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -181,6 +309,16 @@ func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
 
 type stats struct {
 	IndexAge int64 `json:"index_age"`
+}
+
+func (s *server) ReloadIndexes(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if err := initBlame(s.config); err != nil {
+		message := fmt.Sprint("Error reloading blame data: ", err)
+		log.Printf(ctx, message)
+		http.Error(w, message, 500)
+		return
+	}
+	http.Error(w, "OK", 200)
 }
 
 func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -264,6 +402,12 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 	srv.loadTemplates()
 
+	if err := initBlame(cfg); err != nil {
+		ctx := context.Background()
+		log.Printf(ctx, "Error: %s", err)
+		return nil, err
+	}
+
 	if cfg.Honeycomb.WriteKey != "" {
 		log.Printf(context.Background(),
 			"Enabling honeycomb dataset=%s", cfg.Honeycomb.Dataset)
@@ -287,7 +431,10 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	m := pat.New()
+	m.Add("GET", "/blame/:repo/:hash/", srv.Handler(srv.ServeBlame))
+	m.Add("GET", "/diff/:repo/:hash/", srv.Handler(srv.ServeDiff))
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
+	m.Add("GET", "/debug/reload-indexes", srv.Handler(srv.ReloadIndexes))
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
@@ -295,7 +442,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
-	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
+	m.Add("GET", "/", srv.Handler(srv.ServeSearch))
 
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
