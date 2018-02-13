@@ -247,7 +247,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	if !strings.HasPrefix(commitHash, commit) {
 		permalink = "?commit=" + commitHash[:16]
 	} else {
-		headlink = segments[len(segments) - 1].Name
+		headlink = segments[len(segments)-1].Name
 	}
 
 	return &fileViewerContext{
