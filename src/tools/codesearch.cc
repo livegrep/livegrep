@@ -36,6 +36,7 @@
 #include <gflags/gflags.h>
 
 #include <boost/bind.hpp>
+#include <boost/filesystem.hpp>
 #include "re2/regexp.h"
 #include "re2/walker-inl.h"
 
@@ -54,6 +55,7 @@ DEFINE_bool(reload_rpc, false, "Enable the Reload RPC");
 
 using namespace std;
 using namespace re2;
+namespace fs = boost::filesystem;
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -69,7 +71,8 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
         exit(1);
     }
 
-    json_object *obj = json_object_from_file(const_cast<char*>(argv[1].c_str()));
+    fs::path config_file_path(argv[1]);
+    json_object *obj = json_object_from_file(config_file_path.c_str());
     if (is_error(obj)) {
         fprintf(stderr, "Error parsing `%s'\n",
                 argv[1].c_str());
@@ -92,7 +95,14 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
         fprintf(stderr, "Walking path_spec name=%s, path=%s\n",
                 it->name.c_str(), it->path.c_str());
         fs_indexer indexer(cs, it->path, it->name, it->metadata);
-        indexer.walk(it->path);
+        if (it->ordered_contents_file_path.empty()) {
+            fprintf(stderr, "  walking full tree\n");
+            indexer.walk(it->path);
+        } else {
+            fprintf(stderr, "  walking paths from ordered contents list\n");
+            fs::path contents_file_path = fs::canonical(it->ordered_contents_file_path, config_file_path.remove_filename());
+            indexer.walk_contents_file(contents_file_path);
+        }
         fprintf(stderr, "done\n");
     }
 

@@ -80,6 +80,8 @@ json_parse_error parse_object(json_object *js, path_spec *p) {
     err = parse_object(js, "name", &p->name);
     if (!err.ok()) return err;
     err = parse_object(js, "metadata", &p->metadata);
+    if (!err.ok()) return err;
+    err = parse_object(js, "ordered-contents", &p->ordered_contents_file_path);
     return err;
 }
 

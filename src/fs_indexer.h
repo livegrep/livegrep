@@ -12,6 +12,7 @@
 
 class code_searcher;
 struct indexed_tree;
+namespace boost { namespace filesystem { class path; } }
 
 class fs_indexer {
 public:
@@ -20,13 +21,15 @@ public:
                const string& name,
                json_object *metadata = 0);
     ~fs_indexer();
-    void read_file(const std::string& path);
-    void walk(const std::string& path);
+    void walk(const boost::filesystem::path& path);
+    void walk_contents_file(const boost::filesystem::path& contents_file_path);
 protected:
     code_searcher *cs_;
     std::string repopath_;
     std::string name_;
     const indexed_tree *tree_;
+
+    void read_file(const boost::filesystem::path& path);
 };
 
 #endif

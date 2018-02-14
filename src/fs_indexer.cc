@@ -25,14 +25,26 @@ fs_indexer::fs_indexer(code_searcher *cs,
 fs_indexer::~fs_indexer() {
 }
 
-void fs_indexer::read_file(const string& path) {
+void fs_indexer::read_file(const fs::path& path) {
     ifstream in(path.c_str(), ios::in);
-    string relpath(mismatch(path.begin(), path.end(), repopath_.begin()).first,
-                   path.end());
-    cs_->index_file(tree_, relpath, StringPiece(static_cast<stringstream const&>(stringstream() << in.rdbuf()).str().c_str(), fs::file_size(path)));
+    fs::path relpath = fs::relative(path, repopath_);
+    cs_->index_file(tree_, relpath.string(), StringPiece(static_cast<stringstream const&>(stringstream() << in.rdbuf()).str().c_str(), fs::file_size(path)));
 }
 
-void fs_indexer::walk(const string& path) {
+void fs_indexer::walk_contents_file(const fs::path& contents_file_path) {
+    ifstream contents_file(contents_file_path.c_str(), ios::in);
+    if (!contents_file.is_open()) {
+        throw std::ifstream::failure("Unable to open contents file for reading: " + contents_file_path.string());
+    }
+    string path;
+    while (std::getline(contents_file, path)) {
+        if (path.length()) {
+            read_file(fs::path(repopath_) / path);
+        }
+    }
+}
+
+void fs_indexer::walk(const fs::path& path) {
     static int recursion_depth = 0;
     RecursionCounter guard(recursion_depth);
     if (recursion_depth > kMaxRecursion)
@@ -44,9 +56,9 @@ void fs_indexer::walk(const string& path) {
                 itr != end_itr;
                 ++itr) {
             if (fs::is_directory(itr->status()) ) {
-                fs_indexer::walk(itr->path().c_str());
+                fs_indexer::walk(itr->path());
             } else if (fs::is_regular_file(itr->status()) ) {
-                fs_indexer::read_file(itr->path().c_str());
+                fs_indexer::read_file(itr->path());
             }
         }
     } else if (fs::is_regular_file(path)) {
