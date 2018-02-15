@@ -608,7 +608,13 @@ var ResultView = Backbone.View.extend({
           // paused at into their browser history.
           var now = Date.now();
           var two_seconds = 2000;
-          if (now - last_url_update > two_seconds) {
+          if (this.last_url === null) {
+            // If this.last_url is null, that means this is the initial
+            // navigation. We should never pushState here, otherwise the
+            // user will need to backspace twice to go back to the
+            // previous page.
+            history.replaceState(null, '', url);
+          } else if (now - last_url_update > two_seconds) {
             history.pushState(null, '', url);
           } else {
             history.replaceState(null, '', url);
