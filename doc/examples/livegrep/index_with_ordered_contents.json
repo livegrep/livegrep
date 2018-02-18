@@ -1,0 +1,13 @@
+{
+    "name": "livegrep",
+    "fs_paths": [
+        {
+            "name": "livegrep/livegrep",
+            "path": "src/",
+            "ordered-contents": "ordered-contents.txt",
+            "metadata": {
+                "url-pattern": "https://github.com/{name}/blob/HEAD/src/{path}#L{lno}"
+            }
+        }
+    ],
+}
