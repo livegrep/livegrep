@@ -263,9 +263,12 @@ function init(initData) {
 
     $(document).on('keydown', function(event) {
       // Filter out key events when the user has focused an input field.
-      if(!$(event.target).is('input,textarea')) {
-        processKeyEvent(event);
-      }
+      if($(event.target).is('input,textarea'))
+        return;
+      // Filter out key if a modifier is pressed.
+      if(event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+        return;
+      processKeyEvent(event);
     });
 
     initializeActionButtons($('.header .header-actions'));
