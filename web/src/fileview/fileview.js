@@ -14,10 +14,27 @@ function getSelectedText() {
   return window.getSelection ? window.getSelection().toString() : null;
 }
 
+// Get file info from the current URL. Returns an object with the following keys:
+// repoName: the repo name
+// pathInRepo: The page in the repo.
+function getFileInfo() {
+  // Disassemble the current URL.
+  var path = window.location.pathname.slice(6); // Strip "/view/" prefix
+  var repoName = path.split('/')[0];
+  var pathInRepo = path.slice(repoName.length + 1).replace(/^\/+/, '');
+
+  return {
+    repoName: repoName,
+    pathInRepo: pathInRepo,
+  }
+}
+
 function doSearch(event, query, newTab) {
+  var fileInfo = getFileInfo();
+
   var url;
   if (query !== undefined) {
-    url = '/search?q=' + encodeURIComponent(query);
+    url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(fileInfo.repoName);
   } else {
     url = '/search';
   }
@@ -169,23 +186,21 @@ function init(initData) {
   function getExternalLink(range) {
     var lno = getLineNumber(range);
 
-    // Disassemble the current URL
-    var path = window.location.pathname.slice(6); // Strip "/view/" prefix
-    var repoName = path.split('/')[0];
-    var pathInRepo = path.slice(repoName.length + 1);
+    var fileInfo = getFileInfo();
 
     url = initData.repo_info.metadata['url-pattern']
 
     // If {path} already has a slash in front of it, trim extra leading
     // slashes from `pathInRepo` to avoid a double-slash in the URL.
-    if (url.indexOf('/{path}') !== -1)
-      pathInRepo = pathInRepo.replace(/^\/+/, '');
+    if (url.indexOf('/{path}') !== -1) {
+      fileInfo.pathInRepo = fileInfo.pathInRepo.replace(/^\/+/, '');
+    }
 
     // XXX code copied
     url = url.replace('{lno}', lno);
     url = url.replace('{version}', initData.commit);
-    url = url.replace('{name}', repoName);
-    url = url.replace('{path}', pathInRepo);
+    url = url.replace('{name}', fileInfo.repoName);
+    url = url.replace('{path}', fileInfo.pathInRepo);
     return url;
   }
 
