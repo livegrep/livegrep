@@ -20,7 +20,7 @@ function getSelectedText() {
 function getFileInfo() {
   // Disassemble the current URL.
   var path = window.location.pathname.slice(6); // Strip "/view/" prefix
-  var repoName = path.split('/')[0];
+  var repoName = path.split('/')[0] + '/' + path.split('/')[1];
   var pathInRepo = path.slice(repoName.length + 1).replace(/^\/+/, '');
 
   return {
