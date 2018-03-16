@@ -278,6 +278,16 @@ function init(initData) {
     }
   }
 
+  var showSelectionReminder = function () {
+    $('.search-without-selection').hide();
+    $('.search-with-selection').show();
+  }
+
+  var hideSelectionReminder = function () {
+    $('.search-without-selection').show();
+    $('.search-with-selection').hide();
+  }
+
   function initializePage() {
     // Initial range detection for when the page is loaded
     handleHashChange();
