@@ -248,8 +248,13 @@ function init(initData) {
         $a.focus();
         window.location = $a.attr('href');
       }
+    } else if (String.fromCharCode(event.which) == 'N' || String.fromCharCode(event.which) == 'P') {
+      var goBackwards = String.fromCharCode(event.which) === 'P';
+      var selectedText = getSelectedText();
+      if (selectedText) {
+        window.find(selectedText, false /* case sensitive */, goBackwards);
+      }
     }
-
     return true;
   }
 
