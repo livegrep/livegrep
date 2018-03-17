@@ -283,6 +283,16 @@ function init(initData) {
     }
   }
 
+  var showSelectionReminder = function () {
+    $('.search-without-selection').hide();
+    $('.search-with-selection').show();
+  }
+
+  var hideSelectionReminder = function () {
+    $('.search-without-selection').show();
+    $('.search-with-selection').hide();
+  }
+
   function initializePage() {
     // Initial range detection for when the page is loaded
     handleHashChange();
@@ -312,6 +322,15 @@ function init(initData) {
       if(event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
         return;
       processKeyEvent(event);
+    });
+
+    $(document).mouseup(function() {
+      var selectedText = getSelectedText();
+      if(selectedText) {
+        showSelectionReminder(selectedText);
+      } else {
+        hideSelectionReminder();
+      }
     });
 
     initializeActionButtons($('.header .header-actions'));
