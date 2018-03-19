@@ -592,6 +592,12 @@ var MatchesView = Backbone.View.extend({
       event.preventDefault();
       if (CodesearchUI.input_regex.is(':checked'))
         t = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // from mozilla docs
+
+      // Make sure that the search results the user is looking at, in
+      // which they've selected text, get persisted in their browser
+      // history so that they can come back to them.
+      last_url_update = 0;
+
       CodesearchUI.input.val(t);
       CodesearchUI.newsearch();
     }
