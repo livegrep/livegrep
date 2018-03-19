@@ -5,6 +5,14 @@ var Cookies = require('js-cookie');
 var Codesearch = require('codesearch/codesearch.js').Codesearch;
 var RepoSelector = require('codesearch/repo_selector.js');
 
+var KeyCodes = {
+  SLASH_OR_QUESTION_MARK: 191
+};
+
+function getSelectedText() {
+  return window.getSelection ? window.getSelection().toString() : null;
+}
+
 function init(initData) {
 "use strict";
 
@@ -492,6 +500,7 @@ var MatchesView = Backbone.View.extend({
   el: $('#results'),
   events: {
     'click .file-extension': '_limitExtension',
+    'keydown': '_handleKey',
   },
   initialize: function() {
     this.model.search_results.on('search-complete', this.render, this);
@@ -570,6 +579,22 @@ var MatchesView = Backbone.View.extend({
       q = 'file:' + ext + ' ' + q;
     CodesearchUI.input.val(q);
     CodesearchUI.newsearch();
+  },
+  _handleKey: function(e) {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+      return;
+    var which = event.which;
+    console.log(KeyCodes);
+    if (which === KeyCodes.SLASH_OR_QUESTION_MARK) {
+      var t = getSelectedText();
+      if (!t)
+        return;
+      event.preventDefault();
+      if (CodesearchUI.input_regex.is(':checked'))
+        t = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // from mozilla docs
+      CodesearchUI.input.val(t);
+      CodesearchUI.newsearch();
+    }
   }
 });
 
