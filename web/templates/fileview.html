@@ -5,9 +5,9 @@
       <a href="/view/{{$repo}}/" class="path-segment repo" title="Repository: {{$repo}}">{{$repo}}</a>:
       {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
     </nav>
-    <ul class="header-actions">
+    <ul class="header-actions without-selection">
       <li class="header-action">
-        <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#"><span class="search-without-selection">new search</span><b class="search-with-selection" style="display:none">search for the selected text</b> [<span class='shortcut'>/</span>]</a>
+        <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">new search [<span class='shortcut'>/</span>]</a>
       </li>,
       <li class="header-action">
         <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
@@ -21,6 +21,20 @@
         <a id="back-to-head" title="return to HEAD revision" href="{{.Headlink}}">back to HEAD</a>
       </li>,
       {{end}}
+      <li class="header-action">
+        <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
+      </li>
+    </ul>
+    <ul class="header-actions with-selection" style="display:none">
+      <li class="header-action">
+        search for selected text [/]
+      </li>,
+      <li class="header-action">
+        previous match [p]
+      </li>,
+      <li class="header-action">
+        next match [p]
+      </li>,
       <li class="header-action">
         <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
       </li>
@@ -63,10 +77,15 @@
       <ul>
         <li>Click on a line number to highlight it</li>
         <li>Shift + click a second line number to highlight a range</li>
-        <li>Press <pre class="keyboard-shortcut">/</pre> to start a new search</li>
-        <li>Select some text and press <pre class="keyboard-shortcut">/</pre> to search for that text</li>
-        <li>Select some text and press <pre class="keyboard-shortcut">enter</pre> to search for that text in a new tab</li>
-        <li>Press <pre class="keyboard-shortcut">v</pre> to view this file/directory at {{.ExternalDomain}}</li>
+        <li>Press <kbd class="keyboard-shortcut">/</kbd> to start a new search</li>
+        <li>Press <kbd class="keyboard-shortcut">b</kbd> to see which authors wrote which lines</li>
+        <li>Press <kbd class="keyboard-shortcut">l</kbd> to see the commit log for this file</li>
+        <li>Press <kbd class="keyboard-shortcut">v</kbd> to view this file/directory at {{.ExternalDomain}}</li>
+        <li>Press <kbd class="keyboard-shortcut">y</kbd> to create a permalink to this version of this file</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">/</kbd> to search for that text</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">enter</kbd> to search for that text in a new tab</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">p</kbd> for the previous match for that text</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">n</kbd> for the next match for that text</li>
       </ul>
     </div>
   </section>

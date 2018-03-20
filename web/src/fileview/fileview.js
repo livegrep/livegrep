@@ -284,13 +284,13 @@ function init(initData) {
   }
 
   var showSelectionReminder = function () {
-    $('.search-without-selection').hide();
-    $('.search-with-selection').show();
+    $('.without-selection').hide();
+    $('.with-selection').show();
   }
 
   var hideSelectionReminder = function () {
-    $('.search-without-selection').show();
-    $('.search-with-selection').hide();
+    $('.without-selection').show();
+    $('.with-selection').hide();
   }
 
   function initializePage() {
