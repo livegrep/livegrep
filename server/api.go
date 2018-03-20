@@ -207,8 +207,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 
 	if q.Line == "" {
 		kind := "string"
-		fmt.Print(is_regex,"\n")
-		if (is_regex) {
+		if is_regex {
 			kind = "regex"
 		}
 		msg := fmt.Sprintf("You must specify a %s to match", kind)
