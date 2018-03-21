@@ -186,6 +186,7 @@ a:hover {
 
 #results {
     margin-top: 10px;
+    outline: none; /* despite 'tabindex' that lets it receive keystrokes */
 }
 
 .file-extensions, .path-results {
