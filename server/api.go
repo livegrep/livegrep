@@ -47,7 +47,7 @@ func writeQueryError(ctx context.Context, w http.ResponseWriter, err error) {
 	}
 }
 
-func extractQuery(ctx context.Context, r *http.Request) (pb.Query, error) {
+func extractQuery(ctx context.Context, r *http.Request) (pb.Query, bool, error) {
 	params := r.URL.Query()
 	var query pb.Query
 	var err error
@@ -102,7 +102,7 @@ func extractQuery(ctx context.Context, r *http.Request) (pb.Query, error) {
 		}
 	}
 
-	return query, err
+	return query, regex, err
 }
 
 var (
@@ -198,7 +198,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		}
 	}
 
-	q, err := extractQuery(ctx, r)
+	q, is_regex, err := extractQuery(ctx, r)
 
 	if err != nil {
 		writeError(ctx, w, 400, "bad_query", err.Error())
@@ -206,8 +206,12 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	if q.Line == "" {
-		writeError(ctx, w, 400, "bad_query",
-			"You must specify a regex to match")
+		kind := "string"
+		if is_regex {
+			kind = "regex"
+		}
+		msg := fmt.Sprintf("You must specify a %s to match", kind)
+		writeError(ctx, w, 400, "bad_query", msg)
 		return
 	}
 
