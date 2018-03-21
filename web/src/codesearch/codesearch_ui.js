@@ -584,7 +584,6 @@ var MatchesView = Backbone.View.extend({
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
       return;
     var which = event.which;
-    console.log(KeyCodes);
     if (which === KeyCodes.SLASH_OR_QUESTION_MARK) {
       var t = getSelectedText();
       if (!t)
