@@ -319,7 +319,7 @@ function init(initData) {
       if($(event.target).is('input,textarea'))
         return;
       // Filter out key if a modifier is pressed.
-      if(event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+      if(event.altKey || event.ctrlKey || event.metaKey)
         return;
       processKeyEvent(event);
     });
