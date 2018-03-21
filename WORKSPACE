@@ -8,7 +8,7 @@ load(
 
 git_repository(
     name = "org_pubref_rules_protobuf",
-    commit = "ff3b7e7963daa7cb3b42f8936bc11eda4b960926",
+    commit = "master",
     remote = "https://github.com/pubref/rules_protobuf",
 )
 
@@ -27,21 +27,23 @@ new_patched_http_archive(
     url = "https://codeload.github.com/y-256/libdivsufsort/tar.gz/2.0.1",
 )
 
-git_repository(
+http_archive(
     name = "com_googlesource_code_re2",
-    commit = "7cf8b88e8f70f97fd4926b56aa87e7f53b2717e0",
-    remote = "https://github.com/google/re2",
+    sha256 = "c8ab833081c9766ef4e4d1e6397044ff3b20e42be109084b50d49c161f876184",
+    strip_prefix = "re2-2018-02-01",
+    url = "https://github.com/google/re2/archive/2018-02-01.tar.gz",
 )
 
-git_repository(
-    name = "gflags",
-    commit = "a69b2544d613b4bee404988710503720c487119a",
-    remote = "https://github.com/gflags/gflags",
+http_archive(
+    name = "com_github_gflags_gflags",
+    sha256 = "ae27cdbcd6a2f935baa78e4f21f675649271634c092b1be01469440495609d0e",
+    strip_prefix = "gflags-2.2.1",
+    url = "https://github.com/gflags/gflags/archive/v2.2.1.tar.gz",
 )
 
 git_repository(
     name = "com_github_nelhage_boost",
-    commit = "d6446dc9de6e43b039af07482a9361bdc6da5237",
+    commit = "for-livegrep",
     remote = "https://github.com/nelhage/rules_boost",
 )
 # local_repository(
@@ -77,7 +79,7 @@ new_patched_http_archive(
 
 git_repository(
     name = "io_bazel_rules_go",
-    commit = "44b3bdf7d3645cbf0cfd786c5f105d0af4cf49ca",
+    commit = "0.7.1",
     remote = "https://github.com/bazelbuild/rules_go.git",
 )
 
@@ -131,13 +133,12 @@ load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
 
 node_repositories()
 
-new_git_repository(
+new_http_archive(
     name = "compdb",
-    build_file_content = (
-        """
-package(default_visibility = ["//visibility:public"])
-"""
-    ),
-    commit = "02c33ed2c0e86053073080fd215f44356ef5b543",
-    remote = "https://github.com/grailbio/bazel-compilation-database.git",
+    build_file_content = """
+        package(default_visibility = ["//visibility:public"])
+    """,
+    sha256 = "d4aa11e8db119ffffcf46da2468a74808c3e5aae45281e688fe1ae70e27943c7",
+    strip_prefix = "bazel-compilation-database-0.2",
+    url = "https://github.com/grailbio/bazel-compilation-database/archive/0.2.tar.gz",
 )

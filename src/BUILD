@@ -11,6 +11,7 @@ cc_library(
         "//third_party:utf8cpp",
         "@boost//:filesystem",
         "@boost//:intrusive_ptr",
+        "@com_github_gflags_gflags//:gflags",
         "@com_github_json_c//:json",
         "@com_github_libgit2//:libgit2",
         "@com_github_sparsehash//:sparsehash",

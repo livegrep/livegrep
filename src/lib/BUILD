@@ -4,5 +4,7 @@ cc_library(
     hdrs = glob(["*.h"]),
     copts = ["-Wno-sign-compare"],
     visibility = ["//visibility:public"],
-    deps = ["@gflags"],
+    deps = [
+        "@com_github_gflags_gflags//:gflags",
+    ],
 )

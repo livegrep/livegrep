@@ -5,7 +5,6 @@ go_prefix("github.com/livegrep/livegrep")
 
 compilation_database(
     name = "compilation_db",
-    exec_root_marker = True,
     targets = [
         "//src/tools:codesearch",
         "//src/tools:codesearchtool",
