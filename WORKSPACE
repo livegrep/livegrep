@@ -8,7 +8,7 @@ load(
 
 git_repository(
     name = "org_pubref_rules_protobuf",
-    commit = "master",
+    commit = "v0.8.2",
     remote = "https://github.com/pubref/rules_protobuf",
 )
 
