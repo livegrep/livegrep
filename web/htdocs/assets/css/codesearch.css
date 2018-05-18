@@ -452,12 +452,6 @@ a:hover {
     overflow: visible;
     margin: 0 0 0 20px;
     white-space: pre;
-    padding: 0 !important; /* Cancel out the padding added by HLJS */
-    color: #4d4d4c; /* Match the text color of HLJS to avoid shift when the JS has finished */
-}
-
-.file-viewer .code.hljs {
-    background: transparent !important; /* Override HLJS default styling */
 }
 
 .file-viewer .help-screen .u-modal-content {
@@ -629,4 +623,76 @@ div.example {
 
 .file-content code, .file-content .line-numbers {
     font-size: 12px;
+}
+
+/* Colors, without all the other disruptive markup, from:
+   https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/themes/prism-solarizedlight.css
+*/
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+	color: #93a1a1; /* base1 */
+}
+
+.token.punctuation {
+	color: #586e75; /* base01 */
+}
+
+.namespace {
+	opacity: .7;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+	color: #268bd2; /* blue */
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.url,
+.token.inserted {
+	color: #2aa198; /* cyan */
+}
+
+.token.entity {
+	color: #657b83; /* base00 */
+	background: #eee8d5; /* base2 */
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+	color: #859900; /* green */
+}
+
+.token.function {
+	color: #b58900; /* yellow */
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+	color: #cb4b16; /* orange */
+}
+
+.token.important,
+.token.bold {
+	font-weight: bold;
+}
+.token.italic {
+	font-style: italic;
+}
+
+.token.entity {
+	cursor: help;
 }

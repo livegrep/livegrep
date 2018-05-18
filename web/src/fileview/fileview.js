@@ -1,9 +1,5 @@
 $ = require('jquery');
 
-// TODO: would be nicer to load hljs asynchronously, to show text as early as
-// possible
-hljs = require('highlight.js');
-
 var KeyCodes = {
   ESCAPE: 27,
   ENTER: 13,
@@ -345,7 +341,6 @@ function init(initData) {
   setTimeout(function() {
     lineNumberContainer.css({display: 'block'});
     initializePage();
-    setTimeout(function() { hljs.highlightBlock($('#source-code')[0]); }, 0);
   }, 1);
 }
 

@@ -19,7 +19,6 @@ module.exports = {
     jquery: 'jQuery',
     underscore: '_',
     backbone: 'Backbone',
-    'highlight.js': 'hljs',
     'js-cookie': 'Cookies'
   },
 
