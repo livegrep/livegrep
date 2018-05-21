@@ -54,7 +54,7 @@
       {{end}}
       {{with .FileContent}}
       <div class="file-content">
-        <code id="source-code" class="code {{.Language}}">{{.Content}}</code>
+        <code id="source-code" class="code language-{{.Language}}">{{.Content}}</code>
         <!--
         NOTE: The reason the line number links are after the code block above is because
         they take a significant amount of time to render for large files. If we keep
@@ -90,3 +90,10 @@
     </div>
   </section>
 </section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/prism.min.js" integrity="sha384-55dGHwJ+p8K+4zJGgJR7q7Fl9FuG++oKmlhKuS+dWjEMj6rBCp7AFYw55b0E5/K8" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/plugins/autoloader/prism-autoloader.min.js" integrity="sha384-S+UYfywCk42UjE2CVTgW2zT3c/X5Uw25LTU93Pn5HmyD5D31yHRu6I5VadHu3Qf5" crossorigin="anonymous"></script>
+<script>
+  Prism.plugins.autoloader.languages_path =
+  'https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/components/';
+</script>

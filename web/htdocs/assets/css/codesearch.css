@@ -452,12 +452,6 @@ a:hover {
     overflow: visible;
     margin: 0 0 0 20px;
     white-space: pre;
-    padding: 0 !important; /* Cancel out the padding added by HLJS */
-    color: #4d4d4c; /* Match the text color of HLJS to avoid shift when the JS has finished */
-}
-
-.file-viewer .code.hljs {
-    background: transparent !important; /* Override HLJS default styling */
 }
 
 .file-viewer .help-screen .u-modal-content {
@@ -629,4 +623,67 @@ div.example {
 
 .file-content code, .file-content .line-numbers {
     font-size: 12px;
+}
+
+/* Colors, without all the other disruptive markup, from:
+   https://raw.githubusercontent.com/PrismJS/prism-themes/master/themes/prism-ghcolors.css
+   with color 00a4db darkened to 0075a9 to improve contrast.
+*/
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+    color: #999988; font-style: italic;
+}
+
+.token.namespace {
+    opacity: .7;
+}
+
+.token.string,
+.token.attr-value {
+    color: #e3116c;
+}
+.token.punctuation,
+.token.operator {
+    color: #393A34; /* no highlight */
+}
+
+.token.entity,
+.token.url,
+.token.symbol,
+.token.number,
+.token.boolean,
+.token.variable,
+.token.constant,
+.token.property,
+.token.regex,
+.token.inserted {
+    color: #007c7b;
+}
+
+.token.atrule,
+.token.keyword,
+.token.attr-name,
+.language-autohotkey .token.selector {
+    color: #0075a9;
+}
+
+.token.function,
+.token.deleted,
+.language-autohotkey .token.tag {
+    color: #9a050f;
+}
+
+.token.tag,
+.token.selector,
+.language-autohotkey .token.keyword {
+    color: #00009f;
+}
+
+.token.important,
+.token.function,
+.token.bold {
+    font-weight: bold;
 }
