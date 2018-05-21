@@ -12,6 +12,9 @@ import (
 )
 
 // Mapping from known file extensions to filetype hinting.
+var filenameToLangMap map[string]string = map[string]string{
+	"BUILD": "python",
+}
 var extToLangMap map[string]string = map[string]string{
 	".AppleScript": "applescript",
 	".bzl":         "python",
@@ -226,10 +229,14 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		if err != nil {
 			return nil, err
 		}
+		language := filenameToLangMap[filepath.Base(cleanPath)]
+		if language == "" {
+			language = extToLangMap[filepath.Ext(cleanPath)]
+		}
 		fileContent = &sourceFileContent{
 			Content:   content,
 			LineCount: strings.Count(string(content), "\n"),
-			Language:  extToLangMap[filepath.Ext(cleanPath)],
+			Language:  language,
 		}
 	}
 
