@@ -14,6 +14,7 @@ import (
 // Mapping from known file extensions to filetype hinting.
 var extToLangMap map[string]string = map[string]string{
 	".AppleScript": "applescript",
+	".bzl":         "python",
 	".c":           "c",
 	".coffee":      "coffeescript",
 	".cpp":         "cpp",
