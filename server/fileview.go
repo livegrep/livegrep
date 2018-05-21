@@ -32,6 +32,7 @@ var extToLangMap map[string]string = map[string]string{
 	".pl":          "perl",
 	".proto":       "go",
 	".py":          "python",
+	".pyst":        "python",
 	".rb":          "ruby",
 	".rs":          "rust",
 	".scala":       "scala",
