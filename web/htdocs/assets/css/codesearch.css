@@ -444,7 +444,7 @@ a:hover {
     color: rgba(0, 0, 0, 1);
     text-decoration: underline;
 }
-.file-viewer .code {
+.file-viewer .code-pane {
     position: absolute;
     top: 0;
     left: 75px;
