@@ -12,7 +12,7 @@ import (
 
 type page struct {
 	Title         string
-        ScriptNonce   string
+	ScriptNonce   string
 	ScriptName    string
 	ScriptData    interface{}
 	IncludeHeader bool

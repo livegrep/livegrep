@@ -96,7 +96,7 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 	}
 	s.renderPage(w, &page{
 		Title:         "code search",
-                ScriptNonce:   "",
+		ScriptNonce:   "",
 		ScriptName:    "codesearch",
 		ScriptData:    script_data,
 		IncludeHeader: true,
@@ -141,7 +141,7 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 	s.renderPage(w, &page{
 		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
-                ScriptNonce:   "",
+		ScriptNonce:   "",
 		ScriptName:    "fileview",
 		ScriptData:    script_data,
 		IncludeHeader: false,
