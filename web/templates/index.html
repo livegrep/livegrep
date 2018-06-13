@@ -1,3 +1,6 @@
+{{template "layout" .}}
+
+{{define "body"}}
 <div id='searcharea'>
   <div class="search-inputs">
     <div class="prefixed-input filter-code">
@@ -38,17 +41,17 @@
       <label for='regex'>on</label>
     </div>
 
-    {{if gt (.Backends | len) 1 }}
+    {{if gt (.Data.Backends | len) 1 }}
       <div class="search-option">
         <span class="label">Search:</span>
         <select id='backend' tabindex="7">
-        {{range .Backends}}
+        {{range .Data.Backends}}
           <option value="{{.Id}}">{{.I.Name}}</option>
         {{end}}
         </select>
       </div>
     {{else}}
-      {{with index .Backends 0}}
+      {{with index .Data.Backends 0}}
         <select id='backend' style='display: none;'>
           <option value="{{.Id}}">{{.I.Name}}</option>
         </select>
@@ -91,12 +94,12 @@
     <tr>
       <td><code>repo:</code></td>
       <td>Only include results from matching repositories.</td>
-      <td><a href="/search?q=hello+repo:{{.SampleRepo}}">example</a></td>
+      <td><a href="/search?q=hello+repo:{{.Data.SampleRepo}}">example</a></td>
     </tr>
     <tr>
       <td><code>-repo:</code></td>
       <td>Exclude results from matching repositories.</td>
-      <td><a href="/search?q=hello+-repo:{{.SampleRepo}}">example</a></td>
+      <td><a href="/search?q=hello+-repo:{{.Data.SampleRepo}}">example</a></td>
     </tr>
     <tr>
       <td><code>max_matches:</code></td>
@@ -133,3 +136,4 @@
 Livegrep project &copy; Nelson Elhage
 </p>
 </div>
+{{end}}
