@@ -5,21 +5,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"html/template"
-	"log"
-	"net/http"
 	"os"
-	"path"
-	"reflect"
+	"path/filepath"
 	"strings"
-	texttemplate "text/template"
 )
-
-func templatePath(f reflect.StructField) string {
-	if path := f.Tag.Get("template"); path != "" {
-		return path
-	}
-	return strings.ToLower(f.Name) + ".html"
-}
 
 func linkTag(rel string, s string, m map[string]string) template.HTML {
 	hash := m[strings.TrimPrefix(s, "/")]
@@ -47,39 +36,20 @@ func getFuncs() map[string]interface{} {
 	}
 }
 
-func LoadTemplates(base string, templates interface{}) error {
-	v := reflect.ValueOf(templates)
-	if v.Kind() != reflect.Ptr {
-		panic("Load: Must provide pointer-to-struct")
+func LoadTemplates(base string, templates map[string]*template.Template) error {
+	pattern := base + "/templates/common/*.html"
+	common := template.New("").Funcs(getFuncs())
+	common = template.Must(common.ParseGlob(pattern))
+
+	pattern = base + "/templates/*.html"
+	paths, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
 	}
-	v = v.Elem()
-	if v.Kind() != reflect.Struct {
-		panic("Load: Must provide pointer-to-struct")
-	}
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
-
-		is_html_template := f.Type.AssignableTo(reflect.TypeOf((*template.Template)(nil)))
-		is_text_template := f.Type.AssignableTo(reflect.TypeOf((*texttemplate.Template)(nil)))
-		if !is_html_template && !is_text_template {
-			continue
-		}
-
-		p := templatePath(f)
-		name := path.Base(p)
-		var err error
-		var tpl interface{}
-		if is_html_template {
-			tpl, err = template.New(name).Funcs(getFuncs()).ParseFiles(path.Join(base, p))
-		} else {
-			tpl, err = texttemplate.New(name).Funcs(getFuncs()).ParseFiles(path.Join(base, p))
-		}
-
-		if err != nil {
-			return err
-		}
-		v.Field(i).Set(reflect.ValueOf(tpl))
+	for _, path := range paths {
+		t := template.Must(common.Clone())
+		t = template.Must(t.ParseFiles(path))
+		templates[filepath.Base(path)] = t
 	}
 	return nil
 }
@@ -105,34 +75,4 @@ func LoadAssetHashes(assetHashFile string, assetHashMap map[string]string) error
 	}
 
 	return nil
-}
-
-func Load(base string, templates interface{}, assetHashFile string, assetHashMap map[string]string) error {
-	if err := LoadTemplates(base, templates); err != nil {
-		return err
-	}
-	if err := LoadAssetHashes(assetHashFile, assetHashMap); err != nil {
-		return err
-	}
-	return nil
-}
-
-type reloadHandler struct {
-	baseDir       string
-	t             interface{}
-	assetHashFile string
-	assetHashMap  map[string]string
-	in            http.Handler
-}
-
-func ReloadHandler(base string, templates interface{}, assetHashFile string, assetHashMap map[string]string, h http.Handler) http.Handler {
-	return &reloadHandler{base, templates, assetHashFile, assetHashMap, h}
-}
-
-func (h *reloadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	e := Load(h.baseDir, h.t, h.assetHashFile, h.assetHashMap)
-	if e != nil {
-		log.Printf("loading templates: err=%v", e)
-	}
-	h.in.ServeHTTP(w, r)
 }

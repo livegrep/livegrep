@@ -4,7 +4,7 @@ load("@org_dropbox_rules_node//node:defs.bzl", "webpack_build")
 
 filegroup(
     name = "templates",
-    srcs = glob(["templates/*"]),
+    srcs = glob(["templates/**/*"]),
 )
 
 filegroup(

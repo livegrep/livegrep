@@ -1,3 +1,7 @@
+{{template "layout" .}}
+
+{{define "body"}}
+{{with .Data}}
 <section class="file-viewer">
   <header class="header">
     <nav class="header-title">
@@ -97,3 +101,5 @@
   Prism.plugins.autoloader.languages_path =
   'https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/components/';
 </script>
+{{end}}
+{{end}}
