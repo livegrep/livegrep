@@ -4,27 +4,33 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"html/template"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func linkTag(rel string, s string, m map[string]string) template.HTML {
+func linkTag(nonce template.HTMLAttr, rel string, s string, m map[string]string) template.HTML {
 	hash := m[strings.TrimPrefix(s, "/")]
 	href := s + "?v=" + hash
 	hashBytes, _ := hex.DecodeString(hash)
 	integrity := "sha256-" + base64.StdEncoding.EncodeToString(hashBytes)
-	return template.HTML(`<link rel="` + rel + `" href="` + href + `" integrity="` + integrity + `" />`)
+	return template.HTML(fmt.Sprintf(
+		`<link%s rel="%s" href="%s" integrity="%s" />`,
+		nonce, rel, href, integrity,
+	))
 }
 
-func scriptTag(s string, m map[string]string) template.HTML {
+func scriptTag(nonce template.HTMLAttr, s string, m map[string]string) template.HTML {
 	hash := m[strings.TrimPrefix(s, "/")]
 	href := s + "?v=" + hash
 	hashBytes, _ := hex.DecodeString(hash)
 	integrity := "sha256-" + base64.StdEncoding.EncodeToString(hashBytes)
-	return template.HTML(`<script src="` + href + `" integrity="` + integrity + `"></script>`)
-
+	return template.HTML(fmt.Sprintf(
+		`<script%s src="%s" integrity="%s"></script>`,
+		nonce, href, integrity,
+	))
 }
 
 func getFuncs() map[string]interface{} {

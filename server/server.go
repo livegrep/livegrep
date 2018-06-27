@@ -22,13 +22,13 @@ import (
 
 type page struct {
 	Title         string
-	ScriptNonce   string
 	ScriptName    string
 	ScriptData    interface{}
 	IncludeHeader bool
 	Data          interface{}
 	Config        *config.Config
 	AssetHashes   map[string]string
+	Nonce         template.HTMLAttr // either `` or ` nonce="..."`
 }
 
 type server struct {
@@ -97,9 +97,8 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		DefaultSearchRepos []string                     `json:"default_search_repos"`
 	}{urls, s.repos, s.config.DefaultSearchRepos}
 
-	s.renderPage(ctx, w, "index.html", &page{
+	s.renderPage(ctx, w, r, "index.html", &page{
 		Title:         "code search",
-		ScriptNonce:   "",
 		ScriptName:    "codesearch",
 		ScriptData:    script_data,
 		IncludeHeader: true,
@@ -143,9 +142,8 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		Commit   string            `json:"commit"`
 	}{repo, commit}
 
-	s.renderPage(ctx, w, "fileview.html", &page{
+	s.renderPage(ctx, w, r, "fileview.html", &page{
 		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
-		ScriptNonce:   "",
 		ScriptName:    "fileview",
 		ScriptData:    script_data,
 		IncludeHeader: false,
@@ -154,7 +152,7 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	s.renderPage(ctx, w, "about.html", &page{
+	s.renderPage(ctx, w, r, "about.html", &page{
 		Title:         "about",
 		IncludeHeader: true,
 	})
@@ -237,7 +235,7 @@ func (s *server) ServeOpensearch(ctx context.Context, w http.ResponseWriter, r *
 	}
 }
 
-func (s *server) renderPage(ctx context.Context, w io.Writer, templateName string, pageData *page) {
+func (s *server) renderPage(ctx context.Context, w io.Writer, r *http.Request, templateName string, pageData *page) {
 	t, ok := s.Templates[templateName]
 	if !ok {
 		log.Printf(ctx, "Error: no template named %v", templateName)
@@ -246,6 +244,12 @@ func (s *server) renderPage(ctx context.Context, w io.Writer, templateName strin
 
 	pageData.Config = s.config
 	pageData.AssetHashes = s.AssetHashes
+
+	nonce := "" // custom nonce computation can go here
+
+	if nonce != "" {
+		pageData.Nonce = template.HTMLAttr(fmt.Sprintf(` nonce="%s"`, nonce))
+	}
 
 	err := t.ExecuteTemplate(w, templateName, pageData)
 	if err != nil {
