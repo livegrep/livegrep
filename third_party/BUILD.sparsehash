@@ -6,4 +6,7 @@ cc_library(
     "src/sparsehash/**/*"
   ]),
   visibility = ["//visibility:public"],
+  deps = [
+   "@com_github_livegrep_livegrep//third_party:sparseconfig",
+  ],
 )
