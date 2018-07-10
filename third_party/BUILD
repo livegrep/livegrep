@@ -12,8 +12,7 @@ cc_library(
 
 cc_library(
     name = "sparseconfig",
-    hdrs = ["third_party/sparseconfig.h"],
+    hdrs = ["sparseconfig.h"],
     include_prefix = "sparsehash/internal",
-    strip_include_prefix = "third_party",
     visibility = ["//visibility:public"],
 )
