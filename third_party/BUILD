@@ -9,3 +9,11 @@ cc_library(
     includes = ["utf8cpp/source"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "sparseconfig",
+    hdrs = ["third_party/sparseconfig.h"],
+    include_prefix = "sparsehash/internal",
+    strip_include_prefix = "third_party",
+    visibility = ["//visibility:public"],
+)

@@ -56,10 +56,9 @@ load(
 
 boost_deps()
 
-new_patched_http_archive(
+new_http_archive(
     name = "com_github_sparsehash",
     build_file = "//third_party:BUILD.sparsehash",
-    patch_file = "//third_party:sparsehash.patch",
     sha256 = "05e986a5c7327796dad742182b2d10805a8d4f511ad090da0490f146c1ff7a8c",
     strip_prefix = "sparsehash-sparsehash-2.0.3/",
     url = "https://github.com/sparsehash/sparsehash/archive/sparsehash-2.0.3.tar.gz",
