@@ -195,6 +195,133 @@ function init(initData) {
     });
   }
 
+  // compute the offset from the start of the parent containing the click
+  function textBeforeOffset(childNode, childOffset, parentNode) {
+    // create a new range starting at the beginning of the parent and going until the selection
+    const rangeBeforeClick = new Range();
+    rangeBeforeClick.setStart(parentNode, 0);
+    rangeBeforeClick.setEnd(childNode, childOffset);
+    return rangeBeforeClick.toString();
+  }
+
+  // returns range for symbol containing the specified location.
+  // symbol is determined by greedily absorbing alphanumerics and underscores.
+  function symbolAtLocation(textNode, offset) {
+    const stringBefore = textNode.nodeValue.substring(0, offset);
+    const stringAfter = textNode.nodeValue.substring(offset);
+    const startIndex = stringBefore.match(/[a-zA-Z0-9_]*$/).index;
+    const endIndex = stringBefore.length + stringAfter.match(/^[a-zA-Z0-9_]*/)[0].length;
+    const range = new Range();
+    range.setStart(textNode, startIndex);
+    range.setEnd(textNode, endIndex);
+    return range;
+  }
+
+  function triggerJumpToDef(event) {
+      const nodeClicked = document.getSelection().anchorNode.parentNode;
+      const cachedUrl = nodeClicked.getAttribute('definition-url');
+      if (cachedUrl) {
+        window.location.href = cachedUrl;
+      }
+  }
+
+  var hoveringNode = null;
+
+  function cancelHover() {
+    if (hoveringNode) {
+      hoveringNode.className = 'hoverable';
+    }
+    hoveringNode = null;
+  }
+
+  function hoverOverNode(node) {
+    node.className = 'hovering';
+    hoveringNode = node;
+  }
+
+  function checkIfHoverable(node) {
+    var info = getFileInfo();
+
+    const code = document.getElementById('source-code');
+    const stringBefore = textBeforeOffset(node, 0, code);
+
+    const rows = stringBefore.split('\n');
+    // The server expects the rows to be zero-indexed.
+    const row = rows.length - 1;
+    const col = rows[row].length;
+
+    xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+      if (this.status == 200 && this.responseText) {
+        const resp = JSON.parse(this.responseText);
+        node.className = 'hoverable';
+        node.setAttribute('definition-url', resp.url);
+      } else {
+        node.className = 'nonhoverable';
+      }
+    }
+
+    const url = "/api/v1/langserver/jumptodef?repo_name=" + info.repoName + "&file_path=" + window.filePath + "&row=" + row + "&col=" + col;
+    xhttp.open("GET", url);
+    xhttp.send();
+  }
+
+  // When source code is hovered over, highlight/underline any tokens for which
+  // jump-to-definition will work.
+  function onHover(clientX, clientY) {
+    // The source-code consists of a <code id='source-code' class='code-pane'>
+    // containing lots of <span class="token tokentype">token</span>
+    // hoverable text may be surrounded by <span class="hoverable">
+    // text being hovered over is changed to class="hovering"
+    // non-hoverable text is class="nonhoverable"
+    const pos = document.caretRangeFromPoint(clientX, clientY);
+    const textNode = pos.startContainer;
+    if (textNode.nodeType !== 3) { // expected to be a text node
+      return;
+    }
+    // decide what to do based on the class of the span containing the text
+    const node = textNode.parentNode;
+    const nodeClass = node.className;
+    if (nodeClass === 'hovering') {
+      return;
+    }
+    cancelHover();
+    if (!nodeClass || nodeClass === 'nonhoverable') {
+      return;
+    }
+    if (nodeClass === 'hoverable') {
+      hoverOverNode(node);
+      return;
+    }
+    const tokenType = nodeClass.match(/token ([a-z]+)/);
+    if (tokenType) {
+      // the only token which potentially has a definition is a 'token function'
+      if (tokenType[1] === 'function') {
+        node.innerHTML = "<span>" + node.innerHTML + "</span>";
+        checkIfHoverable(node.childNodes[0]);
+      }
+      return;
+    }
+    if (node.id !== 'source-code') {
+      return;
+    }
+    // syntax highlighter hasn't identified the token yet, so we have to parse
+    // to find the token ourselves, and create a new span around it.
+    const symbolRange = symbolAtLocation(textNode, pos.startOffset);
+    if (symbolRange.toString().length === 0) {
+      return;
+    }
+    const newSpan = document.createElement('span');
+    symbolRange.surroundContents(newSpan);
+    checkIfHoverable(newSpan);
+    return;
+    const stringBefore = textBeforeOffset(textNode, pos.startOffset, node);
+    const rows = stringBefore.split('\n');
+    // rows are zero-indexed
+    const row = rows.length - 1;
+    const col = rows[row].length;
+  }
+
   function processKeyEvent(event) {
     if(event.which === KeyCodes.ENTER) {
       // Perform a new search with the selected text, if any
@@ -302,6 +429,18 @@ function init(initData) {
       if(event.altKey || event.ctrlKey || event.metaKey)
         return;
       processKeyEvent(event);
+    });
+
+    $(document).on('click', function (event) {
+      if (window.hasLangServer) {
+        triggerJumpToDef(event);
+      }
+    });
+
+    $('#source-code').on('mousemove', function (event) {
+      if (window.hasLangServer) {
+        onHover(event.clientX, event.clientY);
+      }
     });
 
     $(document).mouseup(function() {

@@ -469,6 +469,12 @@ a:hover {
     overflow: visible;
     margin: 0 0 0 20px;
     white-space: pre;
+    padding: 0 !important; /* Cancel out the padding added by HLJS */
+    color: #4d4d4c; /* Match the text color of HLJS to avoid shift when the JS has finished */
+}
+
+.file-viewer .code-pane .langserver-symbol:hover {
+    text-decoration: underline;
 }
 
 .file-viewer .help-screen .u-modal-content {

@@ -48,6 +48,7 @@ _externals = [
     ),
     _github("google/go-github", "e0066688b631702f66e0435ee1633f9d0091e4b9"),
     _github("honeycombio/libhoney-go", "a8716c5861ae19c1e2baaad52dd59ba64b902bde"),
+    _github("sourcegraph/jsonrpc2", "b02337b177765febba753be4b7d9c26e3a9fd220"),
     _github("nelhage/go.cli", "2aeb96ef8025f3646befae8353b90f95e9e79bdc"),
     _github("bmizerany/pat", "c068ca2f0aacee5ac3681d68e4d0a003b7d1fd2c"),
     _github("google/go-querystring", "53e6ce116135b80d037921a7fdd5138cf32d7a8a"),
