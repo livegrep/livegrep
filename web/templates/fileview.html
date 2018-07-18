@@ -94,6 +94,16 @@
     </div>
   </section>
 </section>
+<script>
+  window.filePath = {{.FilePath}};
+  window.hasLangServer = Boolean({{.HasLangServer}});
+</script>
+<style>
+.hovering {
+  text-decoration: underline;
+  cursor: pointer;
+}
+</style>
 {{end}}
 
 <script{{.Nonce}} src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/prism.min.js" integrity="sha384-55dGHwJ+p8K+4zJGgJR7q7Fl9FuG++oKmlhKuS+dWjEMj6rBCp7AFYw55b0E5/K8" crossorigin="anonymous"></script>
