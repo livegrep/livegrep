@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/livegrep/livegrep/server/config"
-	"github.com/livegrep/livegrep/server/langserver"
 )
 
 // Mapping from known file extensions to filetype hinting.
@@ -68,8 +67,6 @@ type directoryListEntry struct {
 }
 
 type fileViewerContext struct {
-	FilePath       string
-	HasLangServer  bool
 	PathSegments   []breadCrumbEntry
 	Repo           config.RepoConfig
 	Commit         string
@@ -273,11 +270,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		}
 	}
 
-	langServer := langserver.ForFile(&repo, cleanPath)
-
 	return &fileViewerContext{
-		FilePath:       cleanPath,
-		HasLangServer:  langServer != nil,
 		PathSegments:   segments,
 		Repo:           repo,
 		Commit:         commit,
