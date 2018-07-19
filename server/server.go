@@ -157,10 +157,13 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
+	langServer := langserver.ForFile(&repo, path)
 	script_data := &struct {
 		RepoInfo config.RepoConfig `json:"repo_info"`
 		Commit   string            `json:"commit"`
-	}{repo, commit}
+		FilePath string            `json:"file_path"`
+		HasLangServer bool         `json:"has_lang_server"`
+	}{repo, commit, path, langServer != nil}
 
 	s.renderPage(ctx, w, r, "fileview.html", &page{
 		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
