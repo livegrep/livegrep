@@ -314,12 +314,6 @@ function init(initData) {
     const newSpan = document.createElement('span');
     symbolRange.surroundContents(newSpan);
     checkIfHoverable(newSpan);
-    return;
-    const stringBefore = textBeforeOffset(textNode, pos.startOffset, node);
-    const rows = stringBefore.split('\n');
-    // rows are zero-indexed
-    const row = rows.length - 1;
-    const col = rows[row].length;
   }
 
   function processKeyEvent(event) {
