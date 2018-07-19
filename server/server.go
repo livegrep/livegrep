@@ -498,6 +498,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 			// a failing language server isn't fatal. We'd prefer to log these metrics.
 			if err != nil {
 				log.Printf(ctx, "%s", err.Error())
+				continue
 			}
 
 			initParams := &langserver.InitializeParams{
@@ -512,6 +513,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 			// a failing language server isn't fatal. We'd prefer to log these metrics.
 			if err != nil {
 				log.Printf(ctx, "%s", err.Error())
+				continue
 			}
 
 			srv.langsrv[langServer.Address] = client
