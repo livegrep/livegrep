@@ -53,8 +53,10 @@ func NewClient(ctx context.Context, address string) (client Client, err error) {
 func (ls *langServerClientImpl) Initialize(ctx context.Context, params *InitializeParams) (result InitializeResult, err error) {
 	err = ls.invoke(ctx, "initialize", params, &result)
 	if err != nil {
-		ls.invoke(ctx, "initialized", nil, nil)
+		return 
 	}
+
+	err = ls.notify(ctx, "initialized", nil)
 	return
 }
 
@@ -67,10 +69,19 @@ func (ls *langServerClientImpl) JumpToDef(
 }
 
 func (ls *langServerClientImpl) invoke(ctx context.Context, method string, params interface{}, result interface{}) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	start := time.Now()
 	err := ls.rpcClient.Call(ctx, method, params, &result)
 	log.Printf(ctx, "%s %s\nParams: %+v, Result: %+v, err: %+v\n", method, time.Since(start), params, result, err)
+	return err
+}
+
+func (ls *langServerClientImpl) notify(ctx context.Context, method string, params interface{}) error {
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	start := time.Now()
+	err := ls.rpcClient.Notify(ctx, method, params)
+	log.Printf(ctx, "notify %s %s\nParams: %+v err: %+v\n", method, time.Since(start), params, err)
 	return err
 }

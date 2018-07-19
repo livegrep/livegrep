@@ -133,8 +133,8 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	repoName := r.URL.Query().Get(":repo")
-	path := pat.Tail("/view/:repo/", r.URL.Path)
+	repoName := r.URL.Query().Get("repo")
+	path := pat.Tail("/view/repo/", r.URL.Path)
 	commit := r.URL.Query().Get("commit")
 	if commit == "" {
 		commit = "HEAD"
@@ -442,7 +442,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
-	m.Add("GET", "/view/:repo/", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
