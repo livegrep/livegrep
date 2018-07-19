@@ -324,7 +324,6 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 	retUrl := ""
 
 	if len(locations) > 0 {
-
 		location := locations[0]
 		targetPath := strings.TrimPrefix(location.URI, "file://")
 		// Add 1 because URL is 1-indexed and language server is 0-indexed.
@@ -341,6 +340,9 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 		}
 
 		retUrl = fmt.Sprintf("/view/%s/%s#L%d", repo.Name, relPath, lineNum)
+	} else {
+		writeError(ctx, w, 400, "unresolved", "could not resolve an identifier")
+		return
 	}
 
 	replyJSON(ctx, w, 200, &GotoDefResponse{
