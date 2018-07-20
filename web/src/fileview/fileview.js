@@ -226,6 +226,8 @@ function init(initData) {
   }
 
   var hoveringNode = null;
+  var mousePositionX = 0;
+  var mousePositionY = 0;
 
   function cancelHover() {
     if (hoveringNode) {
@@ -252,18 +254,27 @@ function init(initData) {
 
     xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
-      if (this.status == 200 && this.responseText) {
+      if (this.status === 200 && this.responseText) {
         const resp = JSON.parse(this.responseText);
-        node.className = 'hoverable';
         node.setAttribute('definition-url', resp.url);
+        if (isInBox(mousePositionX, mousePositionY, node.getBoundingClientRect())) {
+          hoverOverNode(node);
+        } else {
+          // The mouse has moved and is not be on this element.
+          node.className = 'hoverable';
+        }
       } else {
         node.className = 'nonhoverable';
       }
-    }
+    };
 
     const url = "/api/v1/langserver/jumptodef?repo_name=" + info.repoName + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
     xhttp.open("GET", url);
     xhttp.send();
+  }
+
+  function isInBox(x, y, rect) {
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
   }
 
   // When source code is hovered over, highlight/underline any tokens for which
@@ -433,6 +444,8 @@ function init(initData) {
 
     $('#source-code').on('mousemove', function (event) {
       if (initData.has_lang_server) {
+        mousePositionX = event.clientX;
+        mousePositionY = event.clientY;
         onHover(event.clientX, event.clientY);
       }
     });
