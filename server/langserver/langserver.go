@@ -67,6 +67,8 @@ func (ls *langServerClientImpl) JumpToDef(
 }
 
 func (ls *langServerClientImpl) invoke(ctx context.Context, method string, params interface{}, result interface{}) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	start := time.Now()
 	err := ls.rpcClient.Call(ctx, method, params, &result)
 	log.Printf(ctx, "%s %s\nParams: %+v, Result: %+v, err: %+v\n", method, time.Since(start), params, result, err)
