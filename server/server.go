@@ -466,7 +466,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
-	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/view/:path", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
@@ -490,8 +490,9 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	ctx := context.Background()
 
-	for _, r := range srv.config.IndexConfig.Repositories {
+	repoNames := []string{}
 
+	for _, r := range srv.config.IndexConfig.Repositories {
 		for _, langServer := range r.LangServers {
 
 			client, err := langserver.NewClient(ctx, langServer.Address)
@@ -521,7 +522,27 @@ func New(cfg *config.Config) (http.Handler, error) {
 		}
 
 		srv.repos[r.Name] = r
+		repoNames = append(repoNames, r.Name)
 	}
+
+	sort.Slice(repoNames, func(i, j int) bool {
+		return len(repoNames[i]) >= len(repoNames[j])
+	})
+	var buf bytes.Buffer
+
+	for i, repoName := range repoNames {
+		buf.WriteString(regexp.QuoteMeta(repoName))
+		if i < len(repoNames)-1 {
+			buf.WriteString("|")
+		}
+	}
+
+	repoRegexAlt := buf.String()
+	repoFileRegex, err := regexp.Compile(fmt.Sprintf("(%s)/(.*)", repoRegexAlt))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create regular expression for URL parsing")
+	}
+	srv.serveFilePathRegex = repoFileRegex
 
 	return srv, nil
 }
