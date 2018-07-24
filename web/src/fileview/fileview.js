@@ -268,7 +268,7 @@ function init(initData) {
       }
     };
 
-    const url = "/api/v1/langserver/jumptodef?repo_name=" + info.repoName + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
+    const url = "/api/v1/langserver/jumptodef?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
     xhttp.open("GET", url);
     xhttp.send();
   }
