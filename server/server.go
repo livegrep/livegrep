@@ -1,11 +1,14 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
 	"net/http"
 	"path"
+	"regexp"
+	"sort"
 	texttemplate "text/template"
 	"time"
 
@@ -43,6 +46,8 @@ type server struct {
 	Layout      *template.Template
 
 	honey *libhoney.Builder
+
+	serveFilePathRegex *regexp.Regexp
 }
 
 func (s *server) loadTemplates() {
@@ -113,8 +118,14 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	repoName := r.URL.Query().Get(":repo")
-	path := pat.Tail("/view/:repo/", r.URL.Path)
+	matches := s.serveFilePathRegex.FindStringSubmatch(pat.Tail("/view/", r.URL.Path))
+	if len(matches) == 0 {
+		http.Error(w, "failed to parse repo and path given URL", 500)
+		return
+	}
+
+	repoName, path := matches[1], matches[2]
+
 	commit := r.URL.Query().Get("commit")
 	if commit == "" {
 		commit = "HEAD"
@@ -312,16 +323,39 @@ func New(cfg *config.Config) (http.Handler, error) {
 		srv.bkOrder = append(srv.bkOrder, be.Id)
 	}
 
+	var repoNames []string
 	for _, r := range srv.config.IndexConfig.Repositories {
 		srv.repos[r.Name] = r
+		repoNames = append(repoNames, r.Name)
 	}
+
+	// Sort in descending order of length so most specific match is selected by regex engine
+	sort.Slice(repoNames, func(i, j int) bool {
+		return len(repoNames[i]) >= len(repoNames[j])
+	})
+
+	// Build regex of form "(repo1|repo2)/(path)"
+	var buf bytes.Buffer
+	for i, repoName := range repoNames {
+		buf.WriteString(regexp.QuoteMeta(repoName))
+		if i < len(repoNames)-1 {
+			buf.WriteString("|")
+		}
+	}
+	repoRegexAlt := buf.String()
+	repoFileRegex, err := regexp.Compile(fmt.Sprintf("(%s)/(.*)", repoRegexAlt))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create regular expression for URL parsing")
+	}
+
+	srv.serveFilePathRegex = repoFileRegex
 
 	m := pat.New()
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
-	m.Add("GET", "/view/:repo/", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
