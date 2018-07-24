@@ -188,15 +188,16 @@ function init(initData) {
 
     // If {path} already has a slash in front of it, trim extra leading
     // slashes from `pathInRepo` to avoid a double-slash in the URL.
+    var pathInRepo = initData.file_path;
     if (url.indexOf('/{path}') !== -1) {
-      fileInfo.pathInRepo = fileInfo.pathInRepo.replace(/^\/+/, '');
+      pathInRepo = pathInRepo.replace(/^\/+/, '');
     }
 
     // XXX code copied
     url = url.replace('{lno}', lno);
     url = url.replace('{version}', initData.commit);
-    url = url.replace('{name}', fileInfo.repoName);
-    url = url.replace('{path}', fileInfo.pathInRepo);
+    url = url.replace('{name}', initData.repo_info.name);
+    url = url.replace('{path}', pathInRepo);
     return url;
   }
 
@@ -284,7 +285,7 @@ function init(initData) {
       }
     };
 
-    const url = "/api/v1/langserver/jumptodef?repo_name=" + info.repoName + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
+    const url = "/api/v1/langserver/jumptodef?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
     xhttp.open("GET", url);
     xhttp.send();
   }
