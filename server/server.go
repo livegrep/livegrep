@@ -137,7 +137,7 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	matches := s.serveFilePathRegex.FindStringSubmatch(r.URL.Query().Get(":path"))
+	matches := s.serveFilePathRegex.FindStringSubmatch(pat.Tail("/view/", r.URL.Path))
 	if len(matches) == 0 {
 		http.Error(w, "failed to parse repo and path given URL", 500)
 		return
@@ -452,7 +452,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
-	m.Add("GET", "/view/:path", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
