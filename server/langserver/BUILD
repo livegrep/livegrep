@@ -11,5 +11,6 @@ go_library(
         "//server/config:go_default_library",
         "//server/log:go_default_library",
         "@com_github_sourcegraph_jsonrpc2//:go_default_library",
+        "@com_github_fatih_pool//:go_default_library",
     ],
 )

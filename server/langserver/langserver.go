@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 
+	"github.com/fatih/pool"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/sourcegraph/jsonrpc2"
@@ -30,30 +31,26 @@ type Client interface {
 }
 
 type langServerClientImpl struct {
-	rpcClient *jsonrpc2.Conn
+	connPool pool.Pool
 }
 
 type handler struct{}
 
 func (h handler) Handle(context.Context, *jsonrpc2.Conn, *jsonrpc2.Request) {}
 
-func NewClient(ctx context.Context, address string) (client Client, err error) {
-	codec := jsonrpc2.VSCodeObjectCodec{}
-	conn, err := net.Dial("tcp", address)
-	if err != nil {
-		return
-	}
-	rpcConn := jsonrpc2.NewConn(ctx, jsonrpc2.NewBufferedStream(conn, codec), handler{})
+func NewClient(address string) (client Client, err error) {
+	p, err := pool.NewChannelPool(2, 5, func() (net.Conn, error) { return net.Dial("tcp", address) })
+
 	client = &langServerClientImpl{
-		rpcClient: rpcConn,
+		connPool: p,
 	}
-	return
+	return client, nil
 }
 
 func (ls *langServerClientImpl) Initialize(ctx context.Context, params *InitializeParams) (result InitializeResult, err error) {
 	err = ls.invoke(ctx, "initialize", params, &result)
 	if err != nil {
-		return 
+		return
 	}
 
 	err = ls.notify(ctx, "initialized", nil)
@@ -68,20 +65,48 @@ func (ls *langServerClientImpl) JumpToDef(
 	return
 }
 
+func (ls *langServerClientImpl) performRPC(ctx context.Context, f func(*jsonrpc2.Conn) error) (error) {
+	codec := jsonrpc2.VSCodeObjectCodec{}
+	conn, err := ls.connPool.Get()
+	defer conn.Close()
+	if err != nil {
+		return err
+	}
+
+	if err := f(jsonrpc2.NewConn(ctx, jsonrpc2.NewBufferedStream(conn, codec), handler{})); err != nil {
+		if _, ok := err.(net.Error); ok {
+			if pc, ok := conn.(*pool.PoolConn); ok {
+				pc.MarkUnusable()
+			}
+		}
+
+		return err
+	}
+
+	return nil
+}
+
 func (ls *langServerClientImpl) invoke(ctx context.Context, method string, params interface{}, result interface{}) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	start := time.Now()
-	err := ls.rpcClient.Call(ctx, method, params, &result)
-	log.Printf(ctx, "%s %s\nParams: %+v, Result: %+v, err: %+v\n", method, time.Since(start), params, result, err)
-	return err
+
+	return ls.performRPC(ctx, func(rpcClient *jsonrpc2.Conn) error {
+		err := rpcClient.Call(ctx, method, params, &result)
+		log.Printf(ctx, "%s %s\nParams: %+v, Result: %+v, err: %+v\n", method, time.Since(start), params, result, err)
+		return err
+	})
 }
 
 func (ls *langServerClientImpl) notify(ctx context.Context, method string, params interface{}) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	start := time.Now()
-	err := ls.rpcClient.Notify(ctx, method, params)
-	log.Printf(ctx, "notify %s %s\nParams: %+v err: %+v\n", method, time.Since(start), params, err)
-	return err
+
+	return ls.performRPC(ctx, func(rpcClient *jsonrpc2.Conn) error {
+		err := rpcClient.Notify(ctx, method, params)
+		log.Printf(ctx, "notify %s %s\nParams: %+v err: %+v\n", method, time.Since(start), params, err)
+		return err
+	})
+
 }

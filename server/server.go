@@ -495,7 +495,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	for _, r := range srv.config.IndexConfig.Repositories {
 		for _, langServer := range r.LangServers {
 
-			client, err := langserver.NewClient(ctx, langServer.Address)
+			client, err := langserver.NewClient(langServer.Address)
 
 			// a failing language server isn't fatal. We'd prefer to log these metrics.
 			if err != nil {

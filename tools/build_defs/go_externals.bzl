@@ -57,6 +57,7 @@ _externals = [
     _github("facebookgo/clock", "600d898af40aa09a7a93ecb9265d87b0504b6f03"),
     _gopkg("alexcesaro/statsd.v2", "7fea3f0d2fab1ad973e641e51dba45443a311a90"),
     _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
+    _github("fatih/pool", "830a0f4759206ca695bc91927303867a1ba951bc"),
     struct(
         name = "org_golang_google_grpc",
         commit = "f6d0f9ee430895e87ef1ceb5ac8f39725bafceef",
