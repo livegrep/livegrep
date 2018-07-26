@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/fatih/pool"
+	"github.com/jolestar/go-commons-pool"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/sourcegraph/jsonrpc2"
@@ -31,18 +31,43 @@ type Client interface {
 }
 
 type langServerClientImpl struct {
-	connPool pool.Pool
+	clientPool *pool.ObjectPool
 }
 
 type handler struct{}
 
 func (h handler) Handle(context.Context, *jsonrpc2.Conn, *jsonrpc2.Request) {}
 
-func NewClient(address string) (client Client, err error) {
-	p, err := pool.NewChannelPool(2, 5, func() (net.Conn, error) { return net.Dial("tcp", address) })
+func NewClient(address string, initParams *InitializeParams) (client Client, err error) {
+	config := pool.NewDefaultPoolConfig()
+	config.MaxTotal = 3
+
+	p := pool.NewObjectPool(context.Background(), pool.NewPooledObjectFactorySimple(
+		func(ctx context.Context) (interface{}, error) {
+			conn, err := net.Dial("tcp", address)
+			if err != nil {
+				return nil, err
+			}
+			codec := jsonrpc2.VSCodeObjectCodec{}
+			rpcClient := jsonrpc2.NewConn(ctx, jsonrpc2.NewBufferedStream(conn, codec), handler{})
+
+			if err := rpcClient.Call(ctx, "initialize", initParams, nil); err != nil {
+				return nil, err
+			}
+
+			if err := rpcClient.Notify(ctx, "initialized", nil); err != nil {
+				return nil, err
+			}
+
+			return rpcClient, nil
+		}), config)
+
+	if err != nil {
+		return nil, err
+	}
 
 	client = &langServerClientImpl{
-		connPool: p,
+		clientPool: p,
 	}
 	return client, nil
 }
@@ -66,18 +91,24 @@ func (ls *langServerClientImpl) JumpToDef(
 }
 
 func (ls *langServerClientImpl) performRPC(ctx context.Context, f func(*jsonrpc2.Conn) error) (error) {
-	codec := jsonrpc2.VSCodeObjectCodec{}
-	conn, err := ls.connPool.Get()
-	defer conn.Close()
+	rpcClient, err := ls.clientPool.BorrowObject(ctx)
 	if err != nil {
 		return err
 	}
 
-	if err := f(jsonrpc2.NewConn(ctx, jsonrpc2.NewBufferedStream(conn, codec), handler{})); err != nil {
-		if _, ok := err.(net.Error); ok {
-			if pc, ok := conn.(*pool.PoolConn); ok {
-				pc.MarkUnusable()
-			}
+	invalidated := false
+	defer func() {
+		if !invalidated {
+			ls.clientPool.ReturnObject(ctx, rpcClient)
+		}
+	}()
+
+	if err := f(rpcClient.(*jsonrpc2.Conn)); err != nil {
+		if netError, ok := err.(net.Error); (ok && !netError.Temporary()) || err == jsonrpc2.ErrClosed {
+			log.Printf(ctx, "connection unhealthy, closing")
+
+			ls.clientPool.InvalidateObject(ctx, rpcClient)
+			invalidated = true
 		}
 
 		return err

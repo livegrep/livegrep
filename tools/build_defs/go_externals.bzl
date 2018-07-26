@@ -58,6 +58,7 @@ _externals = [
     _gopkg("alexcesaro/statsd.v2", "7fea3f0d2fab1ad973e641e51dba45443a311a90"),
     _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
     _github("fatih/pool", "830a0f4759206ca695bc91927303867a1ba951bc"),
+    _github("jolestar/go-commons-pool", "3f5d5f81046da81d73466f44fe6e0ac36ff304bd"),
     struct(
         name = "org_golang_google_grpc",
         commit = "f6d0f9ee430895e87ef1ceb5ac8f39725bafceef",

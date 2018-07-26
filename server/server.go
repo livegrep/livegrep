@@ -17,7 +17,6 @@ import (
 
 	"github.com/bmizerany/pat"
 	"github.com/honeycombio/libhoney-go"
-
 	"github.com/livegrep/livegrep/server/langserver"
 
 	"path/filepath"
@@ -314,7 +313,7 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 	langServer := s.langsrv[l.Address]
 	if langServer == nil {
 		// no language server
-		writeError(ctx, w, 404, "not_found", err.Error())
+		writeError(ctx, w, 404, "not_found", "no language server for language")
 		return
 	}
 	locations, err := langServer.JumpToDef(ctx, docPositionParams)
@@ -495,22 +494,12 @@ func New(cfg *config.Config) (http.Handler, error) {
 	for _, r := range srv.config.IndexConfig.Repositories {
 		for _, langServer := range r.LangServers {
 
-			client, err := langserver.NewClient(langServer.Address)
-
-			// a failing language server isn't fatal. We'd prefer to log these metrics.
-			if err != nil {
-				log.Printf(ctx, "%s", err.Error())
-				continue
-			}
-
-			initParams := &langserver.InitializeParams{
+			client, err := langserver.NewClient(langServer.Address, &langserver.InitializeParams{
 				ProcessId:        nil,
 				OriginalRootPath: r.Path,
 				RootUri:          "file://" + r.Path,
 				Capabilities:     langserver.ClientCapabilities{},
-			}
-
-			_, err = client.Initialize(ctx, initParams)
+			})
 
 			// a failing language server isn't fatal. We'd prefer to log these metrics.
 			if err != nil {
