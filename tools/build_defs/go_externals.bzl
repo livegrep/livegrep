@@ -39,7 +39,7 @@ _externals = [
     _github("facebookgo/muster", "fd3d7953fd52354a74b9f6b3d70d0c9650c4ec2a"),
     _github("facebookgo/limitgroup", "6abd8d71ec01451d7f1929eacaa263bbe2935d05"),
     _github("facebookgo/clock", "600d898af40aa09a7a93ecb9265d87b0504b6f03"),
-    _github("fatih/pool", "830a0f4759206ca695bc91927303867a1ba951bc"),
+    _github("jolestar/go-commons-pool", "3f5d5f81046da81d73466f44fe6e0ac36ff304bd"),
     struct(
         name = "in_gopkg_alexcesaro_statsd_v2",
         commit = "7fea3f0d2fab1ad973e641e51dba45443a311a90",
