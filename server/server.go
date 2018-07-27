@@ -23,6 +23,8 @@ import (
 	"github.com/livegrep/livegrep/server/templates"
 )
 
+var serveUrlParseError = fmt.Errorf("failed to parse repo and path from URL")
+
 type page struct {
 	Title         string
 	ScriptName    string
@@ -118,13 +120,11 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	matches := s.serveFilePathRegex.FindStringSubmatch(pat.Tail("/view/", r.URL.Path))
-	if len(matches) == 0 {
-		http.Error(w, "failed to parse repo and path given URL", 500)
+	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
 		return
 	}
-
-	repoName, path := matches[1], matches[2]
 
 	commit := r.URL.Query().Get("commit")
 	if commit == "" {
@@ -329,26 +329,11 @@ func New(cfg *config.Config) (http.Handler, error) {
 		repoNames = append(repoNames, r.Name)
 	}
 
-	// Sort in descending order of length so most specific match is selected by regex engine
-	sort.Slice(repoNames, func(i, j int) bool {
-		return len(repoNames[i]) >= len(repoNames[j])
-	})
-
-	// Build regex of form "(repo1|repo2)/(path)"
-	var buf bytes.Buffer
-	for i, repoName := range repoNames {
-		buf.WriteString(regexp.QuoteMeta(repoName))
-		if i < len(repoNames)-1 {
-			buf.WriteString("|")
-		}
-	}
-	repoRegexAlt := buf.String()
-	repoFileRegex, err := regexp.Compile(fmt.Sprintf("(%s)/(.*)", repoRegexAlt))
+	serveFilePathRegex, err := buildRepoRegex(repoNames)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create regular expression for URL parsing")
+		return nil, err
 	}
-
-	srv.serveFilePathRegex = repoFileRegex
+	srv.serveFilePathRegex = serveFilePathRegex
 
 	m := pat.New()
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
@@ -377,4 +362,36 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.inner = mux
 
 	return srv, nil
+}
+
+func buildRepoRegex(repoNames []string) (*regexp.Regexp, error) {
+	// Sort in descending order of length so most specific match is selected by regex engine
+	sort.Slice(repoNames, func(i, j int) bool {
+		return len(repoNames[i]) >= len(repoNames[j])
+	})
+
+	// Build regex of form "(repo1|repo2)/(path)"
+	var buf bytes.Buffer
+	for i, repoName := range repoNames {
+		buf.WriteString(regexp.QuoteMeta(repoName))
+		if i < len(repoNames)-1 {
+			buf.WriteString("|")
+		}
+	}
+	repoRegexAlt := buf.String()
+	repoFileRegex, err := regexp.Compile(fmt.Sprintf("(%s)/(.*)", repoRegexAlt))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create regular expression for URL parsing")
+	}
+
+	return repoFileRegex, nil
+}
+
+func getRepoPathFromURL(repoRegex *regexp.Regexp, url string) (repo string, path string, err error) {
+	matches := repoRegex.FindStringSubmatch(pat.Tail("/view/", url))
+	if len(matches) == 0 {
+		return "", "", serveUrlParseError
+	}
+
+	return matches[1], matches[2], nil
 }
