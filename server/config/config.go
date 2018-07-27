@@ -69,4 +69,7 @@ type RepoConfig struct {
 	Name      string            `json:"name"`
 	Revisions []string          `json:"revisions"`
 	Metadata  map[string]string `json:"metadata"`
+
+	// Use external link as default in search view.
+	LinkExternal bool `json:"link_external"`
 }
