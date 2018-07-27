@@ -36,7 +36,7 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["query_test.go"],
+    srcs = ["query_test.go", "server_test.go"],
     library = ":go_default_library",
     deps = ["//src/proto:go_proto"],
 )
