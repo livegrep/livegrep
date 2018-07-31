@@ -243,7 +243,7 @@ function init(initData) {
     const col = rows[row].length;
 
     const url = "/api/v1/langserver/jumptodef?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
-    fetch(url)
+    fetch(url, { credentials: "same-origin" })
         .then(function(response) {
             if (response.ok) {
                 return response.json();
