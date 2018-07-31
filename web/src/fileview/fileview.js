@@ -218,10 +218,11 @@ function init(initData) {
   }
 
   function triggerJumpToDef(event) {
-      const nodeClicked = document.getSelection().anchorNode.parentNode;
+      const nodeClicked = event.target;
       const cachedUrl = nodeClicked.getAttribute('definition-url');
       if (cachedUrl) {
         window.location.href = cachedUrl;
+        handleHashChange();
       }
   }
 
@@ -231,13 +232,13 @@ function init(initData) {
 
   function cancelHover() {
     if (hoveringNode) {
-      hoveringNode.className = 'hoverable';
+      hoveringNode.classList.remove('hovering');
     }
     hoveringNode = null;
   }
 
   function hoverOverNode(node) {
-    node.className = 'hovering';
+    node.classList.add('hovering');
     hoveringNode = node;
   }
 
@@ -252,25 +253,26 @@ function init(initData) {
     const row = rows.length - 1;
     const col = rows[row].length;
 
-    xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-      if (this.status === 200 && this.responseText) {
-        const resp = JSON.parse(this.responseText);
-        node.setAttribute('definition-url', resp.url);
-        if (isInBox(mousePositionX, mousePositionY, node.getBoundingClientRect())) {
-          hoverOverNode(node);
-        } else {
-          // The mouse has moved and is not be on this element.
-          node.className = 'hoverable';
-        }
-      } else {
-        node.className = 'nonhoverable';
-      }
-    };
-
     const url = "/api/v1/langserver/jumptodef?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
-    xhttp.open("GET", url);
-    xhttp.send();
+    fetch(url)
+        .then(function(response) {
+            if (response.ok) {
+                return response.json();
+            }
+            else {
+                node.classList.add('nonhoverable');
+                return null;
+            }
+        })
+        .then(function(resp) {
+            if (resp) {
+                node.classList.add('hoverable');
+                node.setAttribute('definition-url', resp.url);
+                if (isInBox(mousePositionX, mousePositionY, node.getBoundingClientRect())) {
+                    hoverOverNode(node);
+                }
+            }
+        });
   }
 
   function isInBox(x, y, rect) {
@@ -287,32 +289,29 @@ function init(initData) {
     // non-hoverable text is class="nonhoverable"
     const pos = document.caretRangeFromPoint(clientX, clientY);
     const textNode = pos.startContainer;
-    if (textNode.nodeType !== 3) { // expected to be a text node
+    if (!textNode || textNode.nodeType !== 3) { // expected to be a text node
       return;
     }
     // decide what to do based on the class of the span containing the text
     const node = textNode.parentNode;
-    const nodeClass = node.className;
-    if (nodeClass === 'hovering') {
+    const classList = node.classList;
+    if (classList.contains('hovering')) {
       return;
     }
     cancelHover();
-    if (!nodeClass || nodeClass === 'nonhoverable') {
+    if (classList.contains('nonhoverable')) {
       return;
     }
-    if (nodeClass === 'hoverable') {
+    if (classList.contains('hoverable')) {
       hoverOverNode(node);
       return;
     }
-    const tokenType = nodeClass.match(/token ([a-z]+)/);
-    if (tokenType) {
-      // the only token which potentially has a definition is a 'token function'
-      if (tokenType[1] === 'function') {
-        node.innerHTML = "<span>" + node.innerHTML + "</span>";
-        checkIfHoverable(node.childNodes[0]);
-      }
-      return;
+
+    if (classList.contains('token') && (classList.contains('function') || classList.contains('constant'))) {
+      node.innerHTML = "<span>" + node.innerHTML + "</span>";
+      checkIfHoverable(node.childNodes[0]);
     }
+
     if (node.id !== 'source-code') {
       return;
     }
@@ -436,7 +435,7 @@ function init(initData) {
       processKeyEvent(event);
     });
 
-    $(document).on('click', function (event) {
+    $(document).on('click', '.hoverable', function (event) {
       if (initData.has_lang_server) {
         triggerJumpToDef(event);
       }
