@@ -234,15 +234,6 @@ function init(initData) {
     return range;
   }
 
-  function triggerJumpToDef(event) {
-      const nodeClicked = event.target;
-      const cachedUrl = nodeClicked.getAttribute('definition-url');
-      if (cachedUrl) {
-        window.location.href = cachedUrl;
-        handleHashChange();
-      }
-  }
-
   var hoveringNode = null;
   var mousePositionX = 0;
   var mousePositionY = 0;
@@ -260,8 +251,6 @@ function init(initData) {
   }
 
   function checkIfHoverable(node) {
-    var info = getFileInfo();
-
     const code = document.getElementById('source-code');
     const stringBefore = textBeforeOffset(node, 0, code);
 
@@ -284,7 +273,12 @@ function init(initData) {
         .then(function(resp) {
             if (resp) {
                 node.classList.add('hoverable');
-                node.setAttribute('definition-url', resp.url);
+                var asLink = document.createElement('a');
+                asLink.setAttribute('href', resp.url);
+
+                node.parentNode.insertBefore(asLink, node);
+                asLink.appendChild(node);
+
                 if (isInBox(mousePositionX, mousePositionY, node.getBoundingClientRect())) {
                     hoverOverNode(node);
                 }
@@ -452,9 +446,13 @@ function init(initData) {
       processKeyEvent(event);
     });
 
-    $(document).on('click', '.hoverable', function (event) {
+    $(document).on('click', '.token a', function (event) {
       if (initData.has_lang_server) {
-        triggerJumpToDef(event);
+          // hashChange event wont fire here so we need to handle scrolling to the correct location ourselves.
+          if(this.hash === window.location.hash) {
+              handleHashChange();
+              event.preventDefault();
+          }
       }
     });
 
