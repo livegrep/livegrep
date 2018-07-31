@@ -267,6 +267,7 @@ function init(initData) {
             }
             else {
                 node.classList.add('nonhoverable');
+                node.setAttribute('title', 'Could not resolve definition for symbol');
                 return null;
             }
         })
