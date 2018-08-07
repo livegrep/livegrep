@@ -173,10 +173,10 @@ public:
         name_ = name;
     }
 
-    vector<indexed_file*>::const_iterator begin_files() {
+    vector<std::unique_ptr<indexed_file>>::const_iterator begin_files() {
         return files_.begin();
     }
-    vector<indexed_file*>::const_iterator end_files() {
+    vector<std::unique_ptr<indexed_file>>::const_iterator end_files() {
         return files_.end();
     }
 
@@ -256,8 +256,8 @@ protected:
     // pairs (i, file), where file->path starts at filename_data_[i]
     vector<pair<int, indexed_file*>> filename_positions_;
 
-    vector<indexed_tree*> trees_;
-    vector<indexed_file*> files_;
+    vector<std::unique_ptr<indexed_tree>> trees_;
+    vector<std::unique_ptr<indexed_file>> files_;
 
 private:
     void index_filenames();

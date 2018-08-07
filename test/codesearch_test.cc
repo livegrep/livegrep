@@ -26,7 +26,7 @@ TEST_F(codesearch_test, IndexTest) {
 
     EXPECT_EQ(1, cs_.end_files() - cs_.begin_files());
 
-    indexed_file *f = *cs_.begin_files();
+    indexed_file *f = cs_.begin_files()->get();
     EXPECT_EQ("/data/file1", f->path);
     EXPECT_EQ(tree_, f->tree);
 
@@ -61,7 +61,7 @@ TEST_F(codesearch_test, NoTrailingNewLine) {
 
     EXPECT_EQ(1, cs_.end_files() - cs_.begin_files());
 
-    indexed_file *f = *cs_.begin_files();
+    indexed_file *f = cs_.begin_files()->get();
     EXPECT_EQ("/data/file1", f->path);
     EXPECT_EQ(tree_, f->tree);
 

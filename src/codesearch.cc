@@ -273,7 +273,7 @@ protected:
         int hits = 0;
         int sample = min(1000, int(cc_->files_.size()));
         for (int i = 0; i < sample; i++) {
-            if (accept(query_, cc_->files_[rand() % cc_->files_.size()]))
+            if (accept(query_, cc_->files_[rand() % cc_->files_.size()].get()))
                 hits++;
         }
         return (files_density_ = double(hits) / sample);
@@ -411,7 +411,7 @@ void filename_searcher::operator()()
             if (limiter_.exit_early()) {
                 return;
             }
-            match_filename(*it);
+            match_filename(it->get());
         }
         return;
     }
@@ -484,15 +484,12 @@ code_searcher::~code_searcher() {
     if (alloc_)
         alloc_->cleanup();
 
-    for (auto tree : trees_) {
+    for (auto &tree : trees_) {
         if (tree->metadata != NULL) {
             json_object_put(tree->metadata);
         }
-        delete tree;
     }
-    for (auto file : files_) {
-        delete file;
-    }
+
     if (filename_data_ != NULL) {
         delete[] filename_data_;
     }
@@ -515,7 +512,7 @@ void code_searcher::index_filenames() {
     for (auto it = files_.begin(); it != files_.end(); ++it) {
         memcpy(filename_data_ + offset, (*it)->path.data(), (*it)->path.size());
         filename_data_[offset + (*it)->path.size()] = '\0';
-        filename_positions_.emplace_back(offset, *it);
+        filename_positions_.emplace_back(offset, it->get());
         offset += (*it)->path.size() + 1;
     }
 
@@ -549,7 +546,7 @@ vector<indexed_tree> code_searcher::trees() const {
 const indexed_tree* code_searcher::open_tree(const string &name,
                                              json_object *metadata,
                                              const string &version) {
-    indexed_tree *tree = new indexed_tree;
+    auto tree = std::make_unique<indexed_tree>();
     tree->name = name;
     tree->version = version;
     if (metadata) {
@@ -557,8 +554,8 @@ const indexed_tree* code_searcher::open_tree(const string &name,
     } else {
         tree->metadata = NULL;
     }
-    trees_.push_back(tree);
-    return tree;
+    trees_.push_back(move(tree));
+    return trees_.back().get();
 }
 
 void code_searcher::index_file(const indexed_tree *tree,
@@ -581,15 +578,15 @@ void code_searcher::index_file(const indexed_tree *tree,
     idx_bytes.inc(len);
     idx_files.inc();
 
-    indexed_file *sf = new indexed_file;
-    sf->tree = tree;
-    sf->path = path;
-    sf->no  = files_.size();
-    files_.push_back(sf);
+    auto file = std::make_unique<indexed_file>();
+    file->tree = tree;
+    file->path = path;
+    file->no  = files_.size();
+    auto *sf = file.get();
+    files_.push_back(move(file));
 
     uint32_t lines = count(p, end, '\n');
 
-    // sf->content = new(new uint32_t[3*lines+1]) file_contents(0);
     file_contents_builder content;
 
     while ((f = static_cast<const char*>(memchr(p, '\n', end - p))) != 0) {

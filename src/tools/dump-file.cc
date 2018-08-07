@@ -34,7 +34,7 @@ int dump_file(int argc, char **argv) {
 
     for (auto it = cs.begin_files(); it != cs.end_files(); ++it) {
         if ((*it)->path == path) {
-            dump_file(&cs, *it);
+            dump_file(&cs, it->get());
             return 0;
         }
     }
