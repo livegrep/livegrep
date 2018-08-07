@@ -468,22 +468,22 @@ void filename_searcher::match_filename(indexed_file *file) {
 }
 
 code_searcher::code_searcher()
-    : alloc_(0), finalized_(false), filename_data_(NULL), filename_suffixes_(NULL)
+    : alloc_(), finalized_(false), filename_data_(NULL), filename_suffixes_(NULL)
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
 #endif
 }
 
-void code_searcher::set_alloc(chunk_allocator *alloc) {
+void code_searcher::set_alloc(std::unique_ptr<chunk_allocator> alloc) {
     assert(!alloc_);
-    alloc_ = alloc;
+    alloc_ = move(alloc);
 }
 
 code_searcher::~code_searcher() {
     if (alloc_)
         alloc_->cleanup();
-    delete alloc_;
+
     for (auto tree : trees_) {
         if (tree->metadata != NULL) {
             json_object_put(tree->metadata);
@@ -642,12 +642,12 @@ void code_searcher::index_file(const indexed_tree *tree,
         goto final;
     }
 
-    sf->content = content.build(alloc_);
+    sf->content = content.build(alloc_.get());
     if (sf->content == 0) {
         fprintf(stderr, "WARN: %s:%s:%s is too large to be indexed.\n",
                 tree->name.c_str(), tree->version.c_str(), path.c_str());
         file_contents_builder dummy;
-        sf->content = dummy.build(alloc_);
+        sf->content = dummy.build(alloc_.get());
     }
     idx_content_ranges.inc(sf->content->size());
     assert(sf->content->size() <= 3*lines);
@@ -1021,10 +1021,10 @@ void searcher::try_match(const StringPiece& line,
                          indexed_file *sf) {
 
     int lno = 1;
-    auto it = sf->content->begin(cc_->alloc_);
+    auto it = sf->content->begin(cc_->alloc_.get());
 
     while (true) {
-        for (;it != sf->content->end(cc_->alloc_); ++it) {
+        for (;it != sf->content->end(cc_->alloc_.get()); ++it) {
             if (line.data() >= it->data() &&
                 line.data() <= it->data() + it->size()) {
                 lno += count(it->data(), line.data(), '\n');
@@ -1036,7 +1036,7 @@ void searcher::try_match(const StringPiece& line,
 
         debug(kDebugSearch, "found match on %s:%d", sf->path.c_str(), lno);
 
-        if (it == sf->content->end(cc_->alloc_))
+        if (it == sf->content->end(cc_->alloc_.get()))
             return;
 
         match_result *m = new match_result;
@@ -1054,7 +1054,7 @@ void searcher::try_match(const StringPiece& line,
 
         for (i = 0; i < kContextLines; i++) {
             if (l.data() == bit->data()) {
-                if (bit == sf->content->begin(cc_->alloc_))
+                if (bit == sf->content->begin(cc_->alloc_.get()))
                     break;
                 --bit;
                 l = StringPiece(bit->data() + bit->size() + 1, 0);
@@ -1067,7 +1067,7 @@ void searcher::try_match(const StringPiece& line,
 
         for (i = 0; i < kContextLines; i++) {
             if (l.data() + l.size() == fit->data() + fit->size()) {
-                if (++fit == sf->content->end(cc_->alloc_))
+                if (++fit == sf->content->end(cc_->alloc_.get()))
                     break;
                 l = StringPiece(fit->data() - 1, 0);
             }

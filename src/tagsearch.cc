@@ -50,7 +50,7 @@ std::string create_tag_line_regex(
 };
 
 void tag_searcher::cache_indexed_files(code_searcher* cs) {
-    file_alloc_ = cs->alloc_;
+    file_alloc_ = cs->alloc_.get();
     for (auto it = cs->begin_files(); it != cs->end_files(); ++it) {
         auto file = *it;
         auto key = path(file->tree->name) / path(file->path);

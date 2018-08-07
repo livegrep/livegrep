@@ -16,6 +16,7 @@
 #include <mutex>
 #include <thread>
 #include <functional>
+#include <memory>
 #include <boost/intrusive_ptr.hpp>
 
 #ifdef USE_DENSE_HASH_SET
@@ -161,8 +162,8 @@ public:
                     StringPiece contents);
     void finalize();
 
-    void set_alloc(chunk_allocator *alloc);
-    chunk_allocator *alloc() { return alloc_; }
+    void set_alloc(std::unique_ptr<chunk_allocator> alloc);
+    chunk_allocator *alloc() { return alloc_.get(); }
 
     vector<indexed_tree> trees() const;
     string name() const {
@@ -238,7 +239,7 @@ protected:
     // present.
     string_hash lines_;
 
-    chunk_allocator *alloc_;
+    std::unique_ptr<chunk_allocator> alloc_;
 
     // Indicates that everything all is ready for searching--we are done creating
     // index or initializing it from a file.
@@ -270,9 +271,9 @@ private:
 };
 
 // dump_load.cc
-chunk_allocator *make_dump_allocator(code_searcher *search, const string& path);
+std::unique_ptr<chunk_allocator> make_dump_allocator(code_searcher *search, const string& path);
 // chunk_allocator.cc
-chunk_allocator *make_mem_allocator();
+std::unique_ptr<chunk_allocator> make_mem_allocator();
 
 void default_re2_options(RE2::Options&);
 

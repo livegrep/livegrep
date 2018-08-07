@@ -238,8 +238,8 @@ protected:
     chunk_header *next_chunk_;
 };
 
-chunk_allocator *make_dump_allocator(code_searcher *search, const string& path) {
-    return new dump_allocator(search, path.c_str());
+std::unique_ptr<chunk_allocator> make_dump_allocator(code_searcher *search, const string& path) {
+    return std::make_unique<dump_allocator>(search, path.c_str());
 }
 
 void codesearch_index::dump_file(map<const indexed_tree*, int>& ids, indexed_file *sf) {
@@ -491,7 +491,7 @@ void code_searcher::dump_index(const string &path) {
 }
 
 void code_searcher::load_index(const string &path) {
-    load_allocator *alloc = new load_allocator(this, path);
-    set_alloc(alloc);
-    alloc->load(this);
+    std::unique_ptr<load_allocator> alloc = std::make_unique<load_allocator>(this, path);
+    set_alloc(move(alloc));
+    dynamic_cast<load_allocator*>(alloc_.get())->load(this);
 }
