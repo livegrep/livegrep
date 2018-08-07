@@ -128,11 +128,11 @@ void chunk::build_tree() {
     cf_root = build_tree(0, files.size());
 }
 
-chunk_file_node *chunk::build_tree(int left, int right) {
+unique_ptr<chunk_file_node> chunk::build_tree(int left, int right) {
     if (right == left)
         return 0;
     int mid = (left + right) / 2;
-    chunk_file_node *node = new chunk_file_node;
+    auto node = std::make_unique<chunk_file_node>();
 
     node->chunk = &files[mid];
     node->left  = build_tree(left, mid);

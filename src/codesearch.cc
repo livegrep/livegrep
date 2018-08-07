@@ -984,7 +984,7 @@ void searcher::find_match(const chunk *chunk,
 
     vector<chunk_file_node *> stack;
     assert(chunk->cf_root);
-    stack.push_back(chunk->cf_root);
+    stack.push_back(chunk->cf_root.get());
 
     debug(kDebugSearch, "find_match(%d)", loff);
 
@@ -1000,7 +1000,7 @@ void searcher::find_match(const chunk *chunk,
             continue;
         if (loff >= n->chunk->left) {
             if (n->right)
-                stack.push_back(n->right);
+                stack.push_back(n->right.get());
             if (loff <= n->chunk->right) {
                 debug(kDebugSearch, "visit <%d-%d>", n->chunk->left, n->chunk->right);
                 assert(loff >= n->chunk->left && loff <= n->chunk->right);
@@ -1015,7 +1015,7 @@ void searcher::find_match(const chunk *chunk,
             }
         }
         if (n->left)
-            stack.push_back(n->left);
+            stack.push_back(n->left.get());
     }
 }
 
