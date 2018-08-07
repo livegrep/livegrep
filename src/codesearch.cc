@@ -211,15 +211,11 @@ public:
         cc_(cc), query_(&q), transform_(func), queue_(),
         limiter_(q.max_matches), index_key_(index_key), re2_time_(false),
         git_time_(false), index_time_(false), sort_time_(false),
-        analyze_time_(false), files_(new uint8_t[cc->files_.size()]),
+        analyze_time_(false), files_(cc->files_.size(), 0xff),
         files_density_(-1)
-    {
-        memset(files_, 0xff, cc->files_.size());
-    }
+    {}
 
     ~searcher() {
-        delete[] files_;
-
         debug(kDebugProfile, "re2 time: %d.%06ds",
               int(re2_time_.elapsed().tv_sec),
               int(re2_time_.elapsed().tv_usec));
@@ -285,7 +281,7 @@ protected:
 
     /*
      * Do a linear walk over chunk->files, searching for all files
-     * which contain `match', which is contained within `line'.
+p     * which contain `match', which is contained within `line'.
      */
     void find_match_brute(const chunk *chunk,
                           const StringPiece& match,
@@ -356,7 +352,7 @@ protected:
     timer index_time_;
     timer sort_time_;
     timer analyze_time_;
-    uint8_t *files_;
+    vector<uint8_t> files_;
 
     /*
      * The approximate ratio of how many files match file_pat and
