@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <list>
 #include <set>
+#include <memory>
 
 #include <stdint.h>
 
@@ -53,16 +54,7 @@ struct chunk_file_node {
     chunk_file *chunk;
     int right_limit;
 
-    chunk_file_node *left, *right;
-
-    ~chunk_file_node() {
-        if (left != NULL) {
-            delete left;
-        }
-        if (right != NULL) {
-            delete right;
-        }
-    }
+    std::unique_ptr<chunk_file_node> left, right;
 };
 
 struct chunk {
@@ -90,7 +82,7 @@ struct chunk {
     // BST constructed from `files` at the very end of index creation. Used to
     // efficiently find, given a substring of this chunk's data, the files
     // might contain that substring.
-    chunk_file_node *cf_root;
+    unique_ptr<chunk_file_node> cf_root;
 
     // The suffix array; constructed from `data` during finalization (once the
     // chunk's data block is full, but before all files have been processed).
@@ -100,12 +92,8 @@ struct chunk {
     unsigned char *data;
 
     chunk(unsigned char *data, uint32_t *suffixes)
-        : size(0), files(), cf_root(0),
+        : size(0), files(), cf_root(),
           suffixes(suffixes), data(data) { }
-
-    ~chunk() {
-        delete cf_root;
-    }
 
     void add_chunk_file(indexed_file *sf, const StringPiece& line);
     void finish_file();
@@ -150,7 +138,7 @@ struct chunk {
         }
     };
 
-    chunk_file_node *build_tree(int left, int right);
+    unique_ptr<chunk_file_node> build_tree(int left, int right);
 
 private:
     chunk(const chunk&);

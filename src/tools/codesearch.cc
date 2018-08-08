@@ -10,6 +10,7 @@
 #include "src/lib/debug.h"
 
 #include "src/codesearch.h"
+#include "src/chunk_allocator.h"
 #include "src/tagsearch.h"
 #include "src/re_width.h"
 #include "src/git_indexer.h"

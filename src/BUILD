@@ -4,7 +4,10 @@ cc_library(
         "*.cc",
     ]),
     hdrs = glob(["*.h"]),
-    copts = ["-Wno-sign-compare"],
+    copts = [
+        "-Wno-sign-compare",
+        "-std=c++14",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         "//src/lib",

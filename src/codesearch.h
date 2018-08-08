@@ -16,6 +16,7 @@
 #include <mutex>
 #include <thread>
 #include <functional>
+#include <memory>
 #include <boost/intrusive_ptr.hpp>
 
 #ifdef USE_DENSE_HASH_SET
@@ -161,8 +162,8 @@ public:
                     StringPiece contents);
     void finalize();
 
-    void set_alloc(chunk_allocator *alloc);
-    chunk_allocator *alloc() { return alloc_; }
+    void set_alloc(std::unique_ptr<chunk_allocator> alloc);
+    chunk_allocator *alloc() { return alloc_.get(); }
 
     vector<indexed_tree> trees() const;
     string name() const {
@@ -172,10 +173,10 @@ public:
         name_ = name;
     }
 
-    vector<indexed_file*>::const_iterator begin_files() {
+    vector<std::unique_ptr<indexed_file>>::const_iterator begin_files() {
         return files_.begin();
     }
-    vector<indexed_file*>::const_iterator end_files() {
+    vector<std::unique_ptr<indexed_file>>::const_iterator end_files() {
         return files_.end();
     }
 
@@ -238,7 +239,7 @@ protected:
     // present.
     string_hash lines_;
 
-    chunk_allocator *alloc_;
+    std::unique_ptr<chunk_allocator> alloc_;
 
     // Indicates that everything all is ready for searching--we are done creating
     // index or initializing it from a file.
@@ -249,14 +250,13 @@ protected:
 
     // Structures for fast filename search; somewhat similar to a single chunk.
     // Built from files_ at finalization, not serialized or anything like that.
-    unsigned char *filename_data_;
-    int filename_data_size_;
-    uint32_t *filename_suffixes_;
+    vector<unsigned char> filename_data_;
+    vector<uint32_t> filename_suffixes_;
     // pairs (i, file), where file->path starts at filename_data_[i]
     vector<pair<int, indexed_file*>> filename_positions_;
 
-    vector<indexed_tree*> trees_;
-    vector<indexed_file*> files_;
+    vector<std::unique_ptr<indexed_tree>> trees_;
+    vector<std::unique_ptr<indexed_file>> files_;
 
 private:
     void index_filenames();
@@ -270,9 +270,9 @@ private:
 };
 
 // dump_load.cc
-chunk_allocator *make_dump_allocator(code_searcher *search, const string& path);
+std::unique_ptr<chunk_allocator> make_dump_allocator(code_searcher *search, const string& path);
 // chunk_allocator.cc
-chunk_allocator *make_mem_allocator();
+std::unique_ptr<chunk_allocator> make_mem_allocator();
 
 void default_re2_options(RE2::Options&);
 

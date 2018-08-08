@@ -154,6 +154,6 @@ public:
     }
 };
 
-chunk_allocator *make_mem_allocator() {
-    return new mem_allocator();
+unique_ptr<chunk_allocator> make_mem_allocator() {
+    return make_unique<mem_allocator>();
 }
