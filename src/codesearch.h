@@ -250,9 +250,8 @@ protected:
 
     // Structures for fast filename search; somewhat similar to a single chunk.
     // Built from files_ at finalization, not serialized or anything like that.
-    unsigned char *filename_data_;
-    int filename_data_size_;
-    uint32_t *filename_suffixes_;
+    vector<unsigned char> filename_data_;
+    vector<uint32_t> filename_suffixes_;
     // pairs (i, file), where file->path starts at filename_data_[i]
     vector<pair<int, indexed_file*>> filename_positions_;
 

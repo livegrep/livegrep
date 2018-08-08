@@ -392,7 +392,7 @@ protected:
 };
 
 int suffix_search(const unsigned char *data,
-                  uint32_t *suffixes,
+                  const uint32_t *suffixes,
                   int size,
                   intrusive_ptr<IndexKey> index,
                   vector<uint32_t> &indexes_out);
@@ -401,10 +401,12 @@ void filename_searcher::operator()()
 {
     static per_thread<vector<uint32_t> > indexes;
     if (!indexes.get()) {
-        indexes.put(new vector<uint32_t>(cc_->filename_data_size_ / kMinFilterRatio / 10));
+        indexes.put(new vector<uint32_t>(cc_->filename_data_.size() / kMinFilterRatio / 10));
     }
 
-    int count = suffix_search(cc_->filename_data_, cc_->filename_suffixes_, cc_->filename_data_size_, index_key_, *indexes);
+    int count = suffix_search(cc_->filename_data_.data(),
+                              cc_->filename_suffixes_.data(),
+                              cc_->filename_data_.size(), index_key_, *indexes);
 
     if (count > indexes->size()) {
         for (auto it = cc_->files_.begin(); it < cc_->files_.end(); it++) {
@@ -468,7 +470,7 @@ void filename_searcher::match_filename(indexed_file *file) {
 }
 
 code_searcher::code_searcher()
-    : alloc_(), finalized_(false), filename_data_(NULL), filename_suffixes_(NULL)
+    : alloc_(), finalized_(false), filename_data_(), filename_suffixes_()
 {
 #ifdef USE_DENSE_HASH_SET
     lines_.set_empty_key(empty_string);
@@ -489,35 +491,30 @@ code_searcher::~code_searcher() {
             json_object_put(tree->metadata);
         }
     }
-
-    if (filename_data_ != NULL) {
-        delete[] filename_data_;
-    }
-    if (filename_suffixes_ != NULL) {
-        delete[] filename_suffixes_;
-    }
 }
 
 void code_searcher::index_filenames() {
     log("Building filename index...");
     filename_positions_.reserve(files_.size());
 
-    filename_data_size_ = 0;
+    size_t filename_data_size = 0;
     for (auto it = files_.begin(); it != files_.end(); ++it) {
-        filename_data_size_ += (*it)->path.size() + 1;
+        filename_data_size += (*it)->path.size() + 1;
     }
 
-    filename_data_ = new unsigned char[filename_data_size_];
+    filename_data_.resize(filename_data_size);
     int offset = 0;
     for (auto it = files_.begin(); it != files_.end(); ++it) {
-        memcpy(filename_data_ + offset, (*it)->path.data(), (*it)->path.size());
+        memcpy(filename_data_.data() + offset, (*it)->path.data(), (*it)->path.size());
         filename_data_[offset + (*it)->path.size()] = '\0';
         filename_positions_.emplace_back(offset, it->get());
         offset += (*it)->path.size() + 1;
     }
 
-    filename_suffixes_ = new uint32_t[filename_data_size_];
-    divsufsort(filename_data_, reinterpret_cast<saidx_t*>(filename_suffixes_), filename_data_size_);
+    filename_suffixes_.resize(filename_data_size);
+    divsufsort(filename_data_.data(),
+               reinterpret_cast<saidx_t*>(filename_suffixes_.data()),
+               filename_data_size);
 }
 
 void code_searcher::finalize() {
@@ -689,7 +686,7 @@ void searcher::operator()(const chunk *chunk)
 }
 
 struct walk_state {
-    uint32_t *left, *right;
+    const uint32_t *left, *right;
     intrusive_ptr<IndexKey> key;
     int depth;
 };
@@ -715,7 +712,7 @@ struct lt_index {
 };
 
 int suffix_search(const unsigned char *data,
-                  uint32_t *suffixes,
+                  const uint32_t *suffixes,
                   int size,
                   intrusive_ptr<IndexKey> index,
                   vector<uint32_t> &indexes_out) {
@@ -740,9 +737,9 @@ int suffix_search(const unsigned char *data,
         lt_index lt = {data, st.depth};
         for (IndexKey::iterator it = st.key->begin();
              it != st.key->end(); ++it) {
-            uint32_t *l, *r;
+            const uint32_t *l, *r;
             l = lower_bound(st.left, st.right, it->first.first, lt);
-            uint32_t *right = lower_bound(l, st.right,
+            const uint32_t *right = lower_bound(l, st.right,
                                           (unsigned char)(it->first.second + 1),
                                           lt);
             if (l == right)
