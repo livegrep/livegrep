@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// infers a language server for a given file. Picks only one.
+// infers a language server for a given file. Picks only one for simplicity.
 func ForFile(repo *config.RepoConfig, filePath string) *config.LangServer {
 	fileExt := filepath.Ext(filePath)
 	for _, langServer := range repo.LangServers {
@@ -50,27 +50,42 @@ func NewClient(ctx context.Context, address string) (client Client, err error) {
 	return
 }
 
-func (ls *langServerClientImpl) Initialize(ctx context.Context, params *InitializeParams) (result InitializeResult, err error) {
-	err = ls.invoke(ctx, "initialize", params, &result)
+func (ls *langServerClientImpl) Initialize(
+	ctx context.Context,
+	params *InitializeParams,
+) (InitializeResult, error) {
+
+	var result InitializeResult
+	err := ls.call(ctx, "initialize", params, &result)
 	if err != nil {
-		ls.invoke(ctx, "initialized", nil, nil)
+		// it could presumably be because we're already initialized.
+		nerr := ls.notify(ctx, "initialized", nil)
+		if nerr != nil {
+			return result, nerr
+		}
 	}
-	return
+	return result, err
 }
 
 func (ls *langServerClientImpl) JumpToDef(
 	ctx context.Context,
 	params *TextDocumentPositionParams,
 ) (result []Location, err error) {
-	err = ls.invoke(ctx, "textDocument/definition", params, &result)
+	err = ls.call(ctx, "textDocument/definition", params, &result)
 	return
 }
 
-func (ls *langServerClientImpl) invoke(ctx context.Context, method string, params interface{}, result interface{}) error {
+func (ls *langServerClientImpl) call(ctx context.Context, method string, params interface{}, result interface{}) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	start := time.Now()
 	err := ls.rpcClient.Call(ctx, method, params, &result)
 	log.Printf(ctx, "%s %s\nParams: %+v, Result: %+v, err: %+v\n", method, time.Since(start), params, result, err)
 	return err
+}
+
+func (ls *langServerClientImpl) notify(ctx context.Context, method string, params interface{}) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	return ls.rpcClient.Notify(ctx, method, params)
 }

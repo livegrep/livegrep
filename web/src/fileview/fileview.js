@@ -10,27 +10,10 @@ function getSelectedText() {
   return window.getSelection ? window.getSelection().toString() : null;
 }
 
-// Get file info from the current URL. Returns an object with the following keys:
-// repoName: the repo name
-// pathInRepo: The page in the repo.
-function getFileInfo() {
-  // Disassemble the current URL.
-  var path = window.location.pathname.slice(6); // Strip "/view/" prefix
-  var repoName = path.split('/')[0];
-  var pathInRepo = path.slice(repoName.length + 1).replace(/^\/+/, '');
-
-  return {
-    repoName: repoName,
-    pathInRepo: pathInRepo,
-  }
-}
-
-function doSearch(event, query, newTab) {
-  var fileInfo = getFileInfo();
-
+function doSearch(event, query, newTab, initData) {
   var url;
   if (query !== undefined) {
-    url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(fileInfo.repoName);
+    url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(initData.repo_info.name);
   } else {
     url = '/search';
   }
@@ -169,7 +152,7 @@ function init(initData) {
     if (range == null) {
       // Default to first line if no lines are selected.
       return 1;
-    } else if (range.start == range.end) {
+    } else if (range.start === range.end) {
       return range.start;
     } else {
       // We blindly assume that the external viewer supports linking to a
@@ -182,21 +165,13 @@ function init(initData) {
   function getExternalLink(range) {
     var lno = getLineNumber(range);
 
-    var fileInfo = getFileInfo();
-
-    url = initData.repo_info.metadata['url-pattern']
-
-    // If {path} already has a slash in front of it, trim extra leading
-    // slashes from `pathInRepo` to avoid a double-slash in the URL.
-    if (url.indexOf('/{path}') !== -1) {
-      fileInfo.pathInRepo = fileInfo.pathInRepo.replace(/^\/+/, '');
-    }
+    url = initData.repo_info.metadata['url-pattern'];
 
     // XXX code copied
     url = url.replace('{lno}', lno);
     url = url.replace('{version}', initData.commit);
-    url = url.replace('{name}', fileInfo.repoName);
-    url = url.replace('{path}', fileInfo.pathInRepo);
+    url = url.replace('{name}', initData.repo_info.name);
+    url = url.replace('{path}', initData.repo_info.path);
     return url;
   }
 
@@ -233,7 +208,7 @@ function init(initData) {
     return range;
   }
 
-  function triggerJumpToDef(event) {
+  function triggerJumpToDef() {
       const nodeClicked = document.getSelection().anchorNode.parentNode;
       const cachedUrl = nodeClicked.getAttribute('definition-url');
       if (cachedUrl) {
@@ -258,8 +233,6 @@ function init(initData) {
   }
 
   function checkIfHoverable(node) {
-    var info = getFileInfo();
-
     const code = document.getElementById('source-code');
     const stringBefore = textBeforeOffset(node, 0, code);
 
@@ -284,7 +257,11 @@ function init(initData) {
       }
     };
 
-    const url = "/api/v1/langserver/jumptodef?repo_name=" + info.repoName + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
+    const url = '/api/v1/langserver/jumptodef?repo_name='
+        + initData.repo_info.name
+        + "&file_path="
+        + initData.file_path
+        + "&row=" + row + "&col=" + col;
     xhttp.open("GET", url);
     xhttp.send();
   }
@@ -348,7 +325,7 @@ function init(initData) {
       // Perform a new search with the selected text, if any
       var selectedText = getSelectedText();
       if(selectedText) {
-        doSearch(event, selectedText, true);
+        doSearch(event, selectedText, true, initData);
       }
     } else if(event.which === KeyCodes.SLASH_OR_QUESTION_MARK) {
         event.preventDefault();
@@ -356,7 +333,7 @@ function init(initData) {
           showHelp();
         } else {
           hideHelp();
-          doSearch(event, getSelectedText());
+          doSearch(event, getSelectedText(), false, initData);
         }
     } else if(event.which === KeyCodes.ESCAPE) {
       // Avoid swallowing the important escape key event unless we're sure we want to

@@ -313,7 +313,7 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 	langServer := s.langsrv[l.Address]
 	if langServer == nil {
 		// no language server
-		writeError(ctx, w, 404, "not_found", err.Error())
+		writeError(ctx, w, 404, "not_found", "no suitable language server")
 		return
 	}
 	locations, err := langServer.JumpToDef(ctx, docPositionParams)
