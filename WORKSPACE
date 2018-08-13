@@ -40,8 +40,8 @@ git_repository(
 )
 
 git_repository(
-    name = "com_github_nelhage_boost",
-    commit = "d6446dc9de6e43b039af07482a9361bdc6da5237",
+    name = "com_github_nelhage_rules_boost",
+    commit = "96ba810e48f4a28b85ee9c922f0b375274a97f98",
     remote = "https://github.com/nelhage/rules_boost",
 )
 # local_repository(
@@ -50,7 +50,7 @@ git_repository(
 # )
 
 load(
-    "@com_github_nelhage_boost//:boost/boost.bzl",
+    "@com_github_nelhage_rules_boost//:boost/boost.bzl",
     "boost_deps",
 )
 
@@ -122,7 +122,7 @@ git_repository(
 
 git_repository(
     name = "org_dropbox_rules_node",
-    commit = "4fe6494f3f8d1a272d47d32ecc66698f6c43ed09",
+    commit = "74d8aeb40d079acdceb2380af2a72e29613a8fd6",
     remote = "https://github.com/dropbox/rules_node.git",
 )
 
