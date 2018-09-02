@@ -1,8 +1,15 @@
 cc_library(
-  name = "json",
-  srcs = glob(["json-c/*.c"])+["json-c/config.h"],
-  hdrs = glob(["json-c/*.h"], exclude=["json-c/config.h"]),
-  includes = ["."],
-  copts = ["-Iexternal/com_github_json_c/json-c/"],
-  visibility = ["//visibility:public"],
+    name = "json",
+    srcs = glob([
+        "*.c",
+        "*.h",
+    ]),
+    hdrs = glob(
+        ["*.h"],
+        exclude = ["config.h"],
+    ),
+    copts = ["-Iexternal/com_github_json_c/"],
+    include_prefix = "json-c/",
+    includes = ["."],
+    visibility = ["//visibility:public"],
 )

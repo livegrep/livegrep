@@ -6,5 +6,6 @@ load(
 go_library(
     name = "go_default_library",
     srcs = ["jsonframe.go"],
+    importpath = "github.com/livegrep/livegrep/jsonframe",
     visibility = ["//visibility:public"],
 )

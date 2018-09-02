@@ -8,19 +8,17 @@ load(
 
 git_repository(
     name = "org_pubref_rules_protobuf",
-    commit = "ff3b7e7963daa7cb3b42f8936bc11eda4b960926",
+    commit = "5f6195e83e06db2fd110626b0f2dc64e345e6618",  # v0.8.2
     remote = "https://github.com/pubref/rules_protobuf",
 )
 
-load(
-    "//tools/build_defs:externals.bzl",
-    "new_patched_http_archive",
-)
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-new_patched_http_archive(
+http_archive(
     name = "divsufsort",
     build_file = "//third_party:BUILD.divsufsort",
-    patch_file = "//third_party:divsufsort.patch",
+    patch_args = ["-p1"],
+    patches = ["//third_party:divsufsort.patch"],
     sha256 = "9164cb6044dcb6e430555721e3318d5a8f38871c2da9fd9256665746a69351e0",
     strip_prefix = "libdivsufsort-2.0.1",
     type = "tgz",
@@ -29,13 +27,13 @@ new_patched_http_archive(
 
 git_repository(
     name = "com_googlesource_code_re2",
-    commit = "7cf8b88e8f70f97fd4926b56aa87e7f53b2717e0",
+    commit = "767de83bb7e4bfe3a2d8aec0ec79f9f1f66da30a",
     remote = "https://github.com/google/re2",
 )
 
 git_repository(
     name = "gflags",
-    commit = "a69b2544d613b4bee404988710503720c487119a",
+    commit = "660603a3df1c400437260b51c55490a046a12e8a",
     remote = "https://github.com/gflags/gflags",
 )
 
@@ -64,11 +62,11 @@ new_http_archive(
     url = "https://github.com/sparsehash/sparsehash/archive/sparsehash-2.0.3.tar.gz",
 )
 
-new_patched_http_archive(
+http_archive(
     name = "com_github_json_c",
-    add_prefix = "json-c",
     build_file = "//third_party:BUILD.json_c",
-    patch_file = "//third_party:json_c.patch",
+    patch_args = ["-p1"],
+    patches = ["//third_party:json_c.patch"],
     sha256 = "5a617da9aade997938197ef0f8aabd7f97b670c216dc173977e1d56eef9e1291",
     strip_prefix = "json-c-0.12.1",
     url = "https://s3.amazonaws.com/json-c_releases/releases/json-c-0.12.1-nodoc.tar.gz",
@@ -76,15 +74,25 @@ new_patched_http_archive(
 
 git_repository(
     name = "io_bazel_rules_go",
-    commit = "44b3bdf7d3645cbf0cfd786c5f105d0af4cf49ca",
+    commit = "2ec02d552198da2d42354f1d4e5d951f1889052d",  # 0.15.1
     remote = "https://github.com/bazelbuild/rules_go.git",
 )
 
-load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+http_archive(
+    name = "bazel_gazelle",
+    sha256 = "c0a5739d12c6d05b6c1ad56f2200cb0b57c5a70e03ebd2f7b87ce88cabf09c7b",
+    urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.14.0/bazel-gazelle-0.14.0.tar.gz"],
+)
+
+load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
 go_register_toolchains()
+
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+
+gazelle_dependencies()
 
 load(
     "//tools/build_defs:go_externals.bzl",
@@ -106,7 +114,6 @@ new_libgit2_archive(
     version = "0.24.1",
 )
 
-load("@org_pubref_rules_protobuf//go:rules.bzl", "go_proto_repositories")
 load("@org_pubref_rules_protobuf//cpp:rules.bzl", "cpp_proto_repositories")
 
 cpp_proto_repositories(excludes = [
@@ -116,7 +123,7 @@ cpp_proto_repositories(excludes = [
 
 git_repository(
     name = "io_bazel_buildifier",
-    commit = "0ca1d7991357ae7a7555589af88930d82cf07c0a",
+    commit = "ae772d29d07002dfd89ed1d9ff673a1721f1b8dd",
     remote = "https://github.com/bazelbuild/buildifier.git",
 )
 
