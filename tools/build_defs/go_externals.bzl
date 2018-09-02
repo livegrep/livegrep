@@ -1,23 +1,25 @@
 load(
-    "@io_bazel_rules_go//go:def.bzl",
+    "@bazel_gazelle//:deps.bzl",
     "go_repository",
 )
 
 def _github(repo, commit):
-  name = "com_github_" + repo.replace("/", "_").replace("-", "_").replace(".", "_")
-  importpath = "github.com/" + repo
-  return struct(
-    name = name,
-    importpath = importpath,
-    commit = commit)
+    name = "com_github_" + repo.replace("/", "_").replace("-", "_").replace(".", "_")
+    importpath = "github.com/" + repo
+    return struct(
+        name = name,
+        commit = commit,
+        importpath = importpath,
+    )
 
 def _golang_x(pkg, commit):
-  name = "org_golang_x_" + pkg
-  importpath = "golang.org/x/" + pkg
-  return struct(
-    name = name,
-    importpath = importpath,
-    commit = commit)
+    name = "org_golang_x_" + pkg
+    importpath = "golang.org/x/" + pkg
+    return struct(
+        name = name,
+        commit = commit,
+        importpath = importpath,
+    )
 
 _externals = [
     _golang_x("net", "d212a1ef2de2f5d441c327b8f26cf3ea3ea9f265"),
@@ -51,16 +53,18 @@ _externals = [
 ]
 
 def go_externals():
-  for ext in _externals:
-    if hasattr(ext, 'vcs'):
-      go_repository(
-        name = ext.name,
-        importpath = ext.importpath,
-        commit = ext.commit,
-        vcs = ext.vcs,
-        remote = ext.remote)
-    else:
-      go_repository(
-        name = ext.name,
-        importpath = ext.importpath,
-        commit = ext.commit)
+    for ext in _externals:
+        if hasattr(ext, "vcs"):
+            go_repository(
+                name = ext.name,
+                commit = ext.commit,
+                importpath = ext.importpath,
+                remote = ext.remote,
+                vcs = ext.vcs,
+            )
+        else:
+            go_repository(
+                name = ext.name,
+                commit = ext.commit,
+                importpath = ext.importpath,
+            )

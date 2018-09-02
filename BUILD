@@ -1,7 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_prefix")
 load("@compdb//:aspects.bzl", "compilation_database")
-
-go_prefix("github.com/livegrep/livegrep")
 
 compilation_database(
     name = "compilation_db",
@@ -11,3 +8,8 @@ compilation_database(
         "//src/tools:codesearchtool",
     ],
 )
+
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix github.com/livegrep/livegrep
+gazelle(name = "gazelle")
