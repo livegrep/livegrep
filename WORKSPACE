@@ -29,13 +29,13 @@ new_patched_http_archive(
 
 git_repository(
     name = "com_googlesource_code_re2",
-    commit = "7cf8b88e8f70f97fd4926b56aa87e7f53b2717e0",
+    commit = "767de83bb7e4bfe3a2d8aec0ec79f9f1f66da30a",
     remote = "https://github.com/google/re2",
 )
 
 git_repository(
     name = "gflags",
-    commit = "a69b2544d613b4bee404988710503720c487119a",
+    commit = "660603a3df1c400437260b51c55490a046a12e8a",
     remote = "https://github.com/gflags/gflags",
 )
 
@@ -125,7 +125,7 @@ cpp_proto_repositories(excludes = [
 
 git_repository(
     name = "io_bazel_buildifier",
-    commit = "0ca1d7991357ae7a7555589af88930d82cf07c0a",
+    commit = "ae772d29d07002dfd89ed1d9ff673a1721f1b8dd",
     remote = "https://github.com/bazelbuild/buildifier.git",
 )
 
