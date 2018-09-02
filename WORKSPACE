@@ -12,15 +12,13 @@ git_repository(
     remote = "https://github.com/pubref/rules_protobuf",
 )
 
-load(
-    "//tools/build_defs:externals.bzl",
-    "new_patched_http_archive",
-)
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-new_patched_http_archive(
+http_archive(
     name = "divsufsort",
     build_file = "//third_party:BUILD.divsufsort",
-    patch_file = "//third_party:divsufsort.patch",
+    patch_args = ["-p1"],
+    patches = ["//third_party:divsufsort.patch"],
     sha256 = "9164cb6044dcb6e430555721e3318d5a8f38871c2da9fd9256665746a69351e0",
     strip_prefix = "libdivsufsort-2.0.1",
     type = "tgz",
@@ -64,11 +62,11 @@ new_http_archive(
     url = "https://github.com/sparsehash/sparsehash/archive/sparsehash-2.0.3.tar.gz",
 )
 
-new_patched_http_archive(
+http_archive(
     name = "com_github_json_c",
-    add_prefix = "json-c",
     build_file = "//third_party:BUILD.json_c",
-    patch_file = "//third_party:json_c.patch",
+    patch_args = ["-p1"],
+    patches = ["//third_party:json_c.patch"],
     sha256 = "5a617da9aade997938197ef0f8aabd7f97b670c216dc173977e1d56eef9e1291",
     strip_prefix = "json-c-0.12.1",
     url = "https://s3.amazonaws.com/json-c_releases/releases/json-c-0.12.1-nodoc.tar.gz",
