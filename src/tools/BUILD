@@ -1,6 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
 load("@org_pubref_rules_protobuf//cpp:rules.bzl", "GRPC_COMPILE_DEPS")
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 cc_library(
     name = "grpc_server",
@@ -64,3 +65,16 @@ cc_binary(
     "dump-file",
     "inspect-index",
 ]]
+
+pkg_tar(
+    name = "cc_tools",
+    srcs = [
+        ":analyze-re",
+        ":codesearch",
+        ":codesearchtool",
+        ":dump-file",
+        ":grpc_server",
+        ":inspect-index",
+    ],
+    package_dir = "bin/",
+)
