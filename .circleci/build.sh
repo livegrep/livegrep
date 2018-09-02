@@ -25,6 +25,7 @@ bazel test --test_arg=-test.v //...
 # bazel-bin/client/test/go_default_test -test.repo "$(pwd)/deps/linux"
 
 if [ "$GCLOUD_SERVICE_KEY" ]; then
+    sudo apt install tree
     tree bazel-bin/
     ./package.sh
     /usr/local/google-cloud-sdk/bin/gsutil cp -a public-read -r builds/ gs://livegrep.appspot.com/
