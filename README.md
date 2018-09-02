@@ -10,7 +10,7 @@ Building
 --------
 
 livegrep builds using [bazel][bazel]. You will need to
-[install bazel][bazel-install] version 0.3 or newer. livegrep vendors
+[install bazel][bazel-install] version 0.12 or newer. livegrep vendors
 and/or fetches all of its dependencies using `bazel`, and so should
 only require a relatively recent C++ compiler to build.
 
