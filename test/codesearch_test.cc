@@ -351,3 +351,33 @@ TEST_F(codesearch_test, FilenameOnlyTest) {
     ASSERT_EQ(1, matches.file_results_size());
     ASSERT_EQ("/file1", matches.file_results(0).path());
 }
+
+TEST_F(codesearch_test, BadUTF8) {
+    cs_.index_file(tree_, "/data/file1",
+                   "line 0\xe9\n"
+                   "line 1\n"
+                   "line 2\n");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    Query request;
+    CodeSearchResult matches;
+    request.set_line("line 1");
+
+    grpc::ServerContext ctx;
+
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(1, matches.results_size());
+    EXPECT_EQ(2, matches.results(0).line_number());
+    ASSERT_EQ(1, matches.results(0).context_before().size());
+    EXPECT_EQ("<invalid utf-8>",
+              matches.results(0).context_before(0));
+
+    matches.Clear();
+    request.set_line("line 0");
+    st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+    ASSERT_EQ(0, matches.results_size());
+}

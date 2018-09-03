@@ -8,6 +8,8 @@
 #include "src/tools/limits.h"
 #include "src/tools/grpc_server.h"
 
+#include "google/protobuf/repeated_field.h"
+
 #include "gflags/gflags.h"
 #include <json-c/json.h>
 
@@ -16,6 +18,8 @@
 #include <functional>
 #include <future>
 #include <string>
+
+#include "utf8.h"
 
 #include <boost/bind.hpp>
 
@@ -162,6 +166,14 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
 }
 
 class add_match {
+    void insert_string_back(google::protobuf::RepeatedPtrField<string> *field, StringPiece str) const {
+        if (utf8::is_valid(str.begin(), str.end())) {
+            field->Add(str.ToString());
+        } else {
+            field->Add("<invalid utf-8>");
+        }
+    }
+
 public:
     typedef std::set<std::pair<indexed_file*, int>> line_set;
 
@@ -185,13 +197,12 @@ public:
         result->set_version(m->file->tree->version);
         result->set_path(m->file->path);
         result->set_line_number(m->lno);
-        std::transform(m->context_before.begin(), m->context_before.end(),
-                       RepeatedPtrFieldBackInserter(result->mutable_context_before()),
-                       mem_fun_ref(&re2::StringPiece::ToString));
-
-        std::transform(m->context_after.begin(), m->context_after.end(),
-                       RepeatedPtrFieldBackInserter(result->mutable_context_after()),
-                       mem_fun_ref(&re2::StringPiece::ToString));
+        for (auto &piece : m->context_before) {
+            insert_string_back(result->mutable_context_before(), piece);
+        }
+        for (auto &piece : m->context_after) {
+            insert_string_back(result->mutable_context_after(), piece);
+        }
         result->mutable_bounds()->set_left(m->matchleft);
         result->mutable_bounds()->set_right(m->matchright);
         result->set_line(m->line.ToString());
