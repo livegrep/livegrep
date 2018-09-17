@@ -9,6 +9,7 @@
 
 #include <gflags/gflags.h>
 
+#include <chrono>
 #include <string>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -113,6 +114,14 @@ void die(const char *fmt, ...) {
 }
 
 void vlog(const std::string &trace, const char *fmt, va_list ap) {
+    auto now_time_point = std::chrono::system_clock::now();
+    auto now_time_t = std::chrono::system_clock::to_time_t(now_time_point);
+    struct tm now_tm;
+    ::gmtime_r(&now_time_t, &now_tm);
+
+    char datestr[32];
+    strftime(datestr, sizeof(datestr), "%Y-%m-%d %H:%M:%S", &now_tm);
+
     string buf;
     if (trace.empty())
         buf = vstrprintf(fmt, ap);
@@ -120,7 +129,7 @@ void vlog(const std::string &trace, const char *fmt, va_list ap) {
         buf = strprintf("[%s] %s",
                         trace.c_str(), vstrprintf(fmt, ap).c_str());
 
-    fprintf(stderr, "%s\n", buf.c_str());
+    fprintf(stderr, "%s %s\n", datestr, buf.c_str());
 }
 
 void log(const std::string &trace, const char *fmt, ...) {
