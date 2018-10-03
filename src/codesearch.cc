@@ -426,6 +426,7 @@ void filename_searcher::operator()()
 
     // moving the left bound as we go isn't a big-O improvement, but may help a little bit.
     auto left_bound = cc_->filename_positions_.begin();
+    int previous_first = -1;
 
     for (int i = 0; i < count; i++) {
         if (limiter_.exit_early()) {
@@ -435,6 +436,13 @@ void filename_searcher::operator()()
         int target_index = (*indexes)[i];
         pair<int, indexed_file*> target(target_index, NULL);
         auto lb = lower_bound(left_bound, cc_->filename_positions_.end(), target);
+
+        if (lb->first == previous_first) {
+            // We have already returned this filename because of a match
+            // earlier in its text.
+            continue;
+        }
+        previous_first = lb->first;
 
         if (lb->first != target_index) {
             assert(lb == cc_->filename_positions_.end() ||
