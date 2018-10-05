@@ -13,6 +13,8 @@
 #include <utility>
 #include <boost/filesystem.hpp>
 
+#include "utf8.h"
+
 using re2::RE2;
 using boost::filesystem::path;
 
@@ -109,8 +111,16 @@ bool tag_searcher::transform(query *q, match_result *m) const {
 
     // line (match the first occurrence for simplicity)
     m->line = *line_it;
-    m->matchleft = line_it->find(name);
-    m->matchright = m->matchleft + name.size();
+
+    StringPiece match;
+    if (q->line_pat->Match(m->line, 0, m->line.size(),
+                           RE2::UNANCHORED, &match, 1)) {
+        m->matchleft = utf8::distance(m->line.data(), match.data());
+        m->matchright = m->matchleft + utf8::distance(match.data(), match.data() + match.size());
+    } else {
+        m->matchleft = line_it->find(name);
+        m->matchright = m->matchleft + name.size();
+    }
     ++line_it;
 
     // context after

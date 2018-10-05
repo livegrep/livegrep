@@ -222,20 +222,23 @@ private:
     CodeSearchResult* response_;
 };
 
-static void run_tags_search(const query& main_query, code_searcher *tagdata,
-                            add_match& cb, tag_searcher* searcher,
-                            match_stats& stats) {
-    // copy of the query we can modify without altering the caller's copy
+static void run_tags_search(const query& main_query, std::string regex,
+                            code_searcher *tagdata, add_match& cb,
+                            tag_searcher* searcher, match_stats& stats) {
+    // copy of the main query that we will edit into a query of the tags
+    // file for the pattern `regex`
     query q = main_query;
+    q.line_pat.reset(new RE2(regex, q.line_pat->options()));
 
     // the negation constraints will be checked when we transform the match
     // (unfortunately, we can't construct a line query that checks these)
     query constraints;
+    constraints.line_pat = main_query.line_pat;  // tell it what to highlight
     constraints.negate.file_pat.swap(q.negate.file_pat);
     constraints.negate.tags_pat.swap(q.negate.tags_pat);
 
     // modify the line pattern to match the constraints that we can handle now
-    std::string regex = tag_searcher::create_tag_line_regex_from_query(&q);
+    regex = tag_searcher::create_tag_line_regex_from_query(&q);
     q.line_pat.reset(new RE2(regex, q.line_pat->options()));
     q.file_pat.reset();
     q.tags_pat.reset();
@@ -265,8 +268,7 @@ void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, ma
     /* To surface the most important matches first, start with tags.
        First pass: is the pattern an exact match for any tags? */
     regex = "^" + line_pat + "$";
-    q.line_pat.reset(new RE2(regex, q.line_pat->options()));
-    run_tags_search(q, tagdata_, cb, tagmatch_, stats);
+    run_tags_search(q, regex, tagdata_, cb, tagmatch_, stats);
 
     q.max_matches = original_max_matches - cb.match_count();
     if (q.max_matches <= 0)
@@ -274,15 +276,13 @@ void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, ma
 
     /* Second pass: is the pattern a prefix match for any tags? */
     regex = "^" + line_pat + "[^\t]";
-    q.line_pat.reset(new RE2(regex, q.line_pat->options()));
-    run_tags_search(q, tagdata_, cb, tagmatch_, stats);
+    run_tags_search(q, regex, tagdata_, cb, tagmatch_, stats);
 
     q.max_matches = original_max_matches - cb.match_count();
     if (q.max_matches <= 0)
         return;
 
     /* Third and final pass: full corpus search. */
-    q.line_pat.reset(new RE2(line_pat, q.line_pat->options()));
     code_searcher::search_thread *search;
     if (!pool_.try_pop(&search))
         search = new code_searcher::search_thread(cs_);
@@ -364,7 +364,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
 
         add_match::line_set ls;
         add_match cb(&ls, response);
-        run_tags_search(q, tagdata_, cb, tagmatch_, stats);
+        run_tags_search(q, line_pat, tagdata_, cb, tagmatch_, stats);
     }
 
     auto out_stats = response->mutable_stats();
