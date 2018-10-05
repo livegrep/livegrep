@@ -11,7 +11,7 @@ cp .bazelrc.circle .bazelrc
 
 bazel fetch //cmd/...
 
-gofmt=$(bazel info output_base)/external/golang_linux_amd64/bin/gofmt
+gofmt=$(bazel info output_base)/external/go_sdk/bin/gofmt
 format_errors=$(find . -name '*.go' -print0 | xargs -0 "$gofmt" -l -e)
 if [ "$format_errors" ]; then
     echo "=== misformatted files (run gofmt) ==="
