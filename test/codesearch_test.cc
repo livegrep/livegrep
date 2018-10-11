@@ -334,6 +334,26 @@ TEST_F(codesearch_test, FilenameWithIndexBoundaryTest) {
     ASSERT_EQ("file999", matches.file_results(0).path());
 }
 
+TEST_F(codesearch_test, FilenameDoubleMatchTest) {
+    for (int i=0; i < 200; i++) {
+        // Drive the index size high enough that "count > indexes->size()"
+        cs_.index_file(tree_, std::string("/abcd") + std::to_string(i), "hat");
+    }
+    cs_.index_file(tree_, "/filename", "cat");  // "e" twice in filename
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    CodeSearchResult matches;
+    Query request;
+    request.set_line("e");      // but should only get file returned once
+    grpc::ServerContext ctx;
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+    ASSERT_EQ(0, matches.results_size());
+    ASSERT_EQ(1, matches.file_results_size());
+    ASSERT_EQ("/filename", matches.file_results(0).path());
+}
+
 TEST_F(codesearch_test, FilenameOnlyTest) {
     cs_.index_file(tree_, "/file1", "contents");
     cs_.index_file(tree_, "/file2", "mention of file1");
