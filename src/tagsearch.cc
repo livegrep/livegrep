@@ -11,6 +11,7 @@
 #include "src/lib/debug.h"
 
 #include <utility>
+#include <sstream>
 #include <boost/filesystem.hpp>
 
 using re2::RE2;
@@ -23,18 +24,24 @@ std::string create_partial_regex(RE2 *re, const char *wildchar) {
         return std::string(wildchar) + "+";
 
     std::string pattern = re->pattern();
+    //int i = 0, j = pattern.length();
+    bool anchored_start = (pattern.front() == '^');
+    bool anchored_end =  (pattern.back() == '$');
 
-    if (pattern.front() == '^')
-        pattern.erase(0, 1);
-    else
-        pattern.insert(0, std::string(wildchar) + "*");
+    std::stringstream s;
 
-    if (pattern.back() == '$')
-        pattern.erase(pattern.size() - 1);
-    else
-        pattern.append(std::string(wildchar) + "*");
+    if (!anchored_start)
+        s << wildchar << "*";
 
-    return pattern;
+    s << "(";                   // in case pattern has interior "|"
+    s << pattern.substr(anchored_start,
+                        pattern.length() - anchored_start - anchored_end);
+    s << ")";
+
+    if (!anchored_end)
+        s << wildchar << "*";
+
+    return s.str();
 }
 
 std::string create_tag_line_regex(
@@ -145,5 +152,6 @@ std::string tag_searcher::create_tag_line_regex_from_query(query *q) {
             regex += "$";
         }
     }
+    printf("============%s\n", regex.c_str());
     return regex;
 }
