@@ -162,6 +162,5 @@ std::string tag_searcher::create_tag_line_regex_from_query(query *q) {
             regex += "$";
         }
     }
-    printf("============%s\n", regex.c_str());
     return regex;
 }
