@@ -57,6 +57,8 @@ type Config struct {
 	IndexConfig IndexConfig `json:"index_config"`
 
 	DefaultSearchRepos []string `json:"default_search_repos"`
+
+	LinkConfigs []LinkConfig `json:"file_links"`
 }
 
 type IndexConfig struct {
@@ -69,4 +71,10 @@ type RepoConfig struct {
 	Name      string            `json:"name"`
 	Revisions []string          `json:"revisions"`
 	Metadata  map[string]string `json:"metadata"`
+}
+
+type LinkConfig struct {
+	Label                string `json:"label"`
+	UrlPattern           string `json:"url-pattern"`
+	WhitelistRepoPattern string `json:"whitelist-repo-pattern"`
 }
