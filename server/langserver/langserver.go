@@ -54,15 +54,14 @@ func (ls *langServerClientImpl) Initialize(
 	ctx context.Context,
 	params *InitializeParams,
 ) (InitializeResult, error) {
-
 	var result InitializeResult
 	err := ls.call(ctx, "initialize", params, &result)
 	if err != nil {
-		// it could presumably be because we're already initialized.
-		nerr := ls.notify(ctx, "initialized", nil)
-		if nerr != nil {
-			return result, nerr
-		}
+		return result, err
+	}
+	nerr := ls.notify(ctx, "initialized", nil)
+	if nerr != nil {
+		return result, nerr
 	}
 	return result, err
 }
