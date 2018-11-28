@@ -67,7 +67,7 @@ function url(tree, version, path, lno) {
   if (tree in CodesearchUI.internalViewRepos) {
     return internalUrl(tree, path, lno);
   } else {
-    return externalUrl(tree, version, path, lno);
+    return externalRepoUrl(tree, version, path, lno);
   }
 }
 
@@ -80,7 +80,7 @@ function internalUrl(tree, path, lno) {
   return url;
 }
 
-function externalUrl(tree, version, path, lno) {
+function externalRepoUrl(tree, version, path, lno) {
   var backend = Codesearch.in_flight.backend;
   var repo_map = CodesearchUI.repo_urls[backend];
   if (!repo_map) {
@@ -89,24 +89,60 @@ function externalUrl(tree, version, path, lno) {
   if (!repo_map[tree]) {
     return null;
   }
+  return externalUrl(repo_map[tree], tree, version, path, lno);
+}
 
+function externalUrl(url, tree, version, path, lno) {
   if (lno === undefined) {
       lno = 1;
   }
 
-  // the order of these replacements is used to minimize conflicts
-  var url = repo_map[tree];
-
   // If {path} already has a slash in front of it, trim extra leading
   // slashes from `path` to avoid a double-slash in the URL.
-  if (url.indexOf('/{path}') !== -1)
+  if (url.indexOf('/{path}') !== -1) {
     path = path.replace(/^\/+/, '');
+  }
 
-  url = url.replace('{lno}', lno);
-  url = url.replace('{version}', shorten(version));
-  url = url.replace('{name}', tree);
-  url = url.replace('{path}', path);
+  // the order of these replacements is used to minimize conflicts
+  url = url.replace(/{lno}/g, lno);
+  url = url.replace(/{version}/g, shorten(version));
+  url = url.replace(/{name}/g, tree);
+  url = url.replace(/{basename}/g, tree.split("/")[1]); // E.g. "foo" in "username/foo"
+  url = url.replace(/{path}/g, path);
   return url;
+}
+
+function renderLinkConfigs(linkConfigs, tree, version, path, lno) {
+  linkConfigs = linkConfigs.filter(function(linkConfig) {
+    return !linkConfig.whitelist_pattern ||
+      linkConfig.whitelist_pattern.test(tree + ':' + version + ':' + path);
+  });
+
+  var links = linkConfigs.map(
+    function(linkConfig) {
+      return h.a(
+        {
+          cls: "file-action-link",
+          href: externalUrl(
+            linkConfig.url_template,
+            tree,
+            version,
+            path,
+            lno
+          ),
+        },
+        [linkConfig.label]
+      );
+    }
+  );
+  var out = [];
+  for (var i = 0; i < links.length; i++) {
+    if (i > 0) {
+      out.push(h.span({cls: "file-action-link-separator",}, ["\u00B7"]));
+    }
+    out.push(links[i]);
+  }
+  return out;
 }
 
 var MatchView = Backbone.View.extend({
@@ -138,14 +174,16 @@ var MatchView = Backbone.View.extend({
     for (i = 0; i < lines_to_display_before; i ++) {
       ctx_before.unshift(
         this._renderLno(lno - i - 1, false),
-        h.span([this.model.get('context_before')[i]])
+        h.span([this.model.get('context_before')[i]]),
+        h.span({}, [])
       );
     }
     var lines_to_display_after = Math.max(0, ctxAfter.length - (clip_after || 0));
     for (i = 0; i < lines_to_display_after; i ++) {
       ctx_after.push(
         this._renderLno(lno + i + 1, false),
-        h.span([this.model.get('context_after')[i]])
+        h.span([this.model.get('context_after')[i]]),
+        h.span({}, [])
       );
     }
     var line = this.model.get('line');
@@ -158,12 +196,23 @@ var MatchView = Backbone.View.extend({
     if(clip_before !== undefined) classes.push('clip-before');
     if(clip_after !== undefined) classes.push('clip-after');
 
+    var links = renderLinkConfigs(
+      CodesearchUI.linkConfigs.filter(function(linkConfig) {
+        return linkConfig.url_template.includes('{lno}');
+      }),
+      this.model.get('tree'),
+      this.model.get('version'),
+      this.model.get('path'),
+      lno
+    );
+
     var matchElement = h.div({cls: classes.join(' ')}, [
       h.div({cls: 'contents'}, [].concat(
         ctx_before,
         [
             this._renderLno(lno, true),
-            h.span({cls: 'matchline'}, [pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]])
+            h.span({cls: 'matchline'}, [pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]]),
+            h.span({cls: 'matchlinks'}, links)
         ],
         ctx_after
       ))
@@ -472,13 +521,24 @@ var FileGroupView = Backbone.View.extend({
       dirname = '';
     }
 
-    var repoLabel = [
-      h.span({cls: "repo"}, [tree, ':']),
-      h.span({cls: "version"}, [shorten(version), ':']),
-      dirname,
-      h.span({cls: "filename"}, [basename])
+    var first_match = this.model.matches[0];
+
+    var headerChildren = [
+      h.a(
+        {cls: 'result-path', href: first_match.url()},
+        [
+          h.span({cls: "repo"}, [tree, ':']),
+          h.span({cls: "version"}, [shorten(version), ':']),
+          dirname,
+          h.span({cls: "filename"}, [basename]),
+        ]
+      ),
+      h.div(
+        {cls: 'header-links'},
+        renderLinkConfigs(CodesearchUI.linkConfigs, tree, version, path, first_match.get('lno'))
+      ),
     ];
-    return h.a({cls: 'label header result-path', href: this.model.matches[0].url()}, repoLabel);
+    return h.div({cls: 'header'}, headerChildren);
   },
 
   render: function() {
@@ -925,6 +985,12 @@ var CodesearchUI = function() {
 CodesearchUI.repo_urls = initData.repo_urls;
 CodesearchUI.internalViewRepos = initData.internal_view_repos;
 CodesearchUI.defaultSearchRepos = initData.default_search_repos;
+CodesearchUI.linkConfigs = (initData.link_configs || []).map(function(link_config) {
+  if (link_config.whitelist_pattern) {
+    link_config.whitelist_pattern = new RegExp(link_config.whitelist_pattern);
+  }
+  return link_config;
+});
 CodesearchUI.onload();
 }
 
