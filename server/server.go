@@ -98,21 +98,12 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		bk.I.Unlock()
 	}
 
-	link_configs := make([]map[string]string, len(s.config.LinkConfigs))
-	for idx, link_config := range s.config.LinkConfigs {
-		link_configs[idx] = map[string]string{
-			"label":                link_config.Label,
-			"url":                  link_config.UrlPattern,
-			"whitelistRepoPattern": link_config.WhitelistRepoPattern,
-		}
-	}
-
 	script_data := &struct {
 		RepoUrls           map[string]map[string]string `json:"repo_urls"`
 		InternalViewRepos  map[string]config.RepoConfig `json:"internal_view_repos"`
 		DefaultSearchRepos []string                     `json:"default_search_repos"`
-		LinkConfigs        []map[string]string          `json:"link_configs"`
-	}{urls, s.repos, s.config.DefaultSearchRepos, link_configs}
+		LinkConfigs        []config.LinkConfig          `json:"link_configs"`
+	}{urls, s.repos, s.config.DefaultSearchRepos, s.config.LinkConfigs}
 
 	s.renderPage(ctx, w, r, "index.html", &page{
 		Title:         "code search",

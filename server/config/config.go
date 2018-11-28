@@ -74,7 +74,7 @@ type RepoConfig struct {
 }
 
 type LinkConfig struct {
-	Label                string `json:"label"`
-	UrlPattern           string `json:"url-pattern"`
-	WhitelistRepoPattern string `json:"whitelist-repo-pattern"`
+	Label            string `json:"label"`
+	UrlTemplate      string `json:"url_template"`
+	WhitelistPattern string `json:"whitelist_pattern"`
 }

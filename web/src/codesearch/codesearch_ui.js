@@ -114,7 +114,8 @@ function externalUrl(url, tree, version, path, lno) {
 
 function renderLinkConfigs(linkConfigs, tree, version, path, lno) {
   linkConfigs = linkConfigs.filter(function(linkConfig) {
-    return !linkConfig.whitelistRepoPattern || linkConfig.whitelistRepoPattern.test(tree);
+    return !linkConfig.whitelist_pattern ||
+      linkConfig.whitelist_pattern.test(tree + ':' + version + ':' + path);
   });
 
   var links = linkConfigs.map(
@@ -123,7 +124,7 @@ function renderLinkConfigs(linkConfigs, tree, version, path, lno) {
         {
           cls: "file-action-link",
           href: externalUrl(
-            linkConfig.url,
+            linkConfig.url_template,
             tree,
             version,
             path,
@@ -197,7 +198,7 @@ var MatchView = Backbone.View.extend({
 
     var links = renderLinkConfigs(
       CodesearchUI.linkConfigs.filter(function(linkConfig) {
-        return linkConfig.url.includes('{lno}');
+        return linkConfig.url_template.includes('{lno}');
       }),
       this.model.get('tree'),
       this.model.get('version'),
@@ -985,8 +986,8 @@ CodesearchUI.repo_urls = initData.repo_urls;
 CodesearchUI.internalViewRepos = initData.internal_view_repos;
 CodesearchUI.defaultSearchRepos = initData.default_search_repos;
 CodesearchUI.linkConfigs = (initData.link_configs || []).map(function(link_config) {
-  if (link_config.whitelistRepoPattern) {
-    link_config.whitelistRepoPattern = new RegExp(link_config.whitelistRepoPattern);
+  if (link_config.whitelist_pattern) {
+    link_config.whitelist_pattern = new RegExp(link_config.whitelist_pattern);
   }
   return link_config;
 });
