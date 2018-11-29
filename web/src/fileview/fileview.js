@@ -10,27 +10,10 @@ function getSelectedText() {
   return window.getSelection ? window.getSelection().toString() : null;
 }
 
-// Get file info from the current URL. Returns an object with the following keys:
-// repoName: the repo name
-// pathInRepo: The page in the repo.
-function getFileInfo() {
-  // Disassemble the current URL.
-  var path = window.location.pathname.slice(6); // Strip "/view/" prefix
-  var repoName = path.split('/')[0];
-  var pathInRepo = path.slice(repoName.length + 1).replace(/^\/+/, '');
-
-  return {
-    repoName: repoName,
-    pathInRepo: pathInRepo,
-  }
-}
-
-function doSearch(event, query, newTab) {
-  var fileInfo = getFileInfo();
-
+function doSearch(event, query, newTab, initData) {
   var url;
   if (query !== undefined) {
-    url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(fileInfo.repoName);
+    url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(initData.repo_info.name);
   } else {
     url = '/search';
   }
@@ -169,7 +152,7 @@ function init(initData) {
     if (range == null) {
       // Default to first line if no lines are selected.
       return 1;
-    } else if (range.start == range.end) {
+    } else if (range.start === range.end) {
       return range.start;
     } else {
       // We blindly assume that the external viewer supports linking to a
@@ -182,21 +165,13 @@ function init(initData) {
   function getExternalLink(range) {
     var lno = getLineNumber(range);
 
-    var fileInfo = getFileInfo();
-
-    url = initData.repo_info.metadata['url-pattern']
-
-    // If {path} already has a slash in front of it, trim extra leading
-    // slashes from `pathInRepo` to avoid a double-slash in the URL.
-    if (url.indexOf('/{path}') !== -1) {
-      fileInfo.pathInRepo = fileInfo.pathInRepo.replace(/^\/+/, '');
-    }
+    url = initData.repo_info.metadata['url-pattern'];
 
     // XXX code copied
     url = url.replace('{lno}', lno);
     url = url.replace('{version}', initData.commit);
-    url = url.replace('{name}', fileInfo.repoName);
-    url = url.replace('{path}', fileInfo.pathInRepo);
+    url = url.replace('{name}', initData.repo_info.name);
+    url = url.replace('{path}', initData.repo_info.path);
     return url;
   }
 
@@ -211,12 +186,146 @@ function init(initData) {
     });
   }
 
+  // compute the offset from the start of the parent containing the click
+  function textBeforeOffset(childNode, childOffset, parentNode) {
+    // create a new range starting at the beginning of the parent and going until the selection
+    const rangeBeforeClick = new Range();
+    rangeBeforeClick.setStart(parentNode, 0);
+    rangeBeforeClick.setEnd(childNode, childOffset);
+    return rangeBeforeClick.toString();
+  }
+
+  // returns range for symbol containing the specified location.
+  // symbol is determined by greedily absorbing alphanumerics and underscores.
+  function symbolAtLocation(textNode, offset) {
+    const stringBefore = textNode.nodeValue.substring(0, offset);
+    const stringAfter = textNode.nodeValue.substring(offset);
+    const startIndex = stringBefore.match(/[a-zA-Z0-9_]*$/).index;
+    const endIndex = stringBefore.length + stringAfter.match(/^[a-zA-Z0-9_]*/)[0].length;
+    const range = new Range();
+    range.setStart(textNode, startIndex);
+    range.setEnd(textNode, endIndex);
+    return range;
+  }
+
+  function triggerJumpToDef() {
+      const nodeClicked = document.getSelection().anchorNode.parentNode;
+      const cachedUrl = nodeClicked.getAttribute('definition-url');
+      if (cachedUrl) {
+        window.location.href = cachedUrl;
+      }
+  }
+
+  var hoveringNode = null;
+  var mousePositionX = 0;
+  var mousePositionY = 0;
+
+  function cancelHover() {
+    if (hoveringNode) {
+      hoveringNode.className = 'hoverable';
+    }
+    hoveringNode = null;
+  }
+
+  function hoverOverNode(node) {
+    node.className = 'hovering';
+    hoveringNode = node;
+  }
+
+  function checkIfHoverable(node) {
+    const code = document.getElementById('source-code');
+    const stringBefore = textBeforeOffset(node, 0, code);
+
+    const rows = stringBefore.split('\n');
+    // The server expects the rows to be zero-indexed.
+    const row = rows.length - 1;
+    const col = rows[row].length;
+
+    xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+      if (this.status === 200 && this.responseText) {
+        const resp = JSON.parse(this.responseText);
+        node.setAttribute('definition-url', resp.url);
+        if (isInBox(mousePositionX, mousePositionY, node.getBoundingClientRect())) {
+          hoverOverNode(node);
+        } else {
+          // The mouse has moved and is not be on this element.
+          node.className = 'hoverable';
+        }
+      } else {
+        node.className = 'nonhoverable';
+      }
+    };
+
+    const url = '/api/v1/langserver/jumptodef?repo_name='
+        + initData.repo_info.name
+        + "&file_path="
+        + initData.file_path
+        + "&row=" + row + "&col=" + col;
+    xhttp.open("GET", url);
+    xhttp.send();
+  }
+
+  function isInBox(x, y, rect) {
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }
+
+  // When source code is hovered over, highlight/underline any tokens for which
+  // jump-to-definition will work.
+  function onHover(clientX, clientY) {
+    // The source-code consists of a <code id='source-code' class='code-pane'>
+    // containing lots of <span class="token tokentype">token</span>
+    // hoverable text may be surrounded by <span class="hoverable">
+    // text being hovered over is changed to class="hovering"
+    // non-hoverable text is class="nonhoverable"
+    const pos = document.caretRangeFromPoint(clientX, clientY);
+    const textNode = pos.startContainer;
+    if (textNode.nodeType !== 3) { // expected to be a text node
+      return;
+    }
+    // decide what to do based on the class of the span containing the text
+    const node = textNode.parentNode;
+    const nodeClass = node.className;
+    if (nodeClass === 'hovering') {
+      return;
+    }
+    cancelHover();
+    if (!nodeClass || nodeClass === 'nonhoverable') {
+      return;
+    }
+    if (nodeClass === 'hoverable') {
+      hoverOverNode(node);
+      return;
+    }
+    const tokenType = nodeClass.match(/token ([a-z]+)/);
+    if (tokenType) {
+      // the only token which potentially has a definition is a 'token function'
+      if (tokenType[1] === 'function') {
+        node.innerHTML = "<span>" + node.innerHTML + "</span>";
+        checkIfHoverable(node.childNodes[0]);
+      }
+      return;
+    }
+    if (node.id !== 'source-code') {
+      return;
+    }
+    // syntax highlighter hasn't identified the token yet, so we have to parse
+    // to find the token ourselves, and create a new span around it.
+    const symbolRange = symbolAtLocation(textNode, pos.startOffset);
+    if (symbolRange.toString().length === 0) {
+      return;
+    }
+    const newSpan = document.createElement('span');
+    symbolRange.surroundContents(newSpan);
+    checkIfHoverable(newSpan);
+  }
+
   function processKeyEvent(event) {
     if(event.which === KeyCodes.ENTER) {
       // Perform a new search with the selected text, if any
       var selectedText = getSelectedText();
       if(selectedText) {
-        doSearch(event, selectedText, true);
+        doSearch(event, selectedText, true, initData);
       }
     } else if(event.which === KeyCodes.SLASH_OR_QUESTION_MARK) {
         event.preventDefault();
@@ -224,7 +333,7 @@ function init(initData) {
           showHelp();
         } else {
           hideHelp();
-          doSearch(event, getSelectedText());
+          doSearch(event, getSelectedText(), false, initData);
         }
     } else if(event.which === KeyCodes.ESCAPE) {
       // Avoid swallowing the important escape key event unless we're sure we want to
@@ -318,6 +427,20 @@ function init(initData) {
       if(event.altKey || event.ctrlKey || event.metaKey)
         return;
       processKeyEvent(event);
+    });
+
+    $(document).on('click', function (event) {
+      if (initData.has_lang_server) {
+        triggerJumpToDef(event);
+      }
+    });
+
+    $('#source-code').on('mousemove', function (event) {
+      if (initData.has_lang_server) {
+        mousePositionX = event.clientX;
+        mousePositionY = event.clientY;
+        onHover(event.clientX, event.clientY);
+      }
     });
 
     $(document).mouseup(function() {

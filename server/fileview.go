@@ -226,6 +226,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		}
 	} else if objectType == "blob" {
 		content, err := gitCatBlob(obj, repo.Path)
+
 		if err != nil {
 			return nil, err
 		}
