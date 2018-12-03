@@ -65,7 +65,7 @@ int WidthWalker::PostVisit(Regexp *re, int parent_arg,
         break;
 
     default:
-        assert(false);
+        abort();
     }
 
     return width;

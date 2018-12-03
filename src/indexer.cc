@@ -68,7 +68,7 @@ IndexKey::Stats IndexKey::Stats::concat(const IndexKey::Stats& rhs) const {
 void IndexKey::insert(const value_type& val) {
     stats_ = stats_.insert(val);
 
-    edges_.insert(val).first;
+    edges_.insert(val);
     if (val.second && !(val.second->anchor & kAnchorRight)) {
         anchor &= ~kAnchorRight;
     }
