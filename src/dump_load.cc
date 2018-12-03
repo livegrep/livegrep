@@ -10,6 +10,7 @@
 #include "src/chunk_allocator.h"
 #include "src/content.h"
 #include "src/dump_load.h"
+#include "src/lib/debug.h"
 
 #include <map>
 #include <string>
@@ -176,7 +177,7 @@ public:
 
     virtual chunk *alloc_chunk();
     virtual buffer alloc_content_chunk() {
-        assert(0);
+        die("load_allocator::alloc_content_chunk");
     }
 
     virtual void free_chunk(chunk *chunk) {
