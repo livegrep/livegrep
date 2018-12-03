@@ -282,7 +282,7 @@ func (h *reloadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type handler func(c context.Context, w http.ResponseWriter, r *http.Request)
 
-const RequestTimeout = 8 * time.Second
+const RequestTimeout = 30 * time.Second
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
