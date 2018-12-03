@@ -49,7 +49,8 @@ int inspect_index(int argc, char **argv) {
 
     fd = open(argv[0], O_RDONLY);
     assert(fd > 0);
-    assert(fstat(fd, &st) == 0);
+    int err = fstat(fd, &st);
+    assert(err == 0);
     map = static_cast<uint8_t*>(mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0));
     assert(map != MAP_FAILED);
 
