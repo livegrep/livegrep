@@ -20,6 +20,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
 
 #include <json-c/json.h>
 
@@ -369,7 +371,10 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
         exit(1);
     }
     struct stat st;
-    assert(fstat(fd_, &st) == 0);
+    int err = fstat(fd_, &st);
+    if (err != 0) {
+        die("Cannot stat: '%s': %e\n", path.c_str(), errno);
+    }
     map_size_ = st.st_size;
     map_ = mmap(NULL, map_size_, PROT_READ, MAP_SHARED,
                 fd_, 0);
