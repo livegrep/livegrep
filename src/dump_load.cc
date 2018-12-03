@@ -20,6 +20,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
 
 #include <json-c/json.h>
 
@@ -101,7 +103,10 @@ private:
         }
 
         off_t off = index_->stream_.tellp();
-        assert(ftruncate(index_->fd_, off + len) == 0);
+        int err = ftruncate(index_->fd_, off + len);
+        if (err != 0) {
+            die("ftruncate");
+        }
         buf = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED,
                    index_->fd_, off);
         assert(buf != MAP_FAILED);
@@ -277,7 +282,10 @@ void codesearch_index::dump_chunk_data(chunk *chunk) {
     chdr.size = chunk->size;
     chunks_.push_back(chdr);
 
-    assert(ftruncate(fd_, off + 5 * hdr_.chunk_size) == 0);
+    int err = ftruncate(fd_, off + 5 * hdr_.chunk_size);
+    if (err != 0) {
+        die("ftruncate");
+    }
     stream_.write(reinterpret_cast<char*>(chunk->data), hdr_.chunk_size);
     stream_.write(reinterpret_cast<char*>(chunk->suffixes),
                   sizeof(uint32_t) * chunk->size);
@@ -369,7 +377,10 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
         exit(1);
     }
     struct stat st;
-    assert(fstat(fd_, &st) == 0);
+    int err = fstat(fd_, &st);
+    if (err != 0) {
+        die("Cannot stat: '%s': %e\n", path.c_str(), errno);
+    }
     map_size_ = st.st_size;
     map_ = mmap(NULL, map_size_, PROT_READ, MAP_SHARED,
                 fd_, 0);
