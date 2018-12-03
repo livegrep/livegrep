@@ -103,7 +103,10 @@ private:
         }
 
         off_t off = index_->stream_.tellp();
-        assert(ftruncate(index_->fd_, off + len) == 0);
+        int err = ftruncate(index_->fd_, off + len);
+        if (err != 0) {
+            die("ftruncate");
+        }
         buf = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED,
                    index_->fd_, off);
         assert(buf != MAP_FAILED);
@@ -279,7 +282,10 @@ void codesearch_index::dump_chunk_data(chunk *chunk) {
     chdr.size = chunk->size;
     chunks_.push_back(chdr);
 
-    assert(ftruncate(fd_, off + 5 * hdr_.chunk_size) == 0);
+    int err = ftruncate(fd_, off + 5 * hdr_.chunk_size);
+    if (err != 0) {
+        die("ftruncate");
+    }
     stream_.write(reinterpret_cast<char*>(chunk->data), hdr_.chunk_size);
     stream_.write(reinterpret_cast<char*>(chunk->suffixes),
                   sizeof(uint32_t) * chunk->size);
