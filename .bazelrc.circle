@@ -2,6 +2,7 @@
 startup --host_jvm_args=-Xms512m
 startup --host_jvm_args=-Xmx1024m
 build --local_resources=4096,4,1.0
+build -c opt
 test --ram_utilization_factor=10
 
 # This is so we understand failures better
