@@ -70,9 +70,14 @@ static const bool dummy = gflags::RegisterFlagValidator(&FLAGS_debug,
 
 string vstrprintf(const char *fmt, va_list ap) {
     char *buf = NULL;
-    assert(vasprintf(&buf, fmt, ap) > 0);
+    int err = vasprintf(&buf, fmt, ap);
+    if (err <= 0) {
+        fprintf(stderr, "unable to log: fmt='%s' err=%s\n",
+                fmt, strerror(errno));
+        return "";
+    }
 
-    string out = buf;
+    string out(buf, err);
     free(buf);
     return out;
 }
