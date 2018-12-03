@@ -48,9 +48,13 @@ int inspect_index(int argc, char **argv) {
     vector<index_span> spans;
 
     fd = open(argv[0], O_RDONLY);
-    assert(fd > 0);
+    if (fd <= 0) {
+        die("open('%s'): %e\n", argv[0], strerror(errno));
+    }
     int err = fstat(fd, &st);
-    assert(err == 0);
+    if (err != 0) {
+        die("fstat: %e\n", strerror(errno));
+    }
     map = static_cast<uint8_t*>(mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0));
     assert(map != MAP_FAILED);
 
