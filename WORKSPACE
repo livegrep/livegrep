@@ -5,6 +5,10 @@ load(
     "git_repository",
     "new_git_repository",
 )
+load(
+    "@bazel_tools//tools/build_defs/repo:http.bzl",
+    "http_archive",
+)
 
 git_repository(
     name = "org_pubref_rules_protobuf",
@@ -54,7 +58,7 @@ load(
 
 boost_deps()
 
-new_http_archive(
+http_archive(
     name = "com_github_sparsehash",
     build_file = "//third_party:BUILD.sparsehash",
     sha256 = "05e986a5c7327796dad742182b2d10805a8d4f511ad090da0490f146c1ff7a8c",
