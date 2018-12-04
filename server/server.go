@@ -151,8 +151,9 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	script_data := &struct {
 		RepoInfo config.RepoConfig `json:"repo_info"`
+		FilePath string            `json:"file_path"`
 		Commit   string            `json:"commit"`
-	}{repo, commit}
+	}{repo, path, commit}
 
 	s.renderPage(ctx, w, r, "fileview.html", &page{
 		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
