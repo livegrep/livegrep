@@ -10,37 +10,6 @@ function getSelectedText() {
   return window.getSelection ? window.getSelection().toString() : null;
 }
 
-// Get file info from the current URL. Returns an object with the following keys:
-// repoName: the repo name
-// pathInRepo: The page in the repo.
-function getFileInfo() {
-  // Disassemble the current URL.
-  var path = window.location.pathname.slice(6); // Strip "/view/" prefix
-  var repoName = path.split('/')[0];
-  var pathInRepo = path.slice(repoName.length + 1).replace(/^\/+/, '');
-
-  return {
-    repoName: repoName,
-    pathInRepo: pathInRepo,
-  }
-}
-
-function doSearch(event, query, newTab) {
-  var fileInfo = getFileInfo();
-
-  var url;
-  if (query !== undefined) {
-    url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(fileInfo.repoName);
-  } else {
-    url = '/search';
-  }
-  if (newTab === true){
-    window.open(url);
-  } else {
-    window.location.href = url
-  }
-}
-
 function scrollToRange(range, elementContainer) {
   // - If we have a single line, scroll the viewport so that the element is
   // at 1/3 of the viewport.
@@ -127,6 +96,20 @@ function init(initData) {
   var lineNumberContainer = root.find('.line-numbers');
   var helpScreen = $('.help-screen');
 
+  function doSearch(event, query, newTab) {
+    var url;
+    if (query !== undefined) {
+      url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(initData.repo_info.name);
+    } else {
+      url = '/search';
+    }
+    if (newTab === true){
+      window.open(url);
+    } else {
+      window.location.href = url
+    }
+  }
+
   function showHelp() {
     helpScreen.removeClass('hidden').children().on('click', function(event) {
       // Prevent clicks inside the element to reach the document
@@ -182,21 +165,22 @@ function init(initData) {
   function getExternalLink(range) {
     var lno = getLineNumber(range);
 
-    var fileInfo = getFileInfo();
+    var repoName = initData.repo_info.name;
+    var filePath = initData.file_path;
 
     url = initData.repo_info.metadata['url-pattern']
 
     // If {path} already has a slash in front of it, trim extra leading
     // slashes from `pathInRepo` to avoid a double-slash in the URL.
     if (url.indexOf('/{path}') !== -1) {
-      fileInfo.pathInRepo = fileInfo.pathInRepo.replace(/^\/+/, '');
+      filePath = filePath.replace(/^\/+/, '');
     }
 
     // XXX code copied
     url = url.replace('{lno}', lno);
     url = url.replace('{version}', initData.commit);
-    url = url.replace('{name}', fileInfo.repoName);
-    url = url.replace('{path}', fileInfo.pathInRepo);
+    url = url.replace('{name}', repoName);
+    url = url.replace('{path}', filePath);
     return url;
   }
 
