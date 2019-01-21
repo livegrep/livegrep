@@ -78,7 +78,7 @@ http_archive(
 
 git_repository(
     name = "io_bazel_rules_go",
-    commit = "2ec02d552198da2d42354f1d4e5d951f1889052d",  # 0.15.1
+    commit = "2d792dea8d22c552f455623bb15eb4f61fcb2f1b",  # 0.16.5
     remote = "https://github.com/bazelbuild/rules_go.git",
 )
 
