@@ -148,6 +148,6 @@ new_git_repository(
 package(default_visibility = ["//visibility:public"])
 """
     ),
-    commit = "02c33ed2c0e86053073080fd215f44356ef5b543",
+    commit = "7bc80f9355b09466fffabce24d463d65e37fcc0f",
     remote = "https://github.com/grailbio/bazel-compilation-database.git",
 )
