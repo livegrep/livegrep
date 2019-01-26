@@ -9,7 +9,9 @@ fi
 
 cp .bazelrc.circle .bazelrc
 
-bazel fetch //cmd/...
+bazel fetch //cmd/... \
+  --incompatible_package_name_is_a_function=false \
+  --incompatible_remove_native_http_archive=false
 
 gofmt=$(bazel info output_base)/external/go_sdk/bin/gofmt
 format_errors=$(find . -name '*.go' -print0 | xargs -0 "$gofmt" -l -e)
@@ -19,8 +21,12 @@ if [ "$format_errors" ]; then
     exit 1
 fi
 
-bazel test --test_arg=-test.v //...
-bazel build //...
+bazel test --test_arg=-test.v //... \
+  --incompatible_package_name_is_a_function=false \
+  --incompatible_remove_native_http_archive=false
+bazel build //... \
+  --incompatible_package_name_is_a_function=false \
+  --incompatible_remove_native_http_archive=false
 
 # bazel-bin/client/test/go_default_test -test.repo "$(pwd)/deps/linux"
 
