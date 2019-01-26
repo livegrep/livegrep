@@ -1,0 +1,3 @@
+# These are needed by rules_node
+build --incompatible_package_name_is_a_function=false
+build --incompatible_remove_native_http_archive=false
