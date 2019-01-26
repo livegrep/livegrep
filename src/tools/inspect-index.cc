@@ -49,11 +49,11 @@ int inspect_index(int argc, char **argv) {
 
     fd = open(argv[0], O_RDONLY);
     if (fd <= 0) {
-        die("open('%s'): %e\n", argv[0], strerror(errno));
+        die("open('%s'): %s\n", argv[0], strerror(errno));
     }
     int err = fstat(fd, &st);
     if (err != 0) {
-        die("fstat: %e\n", strerror(errno));
+        die("fstat: %s\n", strerror(errno));
     }
     map = static_cast<uint8_t*>(mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0));
     assert(map != MAP_FAILED);
