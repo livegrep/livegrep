@@ -37,13 +37,13 @@ git_repository(
 
 git_repository(
     name = "gflags",
-    commit = "660603a3df1c400437260b51c55490a046a12e8a",
+    commit = "e171aa2d15ed9eb17054558e0b3a6a413bb01067",  # v2.2.2
     remote = "https://github.com/gflags/gflags",
 )
 
 git_repository(
     name = "com_github_nelhage_rules_boost",
-    commit = "96ba810e48f4a28b85ee9c922f0b375274a97f98",
+    commit = "c1d618315fa152958baef8ea0d77043eebf7f573",
     remote = "https://github.com/nelhage/rules_boost",
 )
 # local_repository(
@@ -78,7 +78,7 @@ http_archive(
 
 git_repository(
     name = "io_bazel_rules_go",
-    commit = "2ec02d552198da2d42354f1d4e5d951f1889052d",  # 0.15.1
+    commit = "2d792dea8d22c552f455623bb15eb4f61fcb2f1b",  # 0.16.5
     remote = "https://github.com/bazelbuild/rules_go.git",
 )
 
@@ -133,7 +133,7 @@ git_repository(
 
 git_repository(
     name = "org_dropbox_rules_node",
-    commit = "74d8aeb40d079acdceb2380af2a72e29613a8fd6",
+    commit = "720576bd5536390c63dca571d338361d008de3da",
     remote = "https://github.com/dropbox/rules_node.git",
 )
 
@@ -148,6 +148,6 @@ new_git_repository(
 package(default_visibility = ["//visibility:public"])
 """
     ),
-    commit = "02c33ed2c0e86053073080fd215f44356ef5b543",
+    commit = "7bc80f9355b09466fffabce24d463d65e37fcc0f",
     remote = "https://github.com/grailbio/bazel-compilation-database.git",
 )
