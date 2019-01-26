@@ -58,12 +58,10 @@ load(
 
 boost_deps()
 
-http_archive(
-    name = "com_github_sparsehash",
-    build_file = "//third_party:BUILD.sparsehash",
-    sha256 = "05e986a5c7327796dad742182b2d10805a8d4f511ad090da0490f146c1ff7a8c",
-    strip_prefix = "sparsehash-sparsehash-2.0.3/",
-    url = "https://github.com/sparsehash/sparsehash/archive/sparsehash-2.0.3.tar.gz",
+git_repository(
+    name = "com_google_absl",
+    commit = "5e0dcf72c64fae912184d2e0de87195fe8f0a425",
+    remote = "https://github.com/abseil/abseil-cpp",
 )
 
 http_archive(

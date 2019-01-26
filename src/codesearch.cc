@@ -31,6 +31,8 @@
 #include "src/indexer.h"
 #include "src/content.h"
 
+#include "absl/strings/string_view.h"
+
 #include "divsufsort.h"
 #include "re2/re2.h"
 #include "gflags/gflags.h"
@@ -94,17 +96,8 @@ memrchr(const void *s,
 }
 #endif
 
-bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
-    if (lhs.data() == NULL && rhs.data() == NULL)
-        return true;
-    if (lhs.data() == NULL || rhs.data() == NULL)
-        return false;
-    return lhs == rhs;
-}
-
 size_t hashstr::operator()(const StringPiece& str) const {
-    const std::collate<char>& coll = std::use_facet<std::collate<char> >(loc);
-    return coll.hash(str.data(), str.data() + str.size());
+    return absl::Hash<absl::string_view>{}(absl::string_view(str.data(), str.size()));
 }
 
 const StringPiece empty_string(NULL, 0);
@@ -480,9 +473,6 @@ void filename_searcher::match_filename(indexed_file *file) {
 code_searcher::code_searcher()
     : alloc_(), finalized_(false), filename_data_(), filename_suffixes_()
 {
-#ifdef USE_DENSE_HASH_SET
-    lines_.set_empty_key(empty_string);
-#endif
 }
 
 void code_searcher::set_alloc(std::unique_ptr<chunk_allocator> alloc) {
@@ -603,7 +593,7 @@ void code_searcher::index_file(const indexed_tree *tree,
             // preserved.
             p = f;
         }
-        string_hash::iterator it;
+        decltype(lines_)::iterator it;
         {
             metric::timer tm(idx_hash_time);
             it = lines_.find(StringPiece(p, f - p));
