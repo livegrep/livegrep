@@ -379,7 +379,7 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
     struct stat st;
     int err = fstat(fd_, &st);
     if (err != 0) {
-        die("Cannot stat: '%s': %e\n", path.c_str(), errno);
+        die("Cannot stat: '%s': %s\n", path.c_str(), strerror(errno));
     }
     map_size_ = st.st_size;
     map_ = mmap(NULL, map_size_, PROT_READ, MAP_SHARED,
