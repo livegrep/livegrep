@@ -19,13 +19,13 @@ import (
 
 var (
 	serveAddr   = flag.String("listen", "127.0.0.1:8910", "The address to listen on")
+    backendAddr = flag.String("connect", "localhost:9999", "The address to connect to")
 	docRoot     = flag.String("docroot", "", "The livegrep document root (web/ directory). If not provided, this defaults to web/ inside the bazel-created runfiles directory adjacent to the livegrep binary.")
 	indexConfig = flag.String("index-config", "", "Codesearch index config file; provide to enable repo browsing")
 	reload      = flag.Bool("reload", false, "Reload template files on every request")
 	_           = flag.Bool("logtostderr", false, "[DEPRECATED] compatibility with glog")
 )
 
-// var backendAddr *string = flag.String("connect", "localhost:9999", "The address to connect to")
 
 func runfilesPath(sourcePath string) (string, error) {
 	programPath, err := os.Executable()
@@ -51,7 +51,7 @@ func main() {
 		Listen:  *serveAddr,
 		Reload:  *reload,
 		Backends: []config.Backend{
-			{Id: "", Addr: "localhost:9999"},
+			{Id: "", Addr: *backendAddr},
 		},
 		Honeycomb: config.Honeycomb{
 			WriteKey: os.Getenv("HONEYCOMB_WRITE_KEY"),
