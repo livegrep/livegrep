@@ -593,8 +593,8 @@ void code_searcher::index_file(const indexed_tree *tree,
             // preserved.
             p = f;
         }
-        decltype(lines_)::iterator it;
-        {
+        decltype(lines_)::iterator it = lines_.end();
+        if (FLAGS_compress) {
             metric::timer tm(idx_hash_time);
             it = lines_.find(StringPiece(p, f - p));
         }
