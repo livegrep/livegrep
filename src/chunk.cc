@@ -17,9 +17,6 @@
 
 #include <limits>
 
-metric index_divsufsort("timer.index.divsufsort");
-metric index_fixupnl("timer.index.fixupnl");
-
 using re2::StringPiece;
 
 DECLARE_bool(index);
@@ -78,18 +75,9 @@ void chunk::finalize() {
         // around by munging the data in-place before and after the
         // sort. Sorting must look at all the data anyways, so this is
         // not an overly-expensive job.
-        {
-            metric::timer tm(index_fixupnl);
-            std::replace(data, data + size, '\n', '\0');
-        }
-        {
-            metric::timer tm(index_divsufsort);
-            divsufsort(data, reinterpret_cast<saidx_t*>(suffixes), size);
-        }
-        {
-            metric::timer tm(index_fixupnl);
-            std::replace(data, data + size, '\0', '\n');
-        }
+        std::replace(data, data + size, '\n', '\0');
+        divsufsort(data, reinterpret_cast<saidx_t*>(suffixes), size);
+        std::replace(data, data + size, '\0', '\n');
     }
 }
 

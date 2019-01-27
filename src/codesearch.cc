@@ -67,10 +67,6 @@ namespace {
     metric idx_data_chunks("index.data.chunks");
     metric idx_content_chunks("index.content.chunks");
     metric idx_content_ranges("index.content.ranges");
-    metric idx_hash_time("timer.index.dedup.hash");
-    metric idx_index_file_time("timer.index.index_file");
-    metric idx_add_chunk_file_time("timer.index.add_chunk_file");
-    metric idx_finish_file_time("timer.index.finish_file");
 };
 
 #ifdef __APPLE__
@@ -556,7 +552,6 @@ const indexed_tree* code_searcher::open_tree(const string &name,
 void code_searcher::index_file(const indexed_tree *tree,
                                const string& path,
                                StringPiece contents) {
-    metric::timer tm(idx_index_file_time);
     assert(!finalized_);
     assert(alloc_);
     size_t len = contents.size();
@@ -595,7 +590,6 @@ void code_searcher::index_file(const indexed_tree *tree,
         }
         decltype(lines_)::iterator it = lines_.end();
         if (FLAGS_compress) {
-            metric::timer tm(idx_hash_time);
             it = lines_.find(StringPiece(p, f - p));
         }
         if (it == lines_.end()) {
@@ -607,7 +601,6 @@ void code_searcher::index_file(const indexed_tree *tree,
             alloc[f - p] = '\n';
             line = StringPiece((char*)alloc, f - p);
             if (FLAGS_compress) {
-                metric::timer tm(idx_hash_time);
                 if (alloc_->current_chunk() != prev)
                     lines_.clear();
                 lines_.insert(line);
@@ -619,7 +612,6 @@ void code_searcher::index_file(const indexed_tree *tree,
                 (reinterpret_cast<const unsigned char*>(line.data()));
         }
         {
-            metric::timer tm(idx_add_chunk_file_time);
             c->add_chunk_file(sf, line);
         }
         content.extend(c, line);
@@ -644,12 +636,9 @@ void code_searcher::index_file(const indexed_tree *tree,
     idx_content_ranges.inc(sf->content->size());
     assert(sf->content->size() <= 3*lines);
 
-    {
-        metric::timer tm(idx_finish_file_time);
-        for (auto it = alloc_->begin();
-             it != alloc_->end(); it++) {
-            (*it)->finish_file();
-        }
+    for (auto it = alloc_->begin();
+         it != alloc_->end(); it++) {
+        (*it)->finish_file();
     }
 }
 
