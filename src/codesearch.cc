@@ -31,6 +31,8 @@
 #include "src/indexer.h"
 #include "src/content.h"
 
+#include "absl/strings/string_view.h"
+
 #include "divsufsort.h"
 #include "re2/re2.h"
 #include "gflags/gflags.h"
@@ -65,10 +67,6 @@ namespace {
     metric idx_data_chunks("index.data.chunks");
     metric idx_content_chunks("index.content.chunks");
     metric idx_content_ranges("index.content.ranges");
-    metric idx_hash_time("timer.index.dedup.hash");
-    metric idx_index_file_time("timer.index.index_file");
-    metric idx_add_chunk_file_time("timer.index.add_chunk_file");
-    metric idx_finish_file_time("timer.index.finish_file");
 };
 
 #ifdef __APPLE__
@@ -94,17 +92,8 @@ memrchr(const void *s,
 }
 #endif
 
-bool eqstr::operator()(const StringPiece& lhs, const StringPiece& rhs) const {
-    if (lhs.data() == NULL && rhs.data() == NULL)
-        return true;
-    if (lhs.data() == NULL || rhs.data() == NULL)
-        return false;
-    return lhs == rhs;
-}
-
 size_t hashstr::operator()(const StringPiece& str) const {
-    const std::collate<char>& coll = std::use_facet<std::collate<char> >(loc);
-    return coll.hash(str.data(), str.data() + str.size());
+    return absl::Hash<absl::string_view>{}(absl::string_view(str.data(), str.size()));
 }
 
 const StringPiece empty_string(NULL, 0);
@@ -480,9 +469,6 @@ void filename_searcher::match_filename(indexed_file *file) {
 code_searcher::code_searcher()
     : alloc_(), finalized_(false), filename_data_(), filename_suffixes_()
 {
-#ifdef USE_DENSE_HASH_SET
-    lines_.set_empty_key(empty_string);
-#endif
 }
 
 void code_searcher::set_alloc(std::unique_ptr<chunk_allocator> alloc) {
@@ -566,7 +552,6 @@ const indexed_tree* code_searcher::open_tree(const string &name,
 void code_searcher::index_file(const indexed_tree *tree,
                                const string& path,
                                StringPiece contents) {
-    metric::timer tm(idx_index_file_time);
     assert(!finalized_);
     assert(alloc_);
     size_t len = contents.size();
@@ -603,9 +588,8 @@ void code_searcher::index_file(const indexed_tree *tree,
             // preserved.
             p = f;
         }
-        string_hash::iterator it;
-        {
-            metric::timer tm(idx_hash_time);
+        decltype(lines_)::iterator it = lines_.end();
+        if (FLAGS_compress) {
             it = lines_.find(StringPiece(p, f - p));
         }
         if (it == lines_.end()) {
@@ -617,7 +601,6 @@ void code_searcher::index_file(const indexed_tree *tree,
             alloc[f - p] = '\n';
             line = StringPiece((char*)alloc, f - p);
             if (FLAGS_compress) {
-                metric::timer tm(idx_hash_time);
                 if (alloc_->current_chunk() != prev)
                     lines_.clear();
                 lines_.insert(line);
@@ -629,7 +612,6 @@ void code_searcher::index_file(const indexed_tree *tree,
                 (reinterpret_cast<const unsigned char*>(line.data()));
         }
         {
-            metric::timer tm(idx_add_chunk_file_time);
             c->add_chunk_file(sf, line);
         }
         content.extend(c, line);
@@ -654,12 +636,9 @@ void code_searcher::index_file(const indexed_tree *tree,
     idx_content_ranges.inc(sf->content->size());
     assert(sf->content->size() <= 3*lines);
 
-    {
-        metric::timer tm(idx_finish_file_time);
-        for (auto it = alloc_->begin();
-             it != alloc_->end(); it++) {
-            (*it)->finish_file();
-        }
+    for (auto it = alloc_->begin();
+         it != alloc_->end(); it++) {
+        (*it)->finish_file();
     }
 }
 

@@ -19,14 +19,9 @@
 #include <memory>
 #include <boost/intrusive_ptr.hpp>
 
-#ifdef USE_DENSE_HASH_SET
-#include <google/dense_hash_set>
-#else
-#include <google/sparse_hash_set>
-#endif
-#include <google/sparse_hash_map>
+#include "absl/hash/hash.h"
+#include "absl/container/flat_hash_set.h"
 #include "re2/re2.h"
-#include <locale>
 
 #include "src/lib/thread_queue.h"
 
@@ -46,27 +41,9 @@ using std::map;
 using std::pair;
 using std::atomic_int;
 
-/*
- * We special-case data() == NULL to provide an "empty" element for
- * dense_hash_set.
- *
- * StringPiece::operator== will consider a zero-length string equal to a
- * zero-length string with a NULL data().
- */
-struct eqstr {
-    bool operator()(const StringPiece& lhs, const StringPiece& rhs) const;
-};
-
 struct hashstr {
-    locale loc;
     size_t operator()(const StringPiece &str) const;
 };
-
-#ifdef USE_DENSE_HASH_SET
-typedef google::dense_hash_set<StringPiece, hashstr, eqstr> string_hash;
-#else
-typedef google::sparse_hash_set<StringPiece, hashstr, eqstr> string_hash;
-#endif
 
 enum exit_reason {
     kExitNone = 0,
@@ -237,7 +214,7 @@ protected:
     // Looking up a StringPiece here will find an equivalent StringPiece
     // already stored in some existing chunk's data, if such a StringPiece is
     // present.
-    string_hash lines_;
+    absl::flat_hash_set<StringPiece, hashstr> lines_;
 
     std::unique_ptr<chunk_allocator> alloc_;
 

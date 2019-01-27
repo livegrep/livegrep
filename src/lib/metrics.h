@@ -23,6 +23,14 @@ public:
 
     static void dump_all();
 
+#ifdef CODESEARCH_SLOWGTOD
+    class timer {
+    public:
+        timer(metric &m)  {}
+        void pause() {};
+        void start() {};
+    };
+#else
     class timer {
     public:
         timer(metric &m) : m_(&m) {}
@@ -46,6 +54,7 @@ public:
         metric *m_;
         ::timer tm_;
     };
+#endif
 
 private:
     std::atomic_long val_;
