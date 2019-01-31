@@ -1,7 +1,4 @@
-# These are needed by rules_node
-build --incompatible_package_name_is_a_function=false
+# These are needed by rules_protobuf
 build --incompatible_remove_native_http_archive=false
-query --incompatible_package_name_is_a_function=false
 query --incompatible_remove_native_http_archive=false
-fetch --incompatible_package_name_is_a_function=false
 fetch --incompatible_remove_native_http_archive=false
