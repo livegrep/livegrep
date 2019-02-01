@@ -158,3 +158,9 @@ package(default_visibility = ["//visibility:public"])
     commit = "7bc80f9355b09466fffabce24d463d65e37fcc0f",
     remote = "https://github.com/grailbio/bazel-compilation-database.git",
 )
+
+git_repository(
+    name = "com_google_googletest",
+    commit = "0ea2d8f8fa1601abb9ce713b7414e7b86f90bc61",
+    remote = "https://github.com/google/googletest",
+)

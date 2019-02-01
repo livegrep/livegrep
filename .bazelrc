@@ -1,0 +1,2 @@
+# c.f. https://github.com/grpc/grpc/pull/13929
+build --copt=-DGRPC_BAZEL_BUILD
