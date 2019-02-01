@@ -1,7 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
-load("@org_pubref_rules_protobuf//cpp:rules.bzl", "cc_proto_library")
+load("@build_stack_rules_proto//cpp:cpp_grpc_library.bzl", "cpp_grpc_library")
 
 proto_library(
     name = "livegrep_proto",
@@ -16,8 +16,7 @@ go_proto_library(
     visibility = ["//visibility:public"],
 )
 
-cc_proto_library(
+cpp_grpc_library(
     name = "cc_proto",
-    protos = ["livegrep.proto"],
-    with_grpc = True,
+    deps = [":livegrep_proto"],
 )

@@ -9,11 +9,13 @@ load(
     "@bazel_tools//tools/build_defs/repo:http.bzl",
     "http_archive",
 )
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-git_repository(
-    name = "org_pubref_rules_protobuf",
-    commit = "5f6195e83e06db2fd110626b0f2dc64e345e6618",  # v0.8.2
-    remote = "https://github.com/pubref/rules_protobuf",
+http_archive(
+    name = "build_stack_rules_proto",
+    sha256 = "36f11f56f6eb48a81eb6850f4fb6c3b4680e3fc2d3ceb9240430e28d32c47009",
+    strip_prefix = "rules_proto-d86ca6bc56b1589677ec59abfa0bed784d6b7767",
+    urls = ["https://github.com/stackb/rules_proto/archive/d86ca6bc56b1589677ec59abfa0bed784d6b7767.tar.gz"],
 )
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -116,12 +118,19 @@ new_libgit2_archive(
     version = "0.24.1",
 )
 
-load("@org_pubref_rules_protobuf//cpp:rules.bzl", "cpp_proto_repositories")
+load(
+    "@build_stack_rules_proto//cpp:deps.bzl",
+    "cpp_proto_compile",
+    "cpp_grpc_compile",
+)
 
-cpp_proto_repositories(excludes = [
-    "com_google_protobuf",
-    "org_golang_google_grpc",
-])
+cpp_proto_compile()
+
+cpp_grpc_compile()
+
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+
+grpc_deps()
 
 git_repository(
     name = "io_bazel_buildifier",
