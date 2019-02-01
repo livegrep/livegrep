@@ -1,6 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@org_pubref_rules_protobuf//cpp:rules.bzl", "GRPC_COMPILE_DEPS")
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 cc_library(
@@ -14,7 +13,7 @@ cc_library(
         "//src:codesearch",
         "//src/proto:cc_proto",
         "@boost//:bind",
-    ] + GRPC_COMPILE_DEPS,
+    ],
 )
 
 cc_binary(

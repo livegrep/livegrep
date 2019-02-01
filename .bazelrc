@@ -1,4 +1,2 @@
-# These are needed by rules_protobuf
-build --incompatible_remove_native_http_archive=false
-query --incompatible_remove_native_http_archive=false
-fetch --incompatible_remove_native_http_archive=false
+# c.f. https://github.com/grpc/grpc/pull/13929
+build --copt=-DGRPC_BAZEL_BUILD
