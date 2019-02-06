@@ -52,7 +52,7 @@ protected:
         if (key->anchor & kAnchorRight)
             flags += "$";
 
-        out_ << strprintf("%s [label=\"%s\"]\n",
+        out_ << strprintf("  %s [label=\"%s\"]\n",
                           names_[key.get()].c_str(),
                           flags.c_str());
         for (auto it = key->begin(); it != key->end(); it++) {
@@ -69,9 +69,9 @@ protected:
         for (auto it = key->begin(); it != key->end(); it++) {
             string dst;
             if (!it->second) {
-                out_ << strprintf("node%d [shape=point,label=\"\"]\n",
+                out_ << strprintf("  node%d [shape=point,label=\"\"]\n",
                                   ct_);
-                dst = strprintf("node%d", ct_++);
+                dst = strprintf("  node%d", ct_++);
             } else
                 dst = names_[it->second.get()];
             string label;
@@ -81,7 +81,7 @@ protected:
                 label = strprintf("%s-%s",
                                   escape(it->first.first).c_str(),
                                   escape(it->first.second).c_str());
-            out_ << strprintf("%s -> %s [label=\"%s\"]\n",
+            out_ << strprintf("  %s -> %s [label=\"%s\"]\n",
                               names_[key.get()].c_str(),
                               dst.c_str(),
                               label.c_str());
@@ -97,6 +97,7 @@ public:
 
     void output() {
         out_ << "digraph G {\n";
+        out_ << "  rankdir=\"LR\"\n";
         assign_names(key_);
         dump(key_);
         out_ << "}\n";
