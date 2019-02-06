@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <fstream>
 #include <fcntl.h>
 #include <sys/unistd.h>
 #include <sys/stat.h>
@@ -34,6 +35,7 @@ bool operator<(const index_span& left, const index_span& right) {
 
 DEFINE_bool(dump_spans, false, "Dump detailed index span information.");
 DEFINE_bool(dump_trees, false, "Dump tree names.");
+DEFINE_string(dump_source, "", "Dump full indexed source to file.");
 
 int inspect_index(int argc, char **argv) {
     if (argc != 1) {
@@ -146,8 +148,8 @@ int inspect_index(int argc, char **argv) {
            chunk_file_size,
            chunk_file_size / double(1 << 20));
 
+    code_searcher cs;
     if (FLAGS_dump_trees) {
-        code_searcher cs;
         cs.load_index(argv[0]);
         auto trees = cs.trees();
         printf("Trees:\n");
@@ -168,6 +170,19 @@ int inspect_index(int argc, char **argv) {
             assert(it->left < it->right);
             printf("%016lx-%016lx %s\n", it->left, it->right, it->name.c_str());
             prev = it->right;
+        }
+    }
+
+    if (FLAGS_dump_source.size()) {
+        std::ofstream dump(FLAGS_dump_source, std::ios::trunc);
+        if (dump.bad()) {
+            die("open(%s): %s", FLAGS_dump_source.c_str(), strerror(errno));
+        }
+        for (int i = 0; i < idx->nchunks; i++) {
+            auto *data = reinterpret_cast<const char*>(map + chunks[i].data_off);
+            auto *end = reinterpret_cast<const char*>(map + chunks[i].data_off + chunks[i].size);
+            dump.write(data, end-data);
+            dump << '\n';
         }
     }
 
