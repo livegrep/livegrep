@@ -195,7 +195,7 @@ class searcher {
 public:
     searcher(const code_searcher *cc,
              const query &q,
-             const intrusive_ptr<IndexKey> index_key,
+             const intrusive_ptr<QueryPlan> index_key,
              const code_searcher::search_thread::transform_func& func) :
         cc_(cc), query_(&q), transform_(func), queue_(),
         limiter_(q.max_matches), index_key_(index_key), re2_time_(false),
@@ -335,7 +335,7 @@ p     * which contain `match', which is contained within `line'.
     const code_searcher::search_thread::transform_func transform_;
     thread_queue<match_result*> queue_;
     search_limiter limiter_;
-    intrusive_ptr<IndexKey> index_key_;
+    intrusive_ptr<QueryPlan> index_key_;
     timer re2_time_;
     timer git_time_;
     timer index_time_;
@@ -358,7 +358,7 @@ class filename_searcher {
 public:
     filename_searcher(const code_searcher *cc,
                       const query &q,
-                      intrusive_ptr<IndexKey> index_key) :
+                      intrusive_ptr<QueryPlan> index_key) :
         cc_(cc), query_(&q), index_key_(index_key), queue_(), limiter_(q.max_matches)
     {}
 
@@ -373,7 +373,7 @@ protected:
 
     const code_searcher *cc_;
     const query *query_;
-    intrusive_ptr<IndexKey> index_key_;
+    intrusive_ptr<QueryPlan> index_key_;
     thread_queue<file_result*> queue_;
     search_limiter limiter_;
 
@@ -383,7 +383,7 @@ protected:
 int suffix_search(const unsigned char *data,
                   const uint32_t *suffixes,
                   int size,
-                  intrusive_ptr<IndexKey> index,
+                  intrusive_ptr<QueryPlan> index,
                   vector<uint32_t> &indexes_out);
 
 void filename_searcher::operator()()
@@ -674,7 +674,7 @@ void searcher::operator()(const chunk *chunk)
 
 struct walk_state {
     const uint32_t *left, *right;
-    intrusive_ptr<IndexKey> key;
+    intrusive_ptr<QueryPlan> key;
     int depth;
 };
 
@@ -701,7 +701,7 @@ struct lt_index {
 int suffix_search(const unsigned char *data,
                   const uint32_t *suffixes,
                   int size,
-                  intrusive_ptr<IndexKey> index,
+                  intrusive_ptr<QueryPlan> index,
                   vector<uint32_t> &indexes_out) {
     int count = 0;
     vector<walk_state> stack;
@@ -722,7 +722,7 @@ int suffix_search(const unsigned char *data,
             continue;
         }
         lt_index lt = {data, st.depth};
-        for (IndexKey::iterator it = st.key->begin();
+        for (QueryPlan::iterator it = st.key->begin();
              it != st.key->end(); ++it) {
             const uint32_t *l, *r;
             l = lower_bound(st.left, st.right, it->first.first, lt);
@@ -1098,7 +1098,7 @@ void code_searcher::search_thread::match(const query &q,
     }
 
     timer analyze_time(false);
-    intrusive_ptr<IndexKey> index_key;
+    intrusive_ptr<QueryPlan> index_key;
     {
         run_timer run(analyze_time);
         index_key = indexRE(*q.line_pat);

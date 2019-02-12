@@ -26,14 +26,14 @@ const int kMaxRecursion   = 10;
 const int kMaxNodes       = (1 << 24);
 
 namespace {
-    static IndexKey::Stats null_stats;
+    static QueryPlan::Stats null_stats;
 };
 
-IndexKey::Stats::Stats ()
+QueryPlan::Stats::Stats ()
     : selectivity_(1.0), depth_(0), nodes_(1), tail_paths_(1) {
 }
 
-IndexKey::Stats IndexKey::Stats::insert(const value_type& val) const {
+QueryPlan::Stats QueryPlan::Stats::insert(const value_type& val) const {
     Stats out(*this);
     if (out.selectivity_ == 1.0) {
         out.selectivity_ = 0.0;
@@ -55,7 +55,7 @@ IndexKey::Stats IndexKey::Stats::insert(const value_type& val) const {
     return out;
 }
 
-IndexKey::Stats IndexKey::Stats::concat(const IndexKey::Stats& rhs) const {
+QueryPlan::Stats QueryPlan::Stats::concat(const QueryPlan::Stats& rhs) const {
     Stats out(*this);
     out.selectivity_ *= rhs.selectivity_;
     out.depth_ += rhs.depth_;
@@ -65,7 +65,7 @@ IndexKey::Stats IndexKey::Stats::concat(const IndexKey::Stats& rhs) const {
     return out;
 }
 
-void IndexKey::insert(const value_type& val) {
+void QueryPlan::insert(const value_type& val) {
     stats_ = stats_.insert(val);
 
     edges_.insert(val);
@@ -74,40 +74,40 @@ void IndexKey::insert(const value_type& val) {
     }
 }
 
-double IndexKey::selectivity() {
+double QueryPlan::selectivity() {
     if (empty())
         assert(stats_.selectivity_ == 1.0);
 
     return stats_.selectivity_;
 }
 
-unsigned IndexKey::weight() {
+unsigned QueryPlan::weight() {
     if (1/selectivity() > double(numeric_limits<unsigned>::max()))
         return numeric_limits<unsigned>::max() / 2;
     return 1/selectivity();
 }
 
-long IndexKey::nodes() {
+long QueryPlan::nodes() {
     return stats_.nodes_;
 }
 
-int IndexKey::depth() {
+int QueryPlan::depth() {
     return stats_.depth_;
 }
 
-void IndexKey::collect_tails(list<IndexKey::iterator>& tails) {
-    set<IndexKey*> seen;
+void QueryPlan::collect_tails(list<QueryPlan::iterator>& tails) {
+    set<QueryPlan*> seen;
     collect_tails(tails, seen);
 }
 
-void IndexKey::collect_tails(list<IndexKey::const_iterator>& tails) {
+void QueryPlan::collect_tails(list<QueryPlan::const_iterator>& tails) {
     list<iterator> tmp;
     collect_tails(tmp);
     tails.insert(tails.end(), tmp.begin(), tmp.end());
 }
 
-void IndexKey::collect_tails(list<IndexKey::iterator>& tails,
-                             set<IndexKey*> &seen) {
+void QueryPlan::collect_tails(list<QueryPlan::iterator>& tails,
+                             set<QueryPlan*> &seen) {
     if (seen.find(this) != seen.end())
         return;
     seen.insert(this);
@@ -120,7 +120,7 @@ void IndexKey::collect_tails(list<IndexKey::iterator>& tails,
     }
 }
 
-void IndexKey::concat(intrusive_ptr<IndexKey> rhs) {
+void QueryPlan::concat(intrusive_ptr<QueryPlan> rhs) {
     assert(anchor & kAnchorRight);
     assert(rhs->anchor & kAnchorLeft);
     assert(!empty());
@@ -128,7 +128,7 @@ void IndexKey::concat(intrusive_ptr<IndexKey> rhs) {
     if (rhs->empty())
         return;
 
-    list<IndexKey::iterator> tails;
+    list<QueryPlan::iterator> tails;
     collect_tails(tails);
     for (auto it = tails.begin(); it != tails.end(); ++it) {
         assert(!(*it)->second);
@@ -148,14 +148,14 @@ static string StrChar(uchar c) {
     return strprintf("\\x%02x", c);
 }
 
-static string ToString(IndexKey *k, int indent = 0) {
+static string ToString(QueryPlan *k, int indent = 0) {
     string out;
     if (k == 0)
         return strprintf("%*.s[null]\n", indent, "");
     if (k->empty())
         return strprintf("%*.s[]\n", indent, "");
 
-    for (IndexKey::iterator it = k->begin(); it != k->end(); ++it) {
+    for (QueryPlan::iterator it = k->begin(); it != k->end(); ++it) {
         out += strprintf("%*.s[%s-%s] -> \n",
                          indent, "",
                          StrChar(it->first.first).c_str(),
@@ -165,7 +165,7 @@ static string ToString(IndexKey *k, int indent = 0) {
     return out;
 }
 
-string IndexKey::ToString() {
+string QueryPlan::ToString() {
     string out = ::ToString(this, 0);
 
     out += "|";
@@ -178,17 +178,17 @@ string IndexKey::ToString() {
     return out;
 }
 
-class IndexWalker : public Regexp::Walker<intrusive_ptr<IndexKey> > {
+class IndexWalker : public Regexp::Walker<intrusive_ptr<QueryPlan> > {
 public:
     IndexWalker() { }
-    virtual intrusive_ptr<IndexKey>
-    PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
-              intrusive_ptr<IndexKey> pre_arg,
-              intrusive_ptr<IndexKey> *child_args, int nchild_args);
+    virtual intrusive_ptr<QueryPlan>
+    PostVisit(Regexp* re, intrusive_ptr<QueryPlan> parent_arg,
+              intrusive_ptr<QueryPlan> pre_arg,
+              intrusive_ptr<QueryPlan> *child_args, int nchild_args);
 
-    virtual intrusive_ptr<IndexKey>
+    virtual intrusive_ptr<QueryPlan>
     ShortVisit(Regexp* re,
-               intrusive_ptr<IndexKey> parent_arg);
+               intrusive_ptr<QueryPlan> parent_arg);
 
 private:
     IndexWalker(const IndexWalker&);
@@ -196,12 +196,12 @@ private:
 };
 
 namespace {
-    typedef map<pair<intrusive_ptr<IndexKey>, intrusive_ptr<IndexKey> >,
-                intrusive_ptr<IndexKey> > alternate_cache;
+    typedef map<pair<intrusive_ptr<QueryPlan>, intrusive_ptr<QueryPlan> >,
+                intrusive_ptr<QueryPlan> > alternate_cache;
 
-    intrusive_ptr<IndexKey> Alternate(alternate_cache&,
-                                   intrusive_ptr<IndexKey>,
-                                   intrusive_ptr<IndexKey>);
+    intrusive_ptr<QueryPlan> Alternate(alternate_cache&,
+                                   intrusive_ptr<QueryPlan>,
+                                   intrusive_ptr<QueryPlan>);
 
     string RuneToString(Rune r) {
         char buf[UTFmax];
@@ -209,42 +209,42 @@ namespace {
         return string(buf, n);
     }
 
-    intrusive_ptr<IndexKey> Any() {
-        return intrusive_ptr<IndexKey>(new IndexKey());
+    intrusive_ptr<QueryPlan> Any() {
+        return intrusive_ptr<QueryPlan>(new QueryPlan());
     }
 
-    intrusive_ptr<IndexKey> Empty() {
-        return intrusive_ptr<IndexKey>(new IndexKey(kAnchorBoth));
+    intrusive_ptr<QueryPlan> Empty() {
+        return intrusive_ptr<QueryPlan>(new QueryPlan(kAnchorBoth));
     }
 
-    intrusive_ptr<IndexKey> Literal(string s) {
-        intrusive_ptr<IndexKey> k = 0;
+    intrusive_ptr<QueryPlan> Literal(string s) {
+        intrusive_ptr<QueryPlan> k = 0;
         for (string::reverse_iterator it = s.rbegin();
              it != s.rend(); ++it) {
-            k = intrusive_ptr<IndexKey>(new IndexKey(pair<uchar, uchar>(*it, *it), k));
+            k = intrusive_ptr<QueryPlan>(new QueryPlan(pair<uchar, uchar>(*it, *it), k));
         }
         k->anchor = kAnchorBoth;
         return k;
     }
 
-    intrusive_ptr<IndexKey> Literal(Rune r) {
+    intrusive_ptr<QueryPlan> Literal(Rune r) {
         return Literal(RuneToString(r));
     }
 
-    intrusive_ptr<IndexKey> CaseFoldLiteral(Rune r) {
+    intrusive_ptr<QueryPlan> CaseFoldLiteral(Rune r) {
         if (r > 127)
             return Any();
         if (r < 'a' || r > 'z') {
             return Literal(r);
         }
-        intrusive_ptr<IndexKey> k(new IndexKey(kAnchorBoth));
-        k->insert(make_pair(make_pair((uchar)r, (uchar)r), (IndexKey*)0));
+        intrusive_ptr<QueryPlan> k(new QueryPlan(kAnchorBoth));
+        k->insert(make_pair(make_pair((uchar)r, (uchar)r), (QueryPlan*)0));
         k->insert(make_pair(make_pair((uchar)r - 'a' + 'A',
-                                      (uchar)r - 'a' + 'A'), (IndexKey*)0));
+                                      (uchar)r - 'a' + 'A'), (QueryPlan*)0));
         return k;
     }
 
-    intrusive_ptr<IndexKey> Literal(Rune *runes, int nrunes) {
+    intrusive_ptr<QueryPlan> Literal(Rune *runes, int nrunes) {
         string lit;
 
         for (int i = 0; i < nrunes; i++) {
@@ -254,45 +254,45 @@ namespace {
         return Literal(lit);
     }
 
-    intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> *children, int nchildren);
-    intrusive_ptr<IndexKey> CaseFoldLiteral(Rune *runes, int nrunes) {
+    intrusive_ptr<QueryPlan> Concat(intrusive_ptr<QueryPlan> *children, int nchildren);
+    intrusive_ptr<QueryPlan> CaseFoldLiteral(Rune *runes, int nrunes) {
         if (nrunes == 0)
             return Empty();
-        std::vector<intrusive_ptr<IndexKey> > keys;
+        std::vector<intrusive_ptr<QueryPlan> > keys;
         for (int i = 0; i < nrunes; ++i) {
             keys.push_back(CaseFoldLiteral(runes[i]));
         }
         return Concat(&keys[0], nrunes);
     }
 
-    intrusive_ptr<IndexKey> LexRange(const string &lo, const string& hi) {
+    intrusive_ptr<QueryPlan> LexRange(const string &lo, const string& hi) {
         if (lo.size() == 0 && hi.size() == 0)
-            return intrusive_ptr<IndexKey>();
+            return intrusive_ptr<QueryPlan>();
         if (lo.size() == 0)
             return Literal(hi);
 
-        intrusive_ptr<IndexKey> out(new IndexKey(kAnchorBoth));
+        intrusive_ptr<QueryPlan> out(new QueryPlan(kAnchorBoth));
         assert(hi.size() != 0);
         if (lo[0] < hi[0])
-            out->insert(IndexKey::value_type
-                        (pair<uchar, uchar>(lo[0], hi[0] - 1), (IndexKey*)0));
-        out->insert(IndexKey::value_type
+            out->insert(QueryPlan::value_type
+                        (pair<uchar, uchar>(lo[0], hi[0] - 1), (QueryPlan*)0));
+        out->insert(QueryPlan::value_type
                     (pair<uchar, uchar>(hi[0], hi[0]),
                      LexRange(lo.substr(1), hi.substr(1))));
         return out;
     }
 
-    intrusive_ptr<IndexKey> CClass(CharClass *cc) {
+    intrusive_ptr<QueryPlan> CClass(CharClass *cc) {
         if (cc->size() > kMaxWidth)
             return Any();
 
-        intrusive_ptr<IndexKey> k(new IndexKey(kAnchorBoth));
+        intrusive_ptr<QueryPlan> k(new QueryPlan(kAnchorBoth));
 
         for (CharClass::iterator i = cc->begin(); i != cc->end(); ++i) {
             if (i->hi < Runeself)
-                k->insert(IndexKey::value_type
+                k->insert(QueryPlan::value_type
                           (pair<uchar, uchar>(i->lo, i->hi),
-                           (IndexKey*)0));
+                           (QueryPlan*)0));
             else {
                 alternate_cache cache;
                 k = Alternate(cache, k, LexRange(RuneToString(i->lo),
@@ -303,21 +303,21 @@ namespace {
         return k;
     }
 
-    bool ShouldConcat(intrusive_ptr<IndexKey> lhs, intrusive_ptr<IndexKey> rhs) {
+    bool ShouldConcat(intrusive_ptr<QueryPlan> lhs, intrusive_ptr<QueryPlan> rhs) {
         assert(lhs && rhs);
         if (!(lhs->anchor & kAnchorRight) ||
             !(rhs->anchor & kAnchorLeft))
             return false;
         if (lhs->empty())
             return false;
-        IndexKey::Stats concat = lhs->stats().concat(rhs->stats());
+        QueryPlan::Stats concat = lhs->stats().concat(rhs->stats());
         if (concat.nodes_ >= kMaxNodes)
             return false;
         return true;
     }
 
-    bool Prefer(const IndexKey::Stats& lhs,
-                const IndexKey::Stats& rhs) {
+    bool Prefer(const QueryPlan::Stats& lhs,
+                const QueryPlan::Stats& rhs) {
         return (lhs.selectivity_ < rhs.selectivity_);
         /*
         return (kRECost * lhs.selectivity_ + kNodeCost * lhs.nodes_ <
@@ -325,9 +325,9 @@ namespace {
         */
     }
 
-    intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> lhs, intrusive_ptr<IndexKey> rhs) {
+    intrusive_ptr<QueryPlan> Concat(intrusive_ptr<QueryPlan> lhs, intrusive_ptr<QueryPlan> rhs) {
         assert(lhs);
-        intrusive_ptr<IndexKey> out = lhs;
+        intrusive_ptr<QueryPlan> out = lhs;
 
         debug(kDebugIndexAll,
               "Concat([%s](%ld), [%s](%ld)) = ",
@@ -350,19 +350,19 @@ namespace {
         return out;
     }
 
-    IndexKey::Stats TryConcat(intrusive_ptr<IndexKey> *start,
-                              intrusive_ptr<IndexKey> *end) {
-        IndexKey::Stats st = (*start)->stats();
+    QueryPlan::Stats TryConcat(intrusive_ptr<QueryPlan> *start,
+                              intrusive_ptr<QueryPlan> *end) {
+        QueryPlan::Stats st = (*start)->stats();
         debug(kDebugIndexAll, "TryConcat: Searching suffix of length %d",
               int(end - start));
         if (!*start || !((*start)->anchor & kAnchorRight) || (*start)->empty()) {
             debug(kDebugIndexAll, "!ConcatRight, returning early.");
             return st;
         }
-        for (intrusive_ptr<IndexKey> *ptr = start + 1; ptr != end; ptr++) {
+        for (intrusive_ptr<QueryPlan> *ptr = start + 1; ptr != end; ptr++) {
             if (!*(ptr) || !((*ptr)->anchor & kAnchorLeft))
                 break;
-            IndexKey::Stats concat = st.concat((*ptr)->stats());
+            QueryPlan::Stats concat = st.concat((*ptr)->stats());
 
             if (concat.nodes_ >= kMaxNodes)
                 break;
@@ -377,14 +377,14 @@ namespace {
         return st;
     }
 
-    intrusive_ptr<IndexKey> Concat(intrusive_ptr<IndexKey> *children,
+    intrusive_ptr<QueryPlan> Concat(intrusive_ptr<QueryPlan> *children,
                                 int nchildren) {
-        intrusive_ptr<IndexKey> *end = children + nchildren, *best_start = 0, *ptr;
-        IndexKey::Stats best_stats;
+        intrusive_ptr<QueryPlan> *end = children + nchildren, *best_start = 0, *ptr;
+        QueryPlan::Stats best_stats;
 
         debug(kDebugIndexAll, "Concat: Searching %d positions", nchildren);
         for (ptr = children; ptr != end; ptr++) {
-            IndexKey::Stats st = TryConcat(ptr, end);
+            QueryPlan::Stats st = TryConcat(ptr, end);
             if (st.nodes_ > 1 && Prefer(st, best_stats)) {
                 debug(kDebugIndexAll, "Concat: Found new best: %d: %f",
                       int(ptr - children), st.selectivity_);
@@ -398,7 +398,7 @@ namespace {
             return Any();
         }
 
-        intrusive_ptr<IndexKey> out = *best_start;
+        intrusive_ptr<QueryPlan> out = *best_start;
         for (ptr = best_start + 1; ptr != end; ptr++) {
             out = Concat(out, *ptr);
         }
@@ -422,11 +422,11 @@ namespace {
     };
 
     int Merge(alternate_cache& cache,
-              intrusive_ptr<IndexKey> out,
+              intrusive_ptr<QueryPlan> out,
               pair<uchar, uchar>& left,
-              intrusive_ptr<IndexKey> lnext,
+              intrusive_ptr<QueryPlan> lnext,
               pair<uchar, uchar>& right,
-              intrusive_ptr<IndexKey> rnext) {
+              intrusive_ptr<QueryPlan> rnext) {
         if (intersects(left, right)) {
             debug(kDebugIndexAll,
                   "Processing intersection: <%hhx,%hhx> vs. <%hhx,%hhx>",
@@ -470,9 +470,9 @@ namespace {
         return kTakeRight;
     }
 
-    intrusive_ptr<IndexKey> AlternateInternal(alternate_cache& cache,
-                                           intrusive_ptr<IndexKey> lhs,
-                                           intrusive_ptr<IndexKey> rhs) {
+    intrusive_ptr<QueryPlan> AlternateInternal(alternate_cache& cache,
+                                           intrusive_ptr<QueryPlan> lhs,
+                                           intrusive_ptr<QueryPlan> rhs) {
         if (lhs == rhs)
             return lhs;
         if (!lhs || !rhs ||
@@ -485,8 +485,8 @@ namespace {
         if (recursion_depth > kMaxRecursion)
             return Any();
 
-        intrusive_ptr<IndexKey> out(new IndexKey(lhs->anchor & rhs->anchor & (kAnchorLeft|kAnchorRight)));
-        IndexKey::const_iterator lit, rit;
+        intrusive_ptr<QueryPlan> out(new QueryPlan(lhs->anchor & rhs->anchor & (kAnchorLeft|kAnchorRight)));
+        QueryPlan::const_iterator lit, rit;
         lit = lhs->begin();
         rit = rhs->begin();
         pair<uchar, uchar> left;
@@ -522,24 +522,24 @@ namespace {
         return out;
     }
 
-    intrusive_ptr<IndexKey> Alternate(alternate_cache& cache,
-                                   intrusive_ptr<IndexKey> lhs,
-                                   intrusive_ptr<IndexKey> rhs) {
+    intrusive_ptr<QueryPlan> Alternate(alternate_cache& cache,
+                                   intrusive_ptr<QueryPlan> lhs,
+                                   intrusive_ptr<QueryPlan> rhs) {
         auto it = cache.find(make_pair(lhs, rhs));
         if (it != cache.end())
             return it->second;
-        intrusive_ptr<IndexKey> out = AlternateInternal(cache, lhs, rhs);
+        intrusive_ptr<QueryPlan> out = AlternateInternal(cache, lhs, rhs);
         cache[make_pair(lhs, rhs)] = out;
         return out;
     }
 
 };
 
-intrusive_ptr<IndexKey> indexRE(const re2::RE2 &re) {
+intrusive_ptr<QueryPlan> indexRE(const re2::RE2 &re) {
     IndexWalker walk;
 
     Regexp *sre = re.Regexp()->Simplify();
-    intrusive_ptr<IndexKey> key = walk.WalkExponential(sre, 0, 10000);
+    intrusive_ptr<QueryPlan> key = walk.WalkExponential(sre, 0, 10000);
     sre->Decref();
 
     if (key && key->weight() < kMinWeight)
@@ -547,12 +547,12 @@ intrusive_ptr<IndexKey> indexRE(const re2::RE2 &re) {
     return key;
 }
 
-intrusive_ptr<IndexKey>
-IndexWalker::PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
-                       intrusive_ptr<IndexKey> pre_arg,
-                       intrusive_ptr<IndexKey> *child_args,
+intrusive_ptr<QueryPlan>
+IndexWalker::PostVisit(Regexp* re, intrusive_ptr<QueryPlan> parent_arg,
+                       intrusive_ptr<QueryPlan> pre_arg,
+                       intrusive_ptr<QueryPlan> *child_args,
                        int nchild_args) {
-    intrusive_ptr<IndexKey> key;
+    intrusive_ptr<QueryPlan> key;
 
     switch (re->op()) {
     case kRegexpNoMatch:
@@ -644,12 +644,12 @@ IndexWalker::PostVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg,
     return key;
 }
 
-intrusive_ptr<IndexKey>
-IndexWalker::ShortVisit(Regexp* re, intrusive_ptr<IndexKey> parent_arg) {
+intrusive_ptr<QueryPlan>
+IndexWalker::ShortVisit(Regexp* re, intrusive_ptr<QueryPlan> parent_arg) {
     return Any();
 }
 
-void IndexKey::check_rep() {
+void QueryPlan::check_rep() {
     pair<uchar, uchar> last = make_pair('\0', '\0');
     for (iterator it = begin(); it != end(); ++it) {
         assert(!intersects(last, it->first));
@@ -657,11 +657,11 @@ void IndexKey::check_rep() {
     }
 }
 
-void intrusive_ptr_add_ref(IndexKey *key) {
+void intrusive_ptr_add_ref(QueryPlan *key) {
     ++key->refs_;
 }
 
-void intrusive_ptr_release(IndexKey *key) {
+void intrusive_ptr_release(QueryPlan *key) {
     if (--key->refs_ == 0)
         delete key;
 }

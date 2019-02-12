@@ -26,13 +26,13 @@ using namespace std;
 DEFINE_string(dot_index, "", "Write a graph of the index key as a dot graph.");
 DEFINE_bool(casefold, false, "Treat the regex as case-insensitive.");
 
-class IndexKeyDotOutputter {
+class QueryPlanDotOutputter {
 protected:
-    map<IndexKey*, string> names_;
-    set<IndexKey*> seen_;
+    map<QueryPlan*, string> names_;
+    set<QueryPlan*> seen_;
     ofstream out_;
     int ct_;
-    intrusive_ptr<IndexKey> key_;
+    intrusive_ptr<QueryPlan> key_;
 
     string escape(char c) {
         if (c <= ' ' || c > '~' || c == '"' || c == '\\')
@@ -40,7 +40,7 @@ protected:
         return strprintf("%c", c);
     }
 
-    void assign_names(intrusive_ptr<IndexKey> key) {
+    void assign_names(intrusive_ptr<QueryPlan> key) {
         if (names_.find(key.get()) != names_.end())
             return;
         names_[key.get()] = strprintf("node%d", ct_++);
@@ -62,7 +62,7 @@ protected:
         }
     }
 
-    void dump(intrusive_ptr<IndexKey> key) {
+    void dump(intrusive_ptr<QueryPlan> key) {
         if (seen_.find(key.get()) != seen_.end())
             return;
         seen_.insert(key.get());
@@ -91,7 +91,7 @@ protected:
     }
 
 public:
-    IndexKeyDotOutputter(const string &path, intrusive_ptr<IndexKey> key)
+    QueryPlanDotOutputter(const string &path, intrusive_ptr<QueryPlan> key)
         : out_(path.c_str()), ct_(0), key_(key) {
     }
 
@@ -106,8 +106,8 @@ public:
 };
 
 
-void write_dot_index(const string &path, intrusive_ptr<IndexKey> key) {
-    IndexKeyDotOutputter out(path, key);
+void write_dot_index(const string &path, intrusive_ptr<QueryPlan> key) {
+    QueryPlanDotOutputter out(path, key);
     out.output();
 }
 
@@ -133,9 +133,9 @@ int analyze_re(int argc, char **argv) {
     printf("width: %d\n", width.Walk(re.Regexp(), 0));
     printf("Program size: %d\n", re.ProgramSize());
 
-    intrusive_ptr<IndexKey> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = indexRE(re);
     if (key) {
-        IndexKey::Stats stats = key->stats();
+        QueryPlan::Stats stats = key->stats();
         printf("Index key:\n");
         printf("  log10(selectivity): %f\n", log(stats.selectivity_)/log(10));
         printf("  depth: %d\n", stats.depth_);
