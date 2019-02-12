@@ -4,7 +4,7 @@
 #include "re2/re2.h"
 
 #include "src/codesearch.h"
-#include "src/indexer.h"
+#include "src/query_planner.h"
 #include "src/lib/debug.h"
 
 TEST(IndexKeyTest, BasicCaseFold) {

@@ -8,7 +8,6 @@
 #include "src/dump_load.h"
 #include "src/codesearch.h"
 #include "src/content.h"
-#include "src/indexer.h"
 #include "src/re_width.h"
 
 #include <gflags/gflags.h>

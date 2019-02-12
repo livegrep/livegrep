@@ -1,5 +1,5 @@
 /********************************************************************
- * livegrep -- indexer.cc
+ * livegrep -- query_planner.cc
  * Copyright (c) 2011-2013 Nelson Elhage
  *
  * This program is free software. You may use, redistribute, and/or
@@ -8,7 +8,7 @@
 #include "src/lib/recursion.h"
 #include "src/lib/debug.h"
 
-#include "src/indexer.h"
+#include "src/query_planner.h"
 
 #include <gflags/gflags.h>
 

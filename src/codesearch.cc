@@ -28,7 +28,7 @@
 #include "src/codesearch.h"
 #include "src/chunk.h"
 #include "src/chunk_allocator.h"
-#include "src/indexer.h"
+#include "src/query_planner.h"
 #include "src/content.h"
 
 #include "absl/strings/string_view.h"

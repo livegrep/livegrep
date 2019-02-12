@@ -16,7 +16,7 @@
 
 #include "src/dump_load.h"
 #include "src/codesearch.h"
-#include "src/indexer.h"
+#include "src/query_planner.h"
 #include "src/re_width.h"
 
 #include <gflags/gflags.h>
