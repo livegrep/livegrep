@@ -1,5 +1,5 @@
 /********************************************************************
- * livegrep -- indexer.h
+ * livegrep -- query_planner.h
  * Copyright (c) 2011-2013 Nelson Elhage
  *
  * This program is free software. You may use, redistribute, and/or
@@ -35,11 +35,11 @@ enum {
     kAnchorRepeat = 0x04
 };
 
-class IndexKey {
+class QueryPlan {
 public:
-    typedef std::map<std::pair<uchar, uchar>, intrusive_ptr<IndexKey> >::iterator iterator;
-    typedef std::map<std::pair<uchar, uchar>, intrusive_ptr<IndexKey> >::const_iterator const_iterator;
-    typedef std::pair<std::pair<uchar, uchar>, intrusive_ptr<IndexKey> > value_type;
+    typedef std::map<std::pair<uchar, uchar>, intrusive_ptr<QueryPlan> >::iterator iterator;
+    typedef std::map<std::pair<uchar, uchar>, intrusive_ptr<QueryPlan> >::const_iterator const_iterator;
+    typedef std::pair<std::pair<uchar, uchar>, intrusive_ptr<QueryPlan> > value_type;
 
     iterator begin() {
         return edges_.begin();
@@ -49,18 +49,18 @@ public:
         return edges_.end();
     }
 
-    IndexKey(int anchor = kAnchorNone)
+    QueryPlan(int anchor = kAnchorNone)
         : anchor(anchor), refs_(0) { }
 
-    IndexKey(std::pair<uchar, uchar> p,
-             intrusive_ptr<IndexKey> next,
+    QueryPlan(std::pair<uchar, uchar> p,
+             intrusive_ptr<QueryPlan> next,
              int anchor = kAnchorNone)
         : anchor(anchor), refs_(0) {
         insert(value_type(p, next));
     }
 
     void insert(const value_type& v);
-    void concat(intrusive_ptr<IndexKey> rhs);
+    void concat(intrusive_ptr<QueryPlan> rhs);
 
     bool empty() {
         return edges_.empty();
@@ -118,24 +118,24 @@ public:
 
     int anchor;
 
-    void collect_tails(list<IndexKey::const_iterator>& tails);
+    void collect_tails(list<QueryPlan::const_iterator>& tails);
 protected:
-    std::map<std::pair<uchar, uchar>, intrusive_ptr<IndexKey> > edges_;
+    std::map<std::pair<uchar, uchar>, intrusive_ptr<QueryPlan> > edges_;
     Stats stats_;
     std::atomic_int refs_;
 
-    void collect_tails(list<IndexKey::iterator>& tails);
-    void collect_tails(list<IndexKey::iterator>& tails,
-                       set<IndexKey*> &seen);
+    void collect_tails(list<QueryPlan::iterator>& tails);
+    void collect_tails(list<QueryPlan::iterator>& tails,
+                       set<QueryPlan*> &seen);
 
 private:
-    IndexKey(const IndexKey&);
-    void operator=(const IndexKey&);
+    QueryPlan(const QueryPlan&);
+    void operator=(const QueryPlan&);
 
-    friend void intrusive_ptr_add_ref(IndexKey *key);
-    friend void intrusive_ptr_release(IndexKey *key);
+    friend void intrusive_ptr_add_ref(QueryPlan *key);
+    friend void intrusive_ptr_release(QueryPlan *key);
 };
 
-intrusive_ptr<IndexKey> indexRE(const re2::RE2 &pat);
+intrusive_ptr<QueryPlan> constructQueryPlan(const re2::RE2 &pat);
 
 #endif /* CODESEARCH_INDEXER_H */

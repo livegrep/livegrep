@@ -4,18 +4,18 @@
 #include "re2/re2.h"
 
 #include "src/codesearch.h"
-#include "src/indexer.h"
+#include "src/query_planner.h"
 #include "src/lib/debug.h"
 
-TEST(IndexKeyTest, BasicCaseFold) {
+TEST(QueryPlanTest, BasicCaseFold) {
     re2::RE2::Options opts;
     opts.set_case_sensitive(false);
 
     re2::RE2 re("k", opts);
-    intrusive_ptr<IndexKey> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
 
     ASSERT_EQ(3, key->size());
-    IndexKey::iterator it = key->begin();
+    QueryPlan::iterator it = key->begin();
     EXPECT_EQ('K', it->first.first);
     EXPECT_EQ('K', it->first.second);
     EXPECT_FALSE(it->second);
@@ -30,49 +30,49 @@ TEST(IndexKeyTest, BasicCaseFold) {
     EXPECT_TRUE(it->second);
 }
 
-TEST(IndexKeyTest, Alternate) {
+TEST(QueryPlanTest, Alternate) {
     re2::RE2::Options opts;
     opts.set_case_sensitive(false);
 
     re2::RE2 re("(se|in)_", opts);
-    intrusive_ptr<IndexKey> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
     EXPECT_TRUE(key->anchor & kAnchorRight);
-    list<IndexKey::const_iterator> tails;
+    list<QueryPlan::const_iterator> tails;
     key->collect_tails(tails);
     EXPECT_EQ(1, tails.size());
 }
 
-TEST(IndexKeyTest, AlternateIndef) {
+TEST(QueryPlanTest, AlternateIndef) {
     re2::RE2::Options opts;
     opts.set_case_sensitive(false);
 
     re2::RE2 re("(se|in).", opts);
-    intrusive_ptr<IndexKey> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
     EXPECT_FALSE(key->anchor & kAnchorRight);
 }
 
-TEST(IndexKeyTest, CaseFoldRegression) {
+TEST(QueryPlanTest, CaseFoldRegression) {
     re2::RE2::Options opts;
     opts.set_case_sensitive(false);
 
     re2::RE2 re("ksp", opts);
-    intrusive_ptr<IndexKey> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
     EXPECT_TRUE(key->anchor & kAnchorLeft);
     EXPECT_TRUE(key->anchor & kAnchorRight);
 }
 
-TEST(IndexKeyTest, LongCaseFoldedLiteral) {
+TEST(QueryPlanTest, LongCaseFoldedLiteral) {
     re2::RE2::Options opts;
     default_re2_options(opts);
     opts.set_case_sensitive(false);
 
     re2::RE2 re("sxxxxxxxxxxxxxxxxxxxxxxxxx", opts);
-    intrusive_ptr<IndexKey> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
     EXPECT_TRUE(key);
     EXPECT_GT(key->depth(), 2);
 }
 
-TEST(IndexKeyTest, StressTest) {
+TEST(QueryPlanTest, StressTest) {
     const char *cases[] = {
         "([a-e]:)|[g-k]",
         "([a-e]:)|[a-e]",
@@ -93,7 +93,7 @@ TEST(IndexKeyTest, StressTest) {
     for (unsigned int i = 0; i < sizeof(cases)/sizeof(*cases); ++i) {
         const char *pat = cases[i];
         re2::RE2 re(pat, opts);
-        intrusive_ptr<IndexKey> key = indexRE(re);
+        intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
         EXPECT_TRUE(key) << "could not compute key for: " << pat;
     }
 }

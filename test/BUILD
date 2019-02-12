@@ -8,9 +8,9 @@ cc_test(
     size = "small",
     srcs = [
         "codesearch_test.cc",
-        "indexer_test.cc",
-        "tagsearch_test.cc",
         "main.cc",
+        "planner_test.cc",
+        "tagsearch_test.cc",
     ],
     defines = select({
         ":darwin": [
