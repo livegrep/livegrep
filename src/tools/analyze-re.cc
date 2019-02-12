@@ -133,7 +133,7 @@ int analyze_re(int argc, char **argv) {
     printf("width: %d\n", width.Walk(re.Regexp(), 0));
     printf("Program size: %d\n", re.ProgramSize());
 
-    intrusive_ptr<QueryPlan> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
     if (key) {
         QueryPlan::Stats stats = key->stats();
         printf("Index key:\n");

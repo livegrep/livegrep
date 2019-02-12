@@ -535,7 +535,7 @@ namespace {
 
 };
 
-intrusive_ptr<QueryPlan> indexRE(const re2::RE2 &re) {
+intrusive_ptr<QueryPlan> constructQueryPlan(const re2::RE2 &re) {
     IndexWalker walk;
 
     Regexp *sre = re.Regexp()->Simplify();

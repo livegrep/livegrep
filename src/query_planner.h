@@ -136,6 +136,6 @@ private:
     friend void intrusive_ptr_release(QueryPlan *key);
 };
 
-intrusive_ptr<QueryPlan> indexRE(const re2::RE2 &pat);
+intrusive_ptr<QueryPlan> constructQueryPlan(const re2::RE2 &pat);
 
 #endif /* CODESEARCH_INDEXER_H */

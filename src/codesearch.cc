@@ -1101,7 +1101,7 @@ void code_searcher::search_thread::match(const query &q,
     intrusive_ptr<QueryPlan> index_key;
     {
         run_timer run(analyze_time);
-        index_key = indexRE(*q.line_pat);
+        index_key = constructQueryPlan(*q.line_pat);
     }
     debug(kDebugProfile, "analyze time: %d.%06ds",
           int(analyze_time.elapsed().tv_sec),

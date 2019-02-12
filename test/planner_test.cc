@@ -12,7 +12,7 @@ TEST(QueryPlanTest, BasicCaseFold) {
     opts.set_case_sensitive(false);
 
     re2::RE2 re("k", opts);
-    intrusive_ptr<QueryPlan> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
 
     ASSERT_EQ(3, key->size());
     QueryPlan::iterator it = key->begin();
@@ -35,7 +35,7 @@ TEST(QueryPlanTest, Alternate) {
     opts.set_case_sensitive(false);
 
     re2::RE2 re("(se|in)_", opts);
-    intrusive_ptr<QueryPlan> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
     EXPECT_TRUE(key->anchor & kAnchorRight);
     list<QueryPlan::const_iterator> tails;
     key->collect_tails(tails);
@@ -47,7 +47,7 @@ TEST(QueryPlanTest, AlternateIndef) {
     opts.set_case_sensitive(false);
 
     re2::RE2 re("(se|in).", opts);
-    intrusive_ptr<QueryPlan> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
     EXPECT_FALSE(key->anchor & kAnchorRight);
 }
 
@@ -56,7 +56,7 @@ TEST(QueryPlanTest, CaseFoldRegression) {
     opts.set_case_sensitive(false);
 
     re2::RE2 re("ksp", opts);
-    intrusive_ptr<QueryPlan> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
     EXPECT_TRUE(key->anchor & kAnchorLeft);
     EXPECT_TRUE(key->anchor & kAnchorRight);
 }
@@ -67,7 +67,7 @@ TEST(QueryPlanTest, LongCaseFoldedLiteral) {
     opts.set_case_sensitive(false);
 
     re2::RE2 re("sxxxxxxxxxxxxxxxxxxxxxxxxx", opts);
-    intrusive_ptr<QueryPlan> key = indexRE(re);
+    intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
     EXPECT_TRUE(key);
     EXPECT_GT(key->depth(), 2);
 }
@@ -93,7 +93,7 @@ TEST(QueryPlanTest, StressTest) {
     for (unsigned int i = 0; i < sizeof(cases)/sizeof(*cases); ++i) {
         const char *pat = cases[i];
         re2::RE2 re(pat, opts);
-        intrusive_ptr<QueryPlan> key = indexRE(re);
+        intrusive_ptr<QueryPlan> key = constructQueryPlan(re);
         EXPECT_TRUE(key) << "could not compute key for: " << pat;
     }
 }
