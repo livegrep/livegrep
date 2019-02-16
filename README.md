@@ -103,11 +103,12 @@ livegrep builds an index file of your source code, and then works
 entirely out of that index, with no further access to the original git
 repositories.
 
-In general, the index file will be approximately the same size as the
-original source code. livegrep memory-maps the index file into RAM, so
-it should be able to work out of index files larger than (available)
-RAM, but will perform much better if the file can be loaded entirely
-into memory.
+The index file will vary somewhat in size, but will usually be 3-5x
+the size of the indexed text. `livegrep` memory-maps the index file
+into RAM, so it can work out of index files larger than (available)
+RAM, but will perform better if the file can be loaded entirely into
+memory. Barring that, keeping the disk on fast SSDs is recommended for
+optimal performance.
 
 
 LICENSE
