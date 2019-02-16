@@ -102,7 +102,7 @@ Docker images
 I build [docker images][docker] for livegrep out of the
 [livegrep.com](https://github.com/livegrep/livegrep.com) repository,
 based on build images created by this repository's CI. They should be
-generally usable; For instance, to build+run a livegrep index of this
+generally usable. For instance, to build+run a livegrep index of this
 repository, you could run:
 
 ```
@@ -114,7 +114,11 @@ docker run -d --network livegrep --publish 8910:8910 livegrep/base /livegrep/bin
 
 And then access http://localhost:8910/
 
+You can also find the [docker-compose config powering
+livegrep.com][docker-compose] in that same repository.
+
 [docker]: https://hub.docker.com/u/livegrep
+[docker-compose]: https://github.com/livegrep/livegrep.com/tree/master/compose
 
 Resource Usage
 --------------
