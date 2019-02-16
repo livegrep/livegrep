@@ -96,6 +96,30 @@ the repos in `repos/` and writing `nelhage.idx`, you might run:
 You can now use `nelhage.idx` as an argument to `codesearch
 -load_index`.
 
+Docker images
+-------------
+
+I build [docker images][docker] for livegrep out of the
+[livegrep.com](https://github.com/livegrep/livegrep.com) repository,
+based on build images created by this repository's CI. They should be
+generally usable. For instance, to build+run a livegrep index of this
+repository, you could run:
+
+```
+docker run -v $(pwd):/data livegrep/indexer /livegrep/bin/livegrep-github-reindex -repo livegrep/livegrep -http -dir /data
+docker network create livegrep
+docker run -v $(pwd):/data --network livegrep livegrep/base /livegrep/bin/codesearch -load_index /data/livegrep.idx -grpc 0.0.0.0:9999
+docker run -d --network livegrep --publish 8910:8910 livegrep/base /livegrep/bin/livegrep -docroot /livegrep/web -listen=0.0.0.0:8910
+```
+
+And then access http://localhost:8910/
+
+You can also find the [docker-compose config powering
+livegrep.com][docker-compose] in that same repository.
+
+[docker]: https://hub.docker.com/u/livegrep
+[docker-compose]: https://github.com/livegrep/livegrep.com/tree/master/compose
+
 Resource Usage
 --------------
 
