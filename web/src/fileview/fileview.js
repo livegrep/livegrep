@@ -51,7 +51,7 @@ function setHash(hash) {
 }
 
 function parseHashForLineRange(hashString) {
-  var parseMatch = hashString.match(/#L(\d+)(?:-(\d+))?/);
+  var parseMatch = hashString.match(/#L(\d+)(?:-L?(\d+))?/);
 
   if(parseMatch && parseMatch.length === 3) {
     // We have a match on the regex expression
