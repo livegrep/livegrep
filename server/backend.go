@@ -75,11 +75,8 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil
 		for _, r := range info.Trees {
-			pattern := ""
-			if v, ok := r.Metadata["url-pattern"]; ok {
-				pattern = v
-			}
-			if v, ok := r.Metadata["github"]; ok {
+			pattern := r.Metadata.UrlPattern
+			if v := r.Metadata.Github; v != "" {
 				value := v
 				base := ""
 				_, err := url.ParseRequestURI(value)

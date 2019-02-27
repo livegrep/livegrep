@@ -9,7 +9,7 @@ class codesearch_test : public ::testing::Test {
 protected:
     codesearch_test() {
         cs_.set_alloc(make_mem_allocator());
-        tree_ = cs_.open_tree("repo", 0, "REV0");
+        tree_ = cs_.open_tree("repo", "REV0");
     }
 
     code_searcher cs_;
@@ -130,7 +130,7 @@ TEST_F(codesearch_test, RestrictFiles) {
     cs_.index_file(tree_, "/file1", "contents");
     cs_.index_file(tree_, "/file2", "contents");
     // other is "OTHER"
-    const indexed_tree *other = cs_.open_tree("OTHER", 0, "REV0");
+    const indexed_tree *other = cs_.open_tree("OTHER", "REV0");
     cs_.index_file(other, "/file1", "contents");
     cs_.index_file(other, "/file2", "contents");
     cs_.finalize();
@@ -185,7 +185,7 @@ TEST_F(codesearch_test, Tags) {
 
     code_searcher tags;
     tags.set_alloc(make_mem_allocator());
-    const indexed_tree *tag_tree = cs_.open_tree("", 0, "HEAD");
+    const indexed_tree *tag_tree = cs_.open_tree("", "HEAD");
     tags.index_file(tag_tree,
                     "tags",
                     "do_the_thing\trepo/file.c\t1;\"\tfunction\n");
@@ -267,7 +267,7 @@ TEST_F(codesearch_test, LineCaseAndFileCaseAreIndependent) {
 }
 
 TEST_F(codesearch_test, LineCaseAndRepoCaseAreIndependent) {
-    const indexed_tree *other = cs_.open_tree("OTHER", 0, "REV0");
+    const indexed_tree *other = cs_.open_tree("OTHER", "REV0");
     cs_.index_file(tree_, "/file1", "contents");
     cs_.index_file(other, "/file1", "CONTENTS");
     cs_.finalize();

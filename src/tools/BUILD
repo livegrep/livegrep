@@ -21,8 +21,6 @@ cc_binary(
     srcs = [
         "codesearch.cc",
         "limits.h",
-        "transport.cc",
-        "transport.h",
     ],
     copts = [
         "-Wno-deprecated-declarations",
@@ -31,6 +29,7 @@ cc_binary(
     deps = [
         ":grpc_server",
         "//src:codesearch",
+        "//src/proto:cc_config_proto",
         "//src/proto:cc_proto",
         "@boost//:bind",
         "@com_github_libgit2//:libgit2",

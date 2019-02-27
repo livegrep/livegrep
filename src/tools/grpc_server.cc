@@ -11,7 +11,6 @@
 #include "google/protobuf/repeated_field.h"
 
 #include "gflags/gflags.h"
-#include <json-c/json.h>
 
 #include <algorithm>
 #include <cctype>
@@ -89,25 +88,7 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
         auto insert = response->add_trees();
         insert->set_name(it->name);
         insert->set_version(it->version);
-        if (it->metadata == NULL)
-            continue;
-        auto metadata = insert->mutable_metadata();
-        json_object_object_foreach(it->metadata, key, val) {
-            switch (json_object_get_type(val)) {
-            case json_type_null:
-            case json_type_array:
-            case json_type_object:
-                break;
-            case json_type_boolean:
-            case json_type_double:
-            case json_type_int:
-                (*metadata)[string(key)] = string(json_object_to_json_string(val));
-                break;
-            case json_type_string:
-                (*metadata)[string(key)] = string(json_object_get_string(val));
-                break;
-            }
-        }
+        insert->mutable_metadata()->CopyFrom(it->metadata);
     }
     response->set_has_tags(tagdata_ != nullptr);
     response->set_index_time(cs_->index_timestamp());

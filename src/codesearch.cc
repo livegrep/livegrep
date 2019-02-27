@@ -36,7 +36,6 @@
 #include "divsufsort.h"
 #include "re2/re2.h"
 #include "gflags/gflags.h"
-#include <json-c/json.h>
 
 #include "utf8.h"
 
@@ -479,12 +478,6 @@ void code_searcher::set_alloc(std::unique_ptr<chunk_allocator> alloc) {
 code_searcher::~code_searcher() {
     if (alloc_)
         alloc_->cleanup();
-
-    for (auto &tree : trees_) {
-        if (tree->metadata != NULL) {
-            json_object_put(tree->metadata);
-        }
-    }
 }
 
 void code_searcher::index_filenames() {
@@ -535,18 +528,19 @@ vector<indexed_tree> code_searcher::trees() const {
 }
 
 const indexed_tree* code_searcher::open_tree(const string &name,
-                                             json_object *metadata,
+                                             const Metadata &metadata,
                                              const string &version) {
     auto tree = std::make_unique<indexed_tree>();
     tree->name = name;
     tree->version = version;
-    if (metadata) {
-        tree->metadata = metadata;
-    } else {
-        tree->metadata = NULL;
-    }
+    tree->metadata = metadata;
     trees_.push_back(move(tree));
     return trees_.back().get();
+}
+
+const indexed_tree* code_searcher::open_tree(const string &name,
+                                             const string &version) {
+    return open_tree(name, Metadata(), version);
 }
 
 void code_searcher::index_file(const indexed_tree *tree,

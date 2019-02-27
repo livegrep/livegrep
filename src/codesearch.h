@@ -24,6 +24,7 @@
 #include "re2/re2.h"
 
 #include "src/lib/thread_queue.h"
+#include "src/proto/config.pb.h"
 
 class searcher;
 class filename_searcher;
@@ -72,11 +73,10 @@ struct match_stats {
 
 struct chunk;
 struct chunk_file;
-struct json_object;
 
 struct indexed_tree {
     string name;
-    json_object *metadata;
+    Metadata metadata;
     string version;
 };
 
@@ -133,7 +133,9 @@ public:
     void dump_index(const string& path);
     void load_index(const string& path);
 
-    const indexed_tree *open_tree(const string &name, json_object *meta, const string& version);
+    const indexed_tree *open_tree(const string &name, const Metadata &meta, const string& version);
+    const indexed_tree *open_tree(const string &name, const string& version);
+
     void index_file(const indexed_tree *tree,
                     const string& path,
                     StringPiece contents);
