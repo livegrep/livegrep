@@ -9,19 +9,19 @@
 #define CODESEARCH_GIT_INDEXER_H
 
 #include <string>
+#include "src/proto/config.pb.h"
 
 class code_searcher;
 class git_repository;
 class git_tree;
 struct indexed_tree;
-struct json_object;
 
 class git_indexer {
 public:
     git_indexer(code_searcher *cs,
                 const std::string& repopath,
                 const std::string& name,
-                json_object *metadata = 0);
+                const Metadata &metadata);
     ~git_indexer();
     void walk(const std::string& ref);
 protected:
@@ -33,7 +33,7 @@ protected:
     git_repository *repo_;
     const indexed_tree *idx_tree_;
     std::string name_;
-    json_object *metadata_;
+    Metadata metadata_;
 };
 
 #endif

@@ -9,17 +9,19 @@
 #define CODESEARCH_FS_INDEXER_H
 
 #include <string>
+#include "src/proto/config.pb.h"
 
 class code_searcher;
 struct indexed_tree;
 namespace boost { namespace filesystem { class path; } }
+
 
 class fs_indexer {
 public:
     fs_indexer(code_searcher *cs,
                const string& repopath,
                const string& name,
-               json_object *metadata = 0);
+               const Metadata &metadata);
     ~fs_indexer();
     void walk(const boost::filesystem::path& path);
     void walk_contents_file(const boost::filesystem::path& contents_file_path);

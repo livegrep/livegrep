@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+message IndexSpec {
+    string name = 1;
+    repeated PathSpec paths = 2 [json_name = "fs_paths"];
+    repeated RepoSpec repos = 3 [json_name = "repositories"];
+}
+
+message Metadata {
+    string url_pattern = 1 [json_name = "url-pattern"];
+    string remote = 2      [json_name = "remote"];
+    string github = 3      [json_name = "github"];
+}
+
+message PathSpec {
+    string path = 1             [json_name = "path"];
+    string name = 2             [json_name = "name"];
+    string ordered_contents = 3 [json_name = "ordered-contents"];
+    Metadata metadata = 4       [json_name = "metadata"];
+}
+
+message RepoSpec {
+    string path = 1               [json_name = "path"];
+    string name = 2               [json_name = "name"];
+    repeated string revisions = 3 [json_name = "revisions"];
+    Metadata metadata = 4         [json_name = "metadata"];
+}

@@ -8,6 +8,8 @@
 #include "src/git_indexer.h"
 #include "src/smart_git.h"
 
+#include "src/proto/config.pb.h"
+
 using namespace std;
 
 DEFINE_string(order_root, "", "Walk top-level directories in this order.");
@@ -16,7 +18,7 @@ DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided"
 git_indexer::git_indexer(code_searcher *cs,
                          const string& repopath,
                          const string& name,
-                         json_object *metadata)
+                         const Metadata &metadata)
     : cs_(cs), repo_(0), name_(name), metadata_(metadata) {
     int err;
     if ((err = git_libgit2_init()) < 0)

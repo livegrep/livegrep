@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "src/proto/config.proto";
+
 message Query {
     string line = 1;
     string file = 2;
@@ -55,7 +57,7 @@ message ServerInfo {
     message Tree {
         string name = 1;
         string version = 2;
-        map<string, string> metadata = 3;
+        Metadata metadata = 3;
     }
     repeated Tree trees = 2;
     bool has_tags = 3;

@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include <json-c/json.h>
+#include "google/protobuf/util/json_util.h"
 
 class codesearch_index {
 public:
@@ -308,10 +308,12 @@ void codesearch_index::dump_metadata() {
          it != cs_->trees_.end(); ++it) {
         dump_string((*it)->name);
         dump_string((*it)->version);
-        if ((*it)->metadata)
-            dump_string(json_object_to_json_string((*it)->metadata));
-        else
-            dump_string("");
+        string metadata;
+        auto st = google::protobuf::util::MessageToJsonString((*it)->metadata, &metadata);
+        if (!st.ok()) {
+            die("protobuf: %s", st.ToString().c_str());
+        }
+        dump_string(metadata);
         tree_ids[it->get()] = it - cs_->trees_.begin();
     }
     hdr_.files_off = stream_.tellp();
@@ -450,12 +452,11 @@ void load_allocator::load(code_searcher *cs) {
         tree->name = load_string();
         tree->version = load_string();
         string metadata = load_string();
-        if (metadata.size() == 0) {
-            tree->metadata = NULL;
-        } else {
-            json_object *js = json_tokener_parse(metadata.c_str());
-            assert(!is_error(js));
-            tree->metadata = js;
+        if (metadata.size() != 0) {
+            auto status = google::protobuf::util::JsonStringToMessage(metadata, &tree->metadata, google::protobuf::util::JsonParseOptions());
+            if (!status.ok()) {
+                die("parse metadata: %s", status.ToString().c_str());
+            }
         }
 
         cs->trees_.push_back(move(tree));

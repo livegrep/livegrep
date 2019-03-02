@@ -11,10 +11,10 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//src/lib",
+        "//src/proto:cc_config_proto",
         "//third_party:utf8cpp",
         "@boost//:filesystem",
         "@boost//:intrusive_ptr",
-        "@com_github_json_c//:json",
         "@com_github_libgit2//:libgit2",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/hash",

@@ -16,9 +16,9 @@
 #include "src/git_indexer.h"
 #include "src/fs_indexer.h"
 
-#include "src/tools/transport.h"
 #include "src/tools/limits.h"
 #include "src/tools/grpc_server.h"
+#include "src/proto/config.pb.h"
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -40,8 +40,6 @@
 #include <boost/filesystem.hpp>
 #include "re2/regexp.h"
 #include "re2/walker-inl.h"
-
-#include <json-c/json.h>
 
 #include <grpc++/server.h>
 #include <grpc++/server_builder.h>
@@ -73,48 +71,44 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
     }
 
     fs::path config_file_path(argv[1]);
-    json_object *obj = json_object_from_file(config_file_path.c_str());
-    if (is_error(obj)) {
-        fprintf(stderr, "Error parsing `%s'\n",
-                argv[1].c_str());
+    std::string json_text;
+    fs::load_string_file(config_file_path, json_text);
+
+    IndexSpec spec;
+    auto status = google::protobuf::util::JsonStringToMessage(json_text, &spec, google::protobuf::util::JsonParseOptions());
+    if (!status.ok()) {
+        fprintf(stderr, "Parsing %s: %s\n", argv[1].c_str(), status.error_message().data());
         exit(1);
     }
-    index_spec spec;
-    json_parse_error err = parse_index_spec(obj, &spec);
-    if (!err.ok()) {
-        fprintf(stderr, "parsing %s: %s\n", argv[1].c_str(), err.err().c_str());
-        exit(1);
-    }
-    if (spec.paths.empty() && spec.repos.empty()) {
+    if (!spec.paths_size() && !spec.repos_size()) {
         fprintf(stderr, "%s: You must specify at least one path to index.\n", argv[1].c_str());
         exit(1);
     }
-    json_object_put(obj);
-    if (spec.name.size())
-        cs->set_name(spec.name);
-    for (auto it = spec.paths.begin(); it != spec.paths.end(); ++it) {
+
+    if (spec.name().size())
+        cs->set_name(spec.name());
+    for (auto &path : spec.paths()) {
         fprintf(stderr, "Walking path_spec name=%s, path=%s\n",
-                it->name.c_str(), it->path.c_str());
-        fs_indexer indexer(cs, it->path, it->name, it->metadata);
-        if (it->ordered_contents_file_path.empty()) {
+                path.name().c_str(), path.path().c_str());
+        fs_indexer indexer(cs, path.path(), path.name(), path.metadata());
+        if (path.ordered_contents().empty()) {
             fprintf(stderr, "  walking full tree\n");
-            indexer.walk(it->path);
+            indexer.walk(path.path());
         } else {
             fprintf(stderr, "  walking paths from ordered contents list\n");
-            fs::path contents_file_path = fs::canonical(it->ordered_contents_file_path, config_file_path.remove_filename());
+            fs::path contents_file_path = fs::canonical(path.ordered_contents(), config_file_path.remove_filename());
             indexer.walk_contents_file(contents_file_path);
         }
         fprintf(stderr, "done\n");
     }
 
-    for (auto it = spec.repos.begin(); it != spec.repos.end(); ++it) {
+    for (auto &repo  : spec.repos()) {
         fprintf(stderr, "Walking repo_spec name=%s, path=%s\n",
-                it->name.c_str(), it->path.c_str());
-        git_indexer indexer(cs, it->path, it->name, it->metadata);
-        for (auto rev = it->revisions.begin();
-             rev != it->revisions.end(); ++rev) {
-            fprintf(stderr, "  walking %s... ", rev->c_str());
-            indexer.walk(*rev);
+                repo.name().c_str(), repo.path().c_str());
+        git_indexer indexer(cs, repo.path(), repo.name(), repo.metadata());
+        for (auto &rev : repo.revisions()) {
+            fprintf(stderr, "  walking %s... ", rev.c_str());
+            indexer.walk(rev);
             fprintf(stderr, "done\n");
         }
     }

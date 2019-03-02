@@ -17,7 +17,7 @@ namespace fs = boost::filesystem;
 fs_indexer::fs_indexer(code_searcher *cs,
                        const string& repopath,
                        const string& name,
-                       json_object *metadata)
+                       const Metadata &metadata)
     : cs_(cs), repopath_(repopath), name_(name) {
     tree_ = cs->open_tree(name, metadata, "");
 }
