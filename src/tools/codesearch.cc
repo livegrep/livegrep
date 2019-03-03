@@ -103,9 +103,9 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
     }
 
     for (auto &repo  : spec.repos()) {
-        fprintf(stderr, "Walking repo_spec name=%s, path=%s\n",
-                repo.name().c_str(), repo.path().c_str());
-        git_indexer indexer(cs, repo.path(), repo.name(), repo.metadata());
+        fprintf(stderr, "Walking repo_spec name=%s, path=%s (including  submodules: %s)\n",
+                repo.name().c_str(), repo.path().c_str(), repo.walk_submodules() ? "true" : "false");
+        git_indexer indexer(cs, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules());
         for (auto &rev : repo.revisions()) {
             fprintf(stderr, "  walking %s... ", rev.c_str());
             indexer.walk(rev);

@@ -24,4 +24,5 @@ message RepoSpec {
     string name = 2               [json_name = "name"];
     repeated string revisions = 3 [json_name = "revisions"];
     Metadata metadata = 4         [json_name = "metadata"];
+    bool walk_submodules = 5      [json_name = "walk_submodules"];
 }
