@@ -68,17 +68,17 @@ git_repository(
 
 git_repository(
     name = "io_bazel_rules_go",
-    commit = "2d792dea8d22c552f455623bb15eb4f61fcb2f1b",  # 0.16.5
+    commit = "dad6b2e97e4e81d364608a80acf38fc058d155a4",  # 0.18.0
     remote = "https://github.com/bazelbuild/rules_go.git",
 )
 
-http_archive(
+git_repository(
     name = "bazel_gazelle",
-    sha256 = "c0a5739d12c6d05b6c1ad56f2200cb0b57c5a70e03ebd2f7b87ce88cabf09c7b",
-    urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.14.0/bazel-gazelle-0.14.0.tar.gz"],
+    commit = "e443c54b396a236e0d3823f46c6a931e1c9939f2",  # 0.17.0
+    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
 )
 
-load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
