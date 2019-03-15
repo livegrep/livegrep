@@ -1,8 +1,7 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN apt-get update && apt-get -y install \
-        gcc-4.8 \
-        g++-4.8 \
+        build-essential \
         libxml2-utils \
         wget \
         pkg-config \
