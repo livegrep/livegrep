@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-export HOME=/build
-mkdir -p $HOME
-
 if [ "$GCLOUD_SERVICE_KEY" ]; then
     echo "$GCLOUD_SERVICE_KEY" | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
     /usr/local/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
