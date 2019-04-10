@@ -64,7 +64,7 @@ function shorten(ref) {
 }
 
 function url(tree, version, path, lno) {
-  if (tree in CodesearchUI.internalViewRepos) {
+  if (tree in CodesearchUI.internalViewRepos && !CodesearchUI.internalViewRepos[tree].link_external) {
     return internalUrl(tree, path, lno);
   } else {
     return externalRepoUrl(tree, version, path, lno);
@@ -246,6 +246,10 @@ var Match = Backbone.Model.extend({
     }
     return url(this.get('tree'), this.get('version'), this.get('path'), lno);
   },
+
+  internalUrl: function(lno) {
+      return internalUrl(this.get('tree'), this.get('path'), lno);
+  },
 });
 
 /** A set of Matches at a single path. */
@@ -351,6 +355,10 @@ var FileMatch = Backbone.Model.extend({
   url: function() {
     return url(this.get('tree'), this.get('version'), this.get('path'));
   },
+
+  internalUrl: function() {
+      return internalUrl(this.get('tree'), this.get('path'));
+  },
 });
 
 var FileMatchView = Backbone.View.extend({
@@ -375,6 +383,18 @@ var FileMatchView = Backbone.View.extend({
     el.empty();
     el.addClass('filename-match');
     el.append(h.a({cls: 'label header result-path', href: this.model.url()}, repoLabel));
+
+    var tree = path_info.tree;
+    if (tree in CodesearchUI.internalViewRepos && CodesearchUI.internalViewRepos[tree].link_external) {
+        el.append(h.span({}, [' - ']));
+        el.append(
+            h.span({}, [h.a({
+                cls: 'label header result-path',
+                href: this.model.internalUrl()
+            }, [" View in livegrep"])])
+        );
+    }
+
     return this;
   }
 });
@@ -544,8 +564,17 @@ var FileGroupView = Backbone.View.extend({
   render: function() {
     var matches = this.model.matches;
     var el = this.$el;
+    var tree = this.model.path_info.tree;
     el.empty();
-    el.append(this.render_header(this.model.path_info.tree, this.model.path_info.version, this.model.path_info.path));
+    el.append(this.render_header(tree, this.model.path_info.version, this.model.path_info.path));
+    if (tree in CodesearchUI.internalViewRepos && CodesearchUI.internalViewRepos[tree].link_external) {
+        el.append(
+            h.span({style: "float:right;"}, [h.a({
+                cls: 'label header result-path',
+                href: this.model.matches[0].internalUrl()
+            }, ["View in livegrep"])])
+        );
+    }
     matches.forEach(function(match) {
       el.append(
         new MatchView({model:match}).render().el
