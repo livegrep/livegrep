@@ -18,8 +18,10 @@ DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided"
 git_indexer::git_indexer(code_searcher *cs,
                          const string& repopath,
                          const string& name,
-                         const Metadata &metadata)
-    : cs_(cs), repo_(0), name_(name), metadata_(metadata) {
+                         const Metadata &metadata,
+                         bool walk_submodules)
+    : cs_(cs), repo_(0), repopath_(repopath), name_(name), metadata_(metadata)
+    , walk_submodules_(walk_submodules) {
     int err;
     if ((err = git_libgit2_init()) < 0)
         die("git_libgit2_init: %s", giterr_last()->message);
@@ -88,7 +90,29 @@ void git_indexer::walk_tree(const string& pfx,
             walk_tree(path + "/", "", obj);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
             const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
-            cs_->index_file(idx_tree_, path, StringPiece(data, git_blob_rawsize(obj)));
+            cs_->index_file(idx_tree_, submodule_prefix_ + path, StringPiece(data, git_blob_rawsize(obj)));
+        } else if (git_tree_entry_type(*it) == GIT_OBJ_COMMIT) {
+            // Submodule
+            if (!walk_submodules_) {
+                continue;
+            }
+            git_submodule* submod = nullptr;
+            if (0 != git_submodule_lookup(&submod, repo_, path.c_str())) {
+                fprintf(stderr, "Unable to get submodule entry for %s, skipping\n", path.c_str());
+                continue;
+            }
+            const char* sub_name = git_submodule_name(submod);
+            string sub_repopath = repopath_ + "/" + path;
+            Metadata meta;
+
+            git_indexer sub_indexer(cs_, sub_repopath, string(sub_name), meta, walk_submodules_);
+            sub_indexer.submodule_prefix_ = submodule_prefix_ + path + "/";
+
+            const git_oid* rev = git_tree_entry_id(*it);
+            char revstr[GIT_OID_HEXSZ + 1];
+            git_oid_tostr(revstr, GIT_OID_HEXSZ + 1, rev);
+
+            sub_indexer.walk(string(revstr));
         }
     }
 }

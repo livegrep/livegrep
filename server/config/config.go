@@ -67,10 +67,11 @@ type IndexConfig struct {
 }
 
 type RepoConfig struct {
-	Path      string            `json:"path"`
-	Name      string            `json:"name"`
-	Revisions []string          `json:"revisions"`
-	Metadata  map[string]string `json:"metadata"`
+	Path           string            `json:"path"`
+	Name           string            `json:"name"`
+	Revisions      []string          `json:"revisions"`
+	Metadata       map[string]string `json:"metadata"`
+	WalkSubmodules bool              `json:"walk_submodules"`
 }
 
 type LinkConfig struct {

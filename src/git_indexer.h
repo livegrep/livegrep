@@ -21,7 +21,8 @@ public:
     git_indexer(code_searcher *cs,
                 const std::string& repopath,
                 const std::string& name,
-                const Metadata &metadata);
+                const Metadata &metadata,
+                bool walk_submodules);
     ~git_indexer();
     void walk(const std::string& ref);
 protected:
@@ -32,8 +33,11 @@ protected:
     code_searcher *cs_;
     git_repository *repo_;
     const indexed_tree *idx_tree_;
+    std::string repopath_;
     std::string name_;
     Metadata metadata_;
+    bool walk_submodules_;
+    std::string submodule_prefix_;
 };
 
 #endif
