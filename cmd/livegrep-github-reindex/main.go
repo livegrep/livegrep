@@ -379,12 +379,47 @@ func checkoutWorker(dir string,
 	}
 }
 
-func retryCommand(program string, args []string) error {
+const (
+	askPassScript = `#!/bin/sh
+cat <&3
+`
+)
+
+func callGit(program string, args []string, key string) error {
 	var err error
 	for i := 0; i < 3; i++ {
 		cmd := exec.Command("git", args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		if key != "" {
+			// If we're given an oauth key, pass it to git via GIT_ASKPASS
+			//
+			// In order to avoid the key hitting the
+			// filesystem, we pass the actual key via a
+			// pipe on fd `3`, and we set the askpass
+			// script to a tiny sh script that just reads
+			// from that pipe.
+			r, w, err := os.Pipe()
+			if err != nil {
+				return err
+			}
+			cmd.ExtraFiles = []*os.File{r}
+			go func() {
+				defer w.Close()
+				w.WriteString(key)
+			}()
+			defer r.Close()
+			f, err := ioutil.TempFile("", "livegrep-askpass")
+			if err != nil {
+				return err
+			}
+			f.WriteString(askPassScript)
+			f.Close()
+			defer os.Remove(f.Name())
+
+			os.Chmod(f.Name(), 0700)
+			cmd.Env = append(os.Environ(), fmt.Sprintf("GIT_ASKPASS=%s", f.Name()))
+		}
 		if err = cmd.Run(); err == nil {
 			return nil
 		}
@@ -419,7 +454,7 @@ func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
 			args = append(args, fmt.Sprintf("--depth=%d", depth))
 		}
 		args = append(args, remote, checkout)
-		return retryCommand("git", args)
+		return callGit("git", args, *flagGithubKey)
 	}
 
 	// Pass explicit refspecs so we also fetch HEAD as well as
@@ -433,7 +468,7 @@ func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
 	if depth != 0 {
 		args = append(args, fmt.Sprintf("--depth=%d", depth))
 	}
-	return retryCommand("git", args)
+	return callGit("git", args, *flagGithubKey)
 }
 
 type IndexConfig struct {
