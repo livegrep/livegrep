@@ -22,9 +22,9 @@ void file_contents_builder::extend(chunk *c, const StringPiece &piece) {
 
 file_contents *file_contents_builder::build(chunk_allocator *alloc) {
     size_t len = sizeof(uint32_t) * (1 + 3*pieces_.size());
-    file_contents *out = new(alloc->alloc_content_data(len)) file_contents(pieces_.size());
-    if (out == 0)
-        return 0;
+    unsigned char *mem = alloc->alloc_content_data(len);
+    if (mem == nullptr) return nullptr;
+    file_contents *out = new(mem) file_contents(pieces_.size());
     for (int i = 0; i < pieces_.size(); i++) {
         const unsigned char *p = reinterpret_cast<const unsigned char*>
             (pieces_[i].data());
