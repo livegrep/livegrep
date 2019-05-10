@@ -130,7 +130,7 @@ git_repository(
 
 git_repository(
     name = "org_dropbox_rules_node",
-    commit = "f35666fe95bff69b9c96b95a97973ee5bef108bd",
+    commit = "4c53c3ab5e7d4f75b50d6234567973c10ab3f7b8",
     remote = "https://github.com/dropbox/rules_node.git",
 )
 
