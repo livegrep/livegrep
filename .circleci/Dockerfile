@@ -17,7 +17,8 @@ ADD https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-
 RUN tar -C /usr/local/ -xzf /tmp/gcloud.tar.gz
 RUN /usr/local/google-cloud-sdk/install.sh
 
-RUN wget --quiet -O /tmp/bazel-0.21.0-installer-linux-x86_64.sh \
-  'https://github.com/bazelbuild/bazel/releases/download/0.21.0/bazel-0.21.0-installer-linux-x86_64.sh' && \
-  chmod +x /tmp/bazel-0.21.0-installer-linux-x86_64.sh
-RUN /tmp/bazel-0.21.0-installer-linux-x86_64.sh
+ENV bazel_version 0.25.2
+RUN wget --quiet -O /tmp/bazel-${bazel_version}-installer-linux-x86_64.sh \
+  "https://github.com/bazelbuild/bazel/releases/download/${bazel_version}/bazel-${bazel_version}-installer-linux-x86_64.sh" && \
+  chmod +x "/tmp/bazel-${bazel_version}-installer-linux-x86_64.sh"
+RUN /tmp/bazel-${bazel_version}-installer-linux-x86_64.sh

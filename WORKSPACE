@@ -13,9 +13,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "build_stack_rules_proto",
-    sha256 = "36f11f56f6eb48a81eb6850f4fb6c3b4680e3fc2d3ceb9240430e28d32c47009",
-    strip_prefix = "rules_proto-d86ca6bc56b1589677ec59abfa0bed784d6b7767",
-    urls = ["https://github.com/stackb/rules_proto/archive/d86ca6bc56b1589677ec59abfa0bed784d6b7767.tar.gz"],
+    sha256 = "78e378237c6e7bd7cfdda155d4f7010b27723f26ebfa6345e79675bddbbebc11",
+    strip_prefix = "rules_proto-56665373fe541d6f134d394624c8c64cd5652e8c",
+    urls = ["https://github.com/stackb/rules_proto/archive/56665373fe541d6f134d394624c8c64cd5652e8c.tar.gz"],
 )
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -145,7 +145,7 @@ new_git_repository(
 package(default_visibility = ["//visibility:public"])
 """
     ),
-    commit = "7bc80f9355b09466fffabce24d463d65e37fcc0f",
+    commit = "5fd82a9dd99b93535ebc40471bd638ac58b7c090",
     remote = "https://github.com/grailbio/bazel-compilation-database.git",
 )
 

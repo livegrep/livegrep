@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: us.gcr.io/livegrep/ci:7
+      - image: us.gcr.io/livegrep/ci:8
 
     steps:
       - checkout
