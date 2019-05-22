@@ -13,8 +13,8 @@ import (
 
 // Mapping from known file extensions to filetype hinting.
 var filenameToLangMap map[string]string = map[string]string{
-	"BUILD": "python",
-        "WORKSPACE": "python",
+	"BUILD":     "python",
+	"WORKSPACE": "python",
 }
 var extToLangMap map[string]string = map[string]string{
 	".AppleScript": "applescript",
@@ -25,7 +25,7 @@ var extToLangMap map[string]string = map[string]string{
 	".css":         "css",
 	".go":          "go",
 	".h":           "cpp",
-        ".hs":          "haskell",
+	".hs":          "haskell",
 	".html":        "markup",
 	".java":        "java",
 	".js":          "javascript",
@@ -34,7 +34,7 @@ var extToLangMap map[string]string = map[string]string{
 	".m":           "objectivec",
 	".markdown":    "markdown",
 	".md":          "markdown",
-        ".nix":         "nix",
+	".nix":         "nix",
 	".php":         "php",
 	".pl":          "perl",
 	".proto":       "go",
