@@ -3,8 +3,11 @@ load(
     "go_repository",
 )
 
+def _normalize_repo_name(repo):
+    return repo.replace("/", "_").replace("-", "_").replace(".", "_")
+
 def _github(repo, commit):
-    name = "com_github_" + repo.replace("/", "_").replace("-", "_").replace(".", "_")
+    name = "com_github_" + _normalize_repo_name(repo)
     importpath = "github.com/" + repo
     return struct(
         name = name,
@@ -15,6 +18,15 @@ def _github(repo, commit):
 def _golang_x(pkg, commit):
     name = "org_golang_x_" + pkg
     importpath = "golang.org/x/" + pkg
+    return struct(
+        name = name,
+        commit = commit,
+        importpath = importpath,
+    )
+
+def _gopkg(repo, commit):
+    name = "in_gopkg_" + _normalize_repo_name(repo)
+    importpath = "gopkg.in/" + repo
     return struct(
         name = name,
         commit = commit,
@@ -40,16 +52,8 @@ _externals = [
     _github("facebookgo/muster", "fd3d7953fd52354a74b9f6b3d70d0c9650c4ec2a"),
     _github("facebookgo/limitgroup", "6abd8d71ec01451d7f1929eacaa263bbe2935d05"),
     _github("facebookgo/clock", "600d898af40aa09a7a93ecb9265d87b0504b6f03"),
-    struct(
-        name = "in_gopkg_alexcesaro_statsd_v2",
-        commit = "7fea3f0d2fab1ad973e641e51dba45443a311a90",
-        importpath = "gopkg.in/alexcesaro/statsd.v2",
-    ),
-    struct(
-        name = "in_gopkg_check_v1",
-        commit = "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec",
-        importpath = "gopkg.in/check.v1",
-    ),
+    _gopkg("alexcesaro/statsd.v2", "7fea3f0d2fab1ad973e641e51dba45443a311a90"),
+    _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
 ]
 
 def go_externals():
