@@ -6,19 +6,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path"
 	"sort"
 	"strings"
 	"sync"
-
-	"github.com/google/go-github/github"
-
-	"golang.org/x/net/context"
-	"golang.org/x/oauth2"
 )
 
 var (
@@ -52,6 +45,16 @@ func init() {
 
 const Workers = 8
 
+type repo struct {
+	name, url                 string
+	cloneHTTPURL, cloneSSHURL string
+	fork                      bool
+}
+
+type repoLoader interface {
+	loadRepos() ([]repo, error)
+}
+
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
@@ -71,37 +74,15 @@ func main() {
 		}
 	}
 
-	var h *http.Client
-	if *flagGithubKey == "" {
-		h = http.DefaultClient
-	} else {
-		tok := &oauth2.Token{AccessToken: *flagGithubKey}
-		h = oauth2.NewClient(
-			context.Background(),
-			oauth2.StaticTokenSource(tok),
+	var rl repoLoader
+	if *flagApiBaseUrl != "" {
+		rl = newGitHubRepoLoader(
+			*flagApiBaseUrl, *flagGithubKey,
+			flagRepos.strings, flagUsers.strings, flagOrgs.strings,
 		)
 	}
 
-	gh := github.NewClient(h)
-
-	if *flagApiBaseUrl != "" {
-		if !strings.HasSuffix(*flagApiBaseUrl, "/") {
-			log.Fatalf("API base URL must include trailing slash: %s", *flagApiBaseUrl)
-		}
-		baseURL, err := url.Parse(*flagApiBaseUrl)
-		if err != nil {
-			log.Fatalf("parsing base url %s: %v", *flagApiBaseUrl, err)
-		}
-		gh.BaseURL = baseURL
-	}
-
-	repos, err := loadRepos(gh,
-		flagRepos.strings,
-		flagOrgs.strings,
-		flagUsers.strings)
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
+	repos, err := rl.loadRepos()
 
 	repos = filterRepos(repos, blacklist, !*flagForks)
 
@@ -146,11 +127,11 @@ func main() {
 	}
 }
 
-type ReposByName []*github.Repository
+type ReposByName []repo
 
 func (r ReposByName) Len() int           { return len(r) }
 func (r ReposByName) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
-func (r ReposByName) Less(i, j int) bool { return *r[i].FullName < *r[j].FullName }
+func (r ReposByName) Less(i, j int) bool { return r[i].name < r[j].name }
 
 func loadBlacklist(path string) (map[string]struct{}, error) {
 	data, err := ioutil.ReadFile(path)
@@ -166,104 +147,18 @@ func loadBlacklist(path string) (map[string]struct{}, error) {
 	return out, nil
 }
 
-type loadJob struct {
-	obj string
-	get func(*github.Client, string) ([]*github.Repository, error)
-}
-
-type maybeRepo struct {
-	repos []*github.Repository
-	err   error
-}
-
-func loadRepos(
-	client *github.Client,
-	repos []string,
-	orgs []string,
-	users []string) ([]*github.Repository, error) {
-
-	jobc := make(chan loadJob)
-	done := make(chan struct{})
-	repoc := make(chan maybeRepo)
-
-	var jobs []loadJob
-	for _, repo := range repos {
-		jobs = append(jobs, loadJob{repo, getOneRepo})
-	}
-	for _, org := range orgs {
-		jobs = append(jobs, loadJob{org, getOrgRepos})
-	}
-	for _, user := range users {
-		jobs = append(jobs, loadJob{user, getUserRepos})
-	}
-	go func() {
-		defer close(jobc)
-		for _, j := range jobs {
-			select {
-			case jobc <- j:
-			case <-done:
-				return
-			}
-		}
-	}()
-	var wg sync.WaitGroup
-	wg.Add(Workers)
-	for i := 0; i < Workers; i++ {
-		go func() {
-			runJobs(client, jobc, done, repoc)
-			wg.Done()
-		}()
-	}
-	go func() {
-		wg.Wait()
-		close(repoc)
-	}()
-	var out []*github.Repository
-	for repo := range repoc {
-		if repo.err != nil {
-			close(done)
-			return nil, repo.err
-		}
-		out = append(out, repo.repos...)
-	}
-
-	return out, nil
-}
-
-func runJobs(client *github.Client, jobc <-chan loadJob, done <-chan struct{}, out chan<- maybeRepo) {
-	for {
-		var job loadJob
-		var ok bool
-		select {
-		case job, ok = <-jobc:
-			if !ok {
-				return
-			}
-		case <-done:
-			return
-		}
-		var res maybeRepo
-		res.repos, res.err = job.get(client, job.obj)
-		select {
-		case out <- res:
-		case <-done:
-			return
-		}
-	}
-}
-
-func filterRepos(repos []*github.Repository,
+func filterRepos(repos []repo,
 	blacklist map[string]struct{},
-	excludeForks bool) []*github.Repository {
-	var out []*github.Repository
+	excludeForks bool) []repo {
+	var out []repo
 
 	for _, r := range repos {
-		if excludeForks && r.Fork != nil && *r.Fork {
-			log.Printf("Excluding fork %s...", *r.FullName)
+		if excludeForks && r.fork {
+			log.Printf("Excluding fork %s...", r.name)
 			continue
 		}
 		if blacklist != nil {
-			if _, ok := blacklist[*r.FullName]; ok {
+			if _, ok := blacklist[r.name]; ok {
 				continue
 			}
 		}
@@ -273,59 +168,8 @@ func filterRepos(repos []*github.Repository,
 	return out
 }
 
-func getOneRepo(client *github.Client, repo string) ([]*github.Repository, error) {
-	bits := strings.SplitN(repo, "/", 2)
-	if len(bits) != 2 {
-		return nil, fmt.Errorf("Bad repository: %s", repo)
-	}
-
-	ghRepo, _, err := client.Repositories.Get(context.TODO(), bits[0], bits[1])
-	if err != nil {
-		return nil, err
-	}
-	return []*github.Repository{ghRepo}, nil
-}
-
-func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error) {
-	var buf []*github.Repository
-	opt := &github.RepositoryListByOrgOptions{
-		ListOptions: github.ListOptions{PerPage: 50},
-	}
-	for {
-		repos, resp, err := client.Repositories.ListByOrg(context.TODO(), org, opt)
-		if err != nil {
-			return nil, err
-		}
-		buf = append(buf, repos...)
-		if resp.NextPage == 0 {
-			break
-		}
-		opt.ListOptions.Page = resp.NextPage
-	}
-	return buf, nil
-}
-
-func getUserRepos(client *github.Client, user string) ([]*github.Repository, error) {
-	var buf []*github.Repository
-	opt := &github.RepositoryListOptions{
-		ListOptions: github.ListOptions{PerPage: 50},
-	}
-	for {
-		repos, resp, err := client.Repositories.List(context.TODO(), user, opt)
-		if err != nil {
-			return nil, err
-		}
-		buf = append(buf, repos...)
-		if resp.NextPage == 0 {
-			break
-		}
-		opt.ListOptions.Page = resp.NextPage
-	}
-	return buf, nil
-}
-
-func checkoutRepos(repos []*github.Repository, dir string, depth int, http bool) error {
-	repoc := make(chan *github.Repository)
+func checkoutRepos(repos []repo, dir string, depth int, http bool) error {
+	repoc := make(chan repo)
 	errc := make(chan error, Workers)
 	stop := make(chan struct{})
 	wg := sync.WaitGroup{}
@@ -361,7 +205,7 @@ Repos:
 func checkoutWorker(dir string,
 	depth int,
 	http bool,
-	c <-chan *github.Repository,
+	c <-chan repo,
 	stop <-chan struct{}, errc chan error) {
 	for {
 		select {
@@ -427,9 +271,9 @@ func callGit(program string, args []string, key string) error {
 	return fmt.Errorf("%s %v: %s", program, args, err.Error())
 }
 
-func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
-	log.Println("Updating", *r.FullName)
-	checkout := path.Join(dir, *r.FullName)
+func checkoutOne(dir string, depth int, http bool, r repo) error {
+	log.Println("Updating", r.name)
+	checkout := path.Join(dir, r.name)
 	out, err := exec.Command("git", "--git-dir", checkout, "rev-parse", "--is-bare-repository").Output()
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); !ok {
@@ -445,9 +289,9 @@ func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
 		}
 		var remote string
 		if http {
-			remote = *r.CloneURL
+			remote = r.cloneHTTPURL
 		} else {
-			remote = *r.SSHURL
+			remote = r.cloneSSHURL
 		}
 		args := []string{"clone", "--mirror"}
 		if depth != 0 {
@@ -493,7 +337,7 @@ func writeConfig(config []byte, file string) error {
 
 func buildConfig(name string,
 	dir string,
-	repos []*github.Repository,
+	repos []repo,
 	revision string) ([]byte, error) {
 	cfg := IndexConfig{
 		Name: name,
@@ -503,24 +347,24 @@ func buildConfig(name string,
 		if *flagSkipMissing {
 			cmd := exec.Command("git",
 				"--git-dir",
-				path.Join(dir, *r.FullName),
+				path.Join(dir, r.name),
 				"rev-parse",
 				"--verify",
 				revision,
 			)
 			if e := cmd.Run(); e != nil {
 				log.Printf("Skipping missing revision repo=%s rev=%s",
-					*r.FullName, revision,
+					r.name, revision,
 				)
 				continue
 			}
 		}
 		cfg.Repositories = append(cfg.Repositories, RepoConfig{
-			Path:      path.Join(dir, *r.FullName),
-			Name:      *r.FullName,
+			Path:      path.Join(dir, r.name),
+			Name:      r.name,
 			Revisions: []string{revision},
 			Metadata: map[string]string{
-				"github": *r.HTMLURL,
+				"github": r.url,
 			},
 		})
 	}
