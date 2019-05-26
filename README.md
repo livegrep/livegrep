@@ -91,12 +91,13 @@ instance on port `9999`, and listen for HTTP connections on port
 
 ## github integration
 
-`livegrep` includes a helper driver, `livegrep-github-reindex`, which
-can automatically update and index selected github repositories. To
-download and index all of my repositories (except for forks), storing
-the repos in `repos/` and writing `nelhage.idx`, you might run:
+`livegrep` includes a helper driver, `livegrep-codehost-reindex`, which
+can automatically update and index selected GitHub or GitLab
+repositories. To download and index all of my repositories (except for
+forks), storing the repos in `repos/` and writing `nelhage.idx`, you
+might run:
 
-    bazel-bin/cmd/livegrep-github-reindex/livegrep-github-reindex -user=nelhage -forks=false -name=github.com/nelhage -out nelhage.idx
+    bazel-bin/cmd/livegrep-codehost-reindex/livegrep-codehost-reindex -user=nelhage -forks=false -name=github.com/nelhage -out nelhage.idx
 
 You can now use `nelhage.idx` as an argument to `codesearch
 -load_index`.
@@ -111,7 +112,7 @@ generally usable. For instance, to build+run a livegrep index of this
 repository, you could run:
 
 ```
-docker run -v $(pwd):/data livegrep/indexer /livegrep/bin/livegrep-github-reindex -repo livegrep/livegrep -http -dir /data
+docker run -v $(pwd):/data livegrep/indexer /livegrep/bin/livegrep-codehost-reindex -repo livegrep/livegrep -http -dir /data
 docker network create livegrep
 docker run -v $(pwd):/data --network livegrep livegrep/base /livegrep/bin/codesearch -load_index /data/livegrep.idx -grpc 0.0.0.0:9999
 docker run -d --network livegrep --publish 8910:8910 livegrep/base /livegrep/bin/livegrep -docroot /livegrep/web -listen=0.0.0.0:8910

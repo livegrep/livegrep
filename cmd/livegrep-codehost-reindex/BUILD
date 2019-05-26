@@ -6,7 +6,7 @@ go_library(
         "flags.go",
         "main.go",
     ],
-    importpath = "github.com/livegrep/livegrep/cmd/livegrep-github-reindex",
+    importpath = "github.com/livegrep/livegrep/cmd/livegrep-codehost-reindex",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_google_go_github//github:go_default_library",
@@ -16,7 +16,7 @@ go_library(
 )
 
 go_binary(
-    name = "livegrep-github-reindex",
+    name = "livegrep-codehost-reindex",
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )
