@@ -97,7 +97,7 @@ repositories. To download and index all of my repositories (except for
 forks), storing the repos in `repos/` and writing `nelhage.idx`, you
 might run:
 
-    bazel-bin/cmd/livegrep-codehost-reindex/livegrep-codehost-reindex -user=nelhage -forks=false -name=github.com/nelhage -out nelhage.idx
+    bazel-bin/cmd/livegrep-codehost-reindex/livegrep-codehost-reindex -github-user=nelhage -forks=false -name=github.com/nelhage -out nelhage.idx
 
 You can now use `nelhage.idx` as an argument to `codesearch
 -load_index`.

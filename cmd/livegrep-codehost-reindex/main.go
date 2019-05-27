@@ -31,14 +31,14 @@ var (
 	flagSkipMissing = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
 
 	// GitHub
-	flagApiBaseUrl = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
-	flagGithubKey  = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
-	flagRepos      = stringList{}
-	flagOrgs       = stringList{}
-	flagUsers      = stringList{}
+	flagGitHubAPIBaseURL = flag.String("github-api-base-url", "https://api.github.com/", "Github API base url")
+	flagGithubKey        = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
+	flagGitHubRepos      = stringList{}
+	flagGitHubOrgs       = stringList{}
+	flagGitHubUsers      = stringList{}
 
 	// GitLab
-	flagGitLabAPIBaseURL = flag.String("gitlab-api-base-url", "", "GitLab API base url")
+	flagGitLabAPIBaseURL = flag.String("gitlab-api-base-url", "https://gitlab.com/api/v4", "GitLab API base url")
 	flagGitLabPAT        = flag.String("gitlab-token", os.Getenv("GITLAB_TOKEN"), "GitLab personal access token")
 	flagGitLabGroups     = stringList{}
 )
@@ -47,9 +47,9 @@ func init() {
 	flag.Var(&flagIndexPath, "out", "Path to write the index")
 
 	// GitHub
-	flag.Var(&flagRepos, "repo", "Specify a repo to index (may be passed multiple times)")
-	flag.Var(&flagOrgs, "org", "Specify a github organization to index (may be passed multiple times)")
-	flag.Var(&flagUsers, "user", "Specify a github user to index (may be passed multiple times)")
+	flag.Var(&flagGitHubRepos, "github-repo", "Specify a repo to index (may be passed multiple times)")
+	flag.Var(&flagGitHubOrgs, "github-org", "Specify a github organization to index (may be passed multiple times)")
+	flag.Var(&flagGitHubUsers, "github-user", "Specify a github user to index (may be passed multiple times)")
 
 	// GitLab
 	flag.Var(&flagGitLabGroups, "gitlab-group", "Specify a GitLab group to index (may be passed multiple times)")
@@ -71,11 +71,26 @@ func main() {
 	flag.Parse()
 	log.SetFlags(0)
 
-	if flagRepos.strings == nil &&
-		flagOrgs.strings == nil &&
-		flagUsers.strings == nil &&
-		flagGitLabGroups.strings == nil {
-		log.Fatal("You must specify at least entity to index")
+	willIndexGithub := flagGitHubRepos.strings != nil ||
+		flagGitHubOrgs.strings != nil ||
+		flagGitHubUsers.strings != nil
+
+	willIndexGitLab := flagGitLabGroups.strings != nil
+
+	var rl repoLoader
+	if willIndexGithub {
+		rl = newGitHubRepoLoader(
+			*flagGitHubAPIBaseURL, *flagGithubKey,
+			flagGitHubRepos.strings, flagGitHubUsers.strings, flagGitHubOrgs.strings,
+		)
+	} else if willIndexGitLab {
+		rl = newGitLabRepoLoader(*flagGitLabAPIBaseURL, *flagGitLabPAT, flagGitLabGroups.strings)
+	} else {
+		log.Fatal("You must specify at least one entity to index")
+	}
+
+	if willIndexGitLab && willIndexGithub {
+		log.Fatalf("You must specify only GitHub or GitLab flags, not both")
 	}
 
 	var blacklist map[string]struct{}
@@ -85,16 +100,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("loading %s: %s", *flagBlacklist, err)
 		}
-	}
-
-	var rl repoLoader
-	if *flagGitLabAPIBaseURL != "" {
-		rl = newGitLabRepoLoader(*flagGitLabAPIBaseURL, *flagGitLabPAT, flagGitLabGroups.strings)
-	} else {
-		rl = newGitHubRepoLoader(
-			*flagApiBaseUrl, *flagGithubKey,
-			flagRepos.strings, flagUsers.strings, flagOrgs.strings,
-		)
 	}
 
 	repos, err := rl.loadRepos()
