@@ -16,8 +16,6 @@ import (
 
 var (
 	flagCodesearch = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
-	flagApiBaseUrl = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
-	flagGithubKey  = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
 	flagRepoDir    = flag.String("dir", "repos", "Directory to store repos")
 	flagBlacklist  = flag.String("blacklist", "", "File containing a list of repositories to blacklist indexing")
 	flagIndexPath  = dynamicDefault{
@@ -31,16 +29,30 @@ var (
 	flagHTTP        = flag.Bool("http", false, "clone repositories over HTTPS instead ofssh")
 	flagDepth       = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
 	flagSkipMissing = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
-	flagRepos       = stringList{}
-	flagOrgs        = stringList{}
-	flagUsers       = stringList{}
+
+	// GitHub
+	flagApiBaseUrl = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
+	flagGithubKey  = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
+	flagRepos      = stringList{}
+	flagOrgs       = stringList{}
+	flagUsers      = stringList{}
+
+	// GitLab
+	flagGitLabAPIBaseURL = flag.String("gitlab-api-base-url", "", "GitLab API base url")
+	flagGitLabPAT        = flag.String("gitlab-token", os.Getenv("GITLAB_TOKEN"), "GitLab personal access token")
+	flagGitLabGroups     = stringList{}
 )
 
 func init() {
 	flag.Var(&flagIndexPath, "out", "Path to write the index")
+
+	// GitHub
 	flag.Var(&flagRepos, "repo", "Specify a repo to index (may be passed multiple times)")
 	flag.Var(&flagOrgs, "org", "Specify a github organization to index (may be passed multiple times)")
 	flag.Var(&flagUsers, "user", "Specify a github user to index (may be passed multiple times)")
+
+	// GitLab
+	flag.Var(&flagGitLabGroups, "gitlab-group", "Specify a GitLab group to index (may be passed multiple times)")
 }
 
 const Workers = 8
@@ -61,8 +73,9 @@ func main() {
 
 	if flagRepos.strings == nil &&
 		flagOrgs.strings == nil &&
-		flagUsers.strings == nil {
-		log.Fatal("You must specify at least one repo or organization to index")
+		flagUsers.strings == nil &&
+		flagGitLabGroups.strings == nil {
+		log.Fatal("You must specify at least entity to index")
 	}
 
 	var blacklist map[string]struct{}
@@ -75,7 +88,9 @@ func main() {
 	}
 
 	var rl repoLoader
-	if *flagApiBaseUrl != "" {
+	if *flagGitLabAPIBaseURL != "" {
+		rl = newGitLabRepoLoader(*flagGitLabAPIBaseURL, *flagGitLabPAT, flagGitLabGroups.strings)
+	} else {
 		rl = newGitHubRepoLoader(
 			*flagApiBaseUrl, *flagGithubKey,
 			flagRepos.strings, flagUsers.strings, flagOrgs.strings,
@@ -83,6 +98,9 @@ func main() {
 	}
 
 	repos, err := rl.loadRepos()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	repos = filterRepos(repos, blacklist, !*flagForks)
 

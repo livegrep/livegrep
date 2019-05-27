@@ -5,12 +5,14 @@ go_library(
     srcs = [
         "flags.go",
         "github.go",
+        "gitlab.go",
         "main.go",
     ],
     importpath = "github.com/livegrep/livegrep/cmd/livegrep-codehost-reindex",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_google_go_github//github:go_default_library",
+        "@com_github_xanzy_go_gitlab//:go_default_library",
         "@org_golang_x_oauth2//:go_default_library",
     ],
 )

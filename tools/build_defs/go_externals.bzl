@@ -52,6 +52,7 @@ _externals = [
     _github("facebookgo/muster", "fd3d7953fd52354a74b9f6b3d70d0c9650c4ec2a"),
     _github("facebookgo/limitgroup", "6abd8d71ec01451d7f1929eacaa263bbe2935d05"),
     _github("facebookgo/clock", "600d898af40aa09a7a93ecb9265d87b0504b6f03"),
+    _github("xanzy/go-gitlab", "9d665abb0c204f579765d16d24d7ec85257e6624"),
     _gopkg("alexcesaro/statsd.v2", "7fea3f0d2fab1ad973e641e51dba45443a311a90"),
     _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
 ]
