@@ -13,6 +13,7 @@ message Query {
     string not_tags = 8;
     int32 max_matches = 9;
     bool filename_only = 10;
+    int32 context_lines = 11;
 }
 
 message Bounds {

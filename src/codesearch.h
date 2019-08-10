@@ -124,6 +124,7 @@ struct query {
     } negate;
 
     bool filename_only;
+    int context_lines;
 };
 
 class code_searcher {

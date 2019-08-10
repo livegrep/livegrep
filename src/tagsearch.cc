@@ -100,12 +100,11 @@ bool tag_searcher::transform(query *q, match_result *m) const {
     // iterate through the lines to add context information
     auto line_it = file->content->begin(file_alloc_);
     auto line_end = file->content->end(file_alloc_);
-    const int kContextLines = 3;
     m->file = file;
 
     // jump to context before
     int current = 1;
-    for (;current < std::max(1, m->lno - kContextLines); ++current)
+    for (;current < std::max(1, m->lno - q->context_lines); ++current)
         ++line_it;
 
     // context before (we reverse the order to match codesearch)
@@ -132,7 +131,7 @@ bool tag_searcher::transform(query *q, match_result *m) const {
 
     // context after
     m->context_after.clear();
-    for (int i = 0; i < kContextLines && line_it != line_end; ++i) {
+    for (int i = 0; i < q->context_lines && line_it != line_end; ++i) {
         m->context_after.push_back(*line_it);
         ++line_it;
     }
