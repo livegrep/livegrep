@@ -43,8 +43,6 @@ using re2::RE2;
 using re2::StringPiece;
 using namespace std;
 
-const int    kContextLines = 3;
-
 const size_t kMinSkip = 250;
 const int kMinFilterRatio = 50;
 const int kMaxScan        = (1 << 20);
@@ -1027,7 +1025,7 @@ void searcher::try_match(const StringPiece& line,
         StringPiece l = line;
         int i = 0;
 
-        for (i = 0; i < kContextLines; i++) {
+        for (i = 0; i < query_->context_lines; i++) {
             if (l.data() == bit->data()) {
                 if (bit == sf->content->begin(cc_->alloc_.get()))
                     break;
@@ -1040,7 +1038,7 @@ void searcher::try_match(const StringPiece& line,
 
         l = line;
 
-        for (i = 0; i < kContextLines; i++) {
+        for (i = 0; i < query_->context_lines; i++) {
             if (l.data() + l.size() == fit->data() + fit->size()) {
                 if (++fit == sf->content->end(cc_->alloc_.get()))
                     break;

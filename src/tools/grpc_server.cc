@@ -28,6 +28,7 @@ using grpc::StatusCode;
 
 using std::string;
 
+DEFINE_int32(context_lines, 3, "The default number of result context lines to provide for a single query.");
 DEFINE_int32(max_matches, 50, "The default maximum number of matches to return for a single query.");
 
 class CodeSearchImpl final : public CodeSearch::Service {
@@ -143,6 +144,10 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
     if (status.ok())
         status = extract_regex(&q->negate.tags_pat, "-tags", request->not_tags());
     q->filename_only = request->filename_only();
+    q->context_lines = request->context_lines();
+    if (q->context_lines <= 0 && FLAGS_context_lines) {
+        q->context_lines = FLAGS_context_lines;
+    }
     return status;
 }
 
