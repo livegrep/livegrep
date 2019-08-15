@@ -72,7 +72,7 @@ index has been built. You can just launch a search server like so:
     bazel-bin/src/tools/codesearch -load_index livegrep.idx -grpc localhost:9999
 
 The schema for the `codesearch` configuration file defined using
-protobuf in `src/proto/config.proto`.
+protobuf in [src/proto/config.proto](src/proto/config.proto).
 
 ## `livegrep`
 
@@ -143,4 +143,4 @@ optimal performance.
 LICENSE
 -------
 
-Livegrep is open source. See COPYING for more information.
+Livegrep is open source. See [COPYING](COPYING) for more information.
