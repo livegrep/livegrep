@@ -457,14 +457,7 @@ func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
 		return callGit("git", args, *flagGithubKey)
 	}
 
-	// Pass explicit refspecs so we also fetch HEAD as well as
-	// refs/*. We could update config to do this, but it's easier
-	// to just pass it in as we need it.
-	//
-	// Without this, HEAD will forever point to whatever branch it
-	// pointed to during `clone`, even if it is later changed on
-	// the remote.
-	args := []string{"--git-dir", checkout, "fetch", "-p", "origin", "+HEAD:HEAD", "+refs/*:refs/*"}
+	args := []string{"--git-dir", checkout, "fetch", "-p"}
 	if depth != 0 {
 		args = append(args, fmt.Sprintf("--depth=%d", depth))
 	}
