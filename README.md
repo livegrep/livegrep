@@ -143,4 +143,4 @@ optimal performance.
 LICENSE
 -------
 
-Livegrep is open source. See COPYING for more information.
+Livegrep is open source. See [COPYING](COPYING) for more information.
