@@ -128,10 +128,9 @@ git_repository(
     remote = "https://github.com/bazelbuild/buildifier.git",
 )
 
-git_repository(
+local_repository(
     name = "org_dropbox_rules_node",
-    commit = "4c53c3ab5e7d4f75b50d6234567973c10ab3f7b8",
-    remote = "https://github.com/dropbox/rules_node.git",
+    path = "tools/org_dropbox_rules_node",
 )
 
 load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")

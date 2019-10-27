@@ -5,7 +5,6 @@ Bazel rules for working with node.
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-
 # Helper functions
 
 runfiles_tmpl = '''#!/bin/bash -eu
@@ -35,19 +34,18 @@ def _get_runfiles_tmpl(ctx, content):
     # If we're building an external binary, then we need to use the
     # workspace name of that binary, not the current workspace.
     if ctx.label.workspace_root:
-        if not ctx.label.workspace_root.startswith('external/'):
-            fail('Workspace root must start with external/: {}'.format(
+        if not ctx.label.workspace_root.startswith("external/"):
+            fail("Workspace root must start with external/: {}".format(
                 ctx.label.workspace_root,
             ))
-        workspace_name = ctx.label.workspace_root[len('external/'):]
+        workspace_name = ctx.label.workspace_root[len("external/"):]
     else:
         workspace_name = ctx.workspace_name
 
     return runfiles_tmpl.format(
-        content=content,
-        workspace_name=workspace_name,
+        content = content,
+        workspace_name = workspace_name,
     )
-
 
 def _get_package_dir(ctx):
     return ctx.label.package
@@ -55,33 +53,34 @@ def _get_package_dir(ctx):
 def _get_output_dir(ctx):
     # If it's an external label, output to workspace_root.
     if ctx.label.workspace_root:
-        return ctx.configuration.bin_dir.path + '/' + ctx.label.workspace_root + '/' + _get_package_dir(ctx)
+        return ctx.configuration.bin_dir.path + "/" + ctx.label.workspace_root + "/" + _get_package_dir(ctx)
 
-    return ctx.configuration.bin_dir.path + '/' + _get_package_dir(ctx)
+    return ctx.configuration.bin_dir.path + "/" + _get_package_dir(ctx)
 
 def _get_relpath(ctx, src):
-    package_prefix = _get_package_dir(ctx) + '/'
+    package_prefix = _get_package_dir(ctx) + "/"
 
     relpath = src.short_path
+
     # If relpath starts with '../', that means it belongs to an
     # external dependency, and it'll look like:
     #   '../{workspace_name}/{package_path}/{file}
     # We want to transform it so it includes the package path
     # and the file.
-    if relpath.startswith('../'):
-        parts = relpath.split('/')
-        relpath = '/'.join(parts[2:])
+    if relpath.startswith("../"):
+        parts = relpath.split("/")
+        relpath = "/".join(parts[2:])
 
     if not relpath.startswith(package_prefix):
-        fail('Path must be in the package: (path: {relpath}, package prefix: {package_prefix})'.format(
-                relpath=relpath,
-                package_prefix=package_prefix,
-            ))
+        fail("Path must be in the package: (path: {relpath}, package prefix: {package_prefix})".format(
+            relpath = relpath,
+            package_prefix = package_prefix,
+        ))
 
     return relpath[len(package_prefix):]
 
 def _new_node_modules_srcs_dict():
-    '''Returns a new `node_modules_srcs_dict` dict. It's just a normal
+    """Returns a new `node_modules_srcs_dict` dict. It's just a normal
     dict, this function exists so we can document how it works in one
     place.
 
@@ -96,11 +95,11 @@ def _new_node_modules_srcs_dict():
     NOTE: Make sure to fail if you need to add a path to
     `node_modules_srcs_dict` that already exists.
 
-    '''
+    """
     return {}
 
 def _new_all_node_modules():
-    '''Returns a new `all_node_modules` dict. It's just a normal
+    """Returns a new `all_node_modules` dict. It's just a normal
     dict, this function exists so we can document how it works in one
     place.
 
@@ -109,32 +108,32 @@ def _new_all_node_modules():
 
     The key should be unique to the package, and doesn't necessarily
     have any other semantic meaning.
-    '''
+    """
     return {}
 
 def _npm_library_impl(ctx):
     node_module_srcs = []
 
     npm_req = ctx.attr.npm_req
-    if '@' not in npm_req:
-        fail("npm_req must contain a '@': {npm_req}".format(npm_req=npm_req))
+    if "@" not in npm_req:
+        fail("npm_req must contain a '@': {npm_req}".format(npm_req = npm_req))
 
     # The module name is everything before the last '@'.
-    require_name = npm_req.rsplit('@', 1)[0]
-    require_prefix = require_name + '/'
+    require_name = npm_req.rsplit("@", 1)[0]
+    require_prefix = require_name + "/"
 
     node_modules_srcs_dict = _new_node_modules_srcs_dict()
     for content in ctx.attr.contents:
         if content in node_modules_srcs_dict:
-            fail('Duplicate path in node_modules: {content}'.format(content=content))
+            fail("Duplicate path in node_modules: {content}".format(content = content))
 
-        if not content.startswith(require_prefix) and not content.startswith('.bin/'):
-            fail(("npm library cannot include paths outside of {require_name} "+
-                  "or '.bin': {content}").format(require_name=require_name, content=content))
+        if not content.startswith(require_prefix) and not content.startswith(".bin/"):
+            fail(("npm library cannot include paths outside of {require_name} " +
+                  "or '.bin': {content}").format(require_name = require_name, content = content))
 
         # The created files are all under `node_modules/` because
         # that's where the npm installer puts them.
-        node_modules_srcs_dict[content] = ctx.new_file('node_modules/' + content)
+        node_modules_srcs_dict[content] = ctx.actions.declare_file("node_modules/" + content)
 
     shrinkwrap = ctx.file.shrinkwrap
 
@@ -146,18 +145,18 @@ def _npm_library_impl(ctx):
         command_args.extend(ctx.attr.npm_installer_extra_args)
 
     env = {}
-    if 'HTTP_PROXY' in ctx.var:
-        env['HTTP_PROXY'] = ctx.var['HTTP_PROXY']
-    if 'HTTPS_PROXY' in ctx.var:
-        env['HTTPS_PROXY'] = ctx.var['HTTPS_PROXY']
+    if "HTTP_PROXY" in ctx.var:
+        env["HTTP_PROXY"] = ctx.var["HTTP_PROXY"]
+    if "HTTPS_PROXY" in ctx.var:
+        env["HTTPS_PROXY"] = ctx.var["HTTPS_PROXY"]
 
-    ctx.action(
+    ctx.actions.run(
         inputs = [shrinkwrap],
         outputs = node_modules_srcs_dict.values(),
         executable = ctx.executable.npm_installer,
         arguments = command_args,
-        progress_message = 'installing node modules from {}'.format(shrinkwrap.path),
-        mnemonic = 'InstallNPMModules',
+        progress_message = "installing node modules from {}".format(shrinkwrap.path),
+        mnemonic = "InstallNPMModules",
         env = env,
     )
 
@@ -169,24 +168,31 @@ def _npm_library_impl(ctx):
     )
 
 _npm_library_internal = rule(
-    implementation = _npm_library_impl,
     attrs = {
-        'shrinkwrap': attr.label(allow_single_file=True, mandatory=True),
-        'npm_req': attr.string(mandatory=True),
-        'contents': attr.string_list(mandatory=True),
-        'npm_installer': attr.label(
-            executable = True,
-            cfg = 'host',
+        "shrinkwrap": attr.label(
+            allow_single_file = True,
+            mandatory = True,
         ),
-        'npm_installer_extra_args': attr.string_list(),
+        "npm_req": attr.string(mandatory = True),
+        "contents": attr.string_list(mandatory = True),
+        "npm_installer": attr.label(
+            executable = True,
+            cfg = "host",
+        ),
+        "npm_installer_extra_args": attr.string_list(),
     },
+    implementation = _npm_library_impl,
 )
 
-def npm_library(name, npm_req, shrinkwrap, contents,
-                no_import_main_test=False,
-                npm_installer='@org_dropbox_rules_node//node/tools/npm:install',
-                npm_installer_extra_args=[]):
-    '''Defines an external npm module.
+def npm_library(
+        name,
+        npm_req,
+        shrinkwrap,
+        contents,
+        no_import_main_test = False,
+        npm_installer = "@org_dropbox_rules_node//node/tools/npm:install",
+        npm_installer_extra_args = []):
+    """Defines an external npm module.
 
     This rule should usually be generated using
     `//node/tools/npm:gen_build_npm`, like this:
@@ -248,43 +254,41 @@ def npm_library(name, npm_req, shrinkwrap, contents,
 
       npm_installer_args: Extra arguments to pass to `npm_installer`.
 
-    '''
+    """
     _npm_library_internal(
         name = name,
-        shrinkwrap = shrinkwrap,
-        npm_req = npm_req,
         contents = contents,
         npm_installer = npm_installer,
         npm_installer_extra_args = npm_installer_extra_args,
+        npm_req = npm_req,
+        shrinkwrap = shrinkwrap,
     )
     _node_import_test(
-        name = name + '_import_test',
-        deps = [name],
-        npm_req = npm_req,
+        name = name + "_import_test",
         no_import_main_test = no_import_main_test,
+        npm_req = npm_req,
+        deps = [name],
     )
 
 def _collect_srcs_and_deps(ctx):
-    '''
+    """
     Collects all the srcs and deps from ctx's direct and transitive dependencies.
 
     Returns the tuple (srcs, all_node_modules).
-    '''
-    srcs = depset()
+    """
+    srcs = depset(ctx.files.srcs)
     all_node_modules = _new_all_node_modules()
-
-    srcs += ctx.files.srcs
 
     # Verify that `srcs` are not node_library or npm_library rules.
     for src in ctx.attr.srcs:
-        if hasattr(src, 'all_node_modules'):
-            fail('Invalid src, srcs must only be files: {}'.format(src.label))
+        if hasattr(src, "all_node_modules"):
+            fail("Invalid src, srcs must only be files: {}".format(src.label))
 
     for dep in ctx.attr.deps:
-        if hasattr(dep, 'srcs'):
+        if hasattr(dep, "srcs"):
             srcs += dep.srcs
 
-        if hasattr(dep, 'all_node_modules'):
+        if hasattr(dep, "all_node_modules"):
             for key, value in dep.all_node_modules.items():
                 if key not in all_node_modules:
                     all_node_modules[key] = value
@@ -297,17 +301,18 @@ def _node_library_impl(ctx):
     return struct(
         srcs = srcs,
         all_node_modules = all_node_modules,
-        runfiles = ctx.runfiles(collect_default=True),
+        runfiles = ctx.runfiles(collect_default = True),
     )
 
 node_library = rule(
-    implementation = _node_library_impl,
     attrs = {
-        'srcs': attr.label_list(allow_files=True),
-        'deps': attr.label_list(allow_files=False),
-        'data': attr.label_list(allow_files=True),
-    }
+        "srcs": attr.label_list(allow_files = True),
+        "deps": attr.label_list(allow_files = False),
+        "data": attr.label_list(allow_files = True),
+    },
+    implementation = _node_library_impl,
 )
+
 """
 Groups node.js sources and deps together.
 
@@ -318,36 +323,35 @@ Args:
   data: The list of files needed by this library at runtime.
 """
 
-
 def _construct_runfiles(ctx, srcs, all_node_modules):
-    '''
+    """
     Create the set of runfiles for node rules.
 
     Puts all of the node modules in `$RUNFILES/{pkg_dir}/node_modules`
     for the binary target.
 
     Fails if any files in all_node_modules conflict with each other.
-    '''
+    """
     package_dir = _get_package_dir(ctx)
     if ctx.label.workspace_root:
-        if not ctx.label.workspace_root.startswith('external/'):
-            fail('Workspace root must start with external/: {}'.format(
+        if not ctx.label.workspace_root.startswith("external/"):
+            fail("Workspace root must start with external/: {}".format(
                 ctx.label.workspace_root,
             ))
-        package_dir = ctx.label.workspace_root[len('external/'):] + '/' + package_dir
+        package_dir = ctx.label.workspace_root[len("external/"):] + "/" + package_dir
 
     symlinks = {}
     for node_modules_srcs_dict in all_node_modules.values():
         for content_path, src in node_modules_srcs_dict.items():
-            path = package_dir + '/node_modules/' + content_path
+            path = package_dir + "/node_modules/" + content_path
 
             if path in symlinks:
-                fail(('Cannot have conflicting paths in node_modules. This path was ' +
-                      'in your node modules twice: {path}. These are the deps included ' +
-                      'in your node_modules folder: {all_node_modules_keys}').format(
-                          path=path,
-                          all_node_modules_keys=all_node_modules.keys(),
-                      ))
+                fail(("Cannot have conflicting paths in node_modules. This path was " +
+                      "in your node modules twice: {path}. These are the deps included " +
+                      "in your node_modules folder: {all_node_modules_keys}").format(
+                    path = path,
+                    all_node_modules_keys = all_node_modules.keys(),
+                ))
 
             symlinks[path] = src
 
@@ -357,29 +361,29 @@ def _construct_runfiles(ctx, srcs, all_node_modules):
         return ctx.runfiles(
             files = list(srcs),
             root_symlinks = symlinks,
-            collect_default=True,
+            collect_default = True,
         )
     else:
         return ctx.runfiles(
             files = list(srcs),
             symlinks = symlinks,
-            collect_default=True,
+            collect_default = True,
         )
-
 
 def _node_binary_impl(ctx):
     srcs, all_node_modules = _collect_srcs_and_deps(ctx)
 
     # Add node binary to runfiles
+    srcs = srcs.to_list()
     srcs += [ctx.file.node]
 
-    node_flags = ['--preserve-symlinks']
+    node_flags = ["--preserve-symlinks"]
     if ctx.attr.max_old_memory:
-        node_flags.append('--max_old_space_size={}'.format(ctx.attr.max_old_memory))
+        node_flags.append("--max_old_space_size={}".format(ctx.attr.max_old_memory))
     if ctx.attr.expose_gc:
-        node_flags.append('--expose-gc')
+        node_flags.append("--expose-gc")
 
-    default_args = ' '.join(ctx.attr.extra_args + ['"$@"'])
+    default_args = " ".join(ctx.attr.extra_args + ['"$@"'])
 
     # We use --preserve-symlinks so that node will respect the symlink
     # tree in runfiles. One quirk of preserve symlinks is that
@@ -391,11 +395,11 @@ def _node_binary_impl(ctx):
     # node won't populate process.argv correctly.
 
     # Create the inner wrapper with the require call.
-    inner_wrapper = ctx.new_file(ctx.outputs.executable, ctx.outputs.executable.basename + '-wrapper.js')
+    inner_wrapper = ctx.actions.declare_file(ctx.outputs.executable.basename + "-wrapper.js", sibling = ctx.outputs.executable)
     srcs += [inner_wrapper]
-    ctx.file_action(
+    ctx.actions.write(
         inner_wrapper,
-        '''require(process.env['BAZEL_NODE_MAIN_ID']);''',
+        """require(process.env['BAZEL_NODE_MAIN_ID']);""",
     )
 
     # Some scripts use the pattern `if (require.main === module) {` to
@@ -403,54 +407,57 @@ def _node_binary_impl(ctx):
     # If you want that to work with bazel, you should check
     # BAZEL_NODE_MAIN_ID against the module id instead, like this:
     #   if (process.env['BAZEL_NODE_MAIN_ID'] === module.id || require.main === module) {
-    node_runfile_tmpl = '''
+    node_runfile_tmpl = """
 export BAZEL_NODE_MAIN_ID=$RUNFILES/{main}
 export NODE_PATH=$RUNFILES/{node_path}
 
 $RUNFILES/{node} {node_flags} $RUNFILES/{inner_wrapper} {default_args}
-'''
+"""
     runfile_content = _get_runfiles_tmpl(
-        ctx = ctx,
         content = node_runfile_tmpl.format(
             main = ctx.file.main.short_path,
             node = ctx.file.node.short_path,
-            node_flags = ' '.join(node_flags),
+            node_flags = " ".join(node_flags),
             inner_wrapper = inner_wrapper.short_path,
             default_args = default_args,
-            node_path = _get_package_dir(ctx) + '/node_modules',
-        )
+            node_path = _get_package_dir(ctx) + "/node_modules",
+        ),
+        ctx = ctx,
     )
 
     # Generate output executable
-    ctx.file_action(
+    ctx.actions.write(
         output = ctx.outputs.executable,
         content = runfile_content,
-        executable = True
+        is_executable = True,
     )
 
     runfiles = _construct_runfiles(ctx, srcs, all_node_modules)
-    return struct(runfiles=runfiles)
+    return struct(runfiles = runfiles)
 
 _node_bin_attrs = {
-    'srcs': attr.label_list(allow_files=True),
-    'deps': attr.label_list(allow_files=False),
-    'data': attr.label_list(allow_files=True),
-
-    'main': attr.label(allow_single_file=True, mandatory=True),
-    'extra_args': attr.string_list(),
-    'node': attr.label(
+    "srcs": attr.label_list(allow_files = True),
+    "deps": attr.label_list(allow_files = False),
+    "data": attr.label_list(allow_files = True),
+    "main": attr.label(
         allow_single_file = True,
-        default = Label('@nodejs//:node'),
+        mandatory = True,
     ),
-    'max_old_memory': attr.int(),
-    'expose_gc': attr.bool(default=False),
+    "extra_args": attr.string_list(),
+    "node": attr.label(
+        allow_single_file = True,
+        default = Label("@nodejs//:node"),
+    ),
+    "max_old_memory": attr.int(),
+    "expose_gc": attr.bool(default = False),
 }
 
 node_binary = rule(
-    implementation = _node_binary_impl,
-    executable = True,
     attrs = _node_bin_attrs,
+    executable = True,
+    implementation = _node_binary_impl,
 )
+
 """Creates a node binary, which is an executable Node program consisting
 of a collection of `.js` source files.
 
@@ -539,10 +546,11 @@ Args:
 """
 
 node_test = rule(
-    implementation = _node_binary_impl,
-    test = True,
     attrs = _node_bin_attrs,
+    test = True,
+    implementation = _node_binary_impl,
 )
+
 """
 Defines a basic node test. Succeeds if the program has a return code of
 0, otherwise it fails.
@@ -560,10 +568,14 @@ Args:
   node: The node binary used to run the binary. Must be greater than 6.2.0.
 """
 
-def mocha_test(name, srcs=[], deps=[], extra_args=[],
-               mocha_target='@org_dropbox_rules_node//npm/mocha',
-               chai_target='@org_dropbox_rules_node//npm/chai',
-               **kwargs):
+def mocha_test(
+        name,
+        srcs = [],
+        deps = [],
+        extra_args = [],
+        mocha_target = "@org_dropbox_rules_node//npm/mocha",
+        chai_target = "@org_dropbox_rules_node//npm/chai",
+        **kwargs):
     """
     Defines a node test that uses mocha. Takes the same args as
     `node_binary`, except that you can't pass a `main` arg,
@@ -593,7 +605,7 @@ def mocha_test(name, srcs=[], deps=[], extra_args=[],
     #
     # TODO: After node is upgraded to 7.1.0+, set the env
     # NODE_PRESERVE_SYMLINKS=1 and see if `bin/mocha` works.
-    main = 'node_modules/mocha/bin/_mocha'
+    main = "node_modules/mocha/bin/_mocha"
 
     node_test(
         name = name,
@@ -604,10 +616,9 @@ def mocha_test(name, srcs=[], deps=[], extra_args=[],
         **kwargs
     )
 
-
 def _node_internal_module_impl(ctx):
     if ctx.attr.package_json and ctx.attr.main:
-        fail('Can only specify one of package_json or main')
+        fail("Can only specify one of package_json or main")
 
     srcs, all_node_modules = _collect_srcs_and_deps(ctx)
 
@@ -618,28 +629,28 @@ def _node_internal_module_impl(ctx):
         require_name = ctx.label.name
 
     if ctx.attr.package_json:
-        srcs += [ctx.file.package_json]
+        srcs = depset([ctx.file.package_json], transitive = srcs)
     elif ctx.attr.main:
         # Create a package.json file that points to the 'main' js
         # file.
-        package_json_src = ctx.new_file('package.json')
+        package_json_src = ctx.actions.declare_file("package.json")
         main = ctx.file.main
 
         main_relpath = _get_relpath(ctx, main)
-        ctx.file_action(
+        ctx.actions.write(
             package_json_src,
-            '''{{"main": "{main_relpath}"}}'''.format(main_relpath=main_relpath),
+            '''{{"main": "{main_relpath}"}}'''.format(main_relpath = main_relpath),
         )
-        srcs += [package_json_src]
+        srcs = depset([package_json_src], transitive = [srcs])
 
     node_modules_srcs_dict = _new_node_modules_srcs_dict()
-    for src in srcs:
+    for src in srcs.to_list():
         relpath = _get_relpath(ctx, src)
 
-        require_path = require_name + '/' + relpath
+        require_path = require_name + "/" + relpath
         if require_path in node_modules_srcs_dict:
-            fail('Duplicate path in node_modules: {require_path}'.format(
-                require_path=require_path,
+            fail("Duplicate path in node_modules: {require_path}".format(
+                require_path = require_path,
             ))
         node_modules_srcs_dict[require_path] = src
 
@@ -647,21 +658,21 @@ def _node_internal_module_impl(ctx):
 
     return struct(
         all_node_modules = all_node_modules,
-        runfiles = ctx.runfiles(collect_default=True),
+        runfiles = ctx.runfiles(collect_default = True),
     )
 
-
 node_internal_module = rule(
-    implementation = _node_internal_module_impl,
     attrs = {
-        'srcs': attr.label_list(allow_files=True),
-        'deps': attr.label_list(allow_files=False),
-        'data': attr.label_list(allow_files=True),
-        'require_name': attr.string(),
-        'package_json': attr.label(allow_single_file=True),
-        'main': attr.label(allow_single_file=True),
-    }
+        "srcs": attr.label_list(allow_files = True),
+        "deps": attr.label_list(allow_files = False),
+        "data": attr.label_list(allow_files = True),
+        "require_name": attr.string(),
+        "package_json": attr.label(allow_single_file = True),
+        "main": attr.label(allow_single_file = True),
+    },
+    implementation = _node_internal_module_impl,
 )
+
 """
 Create an internal node module that can be included in the `deps` for
 other rules and that can be required as `require('module_name')`.
@@ -696,46 +707,47 @@ def _node_import_test(name, deps, npm_req, no_import_main_test):
         See npm_library for details.
 
     """
-    # Break npm_req into its name and version.
-    if '@' not in npm_req:
-        fail('npm_req is malformed, it must look like `module-name@1.2.3`: ' + npm_req)
-    split = npm_req.split('@')
 
-    import_name = '@'.join(split[:-1])
+    # Break npm_req into its name and version.
+    if "@" not in npm_req:
+        fail("npm_req is malformed, it must look like `module-name@1.2.3`: " + npm_req)
+    split = npm_req.split("@")
+
+    import_name = "@".join(split[:-1])
     import_version = split[-1]
 
     args = [
-        '--import_name=' + import_name,
-        '--import_version=' + import_version,
+        "--import_name=" + import_name,
+        "--import_version=" + import_version,
     ]
     if no_import_main_test:
-        args.append('--no_import_main_test')
+        args.append("--no_import_main_test")
 
     node_test(
         name = name,
-        srcs = ['@org_dropbox_rules_node//node/tools:import_check.js'],
-        main = '@org_dropbox_rules_node//node/tools:import_check.js',
-        deps = deps,
+        size = "small",
+        srcs = ["@org_dropbox_rules_node//node/tools:import_check.js"],
         extra_args = args,
-        size = 'small',
+        main = "@org_dropbox_rules_node//node/tools:import_check.js",
+        deps = deps,
     )
 
 def _node_build_impl(ctx):
     env = dict(ctx.attr.env.items() + {
-        'BAZEL_OUTPUT_DIR': _get_output_dir(ctx),
+        "BAZEL_OUTPUT_DIR": _get_output_dir(ctx),
     }.items())
 
     args = []
     if ctx.var["COMPILATION_MODE"] == "opt" and ctx.attr.optimize_flag:
         args.append(ctx.attr.optimize_flag)
 
-    ctx.action(
+    ctx.actions.run(
         executable = ctx.executable.builder,
         outputs = ctx.outputs.outs,
         env = env,
         arguments = args + ctx.attr.extra_args,
-        mnemonic = 'NodeBuild',
-        progress_message = 'building {} with node'.format(ctx.label.name),
+        mnemonic = "NodeBuild",
+        progress_message = "building {} with node".format(ctx.label.name),
     )
     return struct(
         files = depset(ctx.outputs.outs),
@@ -746,16 +758,21 @@ def _node_build_impl(ctx):
     )
 
 node_build = rule(
-    implementation = _node_build_impl,
     attrs = {
-        'outs': attr.output_list(mandatory=True),
-        'data': attr.label_list(allow_files=True),
-        'builder': attr.label(executable=True, cfg='host', mandatory=True),
-        'env': attr.string_dict(),
-        'extra_args': attr.string_list(),
-        'optimize_flag': attr.string(),
+        "outs": attr.output_list(mandatory = True),
+        "data": attr.label_list(allow_files = True),
+        "builder": attr.label(
+            executable = True,
+            cfg = "host",
+            mandatory = True,
+        ),
+        "env": attr.string_dict(),
+        "extra_args": attr.string_list(),
+        "optimize_flag": attr.string(),
     },
+    implementation = _node_build_impl,
 )
+
 """Build JS/CSS/etc with a node binary.
 
 This is a low-level rule, and is only recommended for completely
@@ -784,9 +801,16 @@ Args:
 
 """
 
-
-def webpack_build(name, srcs=[], deps=[], data=[], config='', outs=[], env={},
-                   extra_args=[], webpack_target='@org_dropbox_rules_node//npm/webpack'):
+def webpack_build(
+        name,
+        srcs = [],
+        deps = [],
+        data = [],
+        config = "",
+        outs = [],
+        env = {},
+        extra_args = [],
+        webpack_target = "@org_dropbox_rules_node//npm/webpack"):
     """
     Build JS/CSS/etc with webpack.
 
@@ -854,38 +878,36 @@ def webpack_build(name, srcs=[], deps=[], data=[], config='', outs=[], env={},
 
     """
     if not config:
-        fail('Must specify a config')
+        fail("Must specify a config")
     if not outs:
-        fail('Must specify output')
+        fail("Must specify output")
 
     srcs += [config]
 
     deps += [webpack_target]
 
     node_binary(
-        name = name + '_bin',
+        name = name + "_bin",
         srcs = srcs,
-        deps = deps,
         data = data,
-        main = 'node_modules/webpack/bin/webpack.js',
         extra_args = [
-            '--config',
-            '$RUNFILES/{pkg}/{config}'.format(
-                pkg=native.package_name(),
-                config=config,
+            "--config",
+            "$RUNFILES/{pkg}/{config}".format(
+                pkg = native.package_name(),
+                config = config,
             ),
         ] + extra_args,
+        main = "node_modules/webpack/bin/webpack.js",
+        deps = deps,
     )
     node_build(
         name = name,
         outs = outs,
+        builder = name + "_bin",
         data = data,
-        builder = name + '_bin',
-        optimize_flag = '-p',
         env = env,
+        optimize_flag = "-p",
     )
-
-
 
 NODEJS_BUILD_FILE_CONTENT = r"""
 package(default_visibility = [ "//visibility:public" ])
@@ -905,13 +927,13 @@ filegroup(
 )
 """
 
-def node_repositories(omit_nodejs=False):
+def node_repositories(omit_nodejs = False):
     if not omit_nodejs:
         http_archive(
             name = "nodejs",
-            url = "https://nodejs.org/dist/v6.11.1/node-v6.11.1-linux-x64.tar.xz",
-            type = "tar.xz",
-            strip_prefix = "node-v6.11.1-linux-x64",
-            sha256 = "e68cc956f0ca5c54e7f3016d639baf987f6f9de688bb7b31339ab7561af88f41",
             build_file_content = NODEJS_BUILD_FILE_CONTENT,
+            sha256 = "e68cc956f0ca5c54e7f3016d639baf987f6f9de688bb7b31339ab7561af88f41",
+            strip_prefix = "node-v6.11.1-linux-x64",
+            type = "tar.xz",
+            url = "https://nodejs.org/dist/v6.11.1/node-v6.11.1-linux-x64.tar.xz",
         )
