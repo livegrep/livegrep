@@ -1,12 +1,19 @@
 cc_library(
-  name = "divsufsort",
-  includes = [
-    "include/",
-  ],
-  hdrs = ["include/divsufsort.h"],
-  srcs = glob(["lib/*.c", "include/*.h"], exclude=["include/divsufsort.h"]),
-  visibility = [ "//visibility:public" ],
-  copts = [
-    "-DHAVE_CONFIG_H"
-  ],
+    name = "divsufsort",
+    srcs = glob(
+        [
+            "lib/*.c",
+            "include/*.h",
+        ],
+    ),
+    copts = [
+        "-DHAVE_CONFIG_H",
+    ],
+    includes = [
+        "include/",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_livegrep_livegrep//third_party:divsufsort",
+    ],
 )

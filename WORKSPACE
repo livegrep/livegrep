@@ -23,8 +23,6 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "divsufsort",
     build_file = "//third_party:BUILD.divsufsort",
-    patch_args = ["-p1"],
-    patches = ["//third_party:divsufsort.patch"],
     sha256 = "9164cb6044dcb6e430555721e3318d5a8f38871c2da9fd9256665746a69351e0",
     strip_prefix = "libdivsufsort-2.0.1",
     type = "tgz",

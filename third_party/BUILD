@@ -9,3 +9,10 @@ cc_library(
     includes = ["utf8cpp/source"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "divsufsort",
+    hdrs = glob(["divsufsort/*.h"]),
+    strip_include_prefix = "divsufsort",
+    visibility = ["//visibility:public"],
+)
