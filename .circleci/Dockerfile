@@ -13,7 +13,7 @@ RUN apt-get update && apt-get -y install \
         openssh-client \
         python
 
-ADD https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-173.0.0-linux-x86_64.tar.gz /tmp/gcloud.tar.gz
+ADD https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-268.0.0-linux-x86_64.tar.gz /tmp/gcloud.tar.gz
 RUN tar -C /usr/local/ -xzf /tmp/gcloud.tar.gz
 RUN /usr/local/google-cloud-sdk/install.sh
 
