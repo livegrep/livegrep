@@ -1,5 +1,5 @@
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
-load("@compdb//:aspects.bzl", "compilation_database")
+load("@com_grail_bazel_compdb//:aspects.bzl", "compilation_database")
 
 compilation_database(
     name = "compilation_db",
