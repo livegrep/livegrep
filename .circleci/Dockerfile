@@ -11,7 +11,7 @@ RUN apt-get update && apt-get -y install \
         openjdk-8-jdk \
         git \
         openssh-client \
-        python
+        python python3
 
 ADD https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-268.0.0-linux-x86_64.tar.gz /tmp/gcloud.tar.gz
 RUN tar -C /usr/local/ -xzf /tmp/gcloud.tar.gz
