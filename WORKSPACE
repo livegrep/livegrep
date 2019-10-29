@@ -12,19 +12,8 @@ load(
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
-    name = "build_stack_rules_proto",
-    sha256 = "78e378237c6e7bd7cfdda155d4f7010b27723f26ebfa6345e79675bddbbebc11",
-    strip_prefix = "rules_proto-56665373fe541d6f134d394624c8c64cd5652e8c",
-    urls = ["https://github.com/stackb/rules_proto/archive/56665373fe541d6f134d394624c8c64cd5652e8c.tar.gz"],
-)
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
     name = "divsufsort",
     build_file = "//third_party:BUILD.divsufsort",
-    patch_args = ["-p1"],
-    patches = ["//third_party:divsufsort.patch"],
     sha256 = "9164cb6044dcb6e430555721e3318d5a8f38871c2da9fd9256665746a69351e0",
     strip_prefix = "libdivsufsort-2.0.1",
     type = "tgz",
@@ -66,10 +55,13 @@ git_repository(
     remote = "https://github.com/abseil/abseil-cpp",
 )
 
-git_repository(
+http_archive(
     name = "io_bazel_rules_go",
-    commit = "dad6b2e97e4e81d364608a80acf38fc058d155a4",  # 0.18.0
-    remote = "https://github.com/bazelbuild/rules_go.git",
+    sha256 = "842ec0e6b4fbfdd3de6150b61af92901eeb73681fd4d185746644c338f51d4c0",
+    urls = [
+        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/rules_go/releases/download/v0.20.1/rules_go-v0.20.1.tar.gz",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.20.1/rules_go-v0.20.1.tar.gz",
+    ],
 )
 
 git_repository(
@@ -108,19 +100,20 @@ new_libgit2_archive(
     version = "0.24.1",
 )
 
-load(
-    "@build_stack_rules_proto//cpp:deps.bzl",
-    "cpp_grpc_compile",
-    "cpp_proto_compile",
+git_repository(
+    name = "com_github_grpc_grpc",
+    commit = "a6c7b66f756ba8d4d87ee2b28e004e0ad3a642c9",
+    remote = "https://github.com/grpc/grpc.git",
+    #    shallow_since = "1572095092 -0700",
 )
-
-cpp_proto_compile()
-
-cpp_grpc_compile()
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
+
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+
+grpc_extra_deps()
 
 git_repository(
     name = "io_bazel_buildifier",
@@ -128,24 +121,18 @@ git_repository(
     remote = "https://github.com/bazelbuild/buildifier.git",
 )
 
-git_repository(
+local_repository(
     name = "org_dropbox_rules_node",
-    commit = "4c53c3ab5e7d4f75b50d6234567973c10ab3f7b8",
-    remote = "https://github.com/dropbox/rules_node.git",
+    path = "tools/org_dropbox_rules_node",
 )
 
 load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
 
 node_repositories()
 
-new_git_repository(
-    name = "compdb",
-    build_file_content = (
-        """
-package(default_visibility = ["//visibility:public"])
-"""
-    ),
-    commit = "5fd82a9dd99b93535ebc40471bd638ac58b7c090",
+git_repository(
+    name = "com_grail_bazel_compdb",
+    commit = "7658de071fcd072163c24cc96d78e9891d4d81f5",
     remote = "https://github.com/grailbio/bazel-compilation-database.git",
 )
 

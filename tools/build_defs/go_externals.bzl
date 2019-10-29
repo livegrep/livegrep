@@ -37,6 +37,7 @@ _externals = [
     _golang_x("net", "d212a1ef2de2f5d441c327b8f26cf3ea3ea9f265"),
     _golang_x("text", "a9a820217f98f7c8a207ec1e45a874e1fe12c478"),
     _golang_x("oauth2", "a6bd8cefa1811bd24b86f8902872e4e8225f74c4"),
+    _golang_x("sys", "33540a1f603772f9d4b761f416f5c10dade23e96"),
     struct(
         name = "org_golang_google_appengine",
         commit = "170382fa85b10b94728989dfcf6cc818b335c952",
@@ -54,6 +55,11 @@ _externals = [
     _github("facebookgo/clock", "600d898af40aa09a7a93ecb9265d87b0504b6f03"),
     _gopkg("alexcesaro/statsd.v2", "7fea3f0d2fab1ad973e641e51dba45443a311a90"),
     _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
+    struct(
+        name = "org_golang_google_grpc",
+        commit = "f6d0f9ee430895e87ef1ceb5ac8f39725bafceef",
+        importpath = "google.golang.org/grpc",
+    ),
 ]
 
 def go_externals():
