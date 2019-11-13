@@ -87,17 +87,12 @@ load(
 
 go_externals()
 
-load(
-    "//tools/build_defs:libgit2.bzl",
-    "new_libgit2_archive",
-)
-
-new_libgit2_archive(
+http_archive(
     name = "com_github_libgit2",
     build_file = "//third_party:BUILD.libgit2",
-    sha256 = "0269ec198c54e44f275f8f51e7391681a03aa45555e2ab6ce60b0757b6bde3de",
-    url = "https://github.com/libgit2/libgit2/archive/v0.24.1.tar.gz",
-    version = "0.24.1",
+    sha256 = "adf17310b590e6e7618f070c742b5ee028aeeed2c60099bc4190c386b5060de1",
+    strip_prefix = "libgit2-0.27.9/",
+    url = "https://github.com/libgit2/libgit2/archive/v0.27.9.tar.gz",
 )
 
 git_repository(
