@@ -1,58 +1,68 @@
 cc_library(
-  name = "http_parser",
-  srcs = ["deps/http-parser/http_parser.c"],
-  hdrs = ["deps/http-parser/http_parser.h"],
-  includes = ["deps/http-parser/"],
+    name = "http_parser",
+    srcs = ["deps/http-parser/http_parser.c"],
+    hdrs = ["deps/http-parser/http_parser.h"],
+    includes = ["deps/http-parser/"],
 )
 
 cc_library(
-  name = "headers",
-  hdrs = glob([
-    "src/*.h",
-    "include/git2/**/*.h",
-  ]),
-  includes = ["include"],
+    name = "headers",
+    hdrs = glob([
+        "src/*.h",
+        "include/git2/**/*.h",
+    ]),
+    includes = ["include"],
 )
 
 cc_library(
-  name = "zlib",
-  srcs = glob(["deps/zlib/*.c"]),
-  hdrs = glob(["deps/zlib/*.h"]),
-  deps = [
-    ":headers",
-  ],
-  includes = [
-    "deps/zlib",
-  ],
-  copts = [
-    "-DSTDC=1",
-  ],
+    name = "zlib",
+    srcs = glob(["deps/zlib/*.c"]),
+    hdrs = glob(["deps/zlib/*.h"]),
+    copts = [
+        "-DSTDC=1",
+    ],
+    includes = [
+        "deps/zlib",
+    ],
+    deps = [
+        ":headers",
+    ],
 )
 
 cc_library(
-  name = "libgit2",
-  hdrs = glob(["include/**/*.h"]),
-  srcs = glob([
-    "src/*.c", "src/*.h",
-    "src/hash/*.c", "src/hash/*.h",
-    "src/unix/*.c", "src/unix/*.h",
-    "src/transports/*.c", "src/transports/*.h",
-    "src/xdiff/*.h", "src/xdiff/*.c",
-  ], exclude = [
-    "src/hash/hash_win32.h",
-    "src/hash/hash_win32.c",
-    "src/transports/winhttp.c",
-  ]) + [
-
-  ],
-  deps = [
-    ":headers",
-    ":http_parser",
-    ":zlib",
-  ],
-  copts = [
-    "-Iexternal/com_github_libgit2/src",
-    "-Wno-unused-function",
-  ],
-  visibility = ["//visibility:public"],
+    name = "libgit2",
+    srcs = glob(
+        [
+            "src/*.c",
+            "src/*.h",
+            "src/hash/hash_collisiondetect.h",
+            "src/hash/hash_common_crypto.h",
+            "src/hash/sha1dc/*.c",
+            "src/hash/sha1dc/*.h",
+            "src/unix/*.c",
+            "src/unix/*.h",
+            "src/transports/*.c",
+            "src/transports/*.h",
+            "src/xdiff/*.h",
+            "src/xdiff/*.c",
+            "src/streams/*.h",
+            "src/streams/*.c",
+        ],
+        exclude = [
+            "src/transports/winhttp.c",
+        ],
+    ) + [
+    ],
+    hdrs = glob(["include/**/*.h"]),
+    copts = [
+        "-Iexternal/com_github_libgit2/src",
+        "-Wno-unused-function",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":headers",
+        ":http_parser",
+        ":zlib",
+        "@com_github_livegrep_livegrep//third_party:libgit2_features",
+    ],
 )

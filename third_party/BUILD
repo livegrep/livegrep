@@ -16,3 +16,11 @@ cc_library(
     strip_include_prefix = "divsufsort",
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "libgit2_features",
+    hdrs = glob(["libgit2/*.h"]),
+    include_prefix = "git2/sys",
+    strip_include_prefix = "libgit2",
+    visibility = ["//visibility:public"],
+)
