@@ -70,6 +70,9 @@ message CodeSearchResult {
     SearchStats stats = 1;
     repeated SearchResult results = 2;
     repeated FileResult file_results = 3;
+    // unique index identity that served this request
+    string index_name = 4;
+    int64 index_time = 5;
 }
 
 message InfoRequest {

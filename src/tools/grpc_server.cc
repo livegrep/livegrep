@@ -281,6 +281,9 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
 
     scoped_trace_id trace(trace_id_from_request(context));
 
+    response->set_index_name(cs_->name());
+    response->set_index_time(cs_->index_timestamp());
+
     query q;
     Status st;
     st = parse_query(&q, request, response);
