@@ -12,7 +12,7 @@ import (
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
-var pieceRE = regexp.MustCompile(`\(|(?:^([a-zA-Z0-9-_]+):|\\.)| `)
+var pieceRE = regexp.MustCompile(`\[|\(|(?:^([a-zA-Z0-9-_]+):|\\.)| `)
 
 var knownTags = map[string]bool{
 	"file":        true,
@@ -79,16 +79,24 @@ func ParseQuery(query string, globalRegex bool) (pb.Query, error) {
 				term = ""
 				inRegex = globalRegex
 			}
-		} else if match == "(" {
+		} else if match == "(" || match == "[" {
 			if !(inRegex || justGotSpace) {
-				term += "("
+				term += match
 			} else {
-				// A parenthesis. Nothing is special until the
-				// end of a balanced set of parenthesis
+				// A parenthesis or a bracket. Consume
+				// until the end of a balanced set.
 				p := 1
 				i := 0
 				esc := false
 				var w bytes.Buffer
+				var open, close rune
+				switch match {
+				case "(":
+					open, close = '(', ')'
+				case "[":
+					open, close = '[', ']'
+				}
+
 				for i < len(q) {
 					// We decode runes ourselves instead
 					// of using range because exiting the
@@ -101,9 +109,9 @@ func ParseQuery(query string, globalRegex bool) (pb.Query, error) {
 						esc = false
 					case r == '\\':
 						esc = true
-					case r == '(':
+					case r == open:
 						p++
-					case r == ')':
+					case r == close:
 						p--
 					}
 					w.WriteRune(r)

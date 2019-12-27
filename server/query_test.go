@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -153,6 +154,21 @@ func TestParseQuery(t *testing.T) {
 			pb.Query{Line: `a\(b`, File: "c", FoldCase: false},
 			true,
 		},
+		{
+			`[(] file:\.c`,
+			pb.Query{Line: `[(]`, File: "\\.c", FoldCase: true},
+			true,
+		},
+		{
+			`[ ] file:\.c`,
+			pb.Query{Line: `[ ]`, File: "\\.c", FoldCase: true},
+			true,
+		},
+		{
+			`[ \]] file:\.c`,
+			pb.Query{Line: `[ \]]`, File: "\\.c", FoldCase: true},
+			true,
+		},
 
 		// literal parse mode
 		{
@@ -200,8 +216,10 @@ func TestParseQuery(t *testing.T) {
 	for _, tc := range cases {
 		parsed, err := ParseQuery(tc.in, tc.regex)
 		if !reflect.DeepEqual(tc.out, parsed) {
-			t.Errorf("error parsing %q: expected %#v got %#v",
-				tc.in, tc.out, parsed)
+			got, _ := json.MarshalIndent(parsed, "", "  ")
+			want, _ := json.MarshalIndent(tc.out, "", "  ")
+			t.Errorf("error parsing %q: expected:\n%s\ngot:\n%s",
+				tc.in, want, got)
 		}
 		if err != nil {
 			t.Errorf("parse(%v) error=%v", tc.in, err)
