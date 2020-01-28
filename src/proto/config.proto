@@ -7,9 +7,10 @@ message IndexSpec {
 }
 
 message Metadata {
-    string url_pattern = 1 [json_name = "url-pattern"];
-    string remote = 2      [json_name = "remote"];
-    string github = 3      [json_name = "github"];
+    string url_pattern = 1     [json_name = "url-pattern"];
+    string remote = 2          [json_name = "remote"];
+    string github = 3          [json_name = "github"];
+    repeated string labels = 4 [json_name = "labels"];
 }
 
 message PathSpec {
