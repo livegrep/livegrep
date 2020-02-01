@@ -45,6 +45,7 @@ message SearchStats {
     int64 sort_time = 3;
     int64 index_time = 4;
     int64 analyze_time = 5;
+    int64 total_time = 7;
     enum ExitReason {
         NONE = 0;
         TIMEOUT = 1;
