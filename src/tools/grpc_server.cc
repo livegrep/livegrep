@@ -337,6 +337,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         ;
 
     match_stats stats;
+    timer search_tm(true);
     if (q.tags_pat == NULL && tagdata_ && might_match_tags) {
         CodeSearchImpl::TagsFirstSearch_(response, q, stats);
     } else if (q.tags_pat == NULL) {
@@ -355,6 +356,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
         add_match cb(&ls, response);
         run_tags_search(q, line_pat, tagdata_, cb, tagmatch_, stats);
     }
+    search_tm.pause();
 
     auto out_stats = response->mutable_stats();
     out_stats->set_re2_time(timeval_ms(stats.re2_time));
@@ -362,6 +364,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
     out_stats->set_sort_time(timeval_ms(stats.sort_time));
     out_stats->set_index_time(timeval_ms(stats.index_time));
     out_stats->set_analyze_time(timeval_ms(stats.analyze_time));
+    out_stats->set_total_time(timeval_ms(search_tm.elapsed()));
     switch (stats.why) {
     case kExitNone:
         out_stats->set_exit_reason(SearchStats::NONE);
