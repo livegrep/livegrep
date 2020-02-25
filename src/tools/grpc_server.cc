@@ -293,8 +293,13 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
     q.trace_id = current_trace_id();
 
     q.max_matches = request->max_matches();
-    if (q.max_matches <= 0 && FLAGS_max_matches)
+    if (q.max_matches == 0 && FLAGS_max_matches) {
+        // For zero-valued match limits, defer to the command line-specified default
         q.max_matches = FLAGS_max_matches;
+    } else if (q.max_matches < 0) {
+        // For explicitly negative match limits, disable the match limiter entirely
+        q.max_matches = 0;
+    }
 
     log(q.trace_id,
         "processing query line='%s' file='%s' tree='%s' tags='%s' "
