@@ -56,7 +56,7 @@ connection.
 
 By default, `codesearch` will build an in-memory index over the
 repositories specified in its configuration file. You can, however,
-also instruct it to save the index to a file on disk. This the dual
+also instruct it to save the index to a file on disk. This has the dual
 advantages of allowing indexes that are too large to fit in RAM, and
 of allowing an index file to be reused. You instruct `codesearch` to
 generate an index file via the `-dump_index` flag and to not launch
