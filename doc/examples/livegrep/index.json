@@ -15,7 +15,7 @@
             "path": ".",
             "revisions": [ "HEAD" ],
             "metadata": {
-                "github": "nelhage/livegrep"
+                "github": "livegrep/livegrep"
             }
         }
     ]
