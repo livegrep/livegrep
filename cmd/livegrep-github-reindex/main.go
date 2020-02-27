@@ -35,7 +35,7 @@ var (
 	flagRevparse    = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
 	flagName        = flag.String("name", "livegrep index", "The name to be stored in the index file")
 	flagForks       = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
-	flagHTTP        = flag.Bool("http", false, "clone repositories over HTTPS instead of ssh")
+	flagHTTP        = flag.Bool("http", false, "clone repositories over HTTPS instead of SSH")
 	flagDepth       = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
 	flagSkipMissing = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
 	flagRepos       = stringList{}
