@@ -51,6 +51,7 @@ DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_bool(index_only, false, "Build the index and don't serve queries");
 DEFINE_string(grpc, "localhost:9999", "GRPC listener address");
 DEFINE_bool(reload_rpc, false, "Enable the Reload RPC");
+DEFINE_bool(reuseport, true, "Set SO_REUSEPORT to enable multiple concurrent server instances.");
 
 using namespace std;
 using namespace re2;
@@ -151,7 +152,13 @@ void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr)
     ServerBuilder builder;
     builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
     builder.RegisterService(service.get());
+    if (!FLAGS_reuseport) {
+        builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+    }
     std::unique_ptr<Server> server(builder.BuildAndStart());
+    if (!server) {
+        die("Error starting GRPC server.");
+    }
 
     log("Serving...");
 
