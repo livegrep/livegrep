@@ -38,6 +38,7 @@ _externals = [
     _golang_x("text", "a9a820217f98f7c8a207ec1e45a874e1fe12c478"),
     _golang_x("oauth2", "a6bd8cefa1811bd24b86f8902872e4e8225f74c4"),
     _golang_x("sys", "33540a1f603772f9d4b761f416f5c10dade23e96"),
+    _golang_x("crypto", "4b2356b1ed79e6be3deca3737a3db3d132d2847a"),
     struct(
         name = "org_golang_google_appengine",
         commit = "170382fa85b10b94728989dfcf6cc818b335c952",
@@ -45,7 +46,7 @@ _externals = [
         remote = "https://github.com/golang/appengine",
         vcs = "git",
     ),
-    _github("google/go-github", "e8d46665e050742f457a58088b1e6b794b2ae966"),
+    _github("google/go-github", "e0066688b631702f66e0435ee1633f9d0091e4b9"),
     _github("honeycombio/libhoney-go", "a8716c5861ae19c1e2baaad52dd59ba64b902bde"),
     _github("nelhage/go.cli", "2aeb96ef8025f3646befae8353b90f95e9e79bdc"),
     _github("bmizerany/pat", "c068ca2f0aacee5ac3681d68e4d0a003b7d1fd2c"),
