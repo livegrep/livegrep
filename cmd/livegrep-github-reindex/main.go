@@ -35,6 +35,7 @@ var (
 	flagRevparse    = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
 	flagName        = flag.String("name", "livegrep index", "The name to be stored in the index file")
 	flagForks       = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
+	flagArchived    = flag.Bool("archived", false, "whether to index repositories that are archived on github")
 	flagHTTP        = flag.Bool("http", false, "clone repositories over HTTPS instead of SSH")
 	flagDepth       = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
 	flagSkipMissing = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
@@ -103,7 +104,7 @@ func main() {
 		log.Fatalln(err.Error())
 	}
 
-	repos = filterRepos(repos, blacklist, !*flagForks)
+	repos = filterRepos(repos, blacklist, !*flagForks, !*flagArchived)
 
 	sort.Sort(ReposByName(repos))
 
@@ -254,12 +255,16 @@ func runJobs(client *github.Client, jobc <-chan loadJob, done <-chan struct{}, o
 
 func filterRepos(repos []*github.Repository,
 	blacklist map[string]struct{},
-	excludeForks bool) []*github.Repository {
+	excludeForks bool, excludeArchived bool) []*github.Repository {
 	var out []*github.Repository
 
 	for _, r := range repos {
 		if excludeForks && r.Fork != nil && *r.Fork {
 			log.Printf("Excluding fork %s...", *r.FullName)
+			continue
+		}
+		if excludeArchived && r.Archived != nil && *r.Archived {
+			log.Printf("Excluding archived %s...", *r.FullName)
 			continue
 		}
 		if blacklist != nil {
