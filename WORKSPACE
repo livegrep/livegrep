@@ -24,18 +24,21 @@ git_repository(
     name = "com_googlesource_code_re2",
     commit = "767de83bb7e4bfe3a2d8aec0ec79f9f1f66da30a",
     remote = "https://github.com/google/re2",
+    shallow_since = "1535650560 +0000",
 )
 
 git_repository(
     name = "gflags",
     commit = "e171aa2d15ed9eb17054558e0b3a6a413bb01067",  # v2.2.2
     remote = "https://github.com/gflags/gflags",
+    shallow_since = "1541971260 +0000",
 )
 
 git_repository(
     name = "com_github_nelhage_rules_boost",
     commit = "c1d618315fa152958baef8ea0d77043eebf7f573",
     remote = "https://github.com/nelhage/rules_boost",
+    shallow_since = "1546641660 -0600",
 )
 # local_repository(
 #   name = "com_github_nelhage_boost",
@@ -68,6 +71,7 @@ git_repository(
     name = "bazel_gazelle",
     commit = "e443c54b396a236e0d3823f46c6a931e1c9939f2",  # 0.17.0
     remote = "https://github.com/bazelbuild/bazel-gazelle.git",
+    shallow_since = "1551292640 -0800",
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
