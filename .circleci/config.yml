@@ -11,3 +11,7 @@ jobs:
             - bazel-cache
 
       - run: ./.circleci/build.sh
+      - save_cache:
+          key: bazel-cache
+          paths:
+            - /root/.cache/bazel
