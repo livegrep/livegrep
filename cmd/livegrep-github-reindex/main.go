@@ -31,17 +31,19 @@ var (
 		display: "${dir}/livegrep.idx",
 		fn:      func() string { return path.Join(*flagRepoDir, "livegrep.idx") },
 	}
-	flagRevision    = flag.String("revision", "HEAD", "git revision to index")
-	flagRevparse    = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
-	flagName        = flag.String("name", "livegrep index", "The name to be stored in the index file")
-	flagForks       = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
-	flagArchived    = flag.Bool("archived", false, "whether to index repositories that are archived on github")
-	flagHTTP        = flag.Bool("http", false, "clone repositories over HTTPS instead of SSH")
-	flagDepth       = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
-	flagSkipMissing = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
-	flagRepos       = stringList{}
-	flagOrgs        = stringList{}
-	flagUsers       = stringList{}
+	flagRevision     = flag.String("revision", "HEAD", "git revision to index")
+	flagRevparse     = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
+	flagName         = flag.String("name", "livegrep index", "The name to be stored in the index file")
+	flagForks        = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
+	flagArchived     = flag.Bool("archived", false, "whether to index repositories that are archived on github")
+	flagHTTP         = flag.Bool("http", false, "clone repositories over HTTPS instead of SSH")
+	flagHTTPUsername = flag.String("http-user", "", "Override the username to use when cloning over https")
+	flagInstallation = flag.Bool("installation-token", false, "Treat the API key as a Github Application Installation Key when cloning")
+	flagDepth        = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
+	flagSkipMissing  = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
+	flagRepos        = stringList{}
+	flagOrgs         = stringList{}
+	flagUsers        = stringList{}
 )
 
 func init() {
@@ -61,6 +63,14 @@ func main() {
 		flagOrgs.strings == nil &&
 		flagUsers.strings == nil {
 		log.Fatal("You must specify at least one repo or organization to index")
+	}
+
+	if *flagInstallation {
+		if *flagGithubKey == "" {
+			log.Fatal("-installation-key requires passing a github key, via either -github-key or $GITHUB_KEY")
+		}
+		*flagHTTP = true
+		*flagHTTPUsername = "x-access-token"
 	}
 
 	var blacklist map[string]struct{}
@@ -384,46 +394,62 @@ func checkoutWorker(dir string,
 	}
 }
 
-const (
-	askPassScript = `#!/bin/sh
-cat <&3
-`
-)
+const credentialHelperScript = (`#!/bin/sh
+if test "$1" = "get"; then
+  pass=` + "`cat <&3`" + `
+  if test -n "$LIVEGREP_GITHUB_USERNAME"; then
+    echo "username=$LIVEGREP_GITHUB_USERNAME"
+    echo "password=$pass"
+  else
+    echo "username=$pass"
+  fi
+fi
+`)
 
 func callGit(program string, args []string, key string) error {
 	var err error
+
+	if key != "" {
+		// If we're given an oauth key, pass it to git
+		// via a credential helper
+		//
+		// In order to avoid the key hitting the
+		// filesystem, we pass the actual key via a
+		// pipe on fd `3`, and we set the askpass
+		// script to a tiny sh script that just reads
+		// from that pipe.
+		f, err := ioutil.TempFile("", "livegrep-credential-helper")
+		if err != nil {
+			return err
+		}
+		f.WriteString(credentialHelperScript)
+		f.Close()
+		defer os.Remove(f.Name())
+
+		os.Chmod(f.Name(), 0700)
+		args = append([]string{"-c", fmt.Sprintf("credential.helper=%s", f.Name())}, args...)
+	}
+
 	for i := 0; i < 3; i++ {
 		cmd := exec.Command("git", args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if key != "" {
-			// If we're given an oauth key, pass it to git via GIT_ASKPASS
-			//
-			// In order to avoid the key hitting the
-			// filesystem, we pass the actual key via a
-			// pipe on fd `3`, and we set the askpass
-			// script to a tiny sh script that just reads
-			// from that pipe.
 			r, w, err := os.Pipe()
 			if err != nil {
 				return err
 			}
+
 			cmd.ExtraFiles = []*os.File{r}
+
 			go func() {
 				defer w.Close()
 				w.WriteString(key)
 			}()
 			defer r.Close()
-			f, err := ioutil.TempFile("", "livegrep-askpass")
-			if err != nil {
-				return err
-			}
-			f.WriteString(askPassScript)
-			f.Close()
-			defer os.Remove(f.Name())
-
-			os.Chmod(f.Name(), 0700)
-			cmd.Env = append(os.Environ(), fmt.Sprintf("GIT_ASKPASS=%s", f.Name()))
+		}
+		if *flagHTTPUsername != "" {
+			cmd.Env = append(os.Environ(), fmt.Sprintf("LIVEGREP_GITHUB_USERNAME=%s", *flagHTTPUsername))
 		}
 		if err = cmd.Run(); err == nil {
 			return nil
