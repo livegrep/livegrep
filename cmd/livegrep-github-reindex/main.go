@@ -21,13 +21,16 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const BLDeprecatedMessage = "This flag has been deprecated and will be removed in a future release. Please switch to the '-ignorelist' option."
+
 var (
-	flagCodesearch = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
-	flagApiBaseUrl = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
-	flagGithubKey  = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
-	flagRepoDir    = flag.String("dir", "repos", "Directory to store repos")
-	flagBlacklist  = flag.String("blacklist", "", "File containing a list of repositories to blacklist indexing")
-	flagIndexPath  = dynamicDefault{
+	flagCodesearch   = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
+	flagApiBaseUrl   = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
+	flagGithubKey    = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
+	flagRepoDir      = flag.String("dir", "repos", "Directory to store repos")
+	flagIgnorelist   = flag.String("ignorelist", "", "File containing a list of repositories to ignore when indexing")
+	flagDeprecatedBL = flag.String("blacklist", "", "[DEPRECATED] "+BLDeprecatedMessage)
+	flagIndexPath    = dynamicDefault{
 		display: "${dir}/livegrep.idx",
 		fn:      func() string { return path.Join(*flagRepoDir, "livegrep.idx") },
 	}
@@ -59,6 +62,10 @@ func main() {
 	flag.Parse()
 	log.SetFlags(0)
 
+	if *flagDeprecatedBL != "" {
+		log.Fatalln(BLDeprecatedMessage)
+	}
+
 	if flagRepos.strings == nil &&
 		flagOrgs.strings == nil &&
 		flagUsers.strings == nil {
@@ -73,12 +80,12 @@ func main() {
 		*flagHTTPUsername = "x-access-token"
 	}
 
-	var blacklist map[string]struct{}
-	if *flagBlacklist != "" {
+	var ignorelist map[string]struct{}
+	if *flagIgnorelist != "" {
 		var err error
-		blacklist, err = loadBlacklist(*flagBlacklist)
+		ignorelist, err = loadIgnorelist(*flagIgnorelist)
 		if err != nil {
-			log.Fatalf("loading %s: %s", *flagBlacklist, err)
+			log.Fatalf("loading %s: %s", *flagIgnorelist, err)
 		}
 	}
 
@@ -114,7 +121,7 @@ func main() {
 		log.Fatalln(err.Error())
 	}
 
-	repos = filterRepos(repos, blacklist, !*flagForks, !*flagArchived)
+	repos = filterRepos(repos, ignorelist, !*flagForks, !*flagArchived)
 
 	sort.Sort(ReposByName(repos))
 
@@ -163,7 +170,7 @@ func (r ReposByName) Len() int           { return len(r) }
 func (r ReposByName) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
 func (r ReposByName) Less(i, j int) bool { return *r[i].FullName < *r[j].FullName }
 
-func loadBlacklist(path string) (map[string]struct{}, error) {
+func loadIgnorelist(path string) (map[string]struct{}, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -264,7 +271,7 @@ func runJobs(client *github.Client, jobc <-chan loadJob, done <-chan struct{}, o
 }
 
 func filterRepos(repos []*github.Repository,
-	blacklist map[string]struct{},
+	ignorelist map[string]struct{},
 	excludeForks bool, excludeArchived bool) []*github.Repository {
 	var out []*github.Repository
 
@@ -277,8 +284,8 @@ func filterRepos(repos []*github.Repository,
 			log.Printf("Excluding archived %s...", *r.FullName)
 			continue
 		}
-		if blacklist != nil {
-			if _, ok := blacklist[*r.FullName]; ok {
+		if ignorelist != nil {
+			if _, ok := ignorelist[*r.FullName]; ok {
 				continue
 			}
 		}
