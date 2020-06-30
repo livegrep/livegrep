@@ -21,13 +21,16 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const BLDeprecatedMessage = "This flag has been deprecated and will be removed in a future release. Please switch to the '-ignorelist' option."
+
 var (
-	flagCodesearch = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
-	flagApiBaseUrl = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
-	flagGithubKey  = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
-	flagRepoDir    = flag.String("dir", "repos", "Directory to store repos")
-	flagIgnorelist = flag.String("ignorelist", "", "File containing a list of repositories to ignore when indexing")
-	flagIndexPath  = dynamicDefault{
+	flagCodesearch   = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
+	flagApiBaseUrl   = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
+	flagGithubKey    = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
+	flagRepoDir      = flag.String("dir", "repos", "Directory to store repos")
+	flagIgnorelist   = flag.String("ignorelist", "", "File containing a list of repositories to ignore when indexing")
+	flagDeprecatedBL = flag.String("blacklist", "", "[DEPRECATED] "+BLDeprecatedMessage)
+	flagIndexPath    = dynamicDefault{
 		display: "${dir}/livegrep.idx",
 		fn:      func() string { return path.Join(*flagRepoDir, "livegrep.idx") },
 	}
@@ -58,6 +61,10 @@ const Workers = 8
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
+
+	if *flagDeprecatedBL != "" {
+		log.Fatalln(BLDeprecatedMessage)
+	}
 
 	if flagRepos.strings == nil &&
 		flagOrgs.strings == nil &&
