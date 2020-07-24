@@ -106,7 +106,7 @@ func (s DirListingSort) Less(i, j int) bool {
 
 func gitCommitHash(ref string, repoPath string) (string, error) {
 	out, err := exec.Command(
-		"git", "-C", repoPath, "show", "--quiet", "--pretty=%H", ref,
+		"git", "-C", repoPath, "rev-parse", ref,
 	).Output()
 	if err != nil {
 		return "", err
