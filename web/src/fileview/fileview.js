@@ -267,7 +267,7 @@ function init(initData) {
                     hoverOverNode(node);
                 }
             }
-        });
+        })
   }
 
   function isInBox(x, y, rect) {

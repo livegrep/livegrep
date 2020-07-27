@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 
+	"fmt"
 	"github.com/jolestar/go-commons-pool"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
@@ -36,6 +37,8 @@ type langServerClientImpl struct {
 
 type handler struct{}
 
+type InitializedParams struct{}
+
 func (h handler) Handle(context.Context, *jsonrpc2.Conn, *jsonrpc2.Request) {}
 
 func NewClient(address string, initParams *InitializeParams) (client Client, err error) {
@@ -50,14 +53,16 @@ func NewClient(address string, initParams *InitializeParams) (client Client, err
 			}
 			codec := jsonrpc2.VSCodeObjectCodec{}
 			rpcClient := jsonrpc2.NewConn(ctx, jsonrpc2.NewBufferedStream(conn, codec), handler{})
-
-			if err := rpcClient.Call(ctx, "initialize", initParams, nil); err != nil {
+			var result InitializeResult
+			if err := rpcClient.Call(ctx, "initialize", initParams, &result); err != nil {
 				return nil, err
 			}
 
-			if err := rpcClient.Notify(ctx, "initialized", nil); err != nil {
+			if err := rpcClient.Notify(ctx, "initialized", InitializedParams{}); err != nil {
 				return nil, err
 			}
+
+			fmt.Println(result)
 
 			return rpcClient, nil
 		}), config)
@@ -73,12 +78,12 @@ func NewClient(address string, initParams *InitializeParams) (client Client, err
 }
 
 func (ls *langServerClientImpl) Initialize(ctx context.Context, params *InitializeParams) (result InitializeResult, err error) {
-	err = ls.invoke(ctx, "initialize", params, &result)
+	err = ls.call(ctx, "initialize", params, &result)
 	if err != nil {
 		return
 	}
 
-	err = ls.notify(ctx, "initialized", nil)
+	err = ls.notify(ctx, "initialized", InitializedParams{})
 	return
 }
 
@@ -86,9 +91,10 @@ func (ls *langServerClientImpl) JumpToDef(
 	ctx context.Context,
 	params *TextDocumentPositionParams,
 ) (result []Location, err error) {
-	err = ls.invoke(ctx, "textDocument/definition", params, &result)
+	err = ls.call(ctx, "textDocument/definition", params, &result)
 	return
 }
+
 
 func (ls *langServerClientImpl) performRPC(ctx context.Context, f func(*jsonrpc2.Conn) error) (error) {
 	rpcClient, err := ls.clientPool.BorrowObject(ctx)
@@ -117,8 +123,8 @@ func (ls *langServerClientImpl) performRPC(ctx context.Context, f func(*jsonrpc2
 	return nil
 }
 
-func (ls *langServerClientImpl) invoke(ctx context.Context, method string, params interface{}, result interface{}) error {
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+func (ls *langServerClientImpl) call(ctx context.Context, method string, params interface{}, result interface{}) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	start := time.Now()
 
