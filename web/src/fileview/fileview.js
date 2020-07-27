@@ -242,8 +242,8 @@ function init(initData) {
     const row = rows.length - 1;
     const col = rows[row].length;
 
-    const url = "/api/v1/langserver/jumptodef?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
-    fetch(url, { credentials: "same-origin" })
+    const jumpToDefUrl = "/api/v1/langserver/jumptodef?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
+    fetch(jumpToDefUrl, { credentials: "same-origin" })
         .then(function(response) {
             if (response.ok) {
                 return response.json();
@@ -267,7 +267,26 @@ function init(initData) {
                     hoverOverNode(node);
                 }
             }
+        });
+
+    const hoverUrl = "/api/v1/langserver/hover?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;    
+    fetch(hoverUrl, { credentials: "same-origin" })
+        .then(function(response) {
+            if (response.ok) {
+                return response.json();
+            }
+            else {
+                node.classList.add('nonhoverable');
+                node.setAttribute('title', 'Could not resolve definition for symbol');
+                return null;
+            }
         })
+        .then(function(resp) {
+            if (resp) {
+              $(node).attr('title', resp.contents.contents.value);
+              $(node).tooltip();
+            }
+        });
   }
 
   function isInBox(x, y, rect) {

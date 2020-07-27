@@ -46,3 +46,13 @@ type TextDocumentPositionParams struct {
 type TextDocumentIdentifier struct {
 	URI string `json:"uri"`
 }
+
+type ReferenceContext struct {
+	IncludeDeclaration bool `json:"includeDeclaration"`
+}
+
+type ReferenceParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Position     Position               `json:"position"`
+	Context	     ReferenceContext       `json:"context"`
+}

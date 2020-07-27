@@ -69,6 +69,10 @@ type FindRefsResponse struct {
 	URLs []string `json:"urls"`
 }
 
+type HoverResponse struct {
+	Contents interface{} `json:"contents"`
+}
+
 const (
 	repoNameParamName = "repo_name"
 	rowParamName      = "row"
@@ -363,6 +367,14 @@ func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
+	refParams := langserver.ReferenceParams{
+		TextDocument: docPositionParams.TextDocument,
+		Position: docPositionParams.Position,
+		Context: langserver.ReferenceContext {
+			IncludeDeclaration: false,
+		},
+	}
+
 	l := langserver.ForFile(repo, docPositionParams.TextDocument.URI)
 	langServer := s.langsrv[l.Address]
 	if langServer == nil {
@@ -370,7 +382,7 @@ func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *ht
 		writeError(ctx, w, 404, "not_found", err.Error())
 		return
 	}
-	locations, err := langServer.FindRefs(ctx, docPositionParams)
+	locations, err := langServer.FindRefs(ctx, &refParams)
 	if err != nil {
 		writeError(ctx, w, 500, "lsp_error", err.Error())
 		return
@@ -401,6 +413,31 @@ func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *ht
 	}
 
 	replyJSON(ctx, w, 200, &FindRefsResponse{URLs: retURLs})
+}
+
+func (s *server) ServeHover(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	docPositionParams, repo, err := s.parseDocPositionParams(r.URL.Query())
+	if err != nil {
+		writeError(ctx, w, 400, "bad_arguments", err.Error())
+		return
+	}
+
+	l := langserver.ForFile(repo, docPositionParams.TextDocument.URI)
+	langServer := s.langsrv[l.Address]
+	if langServer == nil {
+		// no language server
+		writeError(ctx, w, 404, "not_found", err.Error())
+		return
+	}
+	contents, err := langServer.Hover(ctx, docPositionParams)
+	if err != nil {
+		writeError(ctx, w, 500, "lsp_error", err.Error())
+		return
+	}
+
+	replyJSON(ctx, w, 200, &HoverResponse{
+		Contents: contents,
+	})
 }
 
 func findRepo(repos []config.RepoConfig, repoName string) (*config.RepoConfig, error) {
@@ -526,6 +563,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/langserver/jumptodef", srv.Handler(srv.ServeJumpToDef))
+	m.Add("GET", "/api/v1/langserver/findrefs", srv.Handler(srv.ServeFindRefs))
+	m.Add("GET", "/api/v1/langserver/hover", srv.Handler(srv.ServeHover))
 
 	var h http.Handler = m
 
