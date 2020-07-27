@@ -282,7 +282,7 @@ function init(initData) {
             }
         })
         .then(function(resp) {
-            if (resp) {
+            if (resp && resp.contents) {
               $(node).attr('title', resp.contents.contents.value);
               $(node).tooltip();
             }

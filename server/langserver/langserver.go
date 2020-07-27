@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 
-	"fmt"
 	"github.com/jolestar/go-commons-pool"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
@@ -64,8 +63,6 @@ func NewClient(address string, initParams *InitializeParams) (client Client, err
 				return nil, err
 			}
 
-			fmt.Println(result)
-
 			return rpcClient, nil
 		}), config)
 
@@ -110,8 +107,6 @@ func (ls *langServerClientImpl) Hover(
 	params *TextDocumentPositionParams,
 ) (result interface{}, err error) {
 	err = ls.call(ctx, "textDocument/hover", params, &result)
-	fmt.Println("RESULT:")
-	fmt.Println(result)
 	return
 }
 

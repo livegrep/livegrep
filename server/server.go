@@ -434,6 +434,10 @@ func (s *server) ServeHover(ctx context.Context, w http.ResponseWriter, r *http.
 		writeError(ctx, w, 500, "lsp_error", err.Error())
 		return
 	}
+	if contents == nil {
+		writeError(ctx, w, 400, "unresolved", "could not resolve an identifier")
+		return
+	}
 
 	replyJSON(ctx, w, 200, &HoverResponse{
 		Contents: contents,
