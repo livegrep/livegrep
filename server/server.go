@@ -17,6 +17,7 @@ import (
 
 	"github.com/bmizerany/pat"
 	"github.com/honeycombio/libhoney-go"
+
 	"github.com/livegrep/livegrep/server/langserver"
 
 	"path/filepath"
@@ -313,7 +314,7 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 	langServer := s.langsrv[l.Address]
 	if langServer == nil {
 		// no language server
-		writeError(ctx, w, 404, "not_found", "no language server for language")
+		writeError(ctx, w, 404, "not_found", err.Error())
 		return
 	}
 	locations, err := langServer.JumpToDef(ctx, docPositionParams)
@@ -488,8 +489,6 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.inner = mux
 
 	ctx := context.Background()
-
-	repoNames := []string{}
 
 	for _, r := range srv.config.IndexConfig.Repositories {
 		for _, langServer := range r.LangServers {

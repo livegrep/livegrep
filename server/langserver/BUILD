@@ -7,6 +7,7 @@ go_library(
         "types.go",
     ],
     visibility = ["//visibility:public"],
+    importpath = "github.com/livegrep/livegrep/server/langserver",
     deps = [
         "//server/config:go_default_library",
         "//server/log:go_default_library",
