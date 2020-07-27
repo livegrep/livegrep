@@ -65,6 +65,10 @@ type GotoDefResponse struct {
 	URL string `json:"url"`
 }
 
+type FindRefsResponse struct {
+	URLs []string `json:"urls"`
+}
+
 const (
 	repoNameParamName = "repo_name"
 	rowParamName      = "row"
@@ -350,6 +354,53 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 	replyJSON(ctx, w, 200, &GotoDefResponse{
 		URL: retUrl,
 	})
+}
+
+func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	docPositionParams, repo, err := s.parseDocPositionParams(r.URL.Query())
+	if err != nil {
+		writeError(ctx, w, 400, "bad_arguments", err.Error())
+		return
+	}
+
+	l := langserver.ForFile(repo, docPositionParams.TextDocument.URI)
+	langServer := s.langsrv[l.Address]
+	if langServer == nil {
+		// no language server
+		writeError(ctx, w, 404, "not_found", err.Error())
+		return
+	}
+	locations, err := langServer.FindRefs(ctx, docPositionParams)
+	if err != nil {
+		writeError(ctx, w, 500, "lsp_error", err.Error())
+		return
+	}
+
+	retURLs := make([]string, len(locations))
+	if len(locations) > 0 {
+		for i, location := range locations {
+			targetPath := strings.TrimPrefix(location.URI, "file://")
+			// Add 1 because URL is 1-indexed and language server is 0-indexed.
+			lineNum := location.TextRange.Start.Line + 1
+			if !strings.HasPrefix(targetPath, repo.Path) {
+				writeError(ctx, w, 400, "out_of_repo", "locations outside repo not supported")
+				return
+			}
+
+			relPath, err := filepath.Rel(repo.Path, targetPath)
+			if err != nil {
+				writeError(ctx, w, 500, "invalid_path", err.Error())
+				return
+			}
+
+			retURLs[i] = fmt.Sprintf("/view/%s/%s#L%d", repo.Name, relPath, lineNum)
+		}
+	} else {
+		writeError(ctx, w, 400, "unresolved", "could not resolve an identifier")
+		return
+	}
+
+	replyJSON(ctx, w, 200, &FindRefsResponse{URLs: retURLs})
 }
 
 func findRepo(repos []config.RepoConfig, repoName string) (*config.RepoConfig, error) {
