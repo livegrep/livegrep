@@ -604,25 +604,6 @@ func New(cfg *config.Config) (http.Handler, error) {
 		repoNames = append(repoNames, r.Name)
 	}
 
-	sort.Slice(repoNames, func(i, j int) bool {
-		return len(repoNames[i]) >= len(repoNames[j])
-	})
-	var buf bytes.Buffer
-
-	for i, repoName := range repoNames {
-		buf.WriteString(regexp.QuoteMeta(repoName))
-		if i < len(repoNames)-1 {
-			buf.WriteString("|")
-		}
-	}
-
-	repoRegexAlt := buf.String()
-	repoFileRegex, err := regexp.Compile(fmt.Sprintf("(%s)/(.*)", repoRegexAlt))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create regular expression for URL parsing")
-	}
-	srv.serveFilePathRegex = repoFileRegex
-
 	return srv, nil
 }
 
