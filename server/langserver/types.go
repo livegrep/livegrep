@@ -16,6 +16,8 @@ type InitializeResult struct {
 	Capabilities ServerCapabilities `json:"capabilities"`
 }
 
+type InitializedParams struct{}
+
 type SymbolInformation struct {
 	Name          string   `json:"name"`
 	Kind          int      `json:"kind"`
@@ -24,8 +26,8 @@ type SymbolInformation struct {
 }
 
 type Location struct {
-	URI       string `json:"uri"`
-	TextRange Range  `json:"range"`
+	URI   string `json:"uri"`
+	Range Range  `json:"range"`
 }
 
 type Range struct {
@@ -55,4 +57,14 @@ type ReferenceParams struct {
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 	Position     Position               `json:"position"`
 	Context	     ReferenceContext       `json:"context"`
+}
+
+type MarkupContent struct {
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
+}
+
+type Hover struct {
+	Contents MarkupContent `json:"contents"`
+	Range    Range  	   `json:"range"`
 }

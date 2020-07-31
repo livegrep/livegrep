@@ -29,7 +29,7 @@ type Client interface {
 	Initialize(ctx context.Context, params *InitializeParams) (InitializeResult, error)
 	JumpToDef(ctx context.Context, params *TextDocumentPositionParams) ([]Location, error)
 	FindRefs(ctx context.Context, params *ReferenceParams) (result []Location, err error)
-	Hover(ctx context.Context, params *TextDocumentPositionParams) (result interface{}, err error)
+	Hover(ctx context.Context, params *TextDocumentPositionParams) (result Hover, err error)
 }
 
 type langServerClientImpl struct {
@@ -37,8 +37,6 @@ type langServerClientImpl struct {
 }
 
 type handler struct{}
-
-type InitializedParams struct{}
 
 func (h handler) Handle(context.Context, *jsonrpc2.Conn, *jsonrpc2.Request) {}
 
@@ -105,7 +103,7 @@ func (ls *langServerClientImpl) FindRefs(
 func (ls *langServerClientImpl) Hover(
 	ctx context.Context,
 	params *TextDocumentPositionParams,
-) (result interface{}, err error) {
+) (result Hover, err error) {
 	err = ls.call(ctx, "textDocument/hover", params, &result)
 	return
 }

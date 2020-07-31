@@ -244,49 +244,47 @@ function init(initData) {
 
     const jumpToDefUrl = "/api/v1/langserver/jumptodef?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
     fetch(jumpToDefUrl, { credentials: "same-origin" })
-        .then(function(response) {
-            if (response.ok) {
-                return response.json();
-            }
-            else {
-                node.classList.add('nonhoverable');
-                node.setAttribute('title', 'Could not resolve definition for symbol');
-                return null;
-            }
-        })
-        .then(function(resp) {
-            if (resp) {
-                node.classList.add('hoverable');
-                var asLink = document.createElement('a');
-                asLink.setAttribute('href', resp.url);
+      .then(function(response) {
+        if (response.ok) {
+          return response.json();
+        } else {
+          node.classList.add('nonhoverable');
+          node.setAttribute('title', 'Could not resolve definition for symbol');
+          return null;
+        }
+      })
+      .then(function(resp) {
+        if (resp) {
+          node.classList.add('hoverable');
+          var asLink = document.createElement('a');
+          asLink.setAttribute('href', resp.url);
 
-                node.parentNode.insertBefore(asLink, node);
-                asLink.appendChild(node);
+          node.parentNode.insertBefore(asLink, node);
+          asLink.appendChild(node);
 
-                if (isInBox(mousePositionX, mousePositionY, node.getBoundingClientRect())) {
-                    hoverOverNode(node);
-                }
-            }
-        });
+          if (isInBox(mousePositionX, mousePositionY, node.getBoundingClientRect())) {
+              hoverOverNode(node);
+          }
+        }
+      });
 
     const hoverUrl = "/api/v1/langserver/hover?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;    
     fetch(hoverUrl, { credentials: "same-origin" })
-        .then(function(response) {
-            if (response.ok) {
-                return response.json();
-            }
-            else {
-                node.classList.add('nonhoverable');
-                node.setAttribute('title', 'Could not resolve definition for symbol');
-                return null;
-            }
-        })
-        .then(function(resp) {
-            if (resp && resp.contents) {
-              $(node).attr('title', resp.contents.contents.value);
-              $(node).tooltip();
-            }
-        });
+      .then(function(response) {
+        if (response.ok) {
+          return response.json();
+        } else {
+          node.classList.add('nonhoverable');
+          node.setAttribute('title', 'Could not resolve definition for symbol');
+          return null;
+        }
+      })
+      .then(function(resp) {
+        if (resp && resp.value) {
+          $(node).attr('title', resp.value);
+          $(node).tooltip();
+        }
+      });
   }
 
   function isInBox(x, y, rect) {

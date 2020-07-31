@@ -61,18 +61,6 @@ type server struct {
 	serveFilePathRegex *regexp.Regexp
 }
 
-type GotoDefResponse struct {
-	URL string `json:"url"`
-}
-
-type FindRefsResponse struct {
-	URLs []string `json:"urls"`
-}
-
-type HoverResponse struct {
-	Contents interface{} `json:"contents"`
-}
-
 const (
 	repoNameParamName = "repo_name"
 	rowParamName      = "row"
@@ -311,6 +299,10 @@ func (h *reloadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.inner.ServeHTTP(w, r)
 }
 
+type JumpToDefResponse struct {
+	URL string `json:"url"`
+}
+
 func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	docPositionParams, repo, err := s.parseDocPositionParams(r.URL.Query())
 	if err != nil {
@@ -337,7 +329,7 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 		location := locations[0]
 		targetPath := strings.TrimPrefix(location.URI, "file://")
 		// Add 1 because URL is 1-indexed and language server is 0-indexed.
-		lineNum := location.TextRange.Start.Line + 1
+		lineNum := location.Range.Start.Line + 1
 		if !strings.HasPrefix(targetPath, repo.Path) {
 			writeError(ctx, w, 400, "out_of_repo", "locations outside repo not supported")
 			return
@@ -355,9 +347,13 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	replyJSON(ctx, w, 200, &GotoDefResponse{
+	replyJSON(ctx, w, 200, &JumpToDefResponse{
 		URL: retUrl,
 	})
+}
+
+type FindRefsResponse struct {
+	URLs []string `json:"urls"`
 }
 
 func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -393,7 +389,7 @@ func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *ht
 		for i, location := range locations {
 			targetPath := strings.TrimPrefix(location.URI, "file://")
 			// Add 1 because URL is 1-indexed and language server is 0-indexed.
-			lineNum := location.TextRange.Start.Line + 1
+			lineNum := location.Range.Start.Line + 1
 			if !strings.HasPrefix(targetPath, repo.Path) {
 				writeError(ctx, w, 400, "out_of_repo", "locations outside repo not supported")
 				return
@@ -415,6 +411,10 @@ func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *ht
 	replyJSON(ctx, w, 200, &FindRefsResponse{URLs: retURLs})
 }
 
+type HoverResponse struct {
+	Value string `json:"value"`
+}
+
 func (s *server) ServeHover(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	docPositionParams, repo, err := s.parseDocPositionParams(r.URL.Query())
 	if err != nil {
@@ -429,18 +429,14 @@ func (s *server) ServeHover(ctx context.Context, w http.ResponseWriter, r *http.
 		writeError(ctx, w, 404, "not_found", err.Error())
 		return
 	}
-	contents, err := langServer.Hover(ctx, docPositionParams)
+	result, err := langServer.Hover(ctx, docPositionParams)
 	if err != nil {
 		writeError(ctx, w, 500, "lsp_error", err.Error())
 		return
 	}
-	if contents == nil {
-		writeError(ctx, w, 400, "unresolved", "could not resolve an identifier")
-		return
-	}
 
 	replyJSON(ctx, w, 200, &HoverResponse{
-		Contents: contents,
+		Value: result.Contents.Value,
 	})
 }
 
