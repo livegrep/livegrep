@@ -318,7 +318,7 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 	
-	locations, err := langServer.JumpToDef(ctx, docPositionParams)
+	locations, err := langServer.Definition(ctx, docPositionParams)
 	if err != nil {
 		writeError(ctx, w, 500, "lsp_error", err.Error())
 		return
@@ -372,7 +372,7 @@ func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	locations, err := langServer.FindRefs(ctx, &langserver.ReferenceParams{
+	locations, err := langServer.References(ctx, &langserver.ReferenceParams{
 		TextDocument: docPositionParams.TextDocument,
 		Position: docPositionParams.Position,
 		Context: langserver.ReferenceContext {

@@ -27,8 +27,8 @@ func ForFile(repo *config.RepoConfig, filePath string) *config.LangServer {
 
 type Client interface {
 	Initialize(ctx context.Context, params *InitializeParams) (InitializeResult, error)
-	JumpToDef(ctx context.Context, params *TextDocumentPositionParams) ([]Location, error)
-	FindRefs(ctx context.Context, params *ReferenceParams) (result []Location, err error)
+	Definition(ctx context.Context, params *TextDocumentPositionParams) ([]Location, error)
+	References(ctx context.Context, params *ReferenceParams) (result []Location, err error)
 	Hover(ctx context.Context, params *TextDocumentPositionParams) (result Hover, err error)
 }
 
@@ -84,7 +84,7 @@ func (ls *langServerClientImpl) Initialize(ctx context.Context, params *Initiali
 	return
 }
 
-func (ls *langServerClientImpl) JumpToDef(
+func (ls *langServerClientImpl) Definition(
 	ctx context.Context,
 	params *TextDocumentPositionParams,
 ) (result []Location, err error) {
@@ -92,7 +92,7 @@ func (ls *langServerClientImpl) JumpToDef(
 	return
 }
 
-func (ls *langServerClientImpl) FindRefs(
+func (ls *langServerClientImpl) References(
 	ctx context.Context,
 	params *ReferenceParams,
 ) (result []Location, err error) {

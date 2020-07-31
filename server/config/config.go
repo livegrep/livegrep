@@ -72,7 +72,7 @@ type RepoConfig struct {
 	Revisions      []string          `json:"revisions"`
 	Metadata       map[string]string `json:"metadata"`
 	WalkSubmodules bool              `json:"walk_submodules"`
-	LangServers []LangServer      `json:"lang_servers"`
+	LangServers	   []LangServer      `json:"lang_servers"`
 }
 
 type LinkConfig struct {
@@ -82,8 +82,8 @@ type LinkConfig struct {
 }
 
 type LangServer struct {
-	Address    string   `json:"address"`
-	Extensions []string `json:"extensions"`
+	Address     string   		  `json:"address"`
+	Extensions []string			  `json:"extensions"`
 	Path        string            `json:"path"`
 	Name        string            `json:"name"`
 	Revisions   []string          `json:"revisions"`
