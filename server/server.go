@@ -317,6 +317,7 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 		writeError(ctx, w, 404, "not_found", err.Error())
 		return
 	}
+	
 	locations, err := langServer.JumpToDef(ctx, docPositionParams)
 	if err != nil {
 		writeError(ctx, w, 500, "lsp_error", err.Error())
@@ -363,14 +364,6 @@ func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	refParams := langserver.ReferenceParams{
-		TextDocument: docPositionParams.TextDocument,
-		Position: docPositionParams.Position,
-		Context: langserver.ReferenceContext {
-			IncludeDeclaration: false,
-		},
-	}
-
 	l := langserver.ForFile(repo, docPositionParams.TextDocument.URI)
 	langServer := s.langsrv[l.Address]
 	if langServer == nil {
@@ -378,7 +371,14 @@ func (s *server) ServeFindRefs(ctx context.Context, w http.ResponseWriter, r *ht
 		writeError(ctx, w, 404, "not_found", err.Error())
 		return
 	}
-	locations, err := langServer.FindRefs(ctx, &refParams)
+
+	locations, err := langServer.FindRefs(ctx, &langserver.ReferenceParams{
+		TextDocument: docPositionParams.TextDocument,
+		Position: docPositionParams.Position,
+		Context: langserver.ReferenceContext {
+			IncludeDeclaration: false,
+		},
+	})
 	if err != nil {
 		writeError(ctx, w, 500, "lsp_error", err.Error())
 		return
@@ -429,6 +429,7 @@ func (s *server) ServeHover(ctx context.Context, w http.ResponseWriter, r *http.
 		writeError(ctx, w, 404, "not_found", err.Error())
 		return
 	}
+
 	result, err := langServer.Hover(ctx, docPositionParams)
 	if err != nil {
 		writeError(ctx, w, 500, "lsp_error", err.Error())
