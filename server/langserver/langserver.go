@@ -108,8 +108,7 @@ func (ls *langServerClientImpl) Hover(
 	return
 }
 
-
-func (ls *langServerClientImpl) performRPC(ctx context.Context, f func(*jsonrpc2.Conn) error) (error) {
+func (ls *langServerClientImpl) performRPC(ctx context.Context, f func(*jsonrpc2.Conn) error) error {
 	rpcClient, err := ls.clientPool.BorrowObject(ctx)
 	if err != nil {
 		return err

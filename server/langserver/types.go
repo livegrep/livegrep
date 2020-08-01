@@ -56,7 +56,7 @@ type ReferenceContext struct {
 type ReferenceParams struct {
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 	Position     Position               `json:"position"`
-	Context	     ReferenceContext       `json:"context"`
+	Context      ReferenceContext       `json:"context"`
 }
 
 type MarkupContent struct {
@@ -66,5 +66,5 @@ type MarkupContent struct {
 
 type Hover struct {
 	Contents MarkupContent `json:"contents"`
-	Range    Range  	   `json:"range"`
+	Range    Range         `json:"range"`
 }
