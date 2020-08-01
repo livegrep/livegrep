@@ -353,10 +353,6 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 	})
 }
 
-type HoverResponse struct {
-	Value string `json:"value"`
-}
-
 func (s *server) ServeHover(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	docPositionParams, repo, err := s.parseDocPositionParams(r.URL.Query())
 	if err != nil {
@@ -378,9 +374,7 @@ func (s *server) ServeHover(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 
-	replyJSON(ctx, w, 200, &HoverResponse{
-		Value: result.Contents.Value,
-	})
+	replyJSON(ctx, w, 200, result)
 }
 
 func findRepo(repos []config.RepoConfig, repoName string) (*config.RepoConfig, error) {

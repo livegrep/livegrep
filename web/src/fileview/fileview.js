@@ -249,7 +249,6 @@ function init(initData) {
           return response.json();
         } else {
           node.classList.add('nonhoverable');
-          node.setAttribute('title', 'Could not resolve definition for symbol');
           return null;
         }
       })
@@ -275,16 +274,29 @@ function init(initData) {
           return response.json();
         } else {
           node.classList.add('nonhoverable');
-          node.setAttribute('title', 'Could not resolve definition for symbol');
           return null;
         }
       })
       .then(function(resp) {
-        if (resp && resp.value) {
-          $(node).attr('title', resp.value);
+        if (resp && resp.contents) {
+          var value = null;
+          if (Array.isArray(resp.contents)) {
+            value = resp.contents.map(formatMarkedStringOrMarkupContent).join('\n');
+          } else {
+            value = formatMarkedStringOrMarkupContent(resp.contents);
+          }
+          if (!value) return null;
+          $(node).attr('title', value);
           $(node).tooltip();
         }
       });
+  }
+
+  function formatMarkedStringOrMarkupContent(markedString) {
+    if (markedString.value) {
+      return '```' + markedString.language + '\n' + markedString.value + '\n```';
+    }
+    return markedString;
   }
 
   function isInBox(x, y, rect) {

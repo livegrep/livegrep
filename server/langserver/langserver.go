@@ -29,7 +29,7 @@ type Client interface {
 	Initialize(ctx context.Context, params *InitializeParams) (InitializeResult, error)
 	Definition(ctx context.Context, params *TextDocumentPositionParams) ([]Location, error)
 	References(ctx context.Context, params *ReferenceParams) (result []Location, err error)
-	Hover(ctx context.Context, params *TextDocumentPositionParams) (result Hover, err error)
+	Hover(ctx context.Context, params *TextDocumentPositionParams) (result interface{}, err error)
 }
 
 type langServerClientImpl struct {
@@ -103,7 +103,7 @@ func (ls *langServerClientImpl) References(
 func (ls *langServerClientImpl) Hover(
 	ctx context.Context,
 	params *TextDocumentPositionParams,
-) (result Hover, err error) {
+) (result interface{}, err error) {
 	err = ls.call(ctx, "textDocument/hover", params, &result)
 	return
 }
