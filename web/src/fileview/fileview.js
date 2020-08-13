@@ -286,7 +286,8 @@ function init(initData) {
             value = formatMarkedStringOrMarkupContent(resp.contents);
           }
           if (!value) return null;
-          $(node).attr('title', value);
+          const backticksStripped = value.replace(/```\w*$/gm, '').trim();
+          $(node).attr('title', backticksStripped);
           $(node).tooltip();
         }
       });
