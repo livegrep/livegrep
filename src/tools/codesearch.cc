@@ -21,6 +21,7 @@
 #include "src/proto/config.pb.h"
 
 #include <stdio.h>
+#include <sys/inotify.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -51,6 +52,7 @@ DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_bool(index_only, false, "Build the index and don't serve queries");
 DEFINE_string(grpc, "localhost:9999", "GRPC listener address");
 DEFINE_bool(reload_rpc, false, "Enable the Reload RPC");
+DEFINE_bool(hot_index_reload, false, "Enable automatic reloads when the index file changes");
 DEFINE_bool(reuseport, true, "Set SO_REUSEPORT to enable multiple concurrent server instances.");
 
 using namespace std;
@@ -143,6 +145,27 @@ void initialize_search(code_searcher *search,
         search->dump_index(FLAGS_dump_index);
 }
 
+void hot_reload_watcher() {
+    int fd;
+    int wd;
+    int mask = IN_ATTRIB | IN_CLOSE_WRITE | IN_MOVE_SELF;
+    struct inotify_event event;
+
+    if ((fd = inotify_init()) < 0) {
+        die("failed to initialize inotify for hot reloader");
+    }
+    if ((wd = inotify_add_watch(fd, FLAGS_load_index.c_str(), mask)) < 0) {
+        die("failed to add watch on index file path");
+    }
+
+    // The read syscall is blocking; it returns after one eligible event (i.e., matching the mask) is received.
+    read(fd, &event, sizeof(struct inotify_event) + NAME_MAX + 1);
+    log("Detected change to index file; reloading...");
+
+    inotify_rm_watch(fd, wd);
+    close(fd);
+}
+
 void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr) {
     promise<void> reload_request;
     auto reload_request_ptr = FLAGS_reload_rpc ? &reload_request : NULL;
@@ -160,11 +183,22 @@ void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr)
         die("Error starting GRPC server.");
     }
 
+    if (FLAGS_reload_rpc && FLAGS_hot_index_reload) {
+        die("reload_rpc and hot_index_reload options are mutually exclusive");
+    }
+
     log("Serving...");
 
     if (FLAGS_reload_rpc) {
         thread shutdown_thread([&]() {
             reload_request.get_future().wait();
+            server->Shutdown();
+        });
+        server->Wait();
+        shutdown_thread.join();
+    } else if (FLAGS_hot_index_reload && FLAGS_load_index.size()) {
+        thread shutdown_thread([&]() {
+            hot_reload_watcher();
             server->Shutdown();
         });
         server->Wait();
