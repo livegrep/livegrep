@@ -8,6 +8,7 @@
 #include "src/lib/timer.h"
 #include "src/lib/metrics.h"
 #include "src/lib/debug.h"
+#include "src/lib/fs.h"
 
 #include "src/codesearch.h"
 #include "src/chunk_allocator.h"
@@ -21,7 +22,6 @@
 #include "src/proto/config.pb.h"
 
 #include <stdio.h>
-#include <sys/inotify.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -145,27 +145,6 @@ void initialize_search(code_searcher *search,
         search->dump_index(FLAGS_dump_index);
 }
 
-void hot_reload_watcher() {
-    int fd;
-    int wd;
-    int mask = IN_ATTRIB | IN_CLOSE_WRITE | IN_MOVE_SELF;
-    struct inotify_event event;
-
-    if ((fd = inotify_init()) < 0) {
-        die("failed to initialize inotify for hot reloader");
-    }
-    if ((wd = inotify_add_watch(fd, FLAGS_load_index.c_str(), mask)) < 0) {
-        die("failed to add watch on index file path");
-    }
-
-    // The read syscall is blocking; it returns after one eligible event (i.e., matching the mask) is received.
-    read(fd, &event, sizeof(struct inotify_event) + NAME_MAX + 1);
-    log("Detected change to index file; reloading...");
-
-    inotify_rm_watch(fd, wd);
-    close(fd);
-}
-
 void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr) {
     promise<void> reload_request;
     auto reload_request_ptr = FLAGS_reload_rpc ? &reload_request : NULL;
@@ -198,7 +177,9 @@ void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr)
         shutdown_thread.join();
     } else if (FLAGS_hot_index_reload && FLAGS_load_index.size()) {
         thread shutdown_thread([&]() {
-            hot_reload_watcher();
+            fswatcher watcher(FLAGS_load_index);
+            watcher.wait_for_event();
+            log("Detected change to index file; reloading...");
             server->Shutdown();
         });
         server->Wait();
