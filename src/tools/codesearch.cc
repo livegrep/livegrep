@@ -8,6 +8,7 @@
 #include "src/lib/timer.h"
 #include "src/lib/metrics.h"
 #include "src/lib/debug.h"
+#include "src/lib/fs.h"
 
 #include "src/codesearch.h"
 #include "src/chunk_allocator.h"
@@ -51,6 +52,7 @@ DEFINE_bool(quiet, false, "Do the search, but don't print results.");
 DEFINE_bool(index_only, false, "Build the index and don't serve queries");
 DEFINE_string(grpc, "localhost:9999", "GRPC listener address");
 DEFINE_bool(reload_rpc, false, "Enable the Reload RPC");
+DEFINE_bool(hot_index_reload, false, "Enable automatic reloads when the index file changes");
 DEFINE_bool(reuseport, true, "Set SO_REUSEPORT to enable multiple concurrent server instances.");
 
 using namespace std;
@@ -160,11 +162,27 @@ void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr)
         die("Error starting GRPC server.");
     }
 
+    if (FLAGS_reload_rpc && FLAGS_hot_index_reload) {
+        die("reload_rpc and hot_index_reload options are mutually exclusive");
+    }
+
     log("Serving...");
 
     if (FLAGS_reload_rpc) {
         thread shutdown_thread([&]() {
             reload_request.get_future().wait();
+            server->Shutdown();
+        });
+        server->Wait();
+        shutdown_thread.join();
+    } else if (FLAGS_hot_index_reload && FLAGS_load_index.size()) {
+        thread shutdown_thread([&]() {
+            fswatcher watcher(FLAGS_load_index);
+            if (!watcher.wait_for_event()) {
+                log("Error initializing filesystem watch. Hot index reloads will be disabled.");
+                std::promise<void>().get_future().wait();  // Block forever.
+            }
+            log("Detected change to index file; reloading...");
             server->Shutdown();
         });
         server->Wait();
