@@ -178,7 +178,10 @@ void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr)
     } else if (FLAGS_hot_index_reload && FLAGS_load_index.size()) {
         thread shutdown_thread([&]() {
             fswatcher watcher(FLAGS_load_index);
-            watcher.wait_for_event();
+            if (!watcher.wait_for_event()) {
+                log("Error initializing filesystem watch. Hot index reloads will be disabled.");
+                std::promise<void>().get_future().wait();  // Block forever.
+            }
             log("Detected change to index file; reloading...");
             server->Shutdown();
         });

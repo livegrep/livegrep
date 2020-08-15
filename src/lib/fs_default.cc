@@ -7,15 +7,12 @@
  ********************************************************************/
 #include "fs.h"
 
-#include <future>
-
 fswatcher::fswatcher(const std::string &path) : path_(path) {}
 
 fswatcher::~fswatcher() {}
 
-void fswatcher::wait_for_event() {
+bool fswatcher::wait_for_event() {
     fprintf(stderr, "Error: fswatcher is not supported on this platform\n");
 
-    // Block forever.
-    std::promise<void>().get_future().wait();
+    return false;
 }

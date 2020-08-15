@@ -17,7 +17,7 @@ public:
     fswatcher(const std::string &path);
     ~fswatcher();
 
-    void wait_for_event();
+    bool wait_for_event();
 
 private:
     std::string path_;

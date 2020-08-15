@@ -17,22 +17,29 @@ namespace {
 }
 
 fswatcher::fswatcher(const std::string &path) : path_(path) {
-    fd = inotify_init();
-    wd = inotify_add_watch(fd, path.c_str(), IN_ATTRIB | IN_CLOSE_WRITE | IN_MOVE_SELF);
+    if ((fd = inotify_init()) > 0) {
+        wd = inotify_add_watch(fd, path.c_str(), IN_ATTRIB | IN_CLOSE_WRITE | IN_MOVE_SELF);
+    }
 }
 
 fswatcher::~fswatcher() {
-    if (fd >= 0) {
+    if (fd != -1) {
         close(fd);
     }
 }
 
-void fswatcher::wait_for_event() {
+bool fswatcher::wait_for_event() {
     struct inotify_event event;
     int n = 0;
+
+    if (fd == -1 || wd == -1) {
+        return false;
+    }
 
     // The read syscall is blocking; it returns after one eligible event (i.e., matching the mask) is received.
     while (n <= 0) {
         n = read(fd, &event, sizeof(struct inotify_event) + NAME_MAX + 1);
     }
+
+    return true;
 }
