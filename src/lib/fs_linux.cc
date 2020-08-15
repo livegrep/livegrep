@@ -24,9 +24,6 @@ fswatcher::fswatcher(const std::string &path) : path_(path) {
 fswatcher::~fswatcher() {
     if (fd >= 0) {
         close(fd);
-        if (wd >= 0) {
-            inotify_rm_watch(fd, wd);
-        }
     }
 }
 
