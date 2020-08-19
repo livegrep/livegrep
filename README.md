@@ -113,8 +113,8 @@ repository, you could run:
 ```
 docker run -v $(pwd):/data livegrep/indexer /livegrep/bin/livegrep-github-reindex -repo livegrep/livegrep -http -dir /data
 docker network create livegrep
-docker run -v $(pwd):/data --network livegrep livegrep/base /livegrep/bin/codesearch -load_index /data/livegrep.idx -grpc 0.0.0.0:9999
-docker run -d --network livegrep --publish 8910:8910 livegrep/base /livegrep/bin/livegrep -docroot /livegrep/web -listen=0.0.0.0:8910
+docker run -d --rm -v $(pwd):/data --network livegrep --name livegrep-backend livegrep/base /livegrep/bin/codesearch -load_index /data/livegrep.idx -grpc 0.0.0.0:9999
+docker run -d --rm --network livegrep --publish 8910:8910 livegrep/base /livegrep/bin/livegrep -docroot /livegrep/web -listen=0.0.0.0:8910 --connect livegrep-backend:9999
 ```
 
 And then access http://localhost:8910/
