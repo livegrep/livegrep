@@ -13,6 +13,12 @@ message Metadata {
     repeated string labels = 4 [json_name = "labels"];
 }
 
+message CloneOptions {
+    int32 depth = 1            [json_name = "depth"];
+    string username = 2        [json_name = "username"];
+    string password_env = 3    [json_name = "password_env"];
+}
+
 message PathSpec {
     string path = 1             [json_name = "path"];
     string name = 2             [json_name = "name"];
@@ -21,9 +27,10 @@ message PathSpec {
 }
 
 message RepoSpec {
-    string path = 1               [json_name = "path"];
-    string name = 2               [json_name = "name"];
-    repeated string revisions = 3 [json_name = "revisions"];
-    Metadata metadata = 4         [json_name = "metadata"];
-    bool walk_submodules = 5      [json_name = "walk_submodules"];
+    string path = 1                [json_name = "path"];
+    string name = 2                [json_name = "name"];
+    repeated string revisions = 3  [json_name = "revisions"];
+    Metadata metadata = 4          [json_name = "metadata"];
+    bool walk_submodules = 5       [json_name = "walk_submodules"];
+    CloneOptions clone_options = 6 [json_name = "clone_options"];
 }
