@@ -13,21 +13,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/livegrep/livegrep/src/proto/config"
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 	"google.golang.org/grpc"
 )
-
-type IndexConfig struct {
-	Name         string       `json:"name"`
-	Repositories []RepoConfig `json:"repositories"`
-}
-
-type RepoConfig struct {
-	Path      string            `json:"path"`
-	Name      string            `json:"name"`
-	Revisions []string          `json:"revisions"`
-	Metadata  map[string]string `json:"metadata"`
-}
 
 var (
 	flagCodesearch    = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
@@ -52,12 +41,12 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	var cfg IndexConfig
+	var cfg config.IndexSpec
 	if err = json.Unmarshal(data, &cfg); err != nil {
 		log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 	}
 
-	if err := checkoutRepos(&cfg.Repositories); err != nil {
+	if err := checkoutRepos(&cfg.Repos); err != nil {
 		log.Fatalln(err.Error())
 	}
 
@@ -92,8 +81,8 @@ func main() {
 	}
 }
 
-func checkoutRepos(repos *[]RepoConfig) error {
-	repoc := make(chan *RepoConfig)
+func checkoutRepos(repos *[]*config.RepoSpec) error {
+	repoc := make(chan *config.RepoSpec)
 	errc := make(chan error, Workers)
 	stop := make(chan struct{})
 	wg := sync.WaitGroup{}
@@ -109,7 +98,7 @@ func checkoutRepos(repos *[]RepoConfig) error {
 Repos:
 	for i := range *repos {
 		select {
-		case repoc <- &(*repos)[i]:
+		case repoc <- (*repos)[i]:
 		case err = <-errc:
 			close(stop)
 			break Repos
@@ -126,7 +115,7 @@ Repos:
 	return err
 }
 
-func checkoutWorker(c <-chan *RepoConfig,
+func checkoutWorker(c <-chan *config.RepoSpec,
 	stop <-chan struct{}, errc chan error) {
 	for {
 		select {
@@ -157,11 +146,11 @@ func retryCommand(program string, args []string) error {
 	return fmt.Errorf("%s %v: %s", program, args, err.Error())
 }
 
-func checkoutOne(r *RepoConfig) error {
+func checkoutOne(r *config.RepoSpec) error {
 	log.Println("Updating", r.Name)
 
-	remote, ok := r.Metadata["remote"]
-	if !ok {
+	remote := r.Metadata.Remote
+	if remote == "" {
 		return fmt.Errorf("git remote not found in repository metadata for %s", r.Name)
 	}
 

@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/google/go-github/github"
+	"github.com/livegrep/livegrep/src/proto/config"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -502,18 +503,6 @@ func checkoutOne(dir string, depth int, http bool, r *github.Repository) error {
 	return callGit("git", args, *flagGithubKey)
 }
 
-type IndexConfig struct {
-	Name         string       `json:"name"`
-	Repositories []RepoConfig `json:"repositories"`
-}
-
-type RepoConfig struct {
-	Path      string            `json:"path"`
-	Name      string            `json:"name"`
-	Revisions []string          `json:"revisions"`
-	Metadata  map[string]string `json:"metadata"`
-}
-
 func writeConfig(config []byte, file string) error {
 	dir := path.Dir(file)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -526,7 +515,7 @@ func buildConfig(name string,
 	dir string,
 	repos []*github.Repository,
 	revision string) ([]byte, error) {
-	cfg := IndexConfig{
+	cfg := config.IndexSpec{
 		Name: name,
 	}
 
@@ -546,12 +535,12 @@ func buildConfig(name string,
 				continue
 			}
 		}
-		cfg.Repositories = append(cfg.Repositories, RepoConfig{
+		cfg.Repos = append(cfg.Repos, &config.RepoSpec{
 			Path:      path.Join(dir, *r.FullName),
 			Name:      *r.FullName,
 			Revisions: []string{revision},
-			Metadata: map[string]string{
-				"github": *r.HTMLURL,
+			Metadata: &config.Metadata{
+				Github: *r.HTMLURL,
 			},
 		})
 	}
