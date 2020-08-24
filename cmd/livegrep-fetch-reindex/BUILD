@@ -9,6 +9,7 @@ go_library(
     importpath = "github.com/livegrep/livegrep/cmd/livegrep-fetch-reindex",
     visibility = ["//visibility:private"],
     deps = [
+        "//src/proto:go_config_proto",
         "//src/proto:go_proto",
         "@org_golang_google_grpc//:go_default_library",
     ],

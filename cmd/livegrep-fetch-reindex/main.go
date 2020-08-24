@@ -13,24 +13,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/livegrep/livegrep/src/proto/config"
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 	"google.golang.org/grpc"
 )
 
-type IndexConfig struct {
-	Name         string       `json:"name"`
-	Repositories []RepoConfig `json:"repositories"`
-}
-
-type RepoConfig struct {
-	Path      string            `json:"path"`
-	Name      string            `json:"name"`
-	Revisions []string          `json:"revisions"`
-	Metadata  map[string]string `json:"metadata"`
-}
-
 var (
-	flagCodesearch    = flag.String("codesearch", path.Join(path.Dir(os.Args[0]), "codesearch"), "Path to the `codesearch` binary")
+	flagCodesearch    = flag.String("codesearch", "", "Path to the `codesearch` binary")
 	flagIndexPath     = flag.String("out", "livegrep.idx", "Path to write the index")
 	flagRevparse      = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
 	flagSkipMissing   = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
@@ -52,12 +41,12 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	var cfg IndexConfig
+	var cfg config.IndexSpec
 	if err = json.Unmarshal(data, &cfg); err != nil {
 		log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 	}
 
-	if err := checkoutRepos(&cfg.Repositories); err != nil {
+	if err := checkoutRepos(&cfg.Repos); err != nil {
 		log.Fatalln(err.Error())
 	}
 
@@ -74,7 +63,7 @@ func main() {
 	}
 	args = append(args, flag.Arg(0))
 
-	cmd := exec.Command(*flagCodesearch, args...)
+	cmd := exec.Command(findCodesearch(*flagCodesearch), args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -92,8 +81,24 @@ func main() {
 	}
 }
 
-func checkoutRepos(repos *[]RepoConfig) error {
-	repoc := make(chan *RepoConfig)
+func findCodesearch(given string) string {
+	if given != "" {
+		return given
+	}
+	search := []string{
+		path.Join(path.Dir(os.Args[0]), "codesearch"),
+		"bazel-bin/src/tools/codesearch",
+	}
+	for _, try := range search {
+		if st, err := os.Stat(try); err == nil && (st.Mode()&os.ModeDir) == 0 {
+			return try
+		}
+	}
+	return "codesearch"
+}
+
+func checkoutRepos(repos *[]*config.RepoSpec) error {
+	repoc := make(chan *config.RepoSpec)
 	errc := make(chan error, Workers)
 	stop := make(chan struct{})
 	wg := sync.WaitGroup{}
@@ -109,7 +114,7 @@ func checkoutRepos(repos *[]RepoConfig) error {
 Repos:
 	for i := range *repos {
 		select {
-		case repoc <- &(*repos)[i]:
+		case repoc <- (*repos)[i]:
 		case err = <-errc:
 			close(stop)
 			break Repos
@@ -126,7 +131,7 @@ Repos:
 	return err
 }
 
-func checkoutWorker(c <-chan *RepoConfig,
+func checkoutWorker(c <-chan *config.RepoSpec,
 	stop <-chan struct{}, errc chan error) {
 	for {
 		select {
@@ -144,12 +149,63 @@ func checkoutWorker(c <-chan *RepoConfig,
 	}
 }
 
-func retryCommand(program string, args []string) error {
+const credentialHelperScript = (`#!/bin/sh
+if test "$1" = "get"; then
+  pass=` + "`cat <&3`" + `
+  if test -n "$LIVEGREP_GITHUB_USERNAME"; then
+    echo "username=$LIVEGREP_GITHUB_USERNAME"
+  fi
+  if test -n "$pass"; then
+    echo "password=$pass"
+  fi
+fi
+`)
+
+func callGit(program string, args []string, username string, password string) error {
 	var err error
+
+	if username != "" || password != "" {
+		// If we're given credentials, pass them to git via a
+		// credential helper
+		//
+		// In order to avoid the key hitting the
+		// filesystem, we pass the actual key via a
+		// pipe on fd `3`, and we set the askpass
+		// script to a tiny sh script that just reads
+		// from that pipe.
+		f, err := ioutil.TempFile("", "livegrep-credential-helper")
+		if err != nil {
+			return err
+		}
+		f.WriteString(credentialHelperScript)
+		f.Close()
+		defer os.Remove(f.Name())
+
+		os.Chmod(f.Name(), 0700)
+		args = append([]string{"-c", fmt.Sprintf("credential.helper=%s", f.Name())}, args...)
+	}
+
 	for i := 0; i < 3; i++ {
 		cmd := exec.Command("git", args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		if password != "" {
+			r, w, err := os.Pipe()
+			if err != nil {
+				return err
+			}
+
+			cmd.ExtraFiles = []*os.File{r}
+
+			go func() {
+				defer w.Close()
+				w.WriteString(password)
+			}()
+			defer r.Close()
+		}
+		if username != "" {
+			cmd.Env = append(os.Environ(), fmt.Sprintf("LIVEGREP_GITHUB_USERNAME=%s", username))
+		}
 		if err = cmd.Run(); err == nil {
 			return nil
 		}
@@ -157,11 +213,11 @@ func retryCommand(program string, args []string) error {
 	return fmt.Errorf("%s %v: %s", program, args, err.Error())
 }
 
-func checkoutOne(r *RepoConfig) error {
+func checkoutOne(r *config.RepoSpec) error {
 	log.Println("Updating", r.Name)
 
-	remote, ok := r.Metadata["remote"]
-	if !ok {
+	remote := r.Metadata.Remote
+	if remote == "" {
 		return fmt.Errorf("git remote not found in repository metadata for %s", r.Name)
 	}
 
@@ -171,6 +227,11 @@ func checkoutOne(r *RepoConfig) error {
 			return err
 		}
 	}
+	var username, password string
+	if r.CloneOptions != nil {
+		username = r.CloneOptions.Username
+		password = os.Getenv(r.CloneOptions.PasswordEnv)
+	}
 	if strings.Trim(string(out), " \n") != "true" {
 		if err := os.RemoveAll(r.Path); err != nil {
 			return err
@@ -178,14 +239,23 @@ func checkoutOne(r *RepoConfig) error {
 		if err := os.MkdirAll(r.Path, 0755); err != nil {
 			return err
 		}
-		return retryCommand("git", []string{"clone", "--mirror", remote, r.Path})
+		args := []string{"clone", "--mirror"}
+		if r.CloneOptions != nil && r.CloneOptions.Depth != 0 {
+			args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
+		}
+		args = append(args, remote, r.Path)
+		return callGit("git", args, username, password)
 	}
 
 	if err := exec.Command("git", "-C", r.Path, "remote", "set-url", "origin", remote).Run(); err != nil {
 		return err
 	}
 
-	return retryCommand("git", []string{"-C", r.Path, "fetch", "-p"})
+	args := []string{"--git-dir", r.Path, "fetch", "-p"}
+	if r.CloneOptions != nil && r.CloneOptions.Depth != 0 {
+		args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
+	}
+	return callGit("git", args, username, password)
 }
 
 func reloadBackend(addr string) error {
