@@ -63,10 +63,10 @@ type server struct {
 }
 
 const (
-	repoNameParamName = "repo_name"
-	rowParamName      = "row"
-	filePathParamName = "file_path"
-	colParamName      = "col"
+	repoNameParamName  = "repo_name"
+	lineParamName      = "line"
+	filePathParamName  = "file_path"
+	characterParamName = "character"
 )
 
 func (s *server) loadTemplates() {
@@ -384,28 +384,28 @@ func findRepo(repos []config.RepoConfig, repoName string) (*config.RepoConfig, e
 			return &repo, nil
 		}
 	}
-	return nil, errors.New(fmt.Sprintf("repo with name %s not found", repoName))
+	return nil, fmt.Errorf("repo with name %s not found", repoName)
 }
 
 func (s *server) parseDocPositionParams(params url.Values) (*langserver.TextDocumentPositionParams, *config.RepoConfig, error) {
-	line, column, repo, fpath :=
-		params.Get(rowParamName),
-		params.Get(colParamName),
+	lineParam, characterParam, repo, fpath :=
+		params.Get(lineParamName),
+		params.Get(characterParamName),
 		params.Get(repoNameParamName),
 		params.Get(filePathParamName)
 
-	if line == "" || column == "" || repo == "" || fpath == "" {
-		return nil, nil, errors.New("line, column, repo, and filepath need to be set")
+	if lineParam == "" || characterParam == "" || repo == "" || fpath == "" {
+		return nil, nil, errors.New("line, character, repo, and filepath need to be set")
 	}
 
-	lineNum, err := strconv.Atoi(line)
+	line, err := strconv.Atoi(lineParam)
 	if err != nil {
-		return nil, nil, errors.New("line param needs to be a number, got " + line)
+		return nil, nil, errors.New("line param needs to be a number, got " + lineParam)
 	}
 
-	colNum, err := strconv.Atoi(column)
+	character, err := strconv.Atoi(characterParam)
 	if err != nil {
-		return nil, nil, errors.New("column param needs to be a number, got " + column)
+		return nil, nil, errors.New("character param needs to be a number, got " + characterParam)
 	}
 
 	repoConfig, err := findRepo(s.config.IndexConfig.Repositories, repo)
@@ -418,8 +418,8 @@ func (s *server) parseDocPositionParams(params url.Values) (*langserver.TextDocu
 			URI: buildURI(repoConfig.Path, fpath),
 		},
 		Position: langserver.Position{
-			Line:      lineNum,
-			Character: colNum,
+			Line:      line,
+			Character: character,
 		},
 	}
 

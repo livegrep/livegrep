@@ -253,12 +253,12 @@ function init(initData) {
     const code = document.getElementById('source-code');
     const stringBefore = textBeforeOffset(node, 0, code);
 
-    const rows = stringBefore.split('\n');
+    const lines = stringBefore.split('\n');
     // The server expects the rows to be zero-indexed.
-    const row = rows.length - 1;
-    const col = rows[row].length;
+    const line = lines.length - 1;
+    const character = lines[line].length;
 
-    const jumpToDefUrl = "/api/v1/lsp/definition?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
+    const jumpToDefUrl = "/api/v1/lsp/definition?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&line=" + line + "&character=" + character;
     fetch(jumpToDefUrl, { credentials: "same-origin" })
       .then(function(response) {
         if (response.ok) {
@@ -283,7 +283,7 @@ function init(initData) {
         }
       });
 
-    const hoverUrl = "/api/v1/lsp/hover?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
+    const hoverUrl = "/api/v1/lsp/hover?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&line=" + line + "&character=" + character;
     fetch(hoverUrl, { credentials: "same-origin" })
       .then(function(response) {
         if (response.ok) {
