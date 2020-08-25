@@ -24,11 +24,12 @@ import (
 	"strings"
 
 	"errors"
+	"net/url"
+
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
 	"github.com/livegrep/livegrep/server/templates"
-	"net/url"
 )
 
 var serveUrlParseError = fmt.Errorf("failed to parse repo and path from URL")
@@ -299,11 +300,11 @@ func (h *reloadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.inner.ServeHTTP(w, r)
 }
 
-type JumpToDefResponse struct {
+type DefinitionResponse struct {
 	URL string `json:"url"`
 }
 
-func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (s *server) ServeDefinition(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	docPositionParams, repo, err := s.parseDocPositionParams(r.URL.Query())
 	if err != nil {
 		writeError(ctx, w, 400, "bad_arguments", err.Error())
@@ -348,7 +349,7 @@ func (s *server) ServeJumpToDef(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	replyJSON(ctx, w, 200, &JumpToDefResponse{
+	replyJSON(ctx, w, 200, &DefinitionResponse{
 		URL: retUrl,
 	})
 }
@@ -387,22 +388,22 @@ func findRepo(repos []config.RepoConfig, repoName string) (*config.RepoConfig, e
 }
 
 func (s *server) parseDocPositionParams(params url.Values) (*langserver.TextDocumentPositionParams, *config.RepoConfig, error) {
-	row, column, repo, fpath :=
+	line, column, repo, fpath :=
 		params.Get(rowParamName),
 		params.Get(colParamName),
 		params.Get(repoNameParamName),
 		params.Get(filePathParamName)
 
-	if row == "" || column == "" || repo == "" || fpath == "" {
-		return nil, nil, errors.New("row, column, repo, and filepath need to be set")
+	if line == "" || column == "" || repo == "" || fpath == "" {
+		return nil, nil, errors.New("line, column, repo, and filepath need to be set")
 	}
 
-	rowN, err := strconv.Atoi(row)
+	lineNum, err := strconv.Atoi(line)
 	if err != nil {
-		return nil, nil, errors.New("row param needs to be a number, got " + row)
+		return nil, nil, errors.New("line param needs to be a number, got " + line)
 	}
 
-	colN, err := strconv.Atoi(column)
+	colNum, err := strconv.Atoi(column)
 	if err != nil {
 		return nil, nil, errors.New("column param needs to be a number, got " + column)
 	}
@@ -417,8 +418,8 @@ func (s *server) parseDocPositionParams(params url.Values) (*langserver.TextDocu
 			URI: buildURI(repoConfig.Path, fpath),
 		},
 		Position: langserver.Position{
-			Line:      rowN,
-			Character: colN,
+			Line:      lineNum,
+			Character: colNum,
 		},
 	}
 
@@ -499,8 +500,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
-	m.Add("GET", "/api/v1/langserver/jumptodef", srv.Handler(srv.ServeJumpToDef))
-	m.Add("GET", "/api/v1/langserver/hover", srv.Handler(srv.ServeHover))
+	m.Add("GET", "/api/v1/lsp/definition", srv.Handler(srv.ServeDefinition))
+	m.Add("GET", "/api/v1/lsp/hover", srv.Handler(srv.ServeHover))
 
 	var h http.Handler = m
 
@@ -528,7 +529,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 			// a failing language server isn't fatal. We'd prefer to log these metrics.
 			if err != nil {
-				log.Printf(ctx, "%s", err.Error())
+				log.Printf(ctx, "Failed to create LSP client: %s@%s: %s", r.Name, langServer.Address, err.Error())
 				continue
 			}
 

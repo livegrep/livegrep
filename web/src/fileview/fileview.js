@@ -91,6 +91,22 @@ function expandRangeToElement(element) {
   }
 }
 
+function caretPositionFromPoint(x, y) {
+  if ("caretPositionFromPoint" in document) { 
+    const position = document.caretPositionFromPoint(x, y);
+    return {
+      offsetNode: position.offsetNode,
+      offset: position.offset,
+    };
+  }
+
+  const range = document.caretRangeFromPoint(x, y);
+  return {
+    offsetNode: range.startContainer,
+    offset: range.startOffset,
+  };
+}
+
 function init(initData) {
   var root = $('.file-content');
   var lineNumberContainer = root.find('.line-numbers');
@@ -242,7 +258,7 @@ function init(initData) {
     const row = rows.length - 1;
     const col = rows[row].length;
 
-    const jumpToDefUrl = "/api/v1/langserver/jumptodef?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
+    const jumpToDefUrl = "/api/v1/lsp/definition?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
     fetch(jumpToDefUrl, { credentials: "same-origin" })
       .then(function(response) {
         if (response.ok) {
@@ -267,7 +283,7 @@ function init(initData) {
         }
       });
 
-    const hoverUrl = "/api/v1/langserver/hover?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;    
+    const hoverUrl = "/api/v1/lsp/hover?repo_name=" + initData.repo_info.name + "&file_path=" + initData.file_path + "&row=" + row + "&col=" + col;
     fetch(hoverUrl, { credentials: "same-origin" })
       .then(function(response) {
         if (response.ok) {
@@ -312,9 +328,20 @@ function init(initData) {
     // hoverable text may be surrounded by <span class="hoverable">
     // text being hovered over is changed to class="hovering"
     // non-hoverable text is class="nonhoverable"
-    const pos = document.caretRangeFromPoint(clientX, clientY);
-    const textNode = pos.startContainer;
-    if (!textNode || textNode.nodeType !== 3) { // expected to be a text node
+    var pos;
+    try {
+      pos = caretPositionFromPoint(clientX, clientY);
+    } catch (err) {
+      if (err instanceof TypeError) {
+        // caretRangeFromPoint and caretPositionFromPoint are not supported by the user's browser.
+        return;
+      } else {
+        throw err;
+      }
+    }
+
+    const textNode = pos.offsetNode;
+    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) { // expected to be a text node
       return;
     }
     // decide what to do based on the class of the span containing the text
@@ -342,7 +369,7 @@ function init(initData) {
     }
     // syntax highlighter hasn't identified the token yet, so we have to parse
     // to find the token ourselves, and create a new span around it.
-    const symbolRange = symbolAtLocation(textNode, pos.startOffset);
+    const symbolRange = symbolAtLocation(textNode, pos.offset);
     if (symbolRange.toString().length === 0) {
       return;
     }
