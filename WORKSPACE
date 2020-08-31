@@ -21,7 +21,7 @@ http_archive(
 )
 
 git_repository(
-    name = "com_googlesource_code_re2",
+    name = "com_github_google_re2",
     commit = "767de83bb7e4bfe3a2d8aec0ec79f9f1f66da30a",
     remote = "https://github.com/google/re2",
     shallow_since = "1535650560 +0000",
