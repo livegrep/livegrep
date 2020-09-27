@@ -505,13 +505,12 @@ void code_searcher::index_filenames() {
 void code_searcher::finalize() {
     assert(!finalized_);
     finalized_ = true;
+    index_filenames();
     alloc_->finalize();
 
     timeval now;
     gettimeofday(&now, NULL);
     index_timestamp_ = now.tv_sec;
-
-    index_filenames();
 
     idx_data_chunks.inc(alloc_->end() - alloc_->begin());
     idx_content_chunks.inc(alloc_->end_content() - alloc_->begin_content());
