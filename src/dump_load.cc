@@ -57,6 +57,7 @@ protected:
     void dump_chunk_files(chunk *, chunk_header *);
     void dump_chunk_data(chunk *);
     void dump_content_data();
+    void dump_filename_index();
 
     void alignp(uint32_t align) {
         streampos pos = stream_.tellp();
@@ -153,6 +154,7 @@ public:
             cit->size = ait->end - ait->data;
         }
         index_->dump_metadata();
+        index_->dump_filename_index();
         index_->stream_.seekp(0);
         index_->dump(&index_->hdr_);
         index_->stream_.close();
@@ -358,6 +360,31 @@ void codesearch_index::dump_content_data() {
     }
 }
 
+void codesearch_index::dump_filename_index() {
+    hdr_.nfiledata = cs_->filename_data_.size();
+
+    hdr_.filedata_off = stream_.tellp();
+    for (auto it = cs_->filename_data_.begin();
+         it != cs_->filename_data_.end(); ++it) {
+        dump(&*it);
+    }
+
+    hdr_.filesuffixes_off = stream_.tellp();
+    for (auto it = cs_->filename_suffixes_.begin();
+         it != cs_->filename_suffixes_.end(); ++it) {
+        dump_int32(*it);
+    }
+
+    hdr_.filepos_off = stream_.tellp();
+    for (auto it = cs_->filename_positions_.begin();
+         it != cs_->filename_positions_.end(); ++it) {
+        dump(&it->first);
+        // The indexed_file associated with this filename position is already
+        // populated into the dump file via dump_metadata at this point; it need
+        // not be re-written.
+    }
+}
+
 void codesearch_index::dump() {
     assert(cs_->finalized_);
 
@@ -366,6 +393,7 @@ void codesearch_index::dump() {
     dump_chunk_data();
     dump_content_data();
     dump_metadata();
+    dump_filename_index();
 
     stream_.seekp(0);
     dump(&hdr_);
@@ -489,11 +517,30 @@ void load_allocator::load(code_searcher *cs) {
     }
     assert(it == cs->files_.end());
 
+    p_ = ptr<uint8_t>(hdr_->filedata_off);
+    cs->filename_data_.reserve(hdr_->nfiledata);
+    for (int i = 0; i < hdr_->nfiledata; i++) {
+        cs->filename_data_.push_back(*consume<unsigned char>());
+    }
+
+    p_ = ptr<uint8_t>(hdr_->filesuffixes_off);
+    cs->filename_suffixes_.reserve(hdr_->nfiledata);
+    for (int i = 0; i < hdr_->nfiledata; i++) {
+        cs->filename_suffixes_.push_back(load_int32());
+    }
+
+    p_ = ptr<uint8_t>(hdr_->filepos_off);
+    cs->filename_positions_.reserve(hdr_->nfiles);
+    for (auto it = cs->files_.begin();
+         it != cs->files_.end(); ++it) {
+        int pos = *consume<int>();
+        indexed_file *sf = it->get();
+        cs->filename_positions_.push_back(make_pair(pos, sf));
+    }
+
     struct stat st;
     assert(fstat(fd_, &st) == 0);
     cs->index_timestamp_ = st.st_mtime;
-
-    cs->index_filenames();
 
     cs->finalized_ = true;
 }

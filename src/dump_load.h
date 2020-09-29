@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 13;
+const uint32_t kIndexVersion = 14;
 const uint32_t kPageSize     = (1 << 12);
 
 struct index_header {
@@ -32,6 +32,11 @@ struct index_header {
 
     uint32_t ncontent;
     uint64_t content_off;
+
+    uint32_t nfiledata;
+    uint64_t filedata_off;
+    uint64_t filesuffixes_off;
+    uint64_t filepos_off;
 } __attribute__((packed));
 
 struct chunk_header {
