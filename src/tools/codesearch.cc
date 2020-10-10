@@ -110,9 +110,9 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
                 repo.name().c_str(), repo.path().c_str(), repo.walk_submodules() ? "true" : "false");
         git_indexer indexer(cs, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules());
         for (auto &rev : repo.revisions()) {
-            fprintf(stderr, "  walking %s... ", rev.c_str());
+            fprintf(stderr, "  walking %s\n", rev.c_str());
             indexer.walk(rev);
-            fprintf(stderr, "done\n");
+            fprintf(stderr, "  done\n");
         }
     }
 }
