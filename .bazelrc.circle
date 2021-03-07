@@ -1,9 +1,9 @@
 # This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
 startup --host_jvm_args=-Xms512m
 startup --host_jvm_args=-Xmx1024m
-build --local_resources=4096,4,1.0
+build --local_ram_resources=4096
+build --local_cpu_resources=4
 build -c opt
-test --ram_utilization_factor=10
 
 # This is so we understand failures better
 build --verbose_failures

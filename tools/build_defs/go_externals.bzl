@@ -58,7 +58,7 @@ _externals = [
     _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
     struct(
         name = "org_golang_google_grpc",
-        commit = "f6d0f9ee430895e87ef1ceb5ac8f39725bafceef",
+        commit = "f74f0337644653eba7923908a4d7f79a4f3a267b",
         importpath = "google.golang.org/grpc",
     ),
 ]
