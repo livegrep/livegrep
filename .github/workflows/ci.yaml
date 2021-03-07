@@ -1,0 +1,34 @@
+on:
+  pull_request: {}
+  push: {}
+
+name: Continuous integration
+
+jobs:
+  ci:
+    container: us.gcr.io/livegrep/ci:11
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/bazel
+          key: ${{runner.os}}
+      - name: setup bazel
+        run: |
+          cat .bazelrc.circle >> .bazelrc
+      - name: bazel fetch
+        run: |
+          bazel fetch //cmd/...
+      - name: gofmt
+        run: |
+          gofmt=$(bazel info output_base)/external/go_sdk/bin/gofmt
+          format_errors=$(find . -name '*.go' -print0 | xargs -0 "$gofmt" -l -e)
+          if [ "$format_errors" ]; then
+              echo "=== misformatted files (run gofmt) ==="
+              echo "$format_errors"
+              exit 1
+          fi
+      - name: bazel test
+        run: |
+          bazel test --test_arg=-test.v //...
+          bazel build //...
