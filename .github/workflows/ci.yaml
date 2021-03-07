@@ -6,6 +6,7 @@ name: Continuous integration
 
 jobs:
   ci:
+    runs-on: ubuntu-20.04
     container: us.gcr.io/livegrep/ci:11
     steps:
       - uses: actions/checkout@v2
