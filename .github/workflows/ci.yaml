@@ -34,6 +34,7 @@ jobs:
           bazel test --test_arg=-test.v //...
           bazel build //...
       - name: upload to google cloud
+        if: github.event_name == "push"
         env:
           GCLOUD_SERVICE_KEY: ${{ secrets.GCLOUD_SERVICE_KEY }}
         run: |
