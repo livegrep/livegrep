@@ -33,3 +33,12 @@ jobs:
         run: |
           bazel test --test_arg=-test.v //...
           bazel build //...
+      - name: upload to google cloud
+        env:
+          GCLOUD_SERVICE_KEY: ${{ secrets.GCLOUD_SERVICE_KEY }}
+        run: |
+          echo "$GCLOUD_SERVICE_KEY" > "$HOME/cloud-service-key.json"
+          /usr/local/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
+          /usr/local/google-cloud-sdk/bin/gcloud config set project livegrep
+          ./package.sh
+          /usr/local/google-cloud-sdk/bin/gsutil cp -a public-read -r builds/ gs://livegrep.appspot.com/
