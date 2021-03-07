@@ -3,13 +3,11 @@ workspace(name = "com_github_livegrep_livegrep")
 load(
     "@bazel_tools//tools/build_defs/repo:git.bzl",
     "git_repository",
-    "new_git_repository",
 )
 load(
     "@bazel_tools//tools/build_defs/repo:http.bzl",
     "http_archive",
 )
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "divsufsort",
@@ -52,19 +50,12 @@ load(
 
 boost_deps()
 
-git_repository(
-    name = "com_google_absl",
-    commit = "6e18c7115df9b7ca0987cc346b1b1d4b3cc829b3",
-    remote = "https://github.com/abseil/abseil-cpp",
-    shallow_since = "1588025320 -0400",
-)
-
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "842ec0e6b4fbfdd3de6150b61af92901eeb73681fd4d185746644c338f51d4c0",
+    sha256 = "52d0a57ea12139d727883c2fef03597970b89f2cc2a05722c42d1d7d41ec065b",
     urls = [
-        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/rules_go/releases/download/v0.20.1/rules_go-v0.20.1.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.20.1/rules_go-v0.20.1.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.24.13/rules_go-v0.24.13.tar.gz",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.24.13/rules_go-v0.24.13.tar.gz",
     ],
 )
 
@@ -102,9 +93,9 @@ http_archive(
 
 git_repository(
     name = "com_github_grpc_grpc",
-    commit = "7d7e4567625db7cfebf8969a225948097a3f9f89",
+    commit = "c3438a0c5d7bc499eb31fd4853ca72c771f758a5",
     remote = "https://github.com/grpc/grpc.git",
-    shallow_since = "1597651368 +0200",
+    shallow_since = "1614894778 -0800",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
