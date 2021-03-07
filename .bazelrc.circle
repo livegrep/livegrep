@@ -4,7 +4,6 @@ startup --host_jvm_args=-Xmx1024m
 build --local_ram_resources=4096
 build --local_cpu_resources=4
 build -c opt
-test --ram_utilization_factor=10
 
 # This is so we understand failures better
 build --verbose_failures
