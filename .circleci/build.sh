@@ -8,6 +8,7 @@ if [ "$GCLOUD_SERVICE_KEY" ]; then
 fi
 
 cat .bazelrc.circle >> .bazelrc
+cat .bazelrc.ci >> .bazelrc
 
 bazel fetch //cmd/...
 

@@ -1,0 +1,7 @@
+# This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
+startup --host_jvm_args=-Xms512m
+startup --host_jvm_args=-Xmx1024m
+build -c opt
+
+# This is so we understand failures better
+build --verbose_failures

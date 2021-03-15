@@ -16,7 +16,7 @@ jobs:
           key: ${{runner.os}}
       - name: setup bazel
         run: |
-          cat .bazelrc.circle >> .bazelrc
+          cat .bazelrc.ci >> .bazelrc
       - name: bazel fetch
         run: |
           bazel fetch //cmd/...
@@ -34,7 +34,7 @@ jobs:
           bazel test --test_arg=-test.v //...
           bazel build //...
       - name: upload to google cloud
-        if: github.event_name == "push"
+        if: 'github.event_name == "push"'
         env:
           GCLOUD_SERVICE_KEY: ${{ secrets.GCLOUD_SERVICE_KEY }}
         run: |
