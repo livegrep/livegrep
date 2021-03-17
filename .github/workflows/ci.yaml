@@ -1,6 +1,8 @@
 on:
   pull_request: {}
-  push: {}
+  push:
+    branches:
+      - main
 
 name: Continuous integration
 
@@ -16,7 +18,7 @@ jobs:
           key: ${{runner.os}}
       - name: setup bazel
         run: |
-          cat .bazelrc.circle >> .bazelrc
+          cat .bazelrc.ci >> .bazelrc
       - name: bazel fetch
         run: |
           bazel fetch //cmd/...
@@ -34,14 +36,11 @@ jobs:
           bazel test --test_arg=-test.v //...
           bazel build //...
       - name: upload to google cloud
-        if: github.event_name == "push"
         env:
           GCLOUD_SERVICE_KEY: ${{ secrets.GCLOUD_SERVICE_KEY }}
         run: |
           echo "$GCLOUD_SERVICE_KEY" | openssl enc -a -A -d > "$HOME/gcloud-service-key.json"
-          echo "keyfile:";
-          tr 'a-zA-Z0-9' X < "$HOME/gcloud-service-key.json"
           /usr/local/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
           /usr/local/google-cloud-sdk/bin/gcloud config set project livegrep
           ./package.sh
-          /usr/local/google-cloud-sdk/bin/gsutil cp -a public-read -r builds/ gs://livegrep.appspot.com/
+          /usr/local/google-cloud-sdk/bin/gsutil cp -n -a public-read -r builds/ gs://livegrep.appspot.com/
