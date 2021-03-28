@@ -3,6 +3,9 @@ package server
 import (
 	"regexp"
 	"testing"
+
+	"github.com/bazelbuild/rules_go/go/tools/bazel"
+	"github.com/livegrep/livegrep/server/config"
 )
 
 func assertRepoPath(t *testing.T,
@@ -39,4 +42,15 @@ func TestRepoRegexParsing(t *testing.T) {
 	assertRepoPath(t, repoRegex, "/view/foobar/path/to/foobar.css", "foobar", "path/to/foobar.css", nil)
 	assertRepoPath(t, repoRegex, "/view/not-exist/path/to/foobar.css", "", "", serveUrlParseError)
 	assertRepoPath(t, repoRegex, "/not/even/a/url/not-exist/path/to/foobar.css", "", "", serveUrlParseError)
+}
+
+func TestTemplatesLoad(t *testing.T) {
+	docroot, err := bazel.Runfile("web/")
+	if err != nil {
+		t.Fatalf("runfile: %s", err.Error())
+	}
+	srv := server{config: &config.Config{
+		DocRoot: docroot,
+	}}
+	srv.loadTemplates()
 }
