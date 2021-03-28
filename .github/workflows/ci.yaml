@@ -20,7 +20,9 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.cache/bazel
-          key: ${{runner.os}}
+          key: ${{runner.os}}-${{hashFiles("WORKSPACE")}}
+          restore-keys:
+            - ${{runner.os}}-
       - name: setup bazel
         run: |
           cat .bazelrc.ci >> .bazelrc
