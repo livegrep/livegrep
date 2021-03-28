@@ -66,6 +66,9 @@
     </div>
     {{end}}
     {{block "body" .}}{{end}}
+    {{if .Config.FooterHTML}}
+      {{.Config.FooterHTML}}
+    {{else}}
   </body>
 </html>
 {{end}}
