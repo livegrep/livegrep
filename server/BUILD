@@ -41,6 +41,13 @@ go_test(
         "query_test.go",
         "server_test.go",
     ],
+    data = [
+        "//web:htdocs",
+        "//web:templates",
+    ],
     embed = [":go_default_library"],
-    deps = ["//src/proto:go_proto"],
+    deps = [
+        "//src/proto:go_proto",
+        "@io_bazel_rules_go//go/tools/bazel",
+    ],
 )
