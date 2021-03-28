@@ -40,6 +40,10 @@ type Config struct {
 	// for site-specific customizations
 	HeaderHTML template.HTML `json:"header_html"`
 
+	// HTML injected into layout template
+	// just before </body> for site-specific customization
+	FooterHTML template.HTML `json:"footer_html"`
+
 	Sentry struct {
 		URI string `json:"uri"`
 	} `json:"sentry"`
