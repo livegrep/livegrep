@@ -39,6 +39,7 @@ func getFuncs() map[string]interface{} {
 		"toLineNum": func(n int) int { return n + 1 },
 		"linkTag":   linkTag,
 		"scriptTag": scriptTag,
+		"split":     func(str string, sep string) []string { return strings.Split(str, sep) },
 	}
 }
 

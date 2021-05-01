@@ -48,6 +48,7 @@ _externals = [
     ),
     _github("google/go-github", "e0066688b631702f66e0435ee1633f9d0091e4b9"),
     _github("honeycombio/libhoney-go", "a8716c5861ae19c1e2baaad52dd59ba64b902bde"),
+    _github("sourcegraph/jsonrpc2", "a3d86c792f0f5a0c0c2c4ed9157125e914cb5534"),
     _github("nelhage/go.cli", "2aeb96ef8025f3646befae8353b90f95e9e79bdc"),
     _github("bmizerany/pat", "c068ca2f0aacee5ac3681d68e4d0a003b7d1fd2c"),
     _github("google/go-querystring", "53e6ce116135b80d037921a7fdd5138cf32d7a8a"),
@@ -56,6 +57,8 @@ _externals = [
     _github("facebookgo/clock", "600d898af40aa09a7a93ecb9265d87b0504b6f03"),
     _gopkg("alexcesaro/statsd.v2", "7fea3f0d2fab1ad973e641e51dba45443a311a90"),
     _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
+    _github("fatih/pool", "830a0f4759206ca695bc91927303867a1ba951bc"),
+    _github("jolestar/go-commons-pool", "3f5d5f81046da81d73466f44fe6e0ac36ff304bd"),
     struct(
         name = "org_golang_google_grpc",
         commit = "f74f0337644653eba7923908a4d7f79a4f3a267b",

@@ -9,13 +9,22 @@ import (
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
 	texttemplate "text/template"
 	"time"
 
 	"golang.org/x/net/context"
 
 	"github.com/bmizerany/pat"
-	libhoney "github.com/honeycombio/libhoney-go"
+	"github.com/honeycombio/libhoney-go"
+
+	"github.com/livegrep/livegrep/server/langserver"
+
+	"path/filepath"
+	"strings"
+
+	"errors"
+	"net/url"
 
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
@@ -41,6 +50,7 @@ type server struct {
 	bk          map[string]*Backend
 	bkOrder     []string
 	repos       map[string]config.RepoConfig
+	langsrv     map[string]langserver.Client
 	inner       http.Handler
 	Templates   map[string]*template.Template
 	OpenSearch  *texttemplate.Template
@@ -51,6 +61,13 @@ type server struct {
 
 	serveFilePathRegex *regexp.Regexp
 }
+
+const (
+	repoNameParamName  = "repo_name"
+	lineParamName      = "line"
+	filePathParamName  = "file_path"
+	characterParamName = "character"
+)
 
 func (s *server) loadTemplates() {
 	s.Templates = make(map[string]*template.Template)
@@ -149,11 +166,13 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
+	langServer := langserver.ForFile(&repo, path)
 	script_data := &struct {
-		RepoInfo config.RepoConfig `json:"repo_info"`
-		FilePath string            `json:"file_path"`
-		Commit   string            `json:"commit"`
-	}{repo, path, commit}
+		RepoInfo      config.RepoConfig `json:"repo_info"`
+		Commit        string            `json:"commit"`
+		FilePath      string            `json:"file_path"`
+		HasLangServer bool              `json:"has_lang_server"`
+	}{repo, commit, path, langServer != nil}
 
 	s.renderPage(ctx, w, r, "fileview.html", &page{
 		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
@@ -281,6 +300,136 @@ func (h *reloadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.inner.ServeHTTP(w, r)
 }
 
+type DefinitionResponse struct {
+	URL string `json:"url"`
+}
+
+func (s *server) ServeDefinition(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	docPositionParams, repo, err := s.parseDocPositionParams(r.URL.Query())
+	if err != nil {
+		writeError(ctx, w, 400, "bad_arguments", err.Error())
+		return
+	}
+
+	l := langserver.ForFile(repo, docPositionParams.TextDocument.URI)
+	langServer := s.langsrv[l.Address]
+	if langServer == nil {
+		// no language server
+		writeError(ctx, w, 404, "not_found", err.Error())
+		return
+	}
+
+	locations, err := langServer.Definition(ctx, docPositionParams)
+	if err != nil {
+		writeError(ctx, w, 500, "lsp_error", err.Error())
+		return
+	}
+
+	retUrl := ""
+
+	if len(locations) > 0 {
+		location := locations[0]
+		targetPath := strings.TrimPrefix(location.URI, "file://")
+		// Add 1 because URL is 1-indexed and language server is 0-indexed.
+		lineNum := location.Range.Start.Line + 1
+		if !strings.HasPrefix(targetPath, repo.Path) {
+			writeError(ctx, w, 400, "out_of_repo", "locations outside repo not supported")
+			return
+		}
+
+		relPath, err := filepath.Rel(repo.Path, targetPath)
+		if err != nil {
+			writeError(ctx, w, 500, "invalid_path", err.Error())
+			return
+		}
+
+		retUrl = fmt.Sprintf("/view/%s/%s#L%d", repo.Name, relPath, lineNum)
+	} else {
+		writeError(ctx, w, 400, "unresolved", "could not resolve an identifier")
+		return
+	}
+
+	replyJSON(ctx, w, 200, &DefinitionResponse{
+		URL: retUrl,
+	})
+}
+
+func (s *server) ServeHover(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	docPositionParams, repo, err := s.parseDocPositionParams(r.URL.Query())
+	if err != nil {
+		writeError(ctx, w, 400, "bad_arguments", err.Error())
+		return
+	}
+
+	l := langserver.ForFile(repo, docPositionParams.TextDocument.URI)
+	langServer := s.langsrv[l.Address]
+	if langServer == nil {
+		// no language server
+		writeError(ctx, w, 404, "not_found", err.Error())
+		return
+	}
+
+	result, err := langServer.Hover(ctx, docPositionParams)
+	if err != nil {
+		writeError(ctx, w, 500, "lsp_error", err.Error())
+		return
+	}
+
+	replyJSON(ctx, w, 200, result)
+}
+
+func findRepo(repos []config.RepoConfig, repoName string) (*config.RepoConfig, error) {
+	for _, repo := range repos {
+		if repo.Name == repoName {
+			return &repo, nil
+		}
+	}
+	return nil, fmt.Errorf("repo with name %s not found", repoName)
+}
+
+func (s *server) parseDocPositionParams(params url.Values) (*langserver.TextDocumentPositionParams, *config.RepoConfig, error) {
+	lineParam, characterParam, repo, fpath :=
+		params.Get(lineParamName),
+		params.Get(characterParamName),
+		params.Get(repoNameParamName),
+		params.Get(filePathParamName)
+
+	if lineParam == "" || characterParam == "" || repo == "" || fpath == "" {
+		return nil, nil, errors.New("line, character, repo, and filepath need to be set")
+	}
+
+	line, err := strconv.Atoi(lineParam)
+	if err != nil {
+		return nil, nil, errors.New("line param needs to be a number, got " + lineParam)
+	}
+
+	character, err := strconv.Atoi(characterParam)
+	if err != nil {
+		return nil, nil, errors.New("character param needs to be a number, got " + characterParam)
+	}
+
+	repoConfig, err := findRepo(s.config.IndexConfig.Repositories, repo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	positionParams := &langserver.TextDocumentPositionParams{
+		TextDocument: langserver.TextDocumentIdentifier{
+			URI: buildURI(repoConfig.Path, fpath),
+		},
+		Position: langserver.Position{
+			Line:      line,
+			Character: character,
+		},
+	}
+
+	return positionParams, repoConfig, nil
+}
+
+func buildURI(repoPath string, relativeFilePath string) string {
+	return "file://" + repoPath + "/" + relativeFilePath
+}
+
 type handler func(c context.Context, w http.ResponseWriter, r *http.Request)
 
 const RequestTimeout = 30 * time.Second
@@ -301,9 +450,10 @@ func (s *server) Handler(f func(c context.Context, w http.ResponseWriter, r *htt
 
 func New(cfg *config.Config) (http.Handler, error) {
 	srv := &server{
-		config: cfg,
-		bk:     make(map[string]*Backend),
-		repos:  make(map[string]config.RepoConfig),
+		config:  cfg,
+		bk:      make(map[string]*Backend),
+		repos:   make(map[string]config.RepoConfig),
+		langsrv: make(map[string]langserver.Client),
 	}
 	srv.loadTemplates()
 
@@ -350,6 +500,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
+	m.Add("GET", "/api/v1/lsp/definition", srv.Handler(srv.ServeDefinition))
+	m.Add("GET", "/api/v1/lsp/hover", srv.Handler(srv.ServeHover))
 
 	var h http.Handler = m
 
@@ -362,6 +514,31 @@ func New(cfg *config.Config) (http.Handler, error) {
 	mux.Handle("/", h)
 
 	srv.inner = mux
+
+	ctx := context.Background()
+
+	for _, r := range srv.config.IndexConfig.Repositories {
+		for _, langServer := range r.LangServers {
+
+			client, err := langserver.NewClient(langServer.Address, &langserver.InitializeParams{
+				ProcessId:        nil,
+				OriginalRootPath: r.Path,
+				RootUri:          "file://" + r.Path,
+				Capabilities:     langserver.ClientCapabilities{},
+			})
+
+			// a failing language server isn't fatal. We'd prefer to log these metrics.
+			if err != nil {
+				log.Printf(ctx, "Failed to create LSP client: %s@%s: %s", r.Name, langServer.Address, err.Error())
+				continue
+			}
+
+			srv.langsrv[langServer.Address] = client
+		}
+
+		srv.repos[r.Name] = r
+		repoNames = append(repoNames, r.Name)
+	}
 
 	return srv, nil
 }
