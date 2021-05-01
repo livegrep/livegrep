@@ -569,6 +569,18 @@ var MatchesView = Backbone.View.extend({
   render: function() {
     this.$el.empty();
 
+    // Collate which file extensions (.py, .go, etc) are most common.
+    // countExtension() is called for file_search_results and search_results
+    var extension_map = {};
+    var countExtension = function(path) {
+      var r = /[^\/](\.[a-z.]{1,6})$/i;
+      var match = path.match(r);
+      if (match) {
+        var ext = match[1];
+        extension_map[ext] = extension_map[ext] ? extension_map[ext] + 1 : 1;
+      }
+    }
+
     var pathResults = h.div({'cls': 'path-results'});
     var count = 0;
     this.model.file_search_results.each(function(file) {
@@ -576,23 +588,16 @@ var MatchesView = Backbone.View.extend({
         var view = new FileMatchView({model: file});
         pathResults.append(view.render().el);
       }
+      countExtension(file.attributes.path);
       count += 1;
     }, this);
     this.$el.append(pathResults);
-
-    // Collate which file extensions (.py, .go, etc) are most common.
-    var extension_map = {};
 
     this.model.search_results.each(function(file_group) {
       file_group.process_context_overlaps();
       var view = new FileGroupView({model: file_group});
       this.$el.append(view.render().el);
-      var r = /[^\/](\.[a-z.]{1,6})$/i;
-      var match = file_group.path_info.path.match(r);
-      if (match) {
-        var ext = match[1];
-        extension_map[ext] = extension_map[ext] ? extension_map[ext] + 1 : 1;
-      }
+      countExtension(file_group.path_info.path);
     }, this);
 
     var i = this.model.search_id;
