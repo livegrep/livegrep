@@ -93,6 +93,6 @@ def run_npm(cmd, env=None, cwd=None):
             full_cmd, env=full_env, cwd=cwd, stderr=subprocess.STDOUT
         ).strip()
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(e.output)
+        sys.stderr.write(str(e.output))
         raise
     return ret
