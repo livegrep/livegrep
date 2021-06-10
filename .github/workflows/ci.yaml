@@ -20,7 +20,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.cache/bazel
-          key: ${{runner.os}}-${{hashFiles("WORKSPACE")}}
+          key: ${{runner.os}}-${{hashFiles('WORKSPACE')}}
           restore-keys:
             - ${{runner.os}}-
       - name: setup bazel
