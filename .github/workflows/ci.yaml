@@ -21,8 +21,8 @@ jobs:
         with:
           path: ~/.cache/bazel
           key: ${{runner.os}}-${{hashFiles('WORKSPACE')}}
-          restore-keys:
-            - ${{runner.os}}-
+          restore-keys: |
+            ${{runner.os}}-
       - name: setup bazel
         run: |
           cat .bazelrc.ci >> .bazelrc
