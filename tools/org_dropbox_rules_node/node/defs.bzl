@@ -927,13 +927,40 @@ filegroup(
 )
 """
 
+def _nodejs_dist_impl(repository_ctx):
+    version = repository_ctx.attr.version
+    if repository_ctx.os.name == "mac os x":
+        sha256 = repository_ctx.attr.sha256["darwin"]
+        platform = "darwin-x64"
+    else:
+        sha256 = repository_ctx.attr.sha256["linux"]
+        platform = "linux-x64"
+
+    url = "https://nodejs.org/dist/v%s/node-v%s-%s.tar.xz" % (version, version, platform)
+    strip_prefix = "node-v%s-%s" % (version, platform)
+
+    repository_ctx.download_and_extract(
+        url = url,
+        stripPrefix = strip_prefix,
+        sha256 = sha256,
+    )
+    repository_ctx.file("BUILD", content = NODEJS_BUILD_FILE_CONTENT)
+
+_nodejs_dist = repository_rule(
+    _nodejs_dist_impl,
+    attrs = {
+        "version": attr.string(default = "6.11.1"),
+        "sha256": attr.string_dict(
+            default = {
+                "linux": "e68cc956f0ca5c54e7f3016d639baf987f6f9de688bb7b31339ab7561af88f41",
+                "darwin": "60521df5c436552bc09ae68e8399e7e32cf34c36b21f1dd93c4ddfa421ed7ef0",
+            },
+        ),
+    }
+)
+
 def node_repositories(omit_nodejs = False):
     if not omit_nodejs:
-        http_archive(
+        _nodejs_dist(
             name = "nodejs",
-            build_file_content = NODEJS_BUILD_FILE_CONTENT,
-            sha256 = "e68cc956f0ca5c54e7f3016d639baf987f6f9de688bb7b31339ab7561af88f41",
-            strip_prefix = "node-v6.11.1-linux-x64",
-            type = "tar.xz",
-            url = "https://nodejs.org/dist/v6.11.1/node-v6.11.1-linux-x64.tar.xz",
         )
