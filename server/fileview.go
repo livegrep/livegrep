@@ -13,8 +13,9 @@ import (
 
 // Mapping from known file extensions to filetype hinting.
 var filenameToLangMap map[string]string = map[string]string{
-	"BUILD":     "python",
-	"WORKSPACE": "python",
+	"BUILD":       "python",
+	"BUILD.bazel": "python",
+	"WORKSPACE":   "python",
 }
 var extToLangMap map[string]string = map[string]string{
 	".AppleScript": "applescript",
@@ -46,6 +47,7 @@ var extToLangMap map[string]string = map[string]string{
 	".scpt":        "applescript",
 	".scss":        "scss",
 	".sh":          "bash",
+	".sky":         "python",
 	".sql":         "sql",
 	".swift":       "swift",
 	".tsx":         "tsx",
