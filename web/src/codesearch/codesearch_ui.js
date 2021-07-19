@@ -534,7 +534,7 @@ var FileGroupView = Backbone.View.extend({
             dirname,
             h.span({cls: "filename"}, [basename]),
           ]
-        ),
+        )
       ),
       h.div(
         {cls: 'header-links'},
