@@ -216,6 +216,10 @@ a:hover {
     padding-right: 3px;
 }
 
+.header-path {
+    flex-grow: 1;
+}
+
 .result-path {
     color: #3d464d;
     font-family: "Menlo", "Consolas", "Monaco", monospace;

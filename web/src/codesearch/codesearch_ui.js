@@ -524,14 +524,17 @@ var FileGroupView = Backbone.View.extend({
     var first_match = this.model.matches[0];
 
     var headerChildren = [
-      h.a(
-        {cls: 'result-path', href: first_match.url()},
-        [
-          h.span({cls: "repo"}, [tree, ':']),
-          h.span({cls: "version"}, [shorten(version), ':']),
-          dirname,
-          h.span({cls: "filename"}, [basename]),
-        ]
+      h.span(
+        {cls: 'header-path'},
+        h.a(
+          {cls: 'result-path', href: first_match.url()},
+          [
+            h.span({cls: "repo"}, [tree, ':']),
+            h.span({cls: "version"}, [shorten(version), ':']),
+            dirname,
+            h.span({cls: "filename"}, [basename]),
+          ]
+        )
       ),
       h.div(
         {cls: 'header-links'},
