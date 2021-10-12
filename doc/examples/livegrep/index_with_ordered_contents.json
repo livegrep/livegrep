@@ -6,7 +6,7 @@
             "path": "src/",
             "ordered-contents": "ordered-contents.txt",
             "metadata": {
-                "url-pattern": "https://github.com/{name}/blob/HEAD/src/{path}#L{lno}"
+                "url_pattern": "https://github.com/{name}/blob/{version}/src/{path}#L{lno}"
             }
         }
     ],

@@ -168,7 +168,13 @@ function init(initData) {
     var repoName = initData.repo_info.name;
     var filePath = initData.file_path;
 
-    url = initData.repo_info.metadata['url-pattern']
+    url = initData.repo_info.metadata['url_pattern'];
+
+    // If url not found, warn user and fail gracefully
+    if (!url) { // deal with both undefined and empty string
+        console.error("The index file you provided does not provide repositories[x].metadata.url_pattern. External links to file sources will not work. See the README for more information on file viewing.");
+        return;
+    }
 
     // If {path} already has a slash in front of it, trim extra leading
     // slashes from `pathInRepo` to avoid a double-slash in the URL.

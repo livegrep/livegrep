@@ -76,7 +76,7 @@ protobuf in [src/proto/config.proto](src/proto/config.proto).
 
 ## `livegrep`
 
-The `livegrep` frontend expects an optional position argument
+The `livegrep` frontend accepts an optional position argument
 indicating a JSON configuration file; See
 [doc/examples/livegrep/server.json][server.json] for an example, and
 [server/config/config.go][config.go] for documentation of available
@@ -100,6 +100,63 @@ the repos in `repos/` and writing `nelhage.idx`, you might run:
 
 You can now use `nelhage.idx` as an argument to `codesearch
 -load_index`.
+
+## Local repository browser
+`livegrep` provides the ability to view source files directly in `livegrep`, as
+an alternative to linking files to external viewers. This was initially implemented
+by @jboning [here](https://github.com/livegrep/livegrep/pull/70). There are
+a few ways to enable this. The most important steps are to
+1. Generate a config file that `livegrep` can use to figure out where your
+   source files are (locally).
+2. Pass this config file as an argument to the frontend (`-index-config`)
+
+### Generating index manually
+
+See [doc/examples/livegrep/server.json](doc/examples/livegrep/server.json) for an
+example config file, and [server/config/config.go](server/config/config.go) for documentation on available options. To enable the file viewer, you must include an [`IndexConfig`](server/config/config.go#L61) block inside of the config file. An example `IndexConfig` block can be seen at [doc/examples/livegrep/index.json](doc/examples/livegrep/index.json). 
+
+*Tip: For each repository included in your `IndexConfig`, make sure to include `metadata.url_pattern` if you would like the file viewer to be able to link out to the external host. You'll see a warning in your browser console if you don't do this.*
+
+### Generating index with `livegrep-github-reindex`
+If you are already using the `livegrep-github-reindex` tool, an IndexConfig index file is generated for you, by default named "livegrep.json".
+
+Run the indexer
+```
+bazel-bin/cmd/livegrep-github-reindex/livegrep-github-reindex_/livegrep-github-reindex -user=xvandish -forks=false -name=github.com/xvandish -out xvandish.idx ```
+```
+
+The indexer will have done these main things:
+1. Clone (or update) all repositories for `user=xvandish` to/in `repos/xvandish`
+2. Create an IndexConfig file - `repos/livegrep.json`
+3. Create a code index, this is whats used to search - `./xvandish.idx`
+
+Here's an abbreviated version of what your directory might look like after running the indexer.
+```
+livegrep
+│   xvandish.idx
+└───repos
+│   │   livegrep.json
+│   └───xvandish
+│       └───repo1
+│       └───repo2
+│       └───repo3
+```
+
+### Using your generated index
+Now that you generated an index file, it's time to run livegrep with it.
+
+Run the backend:
+```
+bazel-bin/src/tools/codesearch -load_index xvandish.idx -grpc localhost:9999
+```
+
+Run the frontend in another shell instance with the path to the index file located at `repos/livegrep.json`.
+```
+bazel-bin/cmd/livegrep/livegrep_/livegrep -index-config ./repos/livegrep.json
+```
+In a browser, now visit `http://localhost:8910` and you should see a working
+livegrep. Search for something, and once you get a result, click on the file
+name or a line number. You should now be taken to the file browser!
 
 Docker images
 -------------

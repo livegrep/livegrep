@@ -46,7 +46,7 @@ func main() {
 		log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 	}
 
-	if err := checkoutRepos(&cfg.Repos); err != nil {
+	if err := checkoutRepos(&cfg.Repositories); err != nil {
 		log.Fatalln(err.Error())
 	}
 
