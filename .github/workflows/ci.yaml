@@ -1,5 +1,7 @@
 on:
-  pull_request: {}
+  pull_request: 
+    branches:
+      - main
   push:
     branches:
       - main
@@ -14,7 +16,6 @@ name: Continuous integration
 jobs:
   ci:
     runs-on: ubuntu-20.04
-    container: us.gcr.io/livegrep/ci:11
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
@@ -38,18 +39,13 @@ jobs:
               echo "$format_errors"
               exit 1
           fi
-      - name: bazel test
+      - name: bazel test, build
         run: |
           bazel test --test_arg=-test.v //...
           bazel build //...
-      - name: upload to google cloud
-        env:
-          GCLOUD_SERVICE_KEY: ${{ secrets.GCLOUD_SERVICE_KEY }}
-        run: |
-          if [ "$GCLOUD_SERVICE_KEY" ]; then
-            echo "$GCLOUD_SERVICE_KEY" | openssl enc -a -A -d > "$HOME/gcloud-service-key.json"
-            /usr/local/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
-            /usr/local/google-cloud-sdk/bin/gcloud config set project livegrep
-            ./package.sh
-            /usr/local/google-cloud-sdk/bin/gsutil cp -n -a public-read -r builds/ gs://livegrep.appspot.com/
-          fi
+          echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
+      - name: upload build output
+        uses: actions/upload-artifact@v2
+        with: 
+          name: "${{ env.build_output_file_name }}"
+          path: "builds/${{ env.build_output_file_name }}.tgz"
