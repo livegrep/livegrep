@@ -10,4 +10,4 @@ tar -czf "builds/$builddir.tgz" "$builddir"
 rm -rf "$builddir"
 
 # send the name of the built file, so that github actions can upload it
-echo "$builddir.tgz"
+echo $builddir

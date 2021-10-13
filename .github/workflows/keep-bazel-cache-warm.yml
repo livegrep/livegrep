@@ -1,0 +1,26 @@
+on:
+  schedule:
+    # Run in cron every night to keep the cache warm.
+    # Github prunes caches every 7 days, and I don't push often
+    # enough to keep our cache from being evicted without this.
+    - cron: '7 6 * * *'
+
+name: 'Keep cache warm'
+
+jobs:
+  kw:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/bazel
+          key: ${{runner.os}}-${{hashFiles('WORKSPACE')}}
+          restore-keys: |
+            ${{runner.os}}-
+      - name: setup bazel
+        run: |
+          cat .bazelrc.ci >> .bazelrc
+      - name: bazel fetch
+        run: |
+          bazel fetch //cmd/...
