@@ -5,7 +5,7 @@
             "name": "livegrep/livegrep",
             "path": "src/",
             "metadata": {
-                "url-pattern": "https://github.com/{name}/blob/HEAD/src/{path}#L{lno}"
+                "url_pattern": "https://github.com/{name}/blob/{version}/src/{path}#L{lno}"
             }
         }
     ],
@@ -15,7 +15,8 @@
             "path": ".",
             "revisions": [ "HEAD" ],
             "metadata": {
-                "github": "livegrep/livegrep"
+                "github": "livegrep/livegrep",
+                "url_pattern": "https://github.com/{name}/blob/{version}/src/{path}#L{lno}"
             }
         }
     ]

@@ -255,7 +255,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	}
 
 	externalDomain := "external viewer"
-	if url, err := url.Parse(repo.Metadata["url-pattern"]); err == nil {
+	if url, err := url.Parse(repo.Metadata["url_pattern"]); err == nil {
 		externalDomain = url.Hostname()
 	}
 

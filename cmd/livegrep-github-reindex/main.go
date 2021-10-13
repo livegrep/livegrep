@@ -37,8 +37,9 @@ var (
 		fn:      func() string { return path.Join(*flagRepoDir, "livegrep.idx") },
 	}
 	flagRevision     = flag.String("revision", "HEAD", "git revision to index")
-	flagRevparse     = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
+	flagUrlPattern   = flag.String("url-pattern", "https://github.com/{name}/blob/{version}/{path}#L{lno}", "when using the local frontend fileviewer, this string will be used to construt a link to the file source on github")
 	flagName         = flag.String("name", "livegrep index", "The name to be stored in the index file")
+	flagRevparse     = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
 	flagForks        = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
 	flagArchived     = flag.Bool("archived", false, "whether to index repositories that are archived on github")
 	flagHTTP         = flag.Bool("http", false, "clone repositories over HTTPS instead of SSH")
@@ -406,13 +407,14 @@ func buildConfig(name string,
 			password_env = "GITHUB_KEY"
 		}
 
-		cfg.Repos = append(cfg.Repos, &config.RepoSpec{
+		cfg.Repositories = append(cfg.Repositories, &config.RepoSpec{
 			Path:      path.Join(dir, *r.FullName),
 			Name:      *r.FullName,
 			Revisions: []string{revision},
 			Metadata: &config.Metadata{
-				Github: *r.HTMLURL,
-				Remote: remote,
+				Github:     *r.HTMLURL,
+				Remote:     remote,
+				UrlPattern: *flagUrlPattern,
 			},
 			CloneOptions: &config.CloneOptions{
 				Depth:       int32(*flagDepth),
