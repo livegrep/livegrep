@@ -40,6 +40,7 @@ var (
 	flagRevision                = flag.String("revision", "HEAD", "git revision to index")
 	flagUrlPattern              = flag.String("url-pattern", "https://github.com/{name}/blob/{version}/{path}#L{lno}", "when using the local frontend fileviewer, this string will be used to construt a link to the file source on github")
 	flagName                    = flag.String("name", "livegrep index", "The name to be stored in the index file")
+	flagNumRepoUpdateWorkers    = flag.String("num-repo-update-workers", "8", "Number of workers fetch-reindex will use to update repositories")
 	flagRevparse                = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
 	flagForks                   = flag.Bool("forks", true, "whether to index repositories that are github forks, and not original repos")
 	flagArchived                = flag.Bool("archived", false, "whether to index repositories that are archived on github")
@@ -49,9 +50,10 @@ var (
 	flagDepth                   = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
 	flagSkipMissing             = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
 	flagMaxConcurrentGHRequests = flag.Int("max-concurrent-gh-requests", 1, "Applied per org/user. If fetching 2 orgs, you will have 2x{yourInput} network calls possible at a time")
-	flagRepos                   = stringList{}
-	flagOrgs                    = stringList{}
-	flagUsers                   = stringList{}
+
+	flagRepos = stringList{}
+	flagOrgs  = stringList{}
+	flagUsers = stringList{}
 )
 
 func init() {
@@ -150,6 +152,7 @@ func main() {
 	args := []string{
 		"--out", index,
 		"--codesearch", *flagCodesearch,
+		"--num-workers", *flagNumRepoUpdateWorkers,
 	}
 	if *flagRevparse {
 		args = append(args, "--revparse")
