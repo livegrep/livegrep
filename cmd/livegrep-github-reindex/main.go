@@ -366,10 +366,12 @@ func callGitHubConcurrently(initialResp *github.Response, concurrencyLimit int, 
 
 			var repos []*github.Repository
 			var err error
+			var resp *github.Response
 			if method == "org" {
-				repos, _, err = gClient.Repositories.ListByOrg(context.TODO(), org, &github.RepositoryListByOrgOptions{
+				repos, resp, err = gClient.Repositories.ListByOrg(context.TODO(), org, &github.RepositoryListByOrgOptions{
 					ListOptions: github.ListOptions{PerPage: *flagReposPerPage, Page: page},
 				})
+				log.Printf("remaining rate: %d", resp.Rate.Remaining)
 			} else if method == "user" {
 				repos, _, err = gClient.Repositories.List(context.TODO(), user, &github.RepositoryListOptions{
 					ListOptions: github.ListOptions{PerPage: *flagReposPerPage, Page: page},
