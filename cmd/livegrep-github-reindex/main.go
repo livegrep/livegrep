@@ -14,7 +14,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/livegrep/livegrep/src/proto/config"
@@ -61,11 +60,6 @@ func init() {
 	flag.Var(&flagRepos, "repo", "Specify a repo to index (may be passed multiple times)")
 	flag.Var(&flagOrgs, "org", "Specify a github organization to index (may be passed multiple times)")
 	flag.Var(&flagUsers, "user", "Specify a github user to index (may be passed multiple times)")
-}
-
-func timeTrack(start time.Time, timerName string) {
-	elapsed := time.Since(start)
-	log.Printf("%s took %s", timerName, elapsed)
 }
 
 const Workers = 8
@@ -129,7 +123,6 @@ func main() {
 		flagRepos.strings,
 		flagOrgs.strings,
 		flagUsers.strings)
-
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -367,12 +360,10 @@ func callGitHubConcurrently(initialResp *github.Response, concurrencyLimit int, 
 
 			var repos []*github.Repository
 			var err error
-			var resp *github.Response
 			if method == "org" {
-				repos, resp, err = gClient.Repositories.ListByOrg(ctx, org, &github.RepositoryListByOrgOptions{
+				repos, _, err = gClient.Repositories.ListByOrg(ctx, org, &github.RepositoryListByOrgOptions{
 					ListOptions: github.ListOptions{PerPage: *flagReposPerPage, Page: page},
 				})
-				log.Printf("remaining rate: %d", resp.Rate.Remaining)
 			} else if method == "user" {
 				repos, _, err = gClient.Repositories.List(ctx, user, &github.RepositoryListOptions{
 					ListOptions: github.ListOptions{PerPage: *flagReposPerPage, Page: page},
@@ -413,7 +404,6 @@ func callGitHubConcurrently(initialResp *github.Response, concurrencyLimit int, 
 }
 
 func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error) {
-	defer timeTrack(time.Now(), fmt.Sprintf("getOrgRepos - %s", org))
 	log.Printf("Fetching repositories for organization: %s", org)
 
 	opt := &github.RepositoryListByOrgOptions{
@@ -432,7 +422,6 @@ func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error
 }
 
 func getUserRepos(client *github.Client, user string) ([]*github.Repository, error) {
-	defer timeTrack(time.Now(), fmt.Sprintf("getUserRepos - %s", user))
 	log.Printf("Fetching repositories for user: %s", user)
 
 	opt := &github.RepositoryListOptions{
