@@ -328,7 +328,7 @@ func getOneRepo(client *github.Client, repo string) ([]*github.Repository, error
 func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error) {
 	var buf []*github.Repository
 	opt := &github.RepositoryListByOrgOptions{
-		ListOptions: github.ListOptions{PerPage: 50},
+		ListOptions: github.ListOptions{PerPage: 100},
 	}
 	for {
 		repos, resp, err := client.Repositories.ListByOrg(context.TODO(), org, opt)
@@ -347,7 +347,7 @@ func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error
 func getUserRepos(client *github.Client, user string) ([]*github.Repository, error) {
 	var buf []*github.Repository
 	opt := &github.RepositoryListOptions{
-		ListOptions: github.ListOptions{PerPage: 50},
+		ListOptions: github.ListOptions{PerPage: 100},
 	}
 	for {
 		repos, resp, err := client.Repositories.List(context.TODO(), user, opt)
