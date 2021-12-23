@@ -362,11 +362,11 @@ func callGitHubConcurrently(initialResp *github.Response, concurrencyLimit int, 
 			var err error
 			if method == "org" {
 				repos, _, err = gClient.Repositories.ListByOrg(ctx, org, &github.RepositoryListByOrgOptions{
-					ListOptions: github.ListOptions{PerPage: *flagReposPerPage, Page: page},
+					ListOptions: github.ListOptions{PerPage: 100, Page: page},
 				})
 			} else if method == "user" {
 				repos, _, err = gClient.Repositories.List(ctx, user, &github.RepositoryListOptions{
-					ListOptions: github.ListOptions{PerPage: *flagReposPerPage, Page: page},
+					ListOptions: github.ListOptions{PerPage: 100, Page: page},
 				})
 			}
 
