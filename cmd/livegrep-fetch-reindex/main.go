@@ -24,9 +24,8 @@ var (
 	flagRevparse      = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
 	flagSkipMissing   = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
 	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to")
+	flagNumWorkers    = flag.Int("num-workers", 8, "Number of workers used to update repositories")
 )
-
-const Workers = 8
 
 func main() {
 	flag.Parse()
@@ -99,11 +98,11 @@ func findCodesearch(given string) string {
 
 func checkoutRepos(repos *[]*config.RepoSpec) error {
 	repoc := make(chan *config.RepoSpec)
-	errc := make(chan error, Workers)
+	errc := make(chan error, *flagNumWorkers)
 	stop := make(chan struct{})
 	wg := sync.WaitGroup{}
-	wg.Add(Workers)
-	for i := 0; i < Workers; i++ {
+	wg.Add(*flagNumWorkers)
+	for i := 0; i < *flagNumWorkers; i++ {
 		go func() {
 			defer wg.Done()
 			checkoutWorker(repoc, stop, errc)
