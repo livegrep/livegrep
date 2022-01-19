@@ -140,7 +140,7 @@ func main() {
 	if err := writeConfig(config, configPath); err != nil {
 		log.Fatalln(err.Error())
 	}
-	if flagNoIndex {
+	if *flagNoIndex {
 		log.Printf("Skipping indexing after writing config")
 		return
 	}
