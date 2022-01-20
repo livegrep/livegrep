@@ -49,6 +49,7 @@ var (
 	flagDepth                   = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
 	flagSkipMissing             = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
 	flagMaxConcurrentGHRequests = flag.Int("max-concurrent-gh-requests", 1, "Applied per org/user. If fetching 2 orgs, you will have 2x{yourInput} network calls possible at a time")
+	flagNoIndex                 = flag.Bool("no-index", false, "Skip indexing after writing config")
 
 	flagRepos = stringList{}
 	flagOrgs  = stringList{}
@@ -138,6 +139,10 @@ func main() {
 	configPath := path.Join(*flagRepoDir, "livegrep.json")
 	if err := writeConfig(config, configPath); err != nil {
 		log.Fatalln(err.Error())
+	}
+	if *flagNoIndex {
+		log.Printf("Skipping indexing after writing config")
+		return
 	}
 
 	index := flagIndexPath.Get().(string)
