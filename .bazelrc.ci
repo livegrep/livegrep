@@ -41,7 +41,7 @@ test --test_verbose_timeout_warnings
 #    that you created in step 1.
 
 common remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache
-common remote_timeout=600s # worth the wait to upload large objects. Default is 60s
+common remote_timeout=600s
 
 # For clarity, the following options are configured at CI run time depending on
 # whether or not we trust the commit. (push vs pr) & creds available
