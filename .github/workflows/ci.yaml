@@ -20,11 +20,10 @@ jobs:
     # developers to use the remote cache to get started. Windows support can be 
     # added if necessary, assuming for now the windows usage rate would be low
     # enough that it's not worth the CI time to build for it.
-
     strategy:
       matrix:
-        platform: [ubuntu-20.04, macos-latest]
-    runs-on: ${{ matrix.platform }}
+        os: [ubuntu-20.04, macos-latest]
+    runs-on: ${{ matrix.os }}
     outputs:
       build_output_file_name: ${{ steps.build.outputs.build_output_file_name }}
     steps:
