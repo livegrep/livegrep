@@ -40,10 +40,10 @@ test --test_verbose_timeout_warnings
 # 2. Add a GCP_SVC_ACCT_CREDS repository secret that has the service account key
 #    that you created in step 1.
 
-common remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache
-common remote_timeout=600s
+common --remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache
+common --remote_timeout=600s
 
 # For clarity, the following options are configured at CI run time depending on
 # whether or not we trust the commit. (push vs pr) & creds available
-# common remote_upload_local_results=true
-# google_credentials=some_file
+# common --remote_upload_local_results=true
+# --google_credentials=some_file
