@@ -57,7 +57,7 @@ jobs:
         # need this step because with use sha256 sum durin bazel builds,
         # which isn't available by default in macOS
       - name: Install coreutils for macOS
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macos-latest'
         run: brew install coreutils
       - name: bazel fetch
         run: bazel fetch //cmd/...
