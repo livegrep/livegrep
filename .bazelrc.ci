@@ -1,3 +1,5 @@
+startup --host_jvm_args=-Dbazel.DigestFunction=sha256
+
 # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
 # Limit resources since GitHub Actions VMs have 2 cores and 2GB of ram
 build --local_cpu_resources=2
@@ -52,8 +54,9 @@ common --remote_local_fallback=true
 # remote upload defaults to true, which we don't want. We use sed to switch
 # false to true during the CI build if necessary
 common --remote_upload_local_results=false
-# remote cache is chatty
-common --remote_max_connections=300
+# default is 100, setting to 0 lets Bazel choose the number of tcp connections
+# to handle
+common --remote_max_connections=0
 
 # For clarity, the following options are configured at CI run time depending on
 # whether or not we trust the commit. (push vs pr) & creds available
