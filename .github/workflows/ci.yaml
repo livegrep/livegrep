@@ -87,7 +87,7 @@ jobs:
           retention-days: 1
           
   create-and-push-images-to-ghcr:
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-20.04
     needs: [build-and-test-livegrep]
     steps:
