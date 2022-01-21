@@ -15,15 +15,7 @@ env:
 
 jobs:
   build-and-test-livegrep:
-    # Running this in matrix means that bazel will upload build artifcats for 
-    # all listed platforms to the remote cache. This should allow more local 
-    # developers to use the remote cache to get started. Windows support can be 
-    # added if necessary, assuming for now the windows usage rate would be low
-    # enough that it's not worth the CI time to build for it.
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-20.04
     outputs:
       build_output_file_name: ${{ steps.build.outputs.build_output_file_name }}
     steps:
@@ -36,7 +28,7 @@ jobs:
       - name: 'Configure remote build cache usage'
         env:
           GCP_CREDS: ${{ secrets.GCP_SVC_ACCT_CREDS }}
-          EVENT_TYPE: ${{ github.event_name }}
+          # EVENT_TYPE: ${{ github.event_name }}
         run: |
           if [ -z "${GCP_CREDS}" ]; then
             printf 'Using read-only cache (no credentials)\n'
@@ -51,11 +43,6 @@ jobs:
           printf '%s\n' "${GCP_CREDS}" >"${creds_file}"
           printf '%s\n' >>~/.bazelrc "common --google_credentials=${creds_file}";
           sed -i 's/common --remote_upload_local_results=false/common --remote_upload_local_results=true/' ~/.bazelrc
-        # need this step because with use sha256 sum durin bazel builds,
-        # which isn't available by default in macOS
-      - name: Install coreutils for macOS
-        if: matrix.os == 'macos-latest'
-        run: brew install coreutils
       - name: bazel fetch
         run: bazel fetch //cmd/...
       - name: gofmt

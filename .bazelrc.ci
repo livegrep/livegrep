@@ -30,11 +30,15 @@ test --test_verbose_timeout_warnings
 # don't update the WORKSPACE file (which is pretty much all of them) bazel can't
 # add any artifcats to the cache, which destroys the build times of newer code!
 
-# Another cool side effect of enabling/using a remote cache is that since 
-# we spread out our CI to run `bazel build` for multiple OS's, we
+# Another cool side effect of enabling/using a remote cache is that eventually 
+# we can spread out our CI to run `bazel build` for multiple OS's, which will
 # seed the cache with the build outputs of multiple OSs, allowing
-# most developers to use the remote cache on their local machines, since most
-# devs are using either linux/macOS
+# most developers to use the remote cache on their local machines. Not done now
+# because some work needs to be done to create cache_keys based on the system
+# that bazel is running on, so that we don't poison the cache/get false cache
+# hits.
+# See: https://github.com/bazelbuild/bazel/issues/4558
+# And a sample implementation: https://github.com/kubernetes/test-infra/blob/master/images/bootstrap/create_bazel_cache_rcs.sh#L45
 
 # If you'd like to set up a remote build cache for your fork:
 # 1. Set up GCS cache: https://docs.bazel.build/versions/main/remote-caching.html#google-cloud-storage
@@ -42,10 +46,14 @@ test --test_verbose_timeout_warnings
 #    that you created in step 1.
 
 common --remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache
-common --remote_timeout=600s
+common --remote_timeout=300s
+# don't fail if the cache is unavailable
+common --remote_local_fallback=true
 # remote upload defaults to true, which we don't want. We use sed to switch
 # false to true during the CI build if necessary
 common --remote_upload_local_results=false
+# remote cache is chatty
+common --remote_max_connections=300
 
 # For clarity, the following options are configured at CI run time depending on
 # whether or not we trust the commit. (push vs pr) & creds available
