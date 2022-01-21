@@ -72,7 +72,6 @@ jobs:
       - name: bazel build
         id: build
         run: |
-          bazel test --test_arg=-test.v //...
           bazel build //...
           echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
           echo "::set-output name=build_output_file_name::${build_output_file_name}"
