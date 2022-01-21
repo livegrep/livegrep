@@ -1,4 +1,4 @@
-FROM xvandish-livegrep/base
+FROM livegrep/base
 RUN apt-get update && apt-get -y dist-upgrade
 RUN apt-get -y install nginx
 

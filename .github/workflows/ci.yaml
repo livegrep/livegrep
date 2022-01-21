@@ -1,7 +1,4 @@
 on:
-  pull_request: 
-    branches:
-      - main
   push:
     branches:
       - main
@@ -9,12 +6,10 @@ on:
 name: Continuous integration
 
 env:
-  BASE_IMAGE_NAME: xvandish-livegrep/base
-  INDEXER_IMAGE_NAME: xvandish-livegrep/indexer
-  NGINX_IMAGE_NAME: xvandish-livegrep/nginx
+  BASE_IMAGE_NAME: livegrep/base
+  INDEXER_IMAGE_NAME: livegrep/indexer
+  NGINX_IMAGE_NAME: livegrep/nginx
 
-# https://github.com/actions/runner/issues/1039 - GITHUB_TOKEN works only for the main branch
-# so it won't work for the pull_requests. Just use a PAT then 
 jobs:
   ci:
     runs-on: ubuntu-20.04
@@ -53,30 +48,36 @@ jobs:
           path: "builds/${{ env.build_output_file_name }}.tgz"
       - name: Build images
         run: |
-          # the first image is tagged because subsequent images build from it
           docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
           docker build -t $INDEXER_IMAGE_NAME . --file docker/indexer/Dockerfile
           docker build -t $NGINX_IMAGE_NAME . --file docker/nginx/Dockerfile
       - name: Push images
         run: |
-          echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
           BASE_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$BASE_IMAGE_NAME
           INDEXER_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$INDEXER_IMAGE_NAME
           NGINX_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$NGINX_IMAGE_NAME
 
-          # same version as made by package.sh
+          # tag each image with GHCRID:VERSION
           VERSION=$(git rev-parse HEAD | head -c10)
-
-          [ "${{ github.ref }}" == "main" ] && VERSION=latest
-
-          echo VERSION=$VERSION
-
           docker tag $BASE_IMAGE_NAME $BASE_IMAGE_ID:$VERSION
           docker tag $INDEXER_IMAGE_NAME $INDEXER_IMAGE_ID:$VERSION
           docker tag $NGINX_IMAGE_NAME $NGINX_IMAGE_ID:$VERSION
 
+          # this workflow is running on "main" atm so always tag latest
+          docker tag $BASE_IMAGE_NAME $BASE_IMAGE_ID:latest
+          docker tag $INDEXER_IMAGE_NAME $INDEXER_IMAGE_ID:latest
+          docker tag $NGINX_IMAGE_NAME $NGINX_IMAGE_ID:latest
+          
           docker push $NGINX_IMAGE_ID:$VERSION
           docker push $BASE_IMAGE_ID:$VERSION
           docker push $INDEXER_IMAGE_ID:$VERSION
+
+          # it seems like docker doesn't push all tags for an image, you need to
+          # push each tag as if it were a seperate image -__-
+          echo "Pushing latest images to test"
+          docker push $NGINX_IMAGE_ID:latest
+          docker push $BASE_IMAGE_ID:latest
+          docker push $INDEXER_IMAGE_ID:latest
           
