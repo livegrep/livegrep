@@ -34,7 +34,7 @@ jobs:
         env:
           GCP_CREDS: ${{ secrets.GCP_SVC_ACCT_CREDS }}
         run: |
-          if [ -z "${CREDS}" ]; then
+          if [ -z "${GCP_CREDS}" ]; then
             printf 'Using read-only cache (no credentials)\n'
             exit
           fi
