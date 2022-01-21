@@ -8,6 +8,8 @@ build --worker_max_instances=2
 build --spawn_strategy=sandboxed
 build --worker_sandboxing
 
+build --compilation_mode=opt
+
 # This is so we understand failures better
 build --verbose_failures
 build --worker_verbose
@@ -42,6 +44,9 @@ test --test_verbose_timeout_warnings
 
 common --remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache
 common --remote_timeout=600s
+# remote upload defaults to true, which we don't want. We use sed to switch
+# false to true during the CI build if necessary
+common --remote_upload_local_results=false
 
 # For clarity, the following options are configured at CI run time depending on
 # whether or not we trust the commit. (push vs pr) & creds available

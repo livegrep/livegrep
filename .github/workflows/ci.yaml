@@ -49,10 +49,8 @@ jobs:
           printf 'Using writable cache\n'
           creds_file=/tmp/svc_acct_creds.json
           printf '%s\n' "${GCP_CREDS}" >"${creds_file}"
-          printf '%s\n' >>~/.bazelrc \
-            "common --google_credentials=${creds_file}" \
-            "common --remote_upload_local_results=true" \
-            ;
+          printf '%s\n' >>~/.bazelrc "common --google_credentials=${creds_file}";
+          sed -i 's/common --remote_upload_local_results=false/common --remote_upload_local_results=true/' ~/.bazelrc
         # need this step because with use sha256 sum durin bazel builds,
         # which isn't available by default in macOS
       - name: Install coreutils for macOS
