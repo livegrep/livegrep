@@ -15,23 +15,42 @@ env:
 
 jobs:
   build-and-test-livegrep:
-    runs-on: ubuntu-20.04
+    # Running this in matrix means that bazel will upload build artifcats for 
+    # all listed platforms to the remote cache. This should allow more local 
+    # developers to use the remote cache to get started. Windows support can be 
+    # added if necessary, assuming for now the windows usage rate would be low
+    # enough that it's not worth the CI time to build for it.
+    strategy:
+      matrix:
+        platform: [ubuntu-20.04, macos-latest]
+    runs-on: ${{ matrix.platform }}
     outputs:
       build_output_file_name: ${{ steps.build.outputs.build_output_file_name }}
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/cache@v2
-        with:
-          path: ~/.cache/bazel
-          key: ${{runner.os}}-${{hashFiles('WORKSPACE')}}
-          restore-keys: |
-            ${{runner.os}}-
-      - name: setup bazel
+      - name: Switch to CI bazelrc
+        run: cp .bazelrc.ci .bazelrc
+      - name: 'Configure remote build cache usage'
+        env:
+          GCP_CREDS: ${{ secrets.GCP_SVC_ACCT_CREDS }}
         run: |
-          cat .bazelrc.ci >> .bazelrc
+          if [ -z "${CREDS}" ]; then
+            printf 'Using read-only cache (no credentials)\n'
+            exit
+          fi
+          if [ "${EVENT_TYPE}" = pull_request ]; then
+            printf 'Using read-only cache (PR build)\n'
+            exit
+          fi
+          printf 'Using writable cache\n'
+          creds_file=/tmp/svc_acct_creds.json
+          printf '%s\n' "${GCP_CREDS}" >"${creds_file}"
+          printf '%s\n' >>~/.bazelrc \
+            "common --google_credentials=${creds_file}" \
+            "common --remote_upload_local_results=true" \
+            ;
       - name: bazel fetch
-        run: |
-          bazel fetch //cmd/...
+        run: bazel fetch //cmd/...
       - name: gofmt
         run: |
           gofmt=$(bazel info output_base)/external/go_sdk/bin/gofmt
@@ -41,13 +60,15 @@ jobs:
               echo "$format_errors"
               exit 1
           fi
-      - name: bazel test, build
+      - name: bazel build
         id: build
         run: |
           bazel test --test_arg=-test.v //...
           bazel build //...
           echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
           echo "::set-output name=build_output_file_name::${build_output_file_name}"
+      - name: bazel test
+        run: bazel test --test_arg=-test.v //...
       - name: upload build output
         if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
