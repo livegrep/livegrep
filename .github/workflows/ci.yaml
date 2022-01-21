@@ -91,8 +91,10 @@ jobs:
     needs: [build-and-test-livegrep]
     steps:
       - name: Build images
+        env:
+          build_output_file_name: ${{needs.build-and-test-livegrep.outputs.build_output_file_name}}
         run: |
-          docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=${{needs.build-and-test-livegrep.outputs.build_output_file_name}}"  .
+          docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
           docker build -t $INDEXER_IMAGE_NAME . --file docker/indexer/Dockerfile
           docker build -t $NGINX_IMAGE_NAME . --file docker/nginx/Dockerfile
       - name: Push images
