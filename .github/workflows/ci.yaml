@@ -20,6 +20,7 @@ jobs:
     # developers to use the remote cache to get started. Windows support can be 
     # added if necessary, assuming for now the windows usage rate would be low
     # enough that it's not worth the CI time to build for it.
+
     strategy:
       matrix:
         platform: [ubuntu-20.04, macos-latest]
@@ -30,9 +31,13 @@ jobs:
       - uses: actions/checkout@v2
       - name: Switch to CI bazelrc
         run: cp .bazelrc.ci .bazelrc
+      # Credit to the tensorboard repo for the cache configuration step 
+      # https://github.com/tensorflow/tensorboard/blob/master/.github/workflows/ci.yml#L58
+      # Plenty of ways to do something similar but I really liked theirs
       - name: 'Configure remote build cache usage'
         env:
           GCP_CREDS: ${{ secrets.GCP_SVC_ACCT_CREDS }}
+          EVENT_TYPE: ${{ github.event_name }}
         run: |
           if [ -z "${GCP_CREDS}" ]; then
             printf 'Using read-only cache (no credentials)\n'
