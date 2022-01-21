@@ -7,11 +7,3 @@ COPY ./builds/${livegrep_version}.tgz /livegrep.tgz
 RUN tar -C / -xzvf /livegrep.tgz
 COPY ./docker/nginx/nginx.conf /${livegrep_version}}/nginx.conf 
 RUN ln -nsf /${livegrep_version} /livegrep
-
-# RUN tar -C / -xzvf /livegrep.tgz
-# COPY ./docker/nginx/nginx.conf /${livegrep_version}}/nginx.conf
-# # RUN ln -nsf /livegrep-${livegrep_version} /livegrep
-
-# FROM ubuntu:20.04
-# COPY --from=intermediate /${livegrep_version}/ /livegrep/
-# RUN ls /livegrep

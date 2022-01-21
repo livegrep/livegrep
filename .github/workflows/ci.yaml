@@ -1,4 +1,7 @@
 on:
+  pull_request: 
+    branches:
+      - main
   push:
     branches:
       - main
@@ -11,8 +14,10 @@ env:
   NGINX_IMAGE_NAME: livegrep/nginx
 
 jobs:
-  ci:
+  build-and-test-livegrep:
     runs-on: ubuntu-20.04
+    outputs:
+      build_output_file_name: ${{ steps.build.outputs.build_output_file_name }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
@@ -37,18 +42,28 @@ jobs:
               exit 1
           fi
       - name: bazel test, build
+        id: build
         run: |
           bazel test --test_arg=-test.v //...
           bazel build //...
           echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
+          echo "::set-output name=build_output_file_name::${build_output_file_name}"
       - name: upload build output
+        if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
         with: 
           name: "${{ env.build_output_file_name }}"
           path: "builds/${{ env.build_output_file_name }}.tgz"
+          retention-days: 1
+          
+  create-and-push-images-to-ghcr:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-20.04
+    needs: [build-and-test-livegrep]
+    steps:
       - name: Build images
         run: |
-          docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
+          docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=${{needs.build-and-test-livegrep.outputs.build_output_file_name}}"  .
           docker build -t $INDEXER_IMAGE_NAME . --file docker/indexer/Dockerfile
           docker build -t $NGINX_IMAGE_NAME . --file docker/nginx/Dockerfile
       - name: Push images
@@ -80,4 +95,3 @@ jobs:
           docker push $NGINX_IMAGE_ID:latest
           docker push $BASE_IMAGE_ID:latest
           docker push $INDEXER_IMAGE_ID:latest
-          
