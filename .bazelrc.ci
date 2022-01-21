@@ -6,7 +6,6 @@ build --worker_max_instances=2
 
 # Ensure sandboxing is on to increase hermeticity.
 build --spawn_strategy=sandboxed
-build --worker_sandboxing
 
 build --compilation_mode=opt
 
