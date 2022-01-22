@@ -71,7 +71,6 @@ jobs:
           retention-days: 1
       - name: Build images
         # if: ${{ github.event_name == 'push' }}
-        env:
         run: |
           docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
           docker build -t $INDEXER_IMAGE_NAME . --file docker/indexer/Dockerfile
