@@ -60,7 +60,6 @@ jobs:
         run: |
           bazel build //...
           echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
-          echo "::set-output name=build_output_file_name::${build_output_file_name}"
       - name: bazel test
         run: bazel test --test_arg=-test.v //...
       - name: upload build output
@@ -70,20 +69,15 @@ jobs:
           name: "${{ env.build_output_file_name }}"
           path: "builds/${{ env.build_output_file_name }}.tgz"
           retention-days: 1
-          
-  create-and-push-images-to-ghcr:
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-20.04
-    needs: [build-and-test-livegrep]
-    steps:
       - name: Build images
+        # if: ${{ github.event_name == 'push' }}
         env:
-          build_output_file_name: ${{needs.build-and-test-livegrep.outputs.build_output_file_name}}
         run: |
           docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
           docker build -t $INDEXER_IMAGE_NAME . --file docker/indexer/Dockerfile
           docker build -t $NGINX_IMAGE_NAME . --file docker/nginx/Dockerfile
       - name: Push images
+        # if: ${{ github.event_name == 'push' }}
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
