@@ -70,13 +70,13 @@ jobs:
           path: "builds/${{ env.build_output_file_name }}.tgz"
           retention-days: 1
       - name: Build images
-        # if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' }}
         run: |
           docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
           docker build -t $INDEXER_IMAGE_NAME . --file docker/indexer/Dockerfile
           docker build -t $NGINX_IMAGE_NAME . --file docker/nginx/Dockerfile
       - name: Push images
-        # if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' }}
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
