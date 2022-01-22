@@ -16,8 +16,6 @@ env:
 jobs:
   build-and-test-livegrep:
     runs-on: ubuntu-20.04
-    outputs:
-      build_output_file_name: ${{ steps.build.outputs.build_output_file_name }}
     steps:
       - uses: actions/checkout@v2
       - name: Switch to CI bazelrc
