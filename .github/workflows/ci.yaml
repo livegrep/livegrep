@@ -27,25 +27,24 @@ jobs:
       # Plenty of ways to do something similar but I really liked theirs
       - name: 'Configure remote build cache usage'
         env:
-          GCP_CREDS: ${{ secrets.GCP_SVC_ACCT_CREDS }}
-          # EVENT_TYPE: ${{ github.event_name }}
+          EVENT_TYPE: ${{ github.event_name }}
         run: |
-          if [ -z "${GCP_CREDS}" ]; then
-            printf 'Using read-only cache (no credentials)\n'
-            exit
-          fi
           if [ "${EVENT_TYPE}" = pull_request ]; then
             printf 'Using read-only cache (PR build)\n'
             exit
           fi
           printf 'Using writable cache\n'
-          creds_file=/tmp/svc_acct_creds.json
-          printf '%s\n' "${GCP_CREDS}" >"${creds_file}"
-          printf '%s\n' >>.bazelrc "common --google_credentials=${creds_file}";
           sed -i 's/common --remote_upload_local_results=false/common --remote_upload_local_results=true/' .bazelrc
-          cat .bazelrc
-      - name: bazel fetch
-        run: bazel fetch //cmd/...
+      - name: bazel build
+        id: build
+        run: |
+          bazel build //...
+          echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
+      - name: bazel test
+        run: bazel test --test_arg=-test.v //...
+        # Run after building so we can use BuildBuddys fetch cache rather than
+        # first calling bazel fetch ourselves. If a Go file ins't formatted
+        # corectly it will only take an additional minute or so for CI to fail.
       - name: gofmt
         run: |
           gofmt=$(bazel info output_base)/external/go_sdk/bin/gofmt
@@ -55,13 +54,6 @@ jobs:
               echo "$format_errors"
               exit 1
           fi
-      - name: bazel build
-        id: build
-        run: |
-          bazel build //...
-          echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
-      - name: bazel test
-        run: bazel test --test_arg=-test.v //...
       - name: upload build output
         if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
