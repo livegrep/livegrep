@@ -1,34 +1,48 @@
 on:
-  pull_request: {}
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-  schedule:
-    # Run in cron every night to keep the cache warm.
-    # Github prunes caches every 7 days, and I don't push often
-    # enough to keep our cache from being evicted without this.
-    - cron: '7 6 * * *'
 
 name: Continuous integration
+
+env:
+  BASE_IMAGE_NAME: livegrep/base
+  INDEXER_IMAGE_NAME: livegrep/indexer
+  NGINX_IMAGE_NAME: livegrep/nginx
 
 jobs:
   ci:
     runs-on: ubuntu-20.04
-    container: us.gcr.io/livegrep/ci:11
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/cache@v2
-        with:
-          path: ~/.cache/bazel
-          key: ${{runner.os}}-${{hashFiles('WORKSPACE')}}
-          restore-keys: |
-            ${{runner.os}}-
-      - name: setup bazel
+      - name: Switch to CI bazelrc
+        run: cp .bazelrc.ci .bazelrc
+      # Credit to the tensorboard repo for the cache configuration step
+      # https://github.com/tensorflow/tensorboard/blob/master/.github/workflows/ci.yml#L58
+      # Plenty of ways to do something similar but I really liked theirs
+      - name: 'Configure remote build cache usage'
+        env:
+          EVENT_TYPE: ${{ github.event_name }}
         run: |
-          cat .bazelrc.ci >> .bazelrc
-      - name: bazel fetch
+          if [ "${EVENT_TYPE}" = pull_request ]; then
+            printf 'Using read-only cache (PR build)\n'
+            exit
+          fi
+          printf 'Using writable cache\n'
+          sed -i 's/common --remote_upload_local_results=false/common --remote_upload_local_results=true/' .bazelrc
+      - name: bazel build
+        id: build
         run: |
-          bazel fetch //cmd/...
+          bazel build //...
+          echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
+      - name: bazel test
+        run: bazel test --test_arg=-test.v //...
+        # Run after building so we can use BuildBuddys fetch cache rather than
+        # first calling bazel fetch ourselves. If a Go file ins't formatted
+        # corectly it will only take an additional minute or so for CI to fail.
       - name: gofmt
         run: |
           gofmt=$(bazel info output_base)/external/go_sdk/bin/gofmt
@@ -38,18 +52,46 @@ jobs:
               echo "$format_errors"
               exit 1
           fi
-      - name: bazel test
+      - name: upload build output
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: "${{ env.build_output_file_name }}"
+          path: "builds/${{ env.build_output_file_name }}.tgz"
+          retention-days: 1
+      - name: Build images
+        if: ${{ github.event_name == 'push' }}
         run: |
-          bazel test --test_arg=-test.v //...
-          bazel build //...
-      - name: upload to google cloud
-        env:
-          GCLOUD_SERVICE_KEY: ${{ secrets.GCLOUD_SERVICE_KEY }}
+          docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
+          docker build -t $INDEXER_IMAGE_NAME . --file docker/indexer/Dockerfile
+          docker build -t $NGINX_IMAGE_NAME . --file docker/nginx/Dockerfile
+      - name: Push images
+        if: ${{ github.event_name == 'push' }}
         run: |
-          if [ "$GCLOUD_SERVICE_KEY" ]; then
-            echo "$GCLOUD_SERVICE_KEY" | openssl enc -a -A -d > "$HOME/gcloud-service-key.json"
-            /usr/local/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
-            /usr/local/google-cloud-sdk/bin/gcloud config set project livegrep
-            ./package.sh
-            /usr/local/google-cloud-sdk/bin/gsutil cp -n -a public-read -r builds/ gs://livegrep.appspot.com/
-          fi
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          BASE_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$BASE_IMAGE_NAME
+          INDEXER_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$INDEXER_IMAGE_NAME
+          NGINX_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$NGINX_IMAGE_NAME
+
+          # tag each image with GHCRID:VERSION
+          VERSION=$(git rev-parse HEAD | head -c10)
+          docker tag $BASE_IMAGE_NAME $BASE_IMAGE_ID:$VERSION
+          docker tag $INDEXER_IMAGE_NAME $INDEXER_IMAGE_ID:$VERSION
+          docker tag $NGINX_IMAGE_NAME $NGINX_IMAGE_ID:$VERSION
+
+          # this workflow is running on "main" atm so always tag latest
+          docker tag $BASE_IMAGE_NAME $BASE_IMAGE_ID:latest
+          docker tag $INDEXER_IMAGE_NAME $INDEXER_IMAGE_ID:latest
+          docker tag $NGINX_IMAGE_NAME $NGINX_IMAGE_ID:latest
+
+          docker push $NGINX_IMAGE_ID:$VERSION
+          docker push $BASE_IMAGE_ID:$VERSION
+          docker push $INDEXER_IMAGE_ID:$VERSION
+
+          # it seems like docker doesn't push all tags for an image, you need to
+          # push each tag as if it were a seperate image -__-
+          echo "Pushing latest images to test"
+          docker push $NGINX_IMAGE_ID:latest
+          docker push $BASE_IMAGE_ID:latest
+          docker push $INDEXER_IMAGE_ID:latest

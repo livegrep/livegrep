@@ -1,7 +1,30 @@
-# This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
-startup --host_jvm_args=-Xms512m
-startup --host_jvm_args=-Xmx1024m
-build -c opt
+startup --host_jvm_args=-Dbazel.DigestFunction=sha256
+
+# Ensure sandboxing is on to increase hermeticity.
+build --spawn_strategy=sandboxed
+
+build --compilation_mode=opt
 
 # This is so we understand failures better
 build --verbose_failures
+build --worker_verbose
+test --test_output=errors
+test --test_verbose_timeout_warnings
+
+# Use BuildBuddy (anonymously for now) to build
+# I tried a GCS cache, but I think we were hitting up against
+# GH Actions API Request limit (10,000 per hour), since the GCS
+# cache is HTTP based, and seeding the cache (building with an empty 
+# cache) will write ~18k objects - 
+# each which is theoretically an HTTP PUT call. BuildBuddy otoh uses
+# GRPC, so a single connection/API call can be used to stream many writes
+build --bes_results_url=https://app.buildbuddy.io/invocation/
+build --bes_backend=grpcs://cloud.buildbuddy.io
+build --remote_cache=grpcs://cloud.buildbuddy.io
+build --remote_timeout=3600
+
+# don't fail if the cache is unavailable
+common --remote_local_fallback=true
+# remote upload defaults to true, which we don't want. We use sed to switch
+# false to true during the CI build if necessary
+common --remote_upload_local_results=false
