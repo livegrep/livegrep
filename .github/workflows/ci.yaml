@@ -1,5 +1,5 @@
 on:
-  pull_request: 
+  pull_request:
     branches:
       - main
   push:
@@ -14,13 +14,13 @@ env:
   NGINX_IMAGE_NAME: livegrep/nginx
 
 jobs:
-  build-and-test-livegrep:
+  ci:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - name: Switch to CI bazelrc
         run: cp .bazelrc.ci .bazelrc
-      # Credit to the tensorboard repo for the cache configuration step 
+      # Credit to the tensorboard repo for the cache configuration step
       # https://github.com/tensorflow/tensorboard/blob/master/.github/workflows/ci.yml#L58
       # Plenty of ways to do something similar but I really liked theirs
       - name: 'Configure remote build cache usage'
@@ -55,7 +55,7 @@ jobs:
       - name: upload build output
         if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
-        with: 
+        with:
           name: "${{ env.build_output_file_name }}"
           path: "builds/${{ env.build_output_file_name }}.tgz"
           retention-days: 1
@@ -69,7 +69,7 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          
+
           BASE_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$BASE_IMAGE_NAME
           INDEXER_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$INDEXER_IMAGE_NAME
           NGINX_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$NGINX_IMAGE_NAME
@@ -84,7 +84,7 @@ jobs:
           docker tag $BASE_IMAGE_NAME $BASE_IMAGE_ID:latest
           docker tag $INDEXER_IMAGE_NAME $INDEXER_IMAGE_ID:latest
           docker tag $NGINX_IMAGE_NAME $NGINX_IMAGE_ID:latest
-          
+
           docker push $NGINX_IMAGE_ID:$VERSION
           docker push $BASE_IMAGE_ID:$VERSION
           docker push $INDEXER_IMAGE_ID:$VERSION
