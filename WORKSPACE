@@ -56,7 +56,7 @@ git_repository(
     name = "bazel_gazelle",
     commit = "3ea1d64d6fe943dac06c341f9a265472bb99acd7",  # 0.24.0
     remote = "https://github.com/bazelbuild/bazel-gazelle.git",
-    shallow_since = "1551292640 -0800",
+    shallow_since = "1633971621 -0400",
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
@@ -88,7 +88,7 @@ git_repository(
     name = "com_github_grpc_grpc",
     commit = "dc78581af30da834b7b95572f109bf6c708686e0",
     remote = "https://github.com/grpc/grpc.git",
-    shallow_since = "1614894778 -0800",
+    shallow_since = "1643221474 -0800"
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
