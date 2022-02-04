@@ -80,7 +80,7 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
     IndexSpec spec;
     auto status = google::protobuf::util::JsonStringToMessage(json_text, &spec, google::protobuf::util::JsonParseOptions());
     if (!status.ok()) {
-        fprintf(stderr, "Parsing %s: %s\n", argv[1].c_str(), status.error_message().data());
+        fprintf(stderr, "Parsing %s: %s\n", argv[1].c_str(), status.message().data());
         exit(1);
     }
     if (!spec.paths_size() && !spec.repositories_size()) {

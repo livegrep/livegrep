@@ -19,13 +19,6 @@ http_archive(
 )
 
 git_repository(
-    name = "com_github_google_re2",
-    commit = "767de83bb7e4bfe3a2d8aec0ec79f9f1f66da30a",
-    remote = "https://github.com/google/re2",
-    shallow_since = "1535650560 +0000",
-)
-
-git_repository(
     name = "gflags",
     commit = "e171aa2d15ed9eb17054558e0b3a6a413bb01067",  # v2.2.2
     remote = "https://github.com/gflags/gflags",
@@ -52,25 +45,25 @@ boost_deps()
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "52d0a57ea12139d727883c2fef03597970b89f2cc2a05722c42d1d7d41ec065b",
+    sha256 = "d6b2513456fe2229811da7eb67a444be7785f5323c6708b38d851d2b51e54d83",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.24.13/rules_go-v0.24.13.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.24.13/rules_go-v0.24.13.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.30.0/rules_go-v0.30.0.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.30.0/rules_go-v0.30.0.zip",
     ],
 )
 
 git_repository(
     name = "bazel_gazelle",
-    commit = "e443c54b396a236e0d3823f46c6a931e1c9939f2",  # 0.17.0
+    commit = "3ea1d64d6fe943dac06c341f9a265472bb99acd7",  # 0.24.0
     remote = "https://github.com/bazelbuild/bazel-gazelle.git",
-    shallow_since = "1551292640 -0800",
+    shallow_since = "1633971621 -0400",
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
-go_register_toolchains()
+go_register_toolchains(version = "1.17.6")
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
@@ -93,9 +86,9 @@ http_archive(
 
 git_repository(
     name = "com_github_grpc_grpc",
-    commit = "c3438a0c5d7bc499eb31fd4853ca72c771f758a5",
+    commit = "dc78581af30da834b7b95572f109bf6c708686e0",
     remote = "https://github.com/grpc/grpc.git",
-    shallow_since = "1614894778 -0800",
+    shallow_since = "1643221474 -0800"
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
