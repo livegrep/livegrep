@@ -14,6 +14,7 @@ cc_library(
         "//src/proto:cc_proto",
         "@boost//:bind",
         "@com_github_grpc_grpc//:grpc++",
+        "@com_github_grpc_grpc//:grpc++_reflection",
     ],
 )
 
