@@ -86,9 +86,9 @@ http_archive(
 
 git_repository(
     name = "com_github_grpc_grpc",
-    commit = "dc78581af30da834b7b95572f109bf6c708686e0",
+    commit = "591d56e1300b6d11948e1b821efac785a295989c",  # 1.44.0
     remote = "https://github.com/grpc/grpc.git",
-    shallow_since = "1643221474 -0800"
+    shallow_since = "1644573434 +0100"
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
