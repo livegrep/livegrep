@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -147,7 +148,7 @@ func main() {
 		"--out", index,
 		"--codesearch", *flagCodesearch,
 		"--num-workers", *flagNumRepoUpdateWorkers,
-		"--no-index", *flagNoIndex,
+		"--no-index", strconv.FormatBool(*flagNoIndex),
 	}
 	if *flagRevparse {
 		args = append(args, "--revparse")
