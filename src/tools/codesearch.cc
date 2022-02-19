@@ -54,6 +54,8 @@ DEFINE_string(grpc, "localhost:9999", "GRPC listener address");
 DEFINE_bool(reload_rpc, false, "Enable the Reload RPC");
 DEFINE_bool(hot_index_reload, false, "Enable automatic reloads when the index file changes");
 DEFINE_bool(reuseport, true, "Set SO_REUSEPORT to enable multiple concurrent server instances.");
+DEFINE_int32(max_recv_message_size, 0, "Maximum gRPC receive (inbound) message size in bytes");
+DEFINE_int32(max_send_message_size, 0, "Maximum gRPC send (outbound) message size in bytes");
 
 using namespace std;
 using namespace re2;
@@ -156,6 +158,12 @@ void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr)
     builder.RegisterService(service.get());
     if (!FLAGS_reuseport) {
         builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+    }
+    if (FLAGS_max_recv_message_size > 0) {
+        builder.AddChannelArgument(GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH, FLAGS_max_recv_message_size);
+    }
+    if (FLAGS_max_send_message_size > 0) {
+        builder.AddChannelArgument(GRPC_ARG_MAX_SEND_MESSAGE_LENGTH, FLAGS_max_send_message_size);
     }
     std::unique_ptr<Server> server(builder.BuildAndStart());
     if (!server) {
