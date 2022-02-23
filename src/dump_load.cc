@@ -25,6 +25,10 @@
 
 #include "google/protobuf/util/json_util.h"
 
+#include "gflags/gflags.h"
+
+DEFINE_bool(eager_memory_load, false, "Eagerly load memory-mapped index file pages into virtual memory (Linux only)");
+
 class codesearch_index {
 public:
     codesearch_index(code_searcher *cs, string path) :
@@ -412,7 +416,16 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
         die("Cannot stat: '%s': %s\n", path.c_str(), strerror(errno));
     }
     map_size_ = st.st_size;
-    map_ = mmap(NULL, map_size_, PROT_READ, MAP_SHARED,
+    int flags = MAP_PRIVATE;
+    if (FLAGS_eager_memory_load) {
+#if defined(MAP_POPULATE)
+        flags |= MAP_POPULATE;
+#else
+        fprintf(stderr, "Error: eager memory load is not supported on this platform\n");
+        exit(1);
+#endif
+    }
+    map_ = mmap(NULL, map_size_, PROT_READ, flags,
                 fd_, 0);
     assert(map_ != MAP_FAILED);
     p_ = static_cast<unsigned char*>(map_);
