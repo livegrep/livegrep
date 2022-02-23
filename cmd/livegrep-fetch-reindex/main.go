@@ -25,6 +25,7 @@ var (
 	flagSkipMissing   = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
 	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to")
 	flagNumWorkers    = flag.Int("num-workers", 8, "Number of workers used to update repositories")
+	flagNoIndex       = flag.Bool("no-index", false, "Skip indexing after fetching")
 )
 
 func main() {
@@ -47,6 +48,11 @@ func main() {
 
 	if err := checkoutRepos(&cfg.Repositories); err != nil {
 		log.Fatalln(err.Error())
+	}
+
+	if *flagNoIndex {
+		log.Printf("Skipping indexing after fetching repos")
+		return
 	}
 
 	tmp := *flagIndexPath + ".tmp"
