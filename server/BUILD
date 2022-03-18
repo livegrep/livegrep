@@ -40,6 +40,7 @@ go_test(
     srcs = [
         "query_test.go",
         "server_test.go",
+        "fileview_test.go",
     ],
     data = [
         "//web:htdocs",

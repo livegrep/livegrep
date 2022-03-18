@@ -419,6 +419,11 @@ a:hover {
     margin-top: 5em;
 }
 
+.file-viewer .dir-viewer-wrapper {
+    display: flex;
+    align-items: baseline;
+}
+
 .file-viewer .file-content {
     position: relative;
 }
