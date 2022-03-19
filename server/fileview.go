@@ -1,10 +1,13 @@
 package server
 
 import (
+	"bytes"
+	"fmt"
 	"net/url"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -18,6 +21,9 @@ var filenameToLangMap map[string]string = map[string]string{
 	"WORKSPACE":   "python",
 }
 var extToLangMap map[string]string = map[string]string{
+	".adoc":        "AsciiDoc",
+	".asc":         "AsciiDoc",
+	".asciidoc":    "AsciiDoc",
 	".AppleScript": "applescript",
 	".bzl":         "python",
 	".c":           "c",
@@ -35,6 +41,9 @@ var extToLangMap map[string]string = map[string]string{
 	".m":           "objectivec",
 	".markdown":    "markdown",
 	".md":          "markdown",
+	".mdown":       "markdown",
+	".mkdn":        "markdown",
+	".mediawiki":   "markdown",
 	".nix":         "nix",
 	".php":         "php",
 	".pl":          "perl",
@@ -42,6 +51,7 @@ var extToLangMap map[string]string = map[string]string{
 	".py":          "python",
 	".pyst":        "python",
 	".rb":          "ruby",
+	".rdoc":        "markdown",
 	".rs":          "rust",
 	".scala":       "scala",
 	".scpt":        "applescript",
@@ -50,12 +60,22 @@ var extToLangMap map[string]string = map[string]string{
 	".sky":         "python",
 	".sql":         "sql",
 	".swift":       "swift",
+	".textile":     "markdown",
 	".ts":          "typescript",
 	".tsx":         "tsx",
+	".wiki":        "markdown",
 	".xml":         "markup",
 	".yaml":        "yaml",
 	".yml":         "yaml",
 }
+
+// Grabbed from the extensions GitHub supports here - https://github.com/github/markup
+var supportedReadmeExtensions = []string{
+	"markdown", "mdown", "mkdn", "md", "textile", "rdoc", "org", "creole", "mediawiki", "wiki",
+	"rst", "asciidoc", "adoc", "asc", "pod",
+}
+
+var supportedReadmeRegex = buildReadmeRegex(supportedReadmeExtensions)
 
 type breadCrumbEntry struct {
 	Name string
@@ -87,7 +107,8 @@ type sourceFileContent struct {
 }
 
 type directoryContent struct {
-	Entries []directoryListEntry
+	Entries       []directoryListEntry
+	ReadmeContent *sourceFileContent
 }
 
 type DirListingSort []directoryListEntry
@@ -178,6 +199,26 @@ func getFileUrl(repo string, pathFromRoot string, name string, isDir bool) strin
 	return fileUrl
 }
 
+func buildReadmeRegex(supportedReadmeExtensions []string) *regexp.Regexp {
+	// Sort in descending order of length so most specific match is selected by regex engine
+	sort.Slice(supportedReadmeExtensions, func(i, j int) bool {
+		return len(supportedReadmeExtensions[i]) >= len(supportedReadmeExtensions[j])
+	})
+
+	// Build regex of form "README.(ext1|ext2)" README case insensitive
+	var buf bytes.Buffer
+	for i, ext := range supportedReadmeExtensions {
+		buf.WriteString(regexp.QuoteMeta(ext))
+		if i < len(supportedReadmeExtensions)-1 {
+			buf.WriteString("|")
+		}
+	}
+	repoRegexAlt := buf.String()
+	repoFileRegex := regexp.MustCompile(fmt.Sprintf("((?i)readme)\\.(%s)", repoRegexAlt))
+
+	return repoFileRegex
+}
+
 func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo config.RepoConfig) directoryListEntry {
 	var fileUrl string
 	var symlinkTarget string
@@ -222,13 +263,40 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		if err != nil {
 			return nil, err
 		}
+
 		dirEntries := make([]directoryListEntry, len(treeEntries))
+		var readmePath, readmeLang string
 		for i, treeEntry := range treeEntries {
 			dirEntries[i] = buildDirectoryListEntry(treeEntry, cleanPath, repo)
+			// Git supports case sensitive files, so README.md & readme.md in the same tree is possible
+			// so in this case we just grab the first matching file
+			if readmePath != "" {
+				continue
+			}
+
+			parts := supportedReadmeRegex.FindStringSubmatch(dirEntries[i].Name)
+			if len(parts) != 3 {
+				continue
+			}
+			readmePath = obj + parts[0]
+			readmeLang = parts[2]
 		}
+
+		var readmeContent *sourceFileContent
+		if readmePath != "" {
+			if content, err := gitCatBlob(readmePath, repo.Path); err == nil {
+				readmeContent = &sourceFileContent{
+					Content:   content,
+					LineCount: strings.Count(content, "\n"),
+					Language:  extToLangMap["."+readmeLang],
+				}
+			}
+		}
+
 		sort.Sort(DirListingSort(dirEntries))
 		dirContent = &directoryContent{
-			Entries: dirEntries,
+			Entries:       dirEntries,
+			ReadmeContent: readmeContent,
 		}
 	} else if objectType == "blob" {
 		content, err := gitCatBlob(obj, repo.Path)

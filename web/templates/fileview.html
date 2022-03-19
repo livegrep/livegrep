@@ -47,32 +47,24 @@
 
   <div class="content-wrapper">
       {{with .DirContent}}
-      <ul class="file-list">
-          {{range $child := .Entries}}
-          <li class="file-list-entry{{if $child.IsDir}} is-directory{{end}}{{if $child.SymlinkTarget}} is-symlink{{end}}">
-            {{if $child.Path}}<a href="{{$child.Path}}">{{$child.Name}}{{if $child.IsDir}}/{{end}}</a>{{else}}{{$child.Name}}{{end}}
-            {{if .SymlinkTarget}}&rarr; (<span class="symlink-target">{{.SymlinkTarget}}</span>){{end}}
-          </li>
-          {{end}}
-      </ul>
-      {{end}}
-      {{with .FileContent}}
-      <div class="file-content">
-        <code id="source-code" class="code-pane language-{{.Language}}">{{.Content}}</code>
-        <!--
-        NOTE: The reason the line number links are after the code block above is because
-        they take a significant amount of time to render for large files. If we keep
-        them before the code block, we'll block the rendering of the important content until
-        the line numbers are done. Placing them after the code block and absolutely positioning them
-        to be rendered before seems to work well though.
-        -->
-        <div id="line-numbers" class="line-numbers hide-links" style="display:none">
-          {{range $index, $element := loop .LineCount}}
-            {{$lineNum := toLineNum $index}}
-            <a id="L{{$lineNum}}" href="#L{{$lineNum}}">{{$lineNum}}</a>
+        <div class="dir-viewer-wrapper">
+          <ul class="file-list">
+              {{range $child := .Entries}}
+              <li class="file-list-entry{{if $child.IsDir}} is-directory{{end}}{{if $child.SymlinkTarget}} is-symlink{{end}}">
+                {{if $child.Path}}<a href="{{$child.Path}}">{{$child.Name}}{{if $child.IsDir}}/{{end}}</a>{{else}}{{$child.Name}}{{end}}
+                {{if .SymlinkTarget}}&rarr; (<span class="symlink-target">{{.SymlinkTarget}}</span>){{end}}
+              </li>
+              {{end}}
+          </ul>
+          {{ with .ReadmeContent }}
+            <div style="width:80%;">
+              {{ template "filecontent" . }}
+            </div>
           {{end}}
         </div>
-      </div>
+      {{end}}
+      {{with .FileContent}}
+        {{ template "filecontent" . }}
       {{end}}
   </div>
 
