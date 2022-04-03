@@ -114,7 +114,9 @@ private:
         }
         buf = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED,
                    index_->fd_, off);
-        assert(buf != MAP_FAILED);
+        if (buf == MAP_FAILED) {
+            die("mmap %s: %s", path_.c_str(), strerror((errno)));
+        }
         index_->stream_.seekp(len, ios::cur);
         return make_pair(off, static_cast<uint8_t*>(buf));
     }
@@ -427,7 +429,9 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
     }
     map_ = mmap(NULL, map_size_, PROT_READ, flags,
                 fd_, 0);
-    assert(map_ != MAP_FAILED);
+    if (map_ == MAP_FAILED) {
+        die("mmap %s: %s", path.c_str(), strerror((errno)));
+    }
     p_ = static_cast<unsigned char*>(map_);
 
     hdr_ = consume<index_header>();
