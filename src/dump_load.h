@@ -11,8 +11,12 @@
 #include <stdint.h>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 14;
-const uint32_t kPageSize     = (1 << 12);
+const uint32_t kIndexVersion = 15;
+
+// 16k is the page size on Apple M1 macs, which is the largest page
+// size of supported platforms. We use a consistent page size
+// everywhere for simplicity
+const uint32_t kPageSize     = (1 << 14);
 
 struct index_header {
     uint32_t magic;
