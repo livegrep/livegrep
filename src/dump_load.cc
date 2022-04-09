@@ -485,8 +485,14 @@ void load_allocator::load(code_searcher *cs) {
     assert(!cs->finalized_);
     assert(!cs->trees_.size());
 
-    assert(hdr_->magic == kIndexMagic);
-    assert(hdr_->version == kIndexVersion);
+    if (hdr_->magic != kIndexMagic) {
+        die("file has invalid magic: got %x != %x", hdr_->magic, kIndexMagic);
+    }
+    if (hdr_->version != kIndexVersion) {
+        die("file has unsupported version: got %d != %d. "
+            "Index may have been created by an incompatible livegrep version",
+            hdr_->version, kIndexVersion);
+    }
     assert(hdr_->chunks_off);
 
     set_chunk_size(hdr_->chunk_size);
