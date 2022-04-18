@@ -77,6 +77,10 @@ protected:
         dump(&i);
     }
 
+    void dump_int64(uint64_t i) {
+        dump(&i);
+    }
+
     void dump_string(const string &str) {
         dump_int32(str.size());
         stream_.write(str.c_str(), str.size());
@@ -235,6 +239,10 @@ protected:
         return *(consume<uint32_t>());
     }
 
+    uint64_t load_int64() {
+        return *(consume<uint64_t>());
+    }
+
     string load_string() {
         uint32_t len = load_int32();
         uint8_t *buf = p_;
@@ -308,6 +316,9 @@ void codesearch_index::dump_metadata() {
 
     hdr_.name_off = stream_.tellp();
     dump_string(cs_->name());
+
+    hdr_.timestamp_off = stream_.tellp();
+    dump_int64(cs_->index_timestamp());
 
     map<const indexed_tree*, int> tree_ids;
 
@@ -440,6 +451,9 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
 
     p_ = ptr<unsigned char>(hdr_->name_off);
     cs->set_name(load_string());
+
+    p_ = ptr<unsigned char>(hdr_->timestamp_off);
+    cs->set_index_timestamp((int64_t) load_int64());
 }
 
 
@@ -560,10 +574,6 @@ void load_allocator::load(code_searcher *cs) {
         indexed_file *sf = it->get();
         cs->filename_positions_.push_back(make_pair(pos, sf));
     }
-
-    struct stat st;
-    assert(fstat(fd_, &st) == 0);
-    cs->index_timestamp_ = st.st_mtime;
 
     cs->finalized_ = true;
 }
