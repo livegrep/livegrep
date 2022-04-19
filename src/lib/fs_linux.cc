@@ -11,6 +11,8 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 
+const ssize_t max_event_len = sizeof(struct inotify_event) + NAME_MAX + 1;
+
 namespace {
     int fd = -1;
     int wd = -1;
@@ -29,8 +31,8 @@ fswatcher::~fswatcher() {
 }
 
 bool fswatcher::wait_for_event() {
-    struct inotify_event event;
-    int n = 0;
+    char buf[max_event_len];
+    ssize_t n = 0;
 
     if (fd == -1 || wd == -1) {
         return false;
@@ -38,7 +40,7 @@ bool fswatcher::wait_for_event() {
 
     // The read syscall is blocking; it returns after one eligible event (i.e., matching the mask) is received.
     while (n <= 0) {
-        n = read(fd, &event, sizeof(struct inotify_event) + NAME_MAX + 1);
+        n = read(fd, &buf, max_event_len);
     }
 
     return true;
