@@ -22,9 +22,9 @@ struct index_header {
     uint32_t magic;
     uint32_t version;
     uint32_t chunk_size;
+    uint64_t timestamp;
 
     uint64_t name_off;
-    uint64_t timestamp_off;
 
     uint32_t ntrees;
     uint64_t refs_off;

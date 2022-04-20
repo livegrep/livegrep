@@ -77,10 +77,6 @@ protected:
         dump(&i);
     }
 
-    void dump_int64(uint64_t i) {
-        dump(&i);
-    }
-
     void dump_string(const string &str) {
         dump_int32(str.size());
         stream_.write(str.c_str(), str.size());
@@ -239,10 +235,6 @@ protected:
         return *(consume<uint32_t>());
     }
 
-    uint64_t load_int64() {
-        return *(consume<uint64_t>());
-    }
-
     string load_string() {
         uint32_t len = load_int32();
         uint8_t *buf = p_;
@@ -313,12 +305,10 @@ void codesearch_index::dump_metadata() {
     hdr_.nfiles   = cs_->files_.size();
     hdr_.nchunks  = cs_->alloc_->size();
     hdr_.ncontent = content_.size();
+    hdr_.timestamp = cs_->index_timestamp();
 
     hdr_.name_off = stream_.tellp();
     dump_string(cs_->name());
-
-    hdr_.timestamp_off = stream_.tellp();
-    dump_int64(cs_->index_timestamp());
 
     map<const indexed_tree*, int> tree_ids;
 
@@ -448,12 +438,10 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
     hdr_ = consume<index_header>();
     set_chunk_size(hdr_->chunk_size);
     chunks_hdr_ = next_chunk_ = ptr<chunk_header>(hdr_->chunks_off);
+    cs->set_index_timestamp((int64_t) hdr_->timestamp);
 
     p_ = ptr<unsigned char>(hdr_->name_off);
     cs->set_name(load_string());
-
-    p_ = ptr<unsigned char>(hdr_->timestamp_off);
-    cs->set_index_timestamp((int64_t) load_int64());
 }
 
 
