@@ -305,6 +305,7 @@ void codesearch_index::dump_metadata() {
     hdr_.nfiles   = cs_->files_.size();
     hdr_.nchunks  = cs_->alloc_->size();
     hdr_.ncontent = content_.size();
+    hdr_.timestamp = cs_->index_timestamp();
 
     hdr_.name_off = stream_.tellp();
     dump_string(cs_->name());
@@ -437,6 +438,7 @@ load_allocator::load_allocator(code_searcher *cs, const string& path) {
     hdr_ = consume<index_header>();
     set_chunk_size(hdr_->chunk_size);
     chunks_hdr_ = next_chunk_ = ptr<chunk_header>(hdr_->chunks_off);
+    cs->set_index_timestamp((int64_t) hdr_->timestamp);
 
     p_ = ptr<unsigned char>(hdr_->name_off);
     cs->set_name(load_string());
@@ -560,10 +562,6 @@ void load_allocator::load(code_searcher *cs) {
         indexed_file *sf = it->get();
         cs->filename_positions_.push_back(make_pair(pos, sf));
     }
-
-    struct stat st;
-    assert(fstat(fd_, &st) == 0);
-    cs->index_timestamp_ = st.st_mtime;
 
     cs->finalized_ = true;
 }

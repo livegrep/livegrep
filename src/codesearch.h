@@ -163,6 +163,9 @@ public:
     int64_t index_timestamp() {
         return index_timestamp_;
     }
+    void set_index_timestamp(int64_t index_timestamp) {
+        index_timestamp_ = index_timestamp;
+    }
 
     class search_thread {
     public:
