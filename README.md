@@ -196,6 +196,16 @@ RAM, but will perform better if the file can be loaded entirely into
 memory. Barring that, keeping the disk on fast SSDs is recommended for
 optimal performance.
 
+Regex Support
+-------------
+
+Livegrep uses Google's [re2](https://github.com/google/re2) regular
+expression engine, and inherits its [supported
+syntax](https://github.com/google/re2/wiki/Syntax).
+
+RE2 is mostly PCRE-compatible, but with some [mostly-deliberate
+exceptions](https://swtch.com/~rsc/regexp/regexp3.html#caveats)
+
 
 LICENSE
 -------
