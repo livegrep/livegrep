@@ -113,7 +113,7 @@ a few ways to enable this. The most important steps are to
 ### Generating index manually
 
 See [doc/examples/livegrep/server.json](doc/examples/livegrep/server.json) for an
-example config file, and [server/config/config.go](server/config/config.go) for documentation on available options. To enable the file viewer, you must include an [`IndexConfig`](server/config/config.go#L61) block inside of the config file. An example `IndexConfig` block can be seen at [doc/examples/livegrep/index.json](doc/examples/livegrep/index.json). 
+example config file, and [server/config/config.go](server/config/config.go) for documentation on available options. To enable the file viewer, you must include an [`IndexConfig`](server/config/config.go#L61) block inside of the config file. An example `IndexConfig` block can be seen at [doc/examples/livegrep/index.json](doc/examples/livegrep/index.json).
 
 *Tip: For each repository included in your `IndexConfig`, make sure to include `metadata.url_pattern` if you would like the file viewer to be able to link out to the external host. You'll see a warning in your browser console if you don't do this.*
 
@@ -161,25 +161,25 @@ name or a line number. You should now be taken to the file browser!
 Docker images
 -------------
 
-I build [docker images][docker] for livegrep out of the
-[livegrep.com](https://github.com/livegrep/livegrep.com) repository,
-based on build images created by this repository's CI. They should be
-generally usable. For instance, to build+run a livegrep index of this
-repository, you could run:
+Livegrep's CI builds Docker images [into the livegrep
+organization][docker] docker repository on every merge to `main`. They
+should be generally usable. For instance, to build+run a livegrep
+index of this repository, you could run:
 
 ```
-docker run -v $(pwd):/data livegrep/indexer /livegrep/bin/livegrep-github-reindex -repo livegrep/livegrep -http -dir /data
+docker run -v $(pwd):/data ghcr.io/livegrep/livegrep/indexer /livegrep/bin/livegrep-github-reindex -repo livegrep/livegrep -http -dir /data
 docker network create livegrep
-docker run -d --rm -v $(pwd):/data --network livegrep --name livegrep-backend livegrep/base /livegrep/bin/codesearch -load_index /data/livegrep.idx -grpc 0.0.0.0:9999
-docker run -d --rm --network livegrep --publish 8910:8910 livegrep/base /livegrep/bin/livegrep -docroot /livegrep/web -listen=0.0.0.0:8910 --connect livegrep-backend:9999
+docker run -d --rm -v $(pwd):/data --network livegrep --name livegrep-backend ghcr.io/livegrep/livegrep/base /livegrep/bin/codesearch -load_index /data/livegrep.idx -grpc 0.0.0.0:9999
+docker run -d --rm --network livegrep --publish 8910:8910 ghcr.io/livegrep/livegrep/base /livegrep/bin/livegrep -docroot /livegrep/web -listen=0.0.0.0:8910 --connect livegrep-backend:9999
 ```
 
 And then access http://localhost:8910/
 
 You can also find the [docker-compose config powering
-livegrep.com][docker-compose] in that same repository.
+livegrep.com][docker-compose] in the `livegrep/livegrep.com`
+repository.
 
-[docker]: https://hub.docker.com/u/livegrep
+[docker]: https://github.com/orgs/livegrep/packages
 [docker-compose]: https://github.com/livegrep/livegrep.com/tree/master/compose
 
 Resource Usage
@@ -195,6 +195,16 @@ into RAM, so it can work out of index files larger than (available)
 RAM, but will perform better if the file can be loaded entirely into
 memory. Barring that, keeping the disk on fast SSDs is recommended for
 optimal performance.
+
+Regex Support
+-------------
+
+Livegrep uses Google's [re2](https://github.com/google/re2) regular
+expression engine, and inherits its [supported
+syntax](https://github.com/google/re2/wiki/Syntax).
+
+RE2 is mostly PCRE-compatible, but with some [mostly-deliberate
+exceptions](https://swtch.com/~rsc/regexp/regexp3.html#caveats)
 
 
 LICENSE
