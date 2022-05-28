@@ -10,25 +10,34 @@
 
 #include <string>
 #include "src/proto/config.pb.h"
+#include "src/smart_git.h"
 
 class code_searcher;
 class git_repository;
 class git_tree;
 struct indexed_tree;
 
+// This should be enough to recover a file/bob from a repo
+struct pre_indexed_file {
+    const indexed_tree *tree;
+     std::string  repopath;
+     std::string  path;
+     std::string id; // string version of oid
+     const unsigned char * id_test2;
+};
+
 class git_indexer {
 public:
     git_indexer(code_searcher *cs,
-                const std::string& repopath,
-                const std::string& name,
-                const Metadata &metadata,
-                bool walk_submodules);
+                const google::protobuf::RepeatedPtrField<RepoSpec>& repositories);
     ~git_indexer();
     void walk(const std::string& ref);
+    void begin_indexing();
 protected:
     void walk_tree(const std::string& pfx,
                    const std::string& order,
                    git_tree *tree);
+    void index_files();
 
     code_searcher *cs_;
     git_repository *repo_;
@@ -38,6 +47,8 @@ protected:
     Metadata metadata_;
     bool walk_submodules_;
     std::string submodule_prefix_;
+    const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
+    std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_;
 };
 
 #endif

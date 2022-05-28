@@ -107,16 +107,18 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
         fprintf(stderr, "done\n");
     }
 
-    for (auto &repo  : spec.repositories()) {
-        fprintf(stderr, "Walking repo_spec name=%s, path=%s (including  submodules: %s)\n",
-                repo.name().c_str(), repo.path().c_str(), repo.walk_submodules() ? "true" : "false");
-        git_indexer indexer(cs, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules());
-        for (auto &rev : repo.revisions()) {
-            fprintf(stderr, "  walking %s\n", rev.c_str());
-            indexer.walk(rev);
-            fprintf(stderr, "  done\n");
-        }
-    }
+        git_indexer indexer(cs, spec.repositories());
+        indexer.begin_indexing();
+        fprintf(stderr, "after begin_indexing()\n");
+    /* for (auto &repo  : spec.repositories()) { */
+    /*     fprintf(stderr, "Walking repo_spec name=%s, path=%s (including  submodules: %s)\n", */
+    /*             repo.name().c_str(), repo.path().c_str(), repo.walk_submodules() ? "true" : "false"); */
+    /*     for (auto &rev : repo.revisions()) { */
+    /*         fprintf(stderr, "  walking %s\n", rev.c_str()); */
+    /*         indexer.walk(rev); */
+    /*         fprintf(stderr, "  done\n"); */
+    /*     } */
+    /* } */
 }
 
 void initialize_search(code_searcher *search,
