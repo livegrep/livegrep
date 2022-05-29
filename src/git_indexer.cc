@@ -83,7 +83,7 @@ void git_indexer::index_files() {
         const char *repopath = file->repopath.c_str();
         
         if (strcmp(prev_repopath, repopath) != 0) {
-            git_repository_free(curr_repo);
+            git_repository_free(curr_repo); // Will do nothing if curr_repo == NULL
             int err = git_repository_open(&curr_repo, repopath);
             if (err < 0) {
                 print_last_git_err_and_exit(err);
@@ -98,11 +98,7 @@ void git_indexer::index_files() {
         }
 
         const git_oid blob_id_static = static_cast<git_oid>(blob_id);
-
-
-        // now that the repo is open
         git_blob *blob;
-
         err = git_blob_lookup(&blob, curr_repo, &blob_id_static);
 
         if (err < 0) {
@@ -110,10 +106,9 @@ void git_indexer::index_files() {
         }
 
         const char *data = static_cast<const char*>(git_blob_rawcontent(blob));
-
         cs_->index_file(file->tree, file->path, StringPiece(data, git_blob_rawsize(blob)));
 
-        // why does this work?
+        git_blob_free(blob);
         prev_repopath = repopath;
     }
 
