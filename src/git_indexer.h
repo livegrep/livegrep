@@ -32,21 +32,26 @@ public:
     git_indexer(code_searcher *cs,
                 const google::protobuf::RepeatedPtrField<RepoSpec>& repositories);
     ~git_indexer();
-    void walk(const std::string& ref);
+    void walk(git_repository *curr_repo,
+            const std::string& ref,
+            const std::string repopath,
+            const std::string& name,
+            Metadata metadata,
+            bool walk_submodules,
+            const std::string& submodule_prefix);
     void begin_indexing();
 protected:
     void walk_tree(const std::string& pfx,
                    const std::string& order,
-                   git_tree *tree);
+                   const std::string repopath,
+                   bool walk_submodules,
+                   const std::string& submodule_prefix,
+                   const indexed_tree *idx_tree,
+                   git_tree *tree,
+                   git_repository *curr_repo);
     void index_files();
 
     code_searcher *cs_;
-    git_repository *repo_;
-    const indexed_tree *idx_tree_;
-    std::string repopath_;
-    std::string name_;
-    Metadata metadata_;
-    bool walk_submodules_;
     std::string submodule_prefix_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
     std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_;
