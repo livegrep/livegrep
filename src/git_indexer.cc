@@ -28,8 +28,8 @@ git_indexer::git_indexer(code_searcher *cs,
     git_libgit2_opts(GIT_OPT_SET_CACHE_OBJECT_LIMIT, GIT_OBJ_REF_DELTA, 10*1024);
 }
 
-// Do nothing on close.
 git_indexer::~git_indexer() {
+    git_libgit2_shutdown();
 }
 
 void git_indexer::begin_indexing() {
