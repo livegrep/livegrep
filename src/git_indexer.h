@@ -22,7 +22,7 @@ struct pre_indexed_file {
     const indexed_tree *tree;
      std::string  repopath;
      std::string  path;
-     std::string id; // string version of oid
+     std::string id; // string version of git oid
      int score;
 };
 

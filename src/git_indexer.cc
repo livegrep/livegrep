@@ -39,7 +39,7 @@ void git_indexer::begin_indexing() {
         /* repopath_ = repo.path(); */
         const char *repopath = repo.path().c_str();
 
-        fprintf(stderr, "indexing repo: %s\n", repopath);
+        fprintf(stderr, "walking repo: %s\n", repopath);
         // if repo has already been set AND it's not the same as this one
         git_repository *curr_repo = NULL;
 
@@ -50,7 +50,9 @@ void git_indexer::begin_indexing() {
         }
 
         for (auto &rev : repo.revisions()) {
+            fprintf(stderr, " walking %s... ", rev.c_str());
             walk(curr_repo, rev, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules(), "");
+            fprintf(stderr, "done\n");
         }
 
         git_repository_free(curr_repo);
@@ -64,26 +66,20 @@ bool operator<(std::unique_ptr<pre_indexed_file>& a, std::unique_ptr<pre_indexed
 }
 
 void git_indexer::index_files() {
-    // the idea here would be to get all the files from all repos.
-    // Then sort them
-    // How would we go back to every file?
-    fprintf(stderr, "have %ld files\n", files_to_index_.size());
-    // we seem to have an extra file?
-    // pre-sort
-
+    fprintf(stderr, "sorting files_to_index_... ");
     std::stable_sort(files_to_index_.begin(), files_to_index_.end());
+    fprintf(stderr, "done\n");
 
     git_repository *curr_repo = NULL;
     const char *prev_repopath = "";
 
-    fprintf(stderr, "we here\n");
+    fprintf(stderr, "walking files_to_index_ ...\n");
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = it->get();
 
         const char *repopath = file->repopath.c_str();
         
         if (strcmp(prev_repopath, repopath) != 0) {
-            fprintf(stderr, "changing repos\n");
             git_repository_free(curr_repo);
             git_repository_open(&curr_repo, repopath);
         }
@@ -133,7 +129,7 @@ void git_indexer::index_files() {
         prev_repopath = repopath;
     }
 
-    /* fprintf(stderr, "finished looping\n"); */
+    fprintf(stderr, "done\n");
 }
 
 void git_indexer::walk(git_repository *curr_repo,
