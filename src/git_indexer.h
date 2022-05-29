@@ -23,7 +23,6 @@ struct pre_indexed_file {
      std::string  repopath;
      std::string  path;
      std::string id; // string version of oid
-     const unsigned char * id_test2;
      int score;
 };
 

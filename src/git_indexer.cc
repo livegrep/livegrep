@@ -41,7 +41,7 @@ void git_indexer::begin_indexing() {
 
         fprintf(stderr, "indexing repo: %s\n", repopath);
         // if repo has already been set AND it's not the same as this one
-        git_repository *curr_repo;
+        git_repository *curr_repo = NULL;
 
         int err = git_repository_open(&curr_repo, repopath);
         if (err < 0) {
@@ -73,13 +73,22 @@ void git_indexer::index_files() {
 
     std::stable_sort(files_to_index_.begin(), files_to_index_.end());
 
-    git_repository *curr_repo;
+    git_repository *curr_repo = NULL;
+    const char *prev_repopath = "";
+
+    fprintf(stderr, "we here\n");
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = it->get();
 
         const char *repopath = file->repopath.c_str();
-        git_repository_open(&curr_repo, repopath);
-        fprintf(stderr, "%s/%s. id: %s \n", repopath, file->path.c_str(), file->id.c_str()); 
+        
+        if (strcmp(prev_repopath, repopath) != 0) {
+            fprintf(stderr, "changing repos\n");
+            git_repository_free(curr_repo);
+            git_repository_open(&curr_repo, repopath);
+        }
+
+        /* fprintf(stderr, "%s/%s. id: %s \n", repopath, file->path.c_str(), file->id.c_str()); */ 
 
         git_oid blob_id;
         int err = git_oid_fromstr(&blob_id, file->id.c_str());
@@ -93,14 +102,14 @@ void git_indexer::index_files() {
         const git_oid blob_id_static = static_cast<git_oid>(blob_id);
 
 
-        fprintf(stderr, "open at: %s\n", git_repository_path(curr_repo));
-        fprintf(stderr, "repopath: %s\n", repopath);
+        /* fprintf(stderr, "open at: %s\n", git_repository_path(curr_repo)); */
+        /* fprintf(stderr, "repopath: %s\n", repopath); */
         /* string repo_path = string(git_repository_path(repo_)); */
         /* fprintf(stderr, "equal: %d\n", strcmp(repo_path + strlen(repo_path) - (strlen(file->repopath) + 1), file->repopath + "/") == 0); */
 
         
 
-        fprintf(stderr, "_repo opened at path: %s\n", git_repository_path(curr_repo));
+        /* fprintf(stderr, "_repo opened at path: %s\n", git_repository_path(curr_repo)); */
 
         // now that the repo is open
         git_blob *blob;
@@ -114,17 +123,17 @@ void git_indexer::index_files() {
         }
 
 
-        fprintf(stderr, "blob looked up, (theoretically). Owner: %s\n", git_repository_path(git_blob_owner(blob)));
+        /* fprintf(stderr, "blob looked up, (theoretically). Owner: %s\n", git_repository_path(git_blob_owner(blob))); */
 
         const char *data = static_cast<const char*>(git_blob_rawcontent(blob));
 
-        fprintf(stderr, "data loaded (theoretically)\n");
         cs_->index_file(file->tree, file->path, StringPiece(data, git_blob_rawsize(blob)));
 
-        git_repository_free(curr_repo);
+        // why does this work?
+        prev_repopath = repopath;
     }
 
-    fprintf(stderr, "finished looping\n");
+    /* fprintf(stderr, "finished looping\n"); */
 }
 
 void git_indexer::walk(git_repository *curr_repo,
@@ -195,22 +204,18 @@ void git_indexer::walk_tree(const string& pfx,
 
             const string full_path = submodule_prefix + path;
             auto file = std::make_unique<pre_indexed_file>();
+            file->id = string(blob_id_str);
             file->tree = idx_tree;
             file->repopath = repopath;
             file->path =  full_path;
             file->score = score_file(full_path);
 
-            // Hmm, so I think this is a git_tree_entry, so that's why the the
-            // id doesn't correspond to a blob per-se
-            file->id = string(blob_id_str);
-            file->id_test2 = (blob_id)->id;
-
             // I need to copy the oid back and forth, otherwise I run into that
             // indeterminate behavior thats described
             
-            fprintf(stderr, "%s/%s -> %s\n", repopath.c_str(), full_path.c_str(), git_oid_tostr_s(blob_id));
-            fprintf(stderr, "id_test: %s\n", file->id.c_str());
-            fprintf(stderr, "id_test2 raw 20 bytes: [%s]\n", file->id_test2);
+            /* fprintf(stderr, "%s/%s -> %s\n", repopath.c_str(), full_path.c_str(), git_oid_tostr_s(blob_id)); */
+            /* fprintf(stderr, "id_test: %s\n", file->id.c_str()); */
+            /* fprintf(stderr, "id_test2 raw 20 bytes: [%s]\n", file->id_test2); */
 
             files_to_index_.push_back(std::move(file));
 
