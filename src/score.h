@@ -4,4 +4,4 @@
 
 using std::string;
 
-int rank_file(string file_path);
+int score_file(string file_path);

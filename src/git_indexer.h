@@ -24,6 +24,7 @@ struct pre_indexed_file {
      std::string  path;
      std::string id; // string version of oid
      const unsigned char * id_test2;
+     int score;
 };
 
 class git_indexer {

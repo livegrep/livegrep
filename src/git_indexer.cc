@@ -7,6 +7,7 @@
 #include "src/codesearch.h"
 #include "src/git_indexer.h"
 #include "src/smart_git.h"
+#include "src/score.h"
 
 #include "src/proto/config.pb.h"
 
@@ -80,6 +81,9 @@ void git_indexer::begin_indexing() {
     index_files();
 }
 
+bool operator<(std::unique_ptr<pre_indexed_file>& a, std::unique_ptr<pre_indexed_file>& b) {
+    return a->score > b->score;
+}
 
 void git_indexer::index_files() {
     // the idea here would be to get all the files from all repos.
@@ -88,6 +92,9 @@ void git_indexer::index_files() {
     fprintf(stderr, "have %ld files\n", files_to_index_.size());
     // we seem to have an extra file?
     // pre-sort
+
+    std::stable_sort(files_to_index_.begin(), files_to_index_.end());
+
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = it->get();
 
@@ -148,8 +155,6 @@ void git_indexer::index_files() {
         fprintf(stderr, "blob looked up, (theoretically). Owner: %s\n", git_repository_path(git_blob_owner(blob)));
 
         const char *data = static_cast<const char*>(git_blob_rawcontent(blob));
-
-        fprintf(stderr, "blob: %s\n", data);
 
         fprintf(stderr, "data loaded (theoretically)\n");
         cs_->index_file(file->tree, file->path, StringPiece(data, git_blob_rawsize(blob)));
@@ -218,6 +223,7 @@ void git_indexer::walk_tree(const string& pfx,
             file->tree = idx_tree_;
             file->repopath = repopath_;
             file->path =  full_path;
+            file->score = score_file(full_path);
 
             // Hmm, so I think this is a git_tree_entry, so that's why the the
             // id doesn't correspond to a blob per-se
