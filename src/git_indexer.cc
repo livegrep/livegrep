@@ -34,13 +34,11 @@ git_indexer::~git_indexer() {
 
 void git_indexer::begin_indexing() {
 
-    // The below will populate files_to_index_
+    // populate files_to_index_
     for (auto &repo : repositories_to_index_) {
-        /* repopath_ = repo.path(); */
         const char *repopath = repo.path().c_str();
 
         fprintf(stderr, "walking repo: %s\n", repopath);
-        // if repo has already been set AND it's not the same as this one
         git_repository *curr_repo = NULL;
 
         int err = git_repository_open(&curr_repo, repopath);
@@ -84,8 +82,6 @@ void git_indexer::index_files() {
             git_repository_open(&curr_repo, repopath);
         }
 
-        /* fprintf(stderr, "%s/%s. id: %s \n", repopath, file->path.c_str(), file->id.c_str()); */ 
-
         git_oid blob_id;
         int err = git_oid_fromstr(&blob_id, file->id.c_str());
 
@@ -98,15 +94,6 @@ void git_indexer::index_files() {
         const git_oid blob_id_static = static_cast<git_oid>(blob_id);
 
 
-        /* fprintf(stderr, "open at: %s\n", git_repository_path(curr_repo)); */
-        /* fprintf(stderr, "repopath: %s\n", repopath); */
-        /* string repo_path = string(git_repository_path(repo_)); */
-        /* fprintf(stderr, "equal: %d\n", strcmp(repo_path + strlen(repo_path) - (strlen(file->repopath) + 1), file->repopath + "/") == 0); */
-
-        
-
-        /* fprintf(stderr, "_repo opened at path: %s\n", git_repository_path(curr_repo)); */
-
         // now that the repo is open
         git_blob *blob;
 
@@ -117,9 +104,6 @@ void git_indexer::index_files() {
             printf("Error %d/%d: %s\n", err, e->klass, e->message);
             exit(err);
         }
-
-
-        /* fprintf(stderr, "blob looked up, (theoretically). Owner: %s\n", git_repository_path(git_blob_owner(blob))); */
 
         const char *data = static_cast<const char*>(git_blob_rawcontent(blob));
 
@@ -206,18 +190,8 @@ void git_indexer::walk_tree(const string& pfx,
             file->path =  full_path;
             file->score = score_file(full_path);
 
-            // I need to copy the oid back and forth, otherwise I run into that
-            // indeterminate behavior thats described
-            
-            /* fprintf(stderr, "%s/%s -> %s\n", repopath.c_str(), full_path.c_str(), git_oid_tostr_s(blob_id)); */
-            /* fprintf(stderr, "id_test: %s\n", file->id.c_str()); */
-            /* fprintf(stderr, "id_test2 raw 20 bytes: [%s]\n", file->id_test2); */
-
             files_to_index_.push_back(std::move(file));
 
-
-            /* const char *data = static_cast<const char*>(git_blob_rawcontent(obj)); */
-            /* cs_->index_file(idx_tree_, submodule_prefix_ + path, StringPiece(data, git_blob_rawsize(obj))); */
         } else if (git_tree_entry_type(*it) == GIT_OBJ_COMMIT) {
             // Submodule
             if (!walk_submodules) {
@@ -234,14 +208,9 @@ void git_indexer::walk_tree(const string& pfx,
             string new_submodule_prefix = submodule_prefix + path + "/";
             Metadata meta;
 
-            /* git_indexer sub_indexer(cs_, sub_repopath, string(sub_name), meta, walk_submodules_); */
-            /* sub_indexer.submodule_prefix_ = submodule_prefix_ + path + "/"; */
-
             const git_oid* rev = git_tree_entry_id(*it);
             char revstr[GIT_OID_HEXSZ + 1];
             git_oid_tostr(revstr, GIT_OID_HEXSZ + 1, rev);
-
-            /* sub_indexer.walk(string(revstr)); */
 
             // Open the submodule repo
             git_repository *sub_repo;
