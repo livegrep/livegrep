@@ -31,6 +31,8 @@ public:
     git_indexer(code_searcher *cs,
                 const google::protobuf::RepeatedPtrField<RepoSpec>& repositories);
     ~git_indexer();
+    void begin_indexing();
+protected:
     void walk(git_repository *curr_repo,
             const std::string& ref,
             const std::string repopath,
@@ -38,8 +40,6 @@ public:
             Metadata metadata,
             bool walk_submodules,
             const std::string& submodule_prefix);
-    void begin_indexing();
-protected:
     void walk_tree(const std::string& pfx,
                    const std::string& order,
                    const std::string repopath,
@@ -49,6 +49,7 @@ protected:
                    git_tree *tree,
                    git_repository *curr_repo);
     void index_files();
+    void print_last_git_err_and_exit(int err);
 
     code_searcher *cs_;
     std::string submodule_prefix_;

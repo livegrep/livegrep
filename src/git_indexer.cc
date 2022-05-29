@@ -32,6 +32,12 @@ git_indexer::~git_indexer() {
     git_libgit2_shutdown();
 }
 
+void git_indexer::print_last_git_err_and_exit(int err) {
+    const git_error *e = giterr_last();
+    printf("Error %d/%d: %s\n", err, e->klass, e->message);
+    exit(1);
+}
+
 void git_indexer::begin_indexing() {
 
     // populate files_to_index_
@@ -43,8 +49,7 @@ void git_indexer::begin_indexing() {
 
         int err = git_repository_open(&curr_repo, repopath);
         if (err < 0) {
-            fprintf(stderr, "Unable to open repo: %s\n", repopath);
-            exit(1);
+            print_last_git_err_and_exit(err);
         }
 
         for (auto &rev : repo.revisions()) {
@@ -79,16 +84,17 @@ void git_indexer::index_files() {
         
         if (strcmp(prev_repopath, repopath) != 0) {
             git_repository_free(curr_repo);
-            git_repository_open(&curr_repo, repopath);
+            int err = git_repository_open(&curr_repo, repopath);
+            if (err < 0) {
+                print_last_git_err_and_exit(err);
+            }
         }
 
         git_oid blob_id;
         int err = git_oid_fromstr(&blob_id, file->id.c_str());
 
         if (err < 0) {
-            const git_error *e = giterr_last();
-            printf("Error %d/%d: %s\n", err, e->klass, e->message);
-            exit(err);
+            print_last_git_err_and_exit(err);
         }
 
         const git_oid blob_id_static = static_cast<git_oid>(blob_id);
@@ -100,9 +106,7 @@ void git_indexer::index_files() {
         err = git_blob_lookup(&blob, curr_repo, &blob_id_static);
 
         if (err < 0) {
-            const git_error *e = giterr_last();
-            printf("Error %d/%d: %s\n", err, e->klass, e->message);
-            exit(err);
+            print_last_git_err_and_exit(err);
         }
 
         const char *data = static_cast<const char*>(git_blob_rawcontent(blob));
@@ -219,7 +223,7 @@ void git_indexer::walk_tree(const string& pfx,
 
             if (err < 0) {
                 fprintf(stderr, "Unable to open subrepo: %s\n", sub_repopath.c_str());
-                exit(1);
+                print_last_git_err_and_exit(err);
             }
 
             walk(sub_repo, string(revstr), sub_repopath, string(sub_name), meta, walk_submodules, new_submodule_prefix);
