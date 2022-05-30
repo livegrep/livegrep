@@ -11,6 +11,7 @@
 #include <string>
 #include "src/proto/config.pb.h"
 #include "src/smart_git.h"
+#include "src/lib/per_thread.h"
 
 class code_searcher;
 class git_repository;
@@ -56,7 +57,9 @@ protected:
     std::string submodule_prefix_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
     std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_;
+    std::mutex files_mutex_;
     std::vector<std::thread> threads_;
+    per_thread<vector<std::unique_ptr<pre_indexed_file>>> files_to_index_local;
 };
 
 #endif
