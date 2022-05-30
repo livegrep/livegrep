@@ -50,11 +50,13 @@ protected:
                    git_repository *curr_repo);
     void index_files();
     void print_last_git_err_and_exit(int err);
+    void walk_repositories_subset(int start, int end);
 
     code_searcher *cs_;
     std::string submodule_prefix_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
     std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_;
+    std::vector<std::thread> threads_;
 };
 
 #endif

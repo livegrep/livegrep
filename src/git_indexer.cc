@@ -8,6 +8,7 @@
 #include "src/git_indexer.h"
 #include "src/smart_git.h"
 #include "src/score.h"
+#include "src/lib/per_thread.h"
 
 #include "src/proto/config.pb.h"
 
@@ -30,6 +31,9 @@ git_indexer::git_indexer(code_searcher *cs,
 
 git_indexer::~git_indexer() {
     git_libgit2_shutdown();
+
+    for (auto it = threads_.begin(); it != threads_.end(); ++it)
+        it->join();
 }
 
 void git_indexer::print_last_git_err_and_exit(int err) {
@@ -38,7 +42,71 @@ void git_indexer::print_last_git_err_and_exit(int err) {
     exit(1);
 }
 
+// will be called by a thread to walk a subsection of repositories_to_index_
+void git_indexer::walk_repositories_subset(int start, int end) {
+    // ideally, walk will post to a thread_local files_to_index_.
+    static per_thread<vector<std::unique_ptr<pre_indexed_file>>> files_to_index_local;
+
+    fprintf(stderr, "walk_repositories_subset: %d-%d\n", start, end);
+    return;
+    // then each thread pushes to files_to_index_local?? Cool, if it's that
+    // simple.
+    for (int i = start; i < end; ++i) {
+        const auto &repo = repositories_to_index_[i];
+        /* const char *repopath = repo.path().c_str(); */
+
+        /* fprintf(stderr, "walking repo: %s\n", repopath); */
+        /* git_repository *curr_repo = NULL; */
+
+        /* int err = git_repository_open(&curr_repo, repopath); */
+        /* if (err < 0) { */
+        /*     print_last_git_err_and_exit(err); */
+        /* } */
+
+        /* for (auto &rev : repo.revisions()) { */
+        /*     fprintf(stderr, " walking %s... ", rev.c_str()); */
+        /*     walk(curr_repo, rev, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules(), ""); */
+        /*     fprintf(stderr, "done\n"); */
+        /* } */
+
+        /* git_repository_free(curr_repo); */
+    }
+
+    // Then at the end we'll post to files_to_index_
+    // Then we're done
+}
+
 void git_indexer::begin_indexing() {
+
+    // min_per_thread will require tweaking. For example, even with only
+    // 2 repos, would it not be worth it to spin up two threads (if available)?
+    // Or would the overhead of the thread creation far outweigh the single-core
+    // performance for just a few repos.
+    unsigned long const length = repositories_to_index_.size();
+    unsigned long const min_per_thread = 10; 
+    unsigned long const max_threads = 
+        (length + min_per_thread - 1)/min_per_thread;
+    unsigned long const hardware_threads = std::thread::hardware_concurrency();
+    unsigned long const num_threads = std::min(hardware_threads!=0?hardware_threads:2, max_threads);
+    unsigned long const block_size = length / num_threads;
+
+    fprintf(stderr, "length=%lu min_per_thread=%lu max_threads=%lu hardware_threads=%lu num_threads=%lu block_size=%lu\n", length, min_per_thread, max_threads, hardware_threads, num_threads, block_size);
+
+    threads_.reserve(num_threads);
+    long block_start = 0;
+    for (long i = 0; i < num_threads; ++i) {
+        long block_end = block_start + block_size;
+        threads_.emplace_back(&git_indexer::walk_repositories_subset, this, (int)block_start, (int)block_end);
+        block_start = block_end;
+    }
+    exit(1);
+    // Then we'd spin up num_threads into a vector.
+    // Then each thread can chew through `block_size + offset` repos.
+    //
+    // Right now, we push every single file onto files_to_index_. 
+    // To avoid contention, we could have each thread keep
+    // a thread_files_to_index, and then when done use vector::insert
+    // to append to files_to_index_. How do we access thread local storage?
 
     // populate files_to_index_
     for (auto &repo : repositories_to_index_) {
@@ -81,6 +149,8 @@ void git_indexer::index_files() {
         auto file = it->get();
 
         const char *repopath = file->repopath.c_str();
+
+        /* fprintf(stderr, "indexing %s/%s\n", repopath, file->path.c_str()); */
         
         if (strcmp(prev_repopath, repopath) != 0) {
             git_repository_free(curr_repo); // Will do nothing if curr_repo == NULL
