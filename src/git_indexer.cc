@@ -31,8 +31,8 @@ git_indexer::git_indexer(code_searcher *cs,
 git_indexer::~git_indexer() {
     git_libgit2_shutdown();
 
-    for (auto it = threads_.begin(); it != threads_.end(); ++it)
-        it->join();
+    /* for (auto it = threads_.begin(); it != threads_.end(); ++it) */
+    /*     it->join(); */
 }
 
 void git_indexer::print_last_git_err_and_exit(int err) {
@@ -188,7 +188,7 @@ void git_indexer::index_files() {
         prev_repopath = repopath;
     }
 
-    fprintf(stderr, "done\n");
+    fprintf(stderr, "finished with index_files\n");
 }
 
 void git_indexer::walk(git_repository *curr_repo,
