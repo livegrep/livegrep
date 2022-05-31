@@ -79,9 +79,6 @@ void git_indexer::walk_repositories_subset(int start, int end) {
 
 void git_indexer::begin_indexing() {
 
-    for (auto &repo : repositories_to_index_) {
-        fprintf(stderr, "going to index: %s\n", repo.path().c_str());
-    }
     // min_per_thread will require tweaking. For example, even with only
     // 2 repos, would it not be worth it to spin up two threads (if available)?
     // Or would the overhead of the thread creation far outweigh the single-core
