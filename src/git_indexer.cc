@@ -45,7 +45,7 @@ void git_indexer::print_last_git_err_and_exit(int err) {
 void git_indexer::walk_repositories_subset(int start, int end) {
     // ideally, walk will post to a thread_local files_to_index_.
 
-    /* fprintf(stderr, "walk_repositories_subset: %d-%d\n", start, end); */
+    fprintf(stderr, "walk_repositories_subset: %d-%d\n", start, end);
     /* return; */
     // then each thread pushes to files_to_index_local?? Cool, if it's that
     // simple.
@@ -79,24 +79,37 @@ void git_indexer::walk_repositories_subset(int start, int end) {
 
 void git_indexer::begin_indexing() {
 
+    for (auto &repo : repositories_to_index_) {
+        fprintf(stderr, "going to index: %s\n", repo.path().c_str());
+    }
     // min_per_thread will require tweaking. For example, even with only
     // 2 repos, would it not be worth it to spin up two threads (if available)?
     // Or would the overhead of the thread creation far outweigh the single-core
     // performance for just a few repos.
+    
     unsigned long const length = repositories_to_index_.size();
-    unsigned long const min_per_thread = 10; 
+    unsigned long const min_per_thread = 5; 
     unsigned long const max_threads = 
         (length + min_per_thread - 1)/min_per_thread;
     unsigned long const hardware_threads = std::thread::hardware_concurrency();
     unsigned long const num_threads = std::min(hardware_threads!=0?hardware_threads:2, max_threads);
-    unsigned long const block_size = length / num_threads;
+    // We round block size up. the last thread may have less items to work with
+    // when length is uneven
+    unsigned long const block_size = (length + num_threads - 1) / (num_threads);
 
     fprintf(stderr, "length=%lu min_per_thread=%lu max_threads=%lu hardware_threads=%lu num_threads=%lu block_size=%lu\n", length, min_per_thread, max_threads, hardware_threads, num_threads, block_size);
 
-    threads_.reserve(num_threads);
+    if (length < 2 * min_per_thread) {
+        fprintf(stderr, "Not going to create any new threads.\n");
+        walk_repositories_subset(0, length);
+        index_files();
+        return;
+    }
+
+    threads_.reserve(num_threads - 1);
     long block_start = 0;
     for (long i = 0; i < num_threads; ++i) {
-        long block_end = block_start + block_size;
+        long block_end = std::min(block_start + block_size, length);
         threads_.emplace_back(&git_indexer::walk_repositories_subset, this, (int)block_start, (int)block_end);
         block_start = block_end;
     }
