@@ -30,9 +30,6 @@ git_indexer::git_indexer(code_searcher *cs,
 
 git_indexer::~git_indexer() {
     git_libgit2_shutdown();
-
-    /* for (auto it = threads_.begin(); it != threads_.end(); ++it) */
-    /*     it->join(); */
 }
 
 void git_indexer::print_last_git_err_and_exit(int err) {
@@ -42,13 +39,13 @@ void git_indexer::print_last_git_err_and_exit(int err) {
 }
 
 // will be called by a thread to walk a subsection of repositories_to_index_
+// we then take the threads local `files_to_index_local` and append it to the
+// global `files_to_index_`.
+// we then call `index_files` to actaully submit the files to be indexed by
+// codesearch
 void git_indexer::walk_repositories_subset(int start, int end) {
-    // ideally, walk will post to a thread_local files_to_index_.
 
-    fprintf(stderr, "walk_repositories_subset: %d-%d\n", start, end);
-    /* return; */
-    // then each thread pushes to files_to_index_local?? Cool, if it's that
-    // simple.
+    /* fprintf(stderr, "walk_repositories_subset: %d-%d\n", start, end); */
     for (int i = start; i < end; ++i) {
         const auto &repo = repositories_to_index_[i];
         const char *repopath = repo.path().c_str();
@@ -115,36 +112,6 @@ void git_indexer::begin_indexing() {
         threads_[i].join();
     }
 
-    /* exit(1); */
-    // Then we'd spin up num_threads into a vector.
-    // Then each thread can chew through `block_size + offset` repos.
-    //
-    // Right now, we push every single file onto files_to_index_. 
-    // To avoid contention, we could have each thread keep
-    // a thread_files_to_index, and then when done use vector::insert
-    // to append to files_to_index_. How do we access thread local storage?
-
-    // populate files_to_index_
-    /* for (auto &repo : repositories_to_index_) { */
-    /*     const char *repopath = repo.path().c_str(); */
-
-    /*     fprintf(stderr, "walking repo: %s\n", repopath); */
-    /*     git_repository *curr_repo = NULL; */
-
-    /*     int err = git_repository_open(&curr_repo, repopath); */
-    /*     if (err < 0) { */
-    /*         print_last_git_err_and_exit(err); */
-    /*     } */
-
-    /*     for (auto &rev : repo.revisions()) { */
-    /*         fprintf(stderr, " walking %s... ", rev.c_str()); */
-    /*         walk(curr_repo, rev, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules(), ""); */
-    /*         fprintf(stderr, "done\n"); */
-    /*     } */
-
-    /*     git_repository_free(curr_repo); */
-    /* } */
-
     index_files();
 }
 
@@ -152,6 +119,15 @@ bool operator<(std::unique_ptr<pre_indexed_file>& a, std::unique_ptr<pre_indexed
     return a->score > b->score;
 }
 
+// sorts `files_to_index_` based on score. This way, the lowest scoring files
+// get indexed last, and so show up in sorts results last. We use a stable sort
+// so that most of a repos files are indexed together which has 2 benefits:
+//  1. If a term is matched in a lot of repos files, that repos files will end
+//     up grouped together in search results
+//  2. We can avoid many calls to git_repository_open/git_repository_free. At
+//     least until the end, where many repos "low" scoring files are found.
+// walks `files_to_index_`, looks up the repo & blob combination for each file
+// and then calls `cs->index_file` to actually index the file.
 void git_indexer::index_files() {
     fprintf(stderr, "sorting %lu files_to_index_... ", files_to_index_.size());
     std::stable_sort(files_to_index_.begin(), files_to_index_.end());
@@ -278,7 +254,6 @@ void git_indexer::walk_tree(const string& pfx,
             file->path =  full_path;
             file->score = score_file(full_path);
 
-            // Ok, so this isn't working either
             /* fprintf(stderr, "indexing %s/%s\n", repopath.c_str(), file->path.c_str()); */
             if (!files_to_index_local.get()) {
                 files_to_index_local.put(new vector<unique_ptr<pre_indexed_file>>());
