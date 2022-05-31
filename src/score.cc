@@ -47,8 +47,9 @@ int score_file(string file_path) {
     //    Also, this requires "reading" all of the content of all
     //    files to be indexed before-hand, which will turn into a scale/compute
     //    problem when using this on a large enough number of repos.
-    // 2. What else? Zoekt uses file content length, but that seems a mistake
-    // 3. Number of ctags files? Don't yet have ctags however.
+    // 2. What else? Zoekt uses file content length and file name, but with our
+    //    absence of ctags symbols, that might skew results too much.
+    // 3. Number of ctags symbols? Don't yet have ctags however.
 
     return starting_score;
 }

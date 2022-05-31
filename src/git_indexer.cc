@@ -248,6 +248,10 @@ void git_indexer::walk_tree(const string& pfx,
 
             const string full_path = submodule_prefix + path;
             auto file = std::make_unique<pre_indexed_file>();
+            // There's probably a better way than this, but for some reason
+            // storing the oid as either a git_oid or it's raw representation 
+            // (unisgned char* [20]) ends up with the stored oid becoming
+            // mutated. For now simply copying it to a string works.
             file->id = string(blob_id_str);
             file->tree = idx_tree;
             file->repopath = repopath;
