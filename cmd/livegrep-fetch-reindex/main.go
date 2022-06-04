@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -26,6 +28,17 @@ var (
 	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to")
 	flagNumWorkers    = flag.Int("num-workers", 8, "Number of workers used to update repositories")
 	flagNoIndex       = flag.Bool("no-index", false, "Skip indexing after fetching")
+	flagMetricsPath   = flag.String("metrics-out", "", "File that indexing metrics should be sent to")
+	flagStatsdOn      = flag.Bool("send-metrics-to-statsd", false, "Send indexing metrics to StatsD")
+	flagStatsdAddr    = flag.String("statsd-address", "", "address URI of statsd listener for metrics export")
+	flagStatsdPrefix  = flag.String("statsd-prefix", "", "optional prefix to apply to all metrics")
+	flagUpdateHead    = flag.Bool("update-head", false, "update the HEAD reference if it has changed on remote")
+)
+
+var (
+	// Uses to extract the refname from a line like the following:
+	// ref: refs/heads/good_main_2     HEAD
+	remoteHeadRefExtractorReg = regexp.MustCompile("ref:\\s*([^\\s]*)\\s*HEAD")
 )
 
 func main() {
@@ -260,7 +273,44 @@ func checkoutOne(r *config.RepoSpec) error {
 	if r.CloneOptions != nil && r.CloneOptions.Depth != 0 {
 		args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
 	}
-	return callGit("git", args, username, password)
+	err = callGit("git", args, username, password)
+	if err != nil || !(*flagUpdateHead) {
+		return err
+	}
+
+	currHead, err := exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD").Output() // git symbolic-ref HEAD
+	if err != nil {
+		return err
+	}
+	// Now get the remote head
+	// Stand in use exec.Command until we refactor callGit to also pass output back
+
+	// output
+	// ref: refs/heads/good_main_2     HEAD
+	// 0666a519f94b8500ab6f14bdf7c9c2e5ca7d5821        HEAD
+
+	remoteOut, err := exec.Command("git", "--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD").Output()
+	if err != nil {
+		return err
+	}
+	submatches := remoteHeadRefExtractorReg.FindStringSubmatch(string(remoteOut))
+	if len(submatches) == 1 {
+		return errors.New("could not parse ls-remote --symref origin HEAD output")
+	}
+	remoteHead := submatches[1]
+
+	// use .Compare?
+	if string(currHead) != remoteHead {
+		log.Printf("remote HEAD: %s does not match local HEAD: %s. Attempting to fix...\n", remoteHead, currHead)
+		// git symbolic-ref HEAD refs/heads/good_main_2
+		if err = exec.Command("git", "--git-dir", r.Path, " symbolic-ref", "HEAD", remoteHead).Run(); err != nil {
+			return err
+		} else {
+			log.Printf("done.\n")
+		}
+	}
+
+	return nil
 }
 
 func reloadBackend(addr string) error {
