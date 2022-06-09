@@ -179,21 +179,40 @@ if test "$1" = "get"; then
 fi
 `)
 
-// runs exec.Output() and returns the command output
-func callGit2(program string, args []string, username string, password string) ([]byte, error) {
+// calls cmd.Run() if returnOutput is false
+// and cmd.Output() otherwise
+// always returns an out []byte, but it will always be nill if returnOutput is false
+func callGit(program string, args []string, username string, password string, returnOutput bool) ([]byte, error) {
 	var err error
 	var out []byte
 
 	if username != "" || password != "" {
-		f, err := passwordHelper(username, password, &args)
+		// If we're given credentials, pass them to git via a
+		// credential helper
+		//
+		// In order to avoid the key hitting the
+		// filesystem, we pass the actual key via a
+		// pipe on fd `3`, and we set the askpass
+		// script to a tiny sh script that just reads
+		// from that pipe.
+		f, err := ioutil.TempFile("", "livegrep-credential-helper")
 		if err != nil {
 			return nil, err
 		}
+		f.WriteString(credentialHelperScript)
+		f.Close()
 		defer os.Remove(f.Name())
+
+		os.Chmod(f.Name(), 0700)
+		args = append([]string{"-c", fmt.Sprintf("credential.helper=%s", f.Name())}, args...)
 	}
 
 	for i := 0; i < 3; i++ {
 		cmd := exec.Command("git", args...)
+		if !returnOutput {
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+		}
 		if password != "" {
 			r, w, err := os.Pipe()
 			if err != nil {
@@ -211,73 +230,16 @@ func callGit2(program string, args []string, username string, password string) (
 		if username != "" {
 			cmd.Env = append(os.Environ(), fmt.Sprintf("LIVEGREP_GITHUB_USERNAME=%s", username))
 		}
-		out, err = cmd.Output()
+		if !returnOutput {
+			err = cmd.Run()
+		} else {
+			out, err = cmd.Output()
+		}
 		if err == nil {
 			return out, nil
 		}
 	}
 	return nil, fmt.Errorf("%s %v: %s", program, args, err.Error())
-}
-
-func passwordHelper(username string, password string, args *[]string) (*os.File, error) {
-	// If we're given credentials, pass them to git via a
-	// credential helper
-	//
-	// In order to avoid the key hitting the
-	// filesystem, we pass the actual key via a
-	// pipe on fd `3`, and we set the askpass
-	// script to a tiny sh script that just reads
-	// from that pipe.
-	f, err := ioutil.TempFile("", "livegrep-credential-helper")
-	if err != nil {
-		return nil, err
-	}
-	f.WriteString(credentialHelperScript)
-	f.Close()
-
-	os.Chmod(f.Name(), 0700)
-	*args = append([]string{"-c", fmt.Sprintf("credential.helper=%s", f.Name())}, *args...)
-
-	return f, nil
-}
-
-func callGit(program string, args []string, username string, password string) error {
-	var err error
-
-	if username != "" || password != "" {
-		f, err := passwordHelper(username, password, &args)
-		if err != nil {
-			return err
-		}
-		defer os.Remove(f.Name())
-	}
-
-	for i := 0; i < 3; i++ {
-		cmd := exec.Command("git", args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if password != "" {
-			r, w, err := os.Pipe()
-			if err != nil {
-				return err
-			}
-
-			cmd.ExtraFiles = []*os.File{r}
-
-			go func() {
-				defer w.Close()
-				w.WriteString(password)
-			}()
-			defer r.Close()
-		}
-		if username != "" {
-			cmd.Env = append(os.Environ(), fmt.Sprintf("LIVEGREP_GITHUB_USERNAME=%s", username))
-		}
-		if err = cmd.Run(); err == nil {
-			return nil
-		}
-	}
-	return fmt.Errorf("%s %v: %s", program, args, err.Error())
 }
 
 func checkoutOne(r *config.RepoSpec) error {
@@ -311,7 +273,8 @@ func checkoutOne(r *config.RepoSpec) error {
 			args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
 		}
 		args = append(args, remote, r.Path)
-		return callGit("git", args, username, password)
+		_, err = callGit("git", args, username, password, false)
+		return err
 	}
 
 	if err := exec.Command("git", "-C", r.Path, "remote", "set-url", "origin", remote).Run(); err != nil {
@@ -322,7 +285,8 @@ func checkoutOne(r *config.RepoSpec) error {
 	if r.CloneOptions != nil && r.CloneOptions.Depth != 0 {
 		args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
 	}
-	err = callGit("git", args, username, password)
+
+	_, err = callGit("git", args, username, password, false)
 	if err != nil {
 		return err
 	}
@@ -350,7 +314,7 @@ func checkoutOne(r *config.RepoSpec) error {
 	currHead := strings.TrimSpace(string(currHeadOut))
 
 	args2 := []string{"--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD"}
-	remoteOut, err := callGit2("git", args2, username, password)
+	remoteOut, err := callGit("git", args2, username, password, true)
 	if err != nil {
 		return err
 	}
