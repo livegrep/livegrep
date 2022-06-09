@@ -182,6 +182,73 @@ fi
 // calls cmd.Run() if returnOutput is false
 // and cmd.Output() otherwise
 // always returns an out []byte, but it will always be nill if returnOutput is false
+func callGitAsync(program string, args []string, username string, password string, outBuff *[]byte, outErr *error, wg *sync.WaitGroup, returnOutput bool) {
+	defer wg.Done()
+	var err error
+	var out []byte
+
+	if username != "" || password != "" {
+		// If we're given credentials, pass them to git via a
+		// credential helper
+		//
+		// In order to avoid the key hitting the
+		// filesystem, we pass the actual key via a
+		// pipe on fd `3`, and we set the askpass
+		// script to a tiny sh script that just reads
+		// from that pipe.
+		f, err := ioutil.TempFile("", "livegrep-credential-helper")
+		if err != nil {
+			*outErr = err
+			return
+		}
+		f.WriteString(credentialHelperScript)
+		f.Close()
+		defer os.Remove(f.Name())
+
+		os.Chmod(f.Name(), 0700)
+		args = append([]string{"-c", fmt.Sprintf("credential.helper=%s", f.Name())}, args...)
+	}
+
+	for i := 0; i < 3; i++ {
+		cmd := exec.Command("git", args...)
+		if !returnOutput {
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+		}
+		if password != "" {
+			r, w, err := os.Pipe()
+			if err != nil {
+				*outErr = err
+				return
+			}
+
+			cmd.ExtraFiles = []*os.File{r}
+
+			go func() {
+				defer w.Close()
+				w.WriteString(password)
+			}()
+			defer r.Close()
+		}
+		if username != "" {
+			cmd.Env = append(os.Environ(), fmt.Sprintf("LIVEGREP_GITHUB_USERNAME=%s", username))
+		}
+		if !returnOutput {
+			err = cmd.Run()
+		} else {
+			out, err = cmd.Output()
+		}
+		if err == nil {
+			*outBuff = out
+			*outErr = nil
+			return
+		}
+	}
+
+	*outBuff = nil
+	*outErr = fmt.Errorf("%s %v: %s", program, args, err.Error())
+}
+
 func callGit(program string, args []string, username string, password string, returnOutput bool) ([]byte, error) {
 	var err error
 	var out []byte
@@ -286,13 +353,10 @@ func checkoutOne(r *config.RepoSpec) error {
 		args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
 	}
 
-	_, err = callGit("git", args, username, password, false)
-	if err != nil {
-		return err
-	}
-
+	// Call git-fetch and finish
 	if !(*flagUpdateHead) {
-		return nil
+		_, err = callGit("git", args, username, password, false)
+		return err
 	}
 
 	// We check and update (if needed) the HEAD ref to avoid scenarios where
@@ -302,22 +366,32 @@ func checkoutOne(r *config.RepoSpec) error {
 	// for confirmation on this approach from the Git folks.
 	//
 	// To update the HEAD ref we do the following:
-	// 1. Get the current local head ref	- (git symbolic-ref HEAD)
-	// 2. Get the remote head ref			- (git ls-remote --symref origin HEAD)
+	// 1. Get the remote head ref			- (git ls-remote --symref origin HEAD)
+	// 2. Get the current local head ref	- (git symbolic-ref HEAD)
 	// 3. Compare them. If outdated, update the local to match remote - (git symbolic-ref HEAD new_ref)
-	// The whole process takes around ~1.5s per repo, so if you have many repos to update you may want to increase
-	// the number of workers, or only use the -update-head option periodically.
+	// We use goroutines to call `git fetch -p` and `git ls-remote --symref origin HEAD` in "parallel"
+	// becase they each take ~1.5s.
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	var out1, remoteOut []byte
+	var err1, err2 error
+	args2 := []string{"--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD"}
+
+	go callGitAsync("git", args, username, password, &out1, &err1, &wg, false)      // git fetch -p
+	go callGitAsync("git", args2, username, password, &remoteOut, &err2, &wg, true) // git ls-remote --symref origin HEAD
+	wg.Wait()
+
+	// Brute concat the errors always
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("%w; %w", err1, err2)
+	}
+
 	currHeadOut, err := exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD").Output()
 	if err != nil {
 		return err
 	}
 	currHead := strings.TrimSpace(string(currHeadOut))
-
-	args2 := []string{"--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD"}
-	remoteOut, err := callGit("git", args2, username, password, true)
-	if err != nil {
-		return err
-	}
 
 	submatches := remoteHeadRefExtractorReg.FindStringSubmatch(string(remoteOut))
 	if len(submatches) == 1 {
