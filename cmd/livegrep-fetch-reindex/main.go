@@ -32,7 +32,7 @@ var (
 	flagStatsdOn      = flag.Bool("send-metrics-to-statsd", false, "Send indexing metrics to StatsD")
 	flagStatsdAddr    = flag.String("statsd-address", "", "address URI of statsd listener for metrics export")
 	flagStatsdPrefix  = flag.String("statsd-prefix", "", "optional prefix to apply to all metrics")
-	flagUpdateHead    = flag.Bool("update-head", true, "update the HEAD reference if it has changed on remote")
+	flagUpdateHead    = flag.Bool("update-head", true, "update the local HEAD ref if it is different than remote. Done when updating already cloned repos.")
 )
 
 // Used to extract the refname from a line like the following:
