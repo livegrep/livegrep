@@ -35,11 +35,9 @@ var (
 	flagUpdateHead    = flag.Bool("update-head", true, "update the HEAD reference if it has changed on remote")
 )
 
-var (
-	// Uses to extract the refname from a line like the following:
-	// ref: refs/heads/good_main_2     HEAD
-	remoteHeadRefExtractorReg = regexp.MustCompile("ref:\\s*([^\\s]*)\\s*HEAD")
-)
+// Used to extract the refname from a line like the following:
+// ref: refs/heads/good_main_2     HEAD
+var remoteHeadRefExtractorReg = regexp.MustCompile("ref:\\s*([^\\s]*)\\s*HEAD")
 
 func main() {
 	flag.Parse()
