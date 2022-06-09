@@ -179,28 +179,77 @@ if test "$1" = "get"; then
 fi
 `)
 
+// runs exec.Output() and returns the command output
+func callGit2(program string, args []string, username string, password string) ([]byte, error) {
+	var err error
+	var out []byte
+
+	if username != "" || password != "" {
+		f, err := passwordHelper(username, password, &args)
+		if err != nil {
+			return nil, err
+		}
+		defer os.Remove(f.Name())
+	}
+
+	for i := 0; i < 3; i++ {
+		cmd := exec.Command("git", args...)
+		if password != "" {
+			r, w, err := os.Pipe()
+			if err != nil {
+				return nil, err
+			}
+
+			cmd.ExtraFiles = []*os.File{r}
+
+			go func() {
+				defer w.Close()
+				w.WriteString(password)
+			}()
+			defer r.Close()
+		}
+		if username != "" {
+			cmd.Env = append(os.Environ(), fmt.Sprintf("LIVEGREP_GITHUB_USERNAME=%s", username))
+		}
+		out, err = cmd.Output()
+		if err == nil {
+			return out, nil
+		}
+	}
+	return nil, fmt.Errorf("%s %v: %s", program, args, err.Error())
+}
+
+func passwordHelper(username string, password string, args *[]string) (*os.File, error) {
+	// If we're given credentials, pass them to git via a
+	// credential helper
+	//
+	// In order to avoid the key hitting the
+	// filesystem, we pass the actual key via a
+	// pipe on fd `3`, and we set the askpass
+	// script to a tiny sh script that just reads
+	// from that pipe.
+	f, err := ioutil.TempFile("", "livegrep-credential-helper")
+	if err != nil {
+		return nil, err
+	}
+	f.WriteString(credentialHelperScript)
+	f.Close()
+
+	os.Chmod(f.Name(), 0700)
+	*args = append([]string{"-c", fmt.Sprintf("credential.helper=%s", f.Name())}, *args...)
+
+	return f, nil
+}
+
 func callGit(program string, args []string, username string, password string) error {
 	var err error
 
 	if username != "" || password != "" {
-		// If we're given credentials, pass them to git via a
-		// credential helper
-		//
-		// In order to avoid the key hitting the
-		// filesystem, we pass the actual key via a
-		// pipe on fd `3`, and we set the askpass
-		// script to a tiny sh script that just reads
-		// from that pipe.
-		f, err := ioutil.TempFile("", "livegrep-credential-helper")
+		f, err := passwordHelper(username, password, &args)
 		if err != nil {
 			return err
 		}
-		f.WriteString(credentialHelperScript)
-		f.Close()
 		defer os.Remove(f.Name())
-
-		os.Chmod(f.Name(), 0700)
-		args = append([]string{"-c", fmt.Sprintf("credential.helper=%s", f.Name())}, args...)
 	}
 
 	for i := 0; i < 3; i++ {
@@ -274,40 +323,55 @@ func checkoutOne(r *config.RepoSpec) error {
 		args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
 	}
 	err = callGit("git", args, username, password)
-	if err != nil || !(*flagUpdateHead) {
-		return err
-	}
-
-	currHead, err := exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD").Output() // git symbolic-ref HEAD
 	if err != nil {
 		return err
 	}
-	// Now get the remote head
-	// Stand in use exec.Command until we refactor callGit to also pass output back
 
-	// output
-	// ref: refs/heads/good_main_2     HEAD
-	// 0666a519f94b8500ab6f14bdf7c9c2e5ca7d5821        HEAD
+	if !(*flagUpdateHead) {
+		return nil
+	}
 
-	remoteOut, err := exec.Command("git", "--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD").Output()
+	// We check and update (if needed) the HEAD ref to avoid scenarios where
+	// a remote repo has changed it's head (like a default branch rename/change).
+	// git fetch won't do this, at least not on the mirror clones we use.
+	// See https://public-inbox.org/git/CANWRddPDhM1g6rtu-a2a=EogXD_hOFwSDsgMCbVvB7dibMaEqw@mail.gmail.com/T/#t
+	// for confirmation on this approach from the Git folks.
+	//
+	// To update the HEAD ref we do the following:
+	// 1. Get the current local head ref	- (git symbolic-ref HEAD)
+	// 2. Get the remote head ref			- (git ls-remote --symref origin HEAD)
+	// 3. Compare them. If outdated, update the local to match remote - (git symbolic-ref HEAD new_ref)
+	// The whole process takes around ~1.5s per repo, so if you have many repos to update you may want to increase
+	// the number of workers, or only use the -update-head option periodically.
+	currHeadOut, err := exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD").Output()
 	if err != nil {
 		return err
 	}
+	currHead := strings.TrimSpace(string(currHeadOut))
+
+	args2 := []string{"--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD"}
+	remoteOut, err := callGit2("git", args2, username, password)
+	if err != nil {
+		return err
+	}
+
 	submatches := remoteHeadRefExtractorReg.FindStringSubmatch(string(remoteOut))
 	if len(submatches) == 1 {
 		return errors.New("could not parse ls-remote --symref origin HEAD output")
 	}
-	remoteHead := submatches[1]
+	remoteHead := strings.TrimSpace(submatches[1])
 
-	// use .Compare?
-	if string(currHead) != remoteHead {
-		log.Printf("remote HEAD: %s does not match local HEAD: %s. Attempting to fix...\n", remoteHead, currHead)
-		// git symbolic-ref HEAD refs/heads/good_main_2
-		if err = exec.Command("git", "--git-dir", r.Path, " symbolic-ref", "HEAD", remoteHead).Run(); err != nil {
+	if currHead != remoteHead {
+		log.Printf("%s: remote HEAD: %s does not match local HEAD: %s. Attempting to fix...\n", r.Name, remoteHead, currHead)
+
+		// update the HEAD ref
+		err = exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD", remoteHead).Run()
+		if err != nil {
+			log.Printf("error setting symbolic ref. %v\n", err)
 			return err
-		} else {
-			log.Printf("done.\n")
 		}
+
+		log.Printf("%s: HEAD update done.\n")
 	}
 
 	return nil
