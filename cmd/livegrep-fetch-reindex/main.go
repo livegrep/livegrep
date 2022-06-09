@@ -32,7 +32,7 @@ var (
 	flagStatsdOn      = flag.Bool("send-metrics-to-statsd", false, "Send indexing metrics to StatsD")
 	flagStatsdAddr    = flag.String("statsd-address", "", "address URI of statsd listener for metrics export")
 	flagStatsdPrefix  = flag.String("statsd-prefix", "", "optional prefix to apply to all metrics")
-	flagUpdateHead    = flag.Bool("update-head", false, "update the HEAD reference if it has changed on remote")
+	flagUpdateHead    = flag.Bool("update-head", true, "update the HEAD reference if it has changed on remote")
 )
 
 var (
@@ -182,73 +182,6 @@ fi
 // calls cmd.Run() if returnOutput is false
 // and cmd.Output() otherwise
 // always returns an out []byte, but it will always be nill if returnOutput is false
-func callGitAsync(program string, args []string, username string, password string, outBuff *[]byte, outErr *error, wg *sync.WaitGroup, returnOutput bool) {
-	defer wg.Done()
-	var err error
-	var out []byte
-
-	if username != "" || password != "" {
-		// If we're given credentials, pass them to git via a
-		// credential helper
-		//
-		// In order to avoid the key hitting the
-		// filesystem, we pass the actual key via a
-		// pipe on fd `3`, and we set the askpass
-		// script to a tiny sh script that just reads
-		// from that pipe.
-		f, err := ioutil.TempFile("", "livegrep-credential-helper")
-		if err != nil {
-			*outErr = err
-			return
-		}
-		f.WriteString(credentialHelperScript)
-		f.Close()
-		defer os.Remove(f.Name())
-
-		os.Chmod(f.Name(), 0700)
-		args = append([]string{"-c", fmt.Sprintf("credential.helper=%s", f.Name())}, args...)
-	}
-
-	for i := 0; i < 3; i++ {
-		cmd := exec.Command("git", args...)
-		if !returnOutput {
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-		}
-		if password != "" {
-			r, w, err := os.Pipe()
-			if err != nil {
-				*outErr = err
-				return
-			}
-
-			cmd.ExtraFiles = []*os.File{r}
-
-			go func() {
-				defer w.Close()
-				w.WriteString(password)
-			}()
-			defer r.Close()
-		}
-		if username != "" {
-			cmd.Env = append(os.Environ(), fmt.Sprintf("LIVEGREP_GITHUB_USERNAME=%s", username))
-		}
-		if !returnOutput {
-			err = cmd.Run()
-		} else {
-			out, err = cmd.Output()
-		}
-		if err == nil {
-			*outBuff = out
-			*outErr = nil
-			return
-		}
-	}
-
-	*outBuff = nil
-	*outErr = fmt.Errorf("%s %v: %s", program, args, err.Error())
-}
-
 func callGit(program string, args []string, username string, password string, returnOutput bool) ([]byte, error) {
 	var err error
 	var out []byte
@@ -374,17 +307,27 @@ func checkoutOne(r *config.RepoSpec) error {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	var out1, remoteOut []byte
+	var remoteOut []byte
 	var err1, err2 error
 	args2 := []string{"--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD"}
 
-	go callGitAsync("git", args, username, password, &out1, &err1, &wg, false)      // git fetch -p
-	go callGitAsync("git", args2, username, password, &remoteOut, &err2, &wg, true) // git ls-remote --symref origin HEAD
+	// git fetch -p
+	go func(outErr *error, wg *sync.WaitGroup) {
+		defer wg.Done()
+		_, *outErr = callGit("git", args, username, password, false)
+	}(&err1, &wg)
+
+	// git ls-remote --symref origin HEAD
+	go func(outBuff *[]byte, outErr *error, wg *sync.WaitGroup) {
+		defer wg.Done()
+		*outBuff, *outErr = callGit("git", args2, username, password, true)
+	}(&remoteOut, &err2, &wg)
+
 	wg.Wait()
 
 	// Brute concat the errors always
 	if err1 != nil || err2 != nil {
-		return fmt.Errorf("%w; %w", err1, err2)
+		return fmt.Errorf("fetch err: %w; ls-remote err: %w", err1, err2)
 	}
 
 	currHeadOut, err := exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD").Output()
@@ -399,19 +342,19 @@ func checkoutOne(r *config.RepoSpec) error {
 	}
 	remoteHead := strings.TrimSpace(submatches[1])
 
-	if currHead != remoteHead {
-		log.Printf("%s: remote HEAD: %s does not match local HEAD: %s. Attempting to fix...\n", r.Name, remoteHead, currHead)
-
-		// update the HEAD ref
-		err = exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD", remoteHead).Run()
-		if err != nil {
-			log.Printf("error setting symbolic ref. %v\n", err)
-			return err
-		}
-
-		log.Printf("%s: HEAD update done.\n")
+	if currHead == remoteHead { // nothing to do
+		return nil
 	}
 
+	log.Printf("%s: remote HEAD: %s does not match local HEAD: %s. Attempting to fix...\n", r.Name, remoteHead, currHead)
+
+	// update the HEAD ref
+	if err = exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD", remoteHead).Run(); err != nil {
+		log.Printf("%s: error setting symbolic ref. %v\n", r.Name, err)
+		return err
+	}
+
+	log.Printf("%s: HEAD update done.\n", r.Name)
 	return nil
 }
 
