@@ -331,8 +331,8 @@ func checkoutOne(r *config.RepoSpec) error {
 	currHead := strings.TrimSpace(string(currHeadOut))
 
 	submatches := remoteHeadRefExtractorReg.FindStringSubmatch(string(remoteOut))
-	if len(submatches) == 1 {
-		return errors.New("could not parse ls-remote --symref origin HEAD output")
+	if len(submatches) < 2 {
+		return errors.New(fmt.Sprintf("%s: could not parse `ls-remote --symref origin HEAD` output: %s\n", r.Name, string(remoteOut)))
 	}
 	remoteHead := strings.TrimSpace(submatches[1])
 
