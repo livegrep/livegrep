@@ -12,6 +12,7 @@
 #include "src/proto/config.pb.h"
 #include "src/smart_git.h"
 #include "src/lib/per_thread.h"
+#include "src/lib/threadsafe_progress_indicator.h"
 
 class code_searcher;
 class git_repository;
@@ -21,10 +22,10 @@ struct indexed_tree;
 // This should be enough to recover a file/bob from a repo
 struct pre_indexed_file {
     const indexed_tree *tree;
-     std::string  repopath;
-     std::string  path;
-     std::string id; // string version of git oid
-     int score;
+    std::string  repopath;
+    std::string  path;
+    std::string id; // string version of git oid
+    int score;
 };
 
 class git_indexer {
@@ -51,7 +52,7 @@ protected:
                    git_repository *curr_repo);
     void index_files();
     void print_last_git_err_and_exit(int err);
-    void walk_repositories_subset(int start, int end);
+    void walk_repositories_subset(int start, int end, threadsafe_progress_indicator *tpi);
 
     code_searcher *cs_;
     std::string submodule_prefix_;

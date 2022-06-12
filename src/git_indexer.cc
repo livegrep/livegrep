@@ -3,6 +3,7 @@
 
 #include "src/lib/metrics.h"
 #include "src/lib/debug.h"
+#include "src/lib/threadsafe_progress_indicator.h"
 
 #include "src/codesearch.h"
 #include "src/git_indexer.h"
@@ -43,7 +44,7 @@ void git_indexer::print_last_git_err_and_exit(int err) {
 // global `files_to_index_`.
 // we then call `index_files` to actaully submit the files to be indexed by
 // codesearch
-void git_indexer::walk_repositories_subset(int start, int end) {
+void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progress_indicator *tpi) {
 
     /* fprintf(stderr, "walk_repositories_subset: %d-%d\n", start, end); */
     for (int i = start; i < end; ++i) {
@@ -59,9 +60,10 @@ void git_indexer::walk_repositories_subset(int start, int end) {
         }
 
         for (auto &rev : repo.revisions()) {
-            fprintf(stderr, "walking %s at %s \n", repopath, rev.c_str());
+            /* fprintf(stderr, "walking %s at %s \n", repopath, rev.c_str()); */
             walk(curr_repo, rev, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules(), "");
-            fprintf(stderr, "done walking %s at %s\n", repopath, rev.c_str());
+            /* fprintf(stderr, "done walking %s at %s\n", repopath, rev.c_str()); */
+            tpi->tick();
         }
 
         git_repository_free(curr_repo);
@@ -69,7 +71,7 @@ void git_indexer::walk_repositories_subset(int start, int end) {
 
     // Then at the end we'll post to files_to_index_
     // Then we're done
-    fprintf(stderr, "trying to do our wild mutex backed append\n");
+    /* fprintf(stderr, "trying to do our wild mutex backed append\n"); */
     std::lock_guard<std::mutex> guard(files_mutex_);
     files_to_index_.insert(files_to_index_.end(), std::make_move_iterator(files_to_index_local.get()->begin()), std::make_move_iterator(files_to_index_local.get()->end()));
 }
@@ -93,9 +95,11 @@ void git_indexer::begin_indexing() {
 
     fprintf(stderr, "length=%lu min_per_thread=%lu max_threads=%lu hardware_threads=%lu num_threads=%lu block_size=%lu\n", length, min_per_thread, max_threads, hardware_threads, num_threads, block_size);
 
+    threadsafe_progress_indicator tpi(length, "Walking repos...", "Done");
+
     if (length < 2 * min_per_thread) {
         fprintf(stderr, "Not going to create any new threads.\n");
-        walk_repositories_subset(0, length);
+        walk_repositories_subset(0, length, &tpi);
         index_files();
         return;
     }
@@ -104,7 +108,7 @@ void git_indexer::begin_indexing() {
     long block_start = 0;
     for (long i = 0; i < num_threads; ++i) {
         long block_end = std::min(block_start + block_size, length);
-        threads_.emplace_back(&git_indexer::walk_repositories_subset, this, (int)block_start, (int)block_end);
+        threads_.emplace_back(&git_indexer::walk_repositories_subset, this, (int)block_start, (int)block_end, &tpi);
         block_start = block_end;
     }
 
@@ -129,14 +133,15 @@ bool operator<(std::unique_ptr<pre_indexed_file>& a, std::unique_ptr<pre_indexed
 // walks `files_to_index_`, looks up the repo & blob combination for each file
 // and then calls `cs->index_file` to actually index the file.
 void git_indexer::index_files() {
-    fprintf(stderr, "sorting %lu files_to_index_... ", files_to_index_.size());
+    fprintf(stderr, "sorting files_to_index_... [%lu]\n", files_to_index_.size());
     std::stable_sort(files_to_index_.begin(), files_to_index_.end());
-    fprintf(stderr, "done sorting files\n");
+    fprintf(stderr, "  done\n");
 
     git_repository *curr_repo = NULL;
     const char *prev_repopath = "";
 
-    fprintf(stderr, "walking files_to_index_ ...\n");
+    /* fprintf(stderr, "walking files_to_index_ ...\n"); */
+    threadsafe_progress_indicator tpi(files_to_index_.size(), "Indexing files_to_index_...", "Done");
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = it->get();
 
@@ -172,9 +177,8 @@ void git_indexer::index_files() {
 
         git_blob_free(blob);
         prev_repopath = repopath;
+        tpi.tick();
     }
-
-    fprintf(stderr, "finished with index_files\n");
 }
 
 void git_indexer::walk(git_repository *curr_repo,
@@ -187,7 +191,7 @@ void git_indexer::walk(git_repository *curr_repo,
     smart_object<git_commit> commit;
     smart_object<git_tree> tree;
     if (0 != git_revparse_single(commit, curr_repo, (ref + "^0").c_str())) {
-        fprintf(stderr, "ref %s not found, skipping (empty repo?)\n", ref.c_str());
+        fprintf(stderr, "%s: ref %s not found, skipping (empty repo?)\n", name.c_str(), ref.c_str());
         return;
     }
     git_commit_tree(tree, commit);
@@ -214,6 +218,7 @@ void git_indexer::walk_tree(const string& pfx,
     map<string, const git_tree_entry *> root;
     vector<const git_tree_entry *> ordered;
     int entries = git_tree_entrycount(tree);
+    /* fprintf(stderr, "repo: %s has %d entries\n", repopath.c_str(), entries); */
     for (int i = 0; i < entries; ++i) {
         const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
         root[git_tree_entry_name(ent)] = ent;
