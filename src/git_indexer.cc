@@ -66,7 +66,7 @@ void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progre
             tpi->tick();
         }
 
-        git_repository_free(curr_repo);
+        /* git_repository_free(curr_repo); */
     }
 
     // Then at the end we'll post to files_to_index_
@@ -137,46 +137,21 @@ void git_indexer::index_files() {
     std::stable_sort(files_to_index_.begin(), files_to_index_.end());
     fprintf(stderr, "  done\n");
 
-    git_repository *curr_repo = NULL;
-    const char *prev_repopath = "";
-
     /* fprintf(stderr, "walking files_to_index_ ...\n"); */
     threadsafe_progress_indicator tpi(files_to_index_.size(), "Indexing files_to_index_...", "Done");
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = it->get();
 
-        const char *repopath = file->repopath.c_str();
+        /* const char *repopath = file->repopath.c_str(); */
 
         /* fprintf(stderr, "indexing %s/%s\n", repopath, file->path.c_str()); */
         
-        if (strcmp(prev_repopath, repopath) != 0) {
-            git_repository_free(curr_repo); // Will do nothing if curr_repo == NULL
-            int err = git_repository_open(&curr_repo, repopath);
-            if (err < 0) {
-                print_last_git_err_and_exit(err);
-            }
-        }
-
-        git_oid blob_id;
-        int err = git_oid_fromstr(&blob_id, file->id.c_str());
-
-        if (err < 0) {
-            print_last_git_err_and_exit(err);
-        }
-
-        const git_oid blob_id_static = static_cast<git_oid>(blob_id);
-        git_blob *blob;
-        err = git_blob_lookup(&blob, curr_repo, &blob_id_static);
-
-        if (err < 0) {
-            print_last_git_err_and_exit(err);
-        }
+        git_blob *blob = (git_blob*)file->obj;
 
         const char *data = static_cast<const char*>(git_blob_rawcontent(blob));
         cs_->index_file(file->tree, file->path, StringPiece(data, git_blob_rawsize(blob)));
 
         git_blob_free(blob);
-        prev_repopath = repopath;
         tpi.tick();
     }
 }
@@ -238,30 +213,26 @@ void git_indexer::walk_tree(const string& pfx,
         ordered.push_back(it->second);
     for (vector<const git_tree_entry *>::iterator it = ordered.begin();
          it != ordered.end(); ++it) {
-        smart_object<git_object> obj;
-        git_tree_entry_to_object(obj, curr_repo, *it);
+        
+        // We manually free this object in index_files()
+        git_object *obj;
+        git_tree_entry_to_object(&obj, curr_repo, *it);
         string path = pfx + git_tree_entry_name(*it);
 
         /* fprintf(stderr, "walking obj with path: %s/%s\n", repopath.c_str(), path.c_str()); */
 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
-            walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, obj, curr_repo);
+            walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, (git_tree*)obj, curr_repo);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
-            const git_oid* blob_id = git_blob_id(obj);
-            char blob_id_str[GIT_OID_HEXSZ + 1];
-            git_oid_tostr(blob_id_str, GIT_OID_HEXSZ + 1, blob_id);
-
             const string full_path = submodule_prefix + path;
             auto file = std::make_unique<pre_indexed_file>();
-            // There's probably a better way than this, but for some reason
-            // storing the oid as either a git_oid or it's raw representation 
-            // (unisgned char* [20]) ends up with the stored oid becoming
-            // mutated. For now simply copying it to a string works.
-            file->id = string(blob_id_str);
+
             file->tree = idx_tree;
             file->repopath = repopath;
             file->path =  full_path;
             file->score = score_file(full_path);
+            file->repo = curr_repo;
+            file->obj = obj;
 
             /* fprintf(stderr, "indexing %s/%s\n", repopath.c_str(), file->path.c_str()); */
             if (!files_to_index_local.get()) {

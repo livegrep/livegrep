@@ -24,8 +24,10 @@ struct pre_indexed_file {
     const indexed_tree *tree;
     std::string  repopath;
     std::string  path;
-    std::string id; // string version of git oid
+    /* std::string id; // string version of git oid */
     int score;
+    git_repository *repo;
+    git_object *obj;
 };
 
 class git_indexer {
