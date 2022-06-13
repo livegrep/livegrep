@@ -119,8 +119,8 @@ void git_indexer::begin_indexing() {
     index_files();
 }
 
-bool operator<(std::unique_ptr<pre_indexed_file>& a, std::unique_ptr<pre_indexed_file>& b) {
-    return a->score > b->score;
+bool compareFiles(pre_indexed_file a, pre_indexed_file b) {
+    return a.score > b.score;
 }
 
 // sorts `files_to_index_` based on score. This way, the lowest scoring files
@@ -134,22 +134,22 @@ bool operator<(std::unique_ptr<pre_indexed_file>& a, std::unique_ptr<pre_indexed
 // and then calls `cs->index_file` to actually index the file.
 void git_indexer::index_files() {
     fprintf(stderr, "sorting files_to_index_... [%lu]\n", files_to_index_.size());
-    std::stable_sort(files_to_index_.begin(), files_to_index_.end());
+    std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFiles);
     fprintf(stderr, "  done\n");
 
     /* fprintf(stderr, "walking files_to_index_ ...\n"); */
     threadsafe_progress_indicator tpi(files_to_index_.size(), "Indexing files_to_index_...", "Done");
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
-        auto file = it->get();
+        auto file = (*it);
 
-        /* const char *repopath = file->repopath.c_str(); */
+        /* const char *repopath = file.repopath.c_str(); */
 
-        /* fprintf(stderr, "indexing %s/%s\n", repopath, file->path.c_str()); */
+        /* fprintf(stderr, "indexing %s/%s\n", repopath, file.path.c_str()); */
         
-        git_blob *blob = (git_blob*)file->obj;
+        git_blob *blob = (git_blob*)file.obj;
 
         const char *data = static_cast<const char*>(git_blob_rawcontent(blob));
-        cs_->index_file(file->tree, file->path, StringPiece(data, git_blob_rawsize(blob)));
+        cs_->index_file(file.tree, file.path, StringPiece(data, git_blob_rawsize(blob)));
 
         git_blob_free(blob);
         tpi.tick();
@@ -225,18 +225,18 @@ void git_indexer::walk_tree(const string& pfx,
             walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, (git_tree*)obj, curr_repo);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
             const string full_path = submodule_prefix + path;
-            auto file = std::make_unique<pre_indexed_file>();
+            pre_indexed_file file;
 
-            file->tree = idx_tree;
-            file->repopath = repopath;
-            file->path =  full_path;
-            file->score = score_file(full_path);
-            file->repo = curr_repo;
-            file->obj = obj;
+            file.tree = idx_tree;
+            file.repopath = repopath;
+            file.path =  full_path;
+            file.score = score_file(full_path);
+            file.repo = curr_repo;
+            file.obj = obj;
 
-            /* fprintf(stderr, "indexing %s/%s\n", repopath.c_str(), file->path.c_str()); */
+            /* fprintf(stderr, "indexing %s/%s\n", repopath.c_str(), file.path.c_str()); */
             if (!files_to_index_local.get()) {
-                files_to_index_local.put(new vector<unique_ptr<pre_indexed_file>>());
+                files_to_index_local.put(new vector<pre_indexed_file>());
             }
             files_to_index_local.get()->push_back(std::move(file));
 

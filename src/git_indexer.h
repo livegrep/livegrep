@@ -59,10 +59,10 @@ protected:
     code_searcher *cs_;
     std::string submodule_prefix_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
-    std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_;
+    std::vector<pre_indexed_file> files_to_index_;
     std::mutex files_mutex_;
     std::vector<std::thread> threads_;
-    per_thread<vector<std::unique_ptr<pre_indexed_file>>> files_to_index_local;
+    per_thread<vector<pre_indexed_file>> files_to_index_local;
 };
 
 #endif
