@@ -41,7 +41,7 @@ In one terminal, start the `codesearch` server like so:
 
 In another, run livegrep:
 
-    bazel-bin/cmd/livegrep/livegrep
+    bazel-bin/cmd/livegrep/livegrep_/livegrep
 
 In a browser, now visit
 [http://localhost:8910/](http://localhost:8910/), and you should see a
