@@ -24,10 +24,9 @@ struct pre_indexed_file {
     const indexed_tree *tree;
     std::string  repopath;
     std::string  path;
-    /* std::string id; // string version of git oid */
     int score;
     git_repository *repo;
-    git_object *obj;
+    git_blob *blob;
 };
 
 class git_indexer {
@@ -39,19 +38,21 @@ public:
 protected:
     void walk(git_repository *curr_repo,
             const std::string& ref,
-            const std::string repopath,
+            const std::string& repopath,
             const std::string& name,
             Metadata metadata,
             bool walk_submodules,
-            const std::string& submodule_prefix);
+            const std::string& submodule_prefix,
+            std::vector<pre_indexed_file>& results);
     void walk_tree(const std::string& pfx,
                    const std::string& order,
-                   const std::string repopath,
+                   const std::string& repopath,
                    bool walk_submodules,
                    const std::string& submodule_prefix,
                    const indexed_tree *idx_tree,
                    git_tree *tree,
-                   git_repository *curr_repo);
+                   git_repository *curr_repo,
+                   std::vector<pre_indexed_file>& results);
     void index_files();
     void print_last_git_err_and_exit(int err);
     void walk_repositories_subset(int start, int end, threadsafe_progress_indicator *tpi);
@@ -62,7 +63,6 @@ protected:
     std::vector<pre_indexed_file> files_to_index_;
     std::mutex files_mutex_;
     std::vector<std::thread> threads_;
-    per_thread<vector<pre_indexed_file>> files_to_index_local;
 };
 
 #endif

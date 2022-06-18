@@ -46,6 +46,8 @@ void git_indexer::print_last_git_err_and_exit(int err) {
 // codesearch
 void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progress_indicator *tpi) {
 
+    std::vector<pre_indexed_file> files_to_index_local;
+    files_to_index_local.reserve((end - start) * 100); // 100 repos per
     /* fprintf(stderr, "walk_repositories_subset: %d-%d\n", start, end); */
     for (int i = start; i < end; ++i) {
         const auto &repo = repositories_to_index_[i];
@@ -54,14 +56,16 @@ void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progre
         /* fprintf(stderr, "walking repo: %s\n", repopath); */
         git_repository *curr_repo = NULL;
 
-        int err = git_repository_open(&curr_repo, repopath);
+        // Is it safe to assume these are bare repos (or the mirror clones)
+        // that we create?. If so, we can use git_repository_open_bare
+        int err = git_repository_open_bare(&curr_repo, repopath);
         if (err < 0) {
             print_last_git_err_and_exit(err);
         }
 
         for (auto &rev : repo.revisions()) {
             /* fprintf(stderr, "walking %s at %s \n", repopath, rev.c_str()); */
-            walk(curr_repo, rev, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules(), "");
+            walk(curr_repo, rev, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules(), "", files_to_index_local);
             /* fprintf(stderr, "done walking %s at %s\n", repopath, rev.c_str()); */
             tpi->tick();
         }
@@ -73,7 +77,7 @@ void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progre
     // Then we're done
     /* fprintf(stderr, "trying to do our wild mutex backed append\n"); */
     std::lock_guard<std::mutex> guard(files_mutex_);
-    files_to_index_.insert(files_to_index_.end(), std::make_move_iterator(files_to_index_local.get()->begin()), std::make_move_iterator(files_to_index_local.get()->end()));
+    files_to_index_.insert(files_to_index_.end(), std::make_move_iterator(files_to_index_local.begin()), std::make_move_iterator(files_to_index_local.end()));
 }
 
 void git_indexer::begin_indexing() {
@@ -84,7 +88,7 @@ void git_indexer::begin_indexing() {
     // performance for just a few repos.
     
     unsigned long const length = repositories_to_index_.size();
-    unsigned long const min_per_thread = 5; 
+    unsigned long const min_per_thread = 16; 
     unsigned long const max_threads = 
         (length + min_per_thread - 1)/min_per_thread;
     unsigned long const hardware_threads = std::thread::hardware_concurrency();
@@ -146,23 +150,22 @@ void git_indexer::index_files() {
 
         /* fprintf(stderr, "indexing %s/%s\n", repopath, file.path.c_str()); */
         
-        git_blob *blob = (git_blob*)file.obj;
+        const char *data = static_cast<const char*>(git_blob_rawcontent(file.blob));
+        cs_->index_file(file.tree, file.path, StringPiece(data, git_blob_rawsize(file.blob)));
 
-        const char *data = static_cast<const char*>(git_blob_rawcontent(blob));
-        cs_->index_file(file.tree, file.path, StringPiece(data, git_blob_rawsize(blob)));
-
-        git_blob_free(blob);
+        git_blob_free(file.blob);
         tpi.tick();
     }
 }
 
 void git_indexer::walk(git_repository *curr_repo,
         const string& ref, 
-        const string repopath, 
+        const string& repopath, 
         const string& name,
         Metadata metadata,
         bool walk_submodules,
-        const string& submodule_prefix) {
+        const string& submodule_prefix,
+        std::vector<pre_indexed_file>& results) {
     smart_object<git_commit> commit;
     smart_object<git_tree> tree;
     if (0 != git_revparse_single(commit, curr_repo, (ref + "^0").c_str())) {
@@ -177,18 +180,19 @@ void git_indexer::walk(git_repository *curr_repo,
         strdup(git_oid_tostr(oidstr, sizeof(oidstr), git_commit_id(commit))) : ref;
 
     const indexed_tree *idx_tree = cs_->open_tree(name, metadata, version);
-    walk_tree("", FLAGS_order_root, repopath, walk_submodules, submodule_prefix, idx_tree, tree, curr_repo);
+    walk_tree("", FLAGS_order_root, repopath, walk_submodules, submodule_prefix, idx_tree, tree, curr_repo, results);
 }
 
 
 void git_indexer::walk_tree(const string& pfx,
                             const string& order,
-                            const string repopath,
+                            const string& repopath,
                             bool walk_submodules,
                             const string& submodule_prefix,
                             const indexed_tree *idx_tree,
                             git_tree *tree,
-                            git_repository *curr_repo) {
+                            git_repository *curr_repo,
+                            std::vector<pre_indexed_file>& results) {
     /* fprintf(stderr, "preparing to walk_tree for %s with prefix: %s \n", repopath.c_str(), pfx.c_str()); */
     map<string, const git_tree_entry *> root;
     vector<const git_tree_entry *> ordered;
@@ -222,16 +226,17 @@ void git_indexer::walk_tree(const string& pfx,
         /* fprintf(stderr, "walking obj with path: %s/%s\n", repopath.c_str(), path.c_str()); */
 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
-            walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, (git_tree*)obj, curr_repo);
+            walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, (git_tree*)obj, curr_repo, results);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
             const string full_path = submodule_prefix + path;
-            const pre_indexed_file file{idx_tree, repopath, path, score_file(full_path), curr_repo, obj};
+            const pre_indexed_file file{idx_tree, repopath, path, score_file(full_path), curr_repo, (git_blob*)obj};
 
             /* fprintf(stderr, "indexing %s/%s\n", repopath.c_str(), file.path.c_str()); */
-            if (!files_to_index_local.get()) {
-                files_to_index_local.put(new vector<pre_indexed_file>());
-            }
-            files_to_index_local.get()->push_back(std::move(file));
+            /* if (!files_to_index_local.get()) { */
+            /*     files_to_index_local.put(new vector<pre_indexed_file>()); */
+            /*     files_to_index_local.get()->reserve(100); */
+            /* } */
+            results.push_back(std::move(file));
 
         } else if (git_tree_entry_type(*it) == GIT_OBJ_COMMIT) {
             // Submodule
@@ -256,14 +261,14 @@ void git_indexer::walk_tree(const string& pfx,
             // Open the submodule repo
             git_repository *sub_repo;
 
-            int err = git_repository_open(&sub_repo, sub_repopath.c_str());
+            int err = git_repository_open_bare(&sub_repo, sub_repopath.c_str());
 
             if (err < 0) {
                 fprintf(stderr, "Unable to open subrepo: %s\n", sub_repopath.c_str());
                 print_last_git_err_and_exit(err);
             }
 
-            walk(sub_repo, string(revstr), sub_repopath, string(sub_name), meta, walk_submodules, new_submodule_prefix);
+            walk(sub_repo, string(revstr), sub_repopath, string(sub_name), meta, walk_submodules, new_submodule_prefix, results);
 
             git_repository_free(sub_repo);
         }
