@@ -17,7 +17,7 @@ static RE2 misc_re("package-lock.json");
 
 // We use file_path so we can downrank anything under, say, vendor/*
 // or test/*
-int score_file(string file_path) {
+int score_file(const string& file_path) {
     int starting_score = 0;
 
     // Check if this is generated code

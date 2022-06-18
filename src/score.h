@@ -4,4 +4,4 @@
 
 using std::string;
 
-int score_file(string file_path);
+int score_file(const string& file_path);
