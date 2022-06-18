@@ -225,14 +225,7 @@ void git_indexer::walk_tree(const string& pfx,
             walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, (git_tree*)obj, curr_repo);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
             const string full_path = submodule_prefix + path;
-            pre_indexed_file file;
-
-            file.tree = idx_tree;
-            file.repopath = repopath;
-            file.path =  full_path;
-            file.score = score_file(full_path);
-            file.repo = curr_repo;
-            file.obj = obj;
+            const pre_indexed_file file{idx_tree, repopath, path, score_file(full_path), curr_repo, obj};
 
             /* fprintf(stderr, "indexing %s/%s\n", repopath.c_str(), file.path.c_str()); */
             if (!files_to_index_local.get()) {
