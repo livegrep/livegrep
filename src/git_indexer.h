@@ -43,7 +43,7 @@ protected:
             Metadata metadata,
             bool walk_submodules,
             const std::string& submodule_prefix,
-            std::vector<pre_indexed_file>& results);
+            std::vector<std::unique_ptr<pre_indexed_file>>& results);
     void walk_tree(const std::string& pfx,
                    const std::string& order,
                    const std::string& repopath,
@@ -52,7 +52,7 @@ protected:
                    const indexed_tree *idx_tree,
                    git_tree *tree,
                    git_repository *curr_repo,
-                   std::vector<pre_indexed_file>& results);
+                   std::vector<std::unique_ptr<pre_indexed_file>>& results);
     void index_files();
     void print_last_git_err_and_exit(int err);
     void walk_repositories_subset(int start, int end, threadsafe_progress_indicator *tpi);
@@ -60,7 +60,7 @@ protected:
     code_searcher *cs_;
     std::string submodule_prefix_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
-    std::vector<pre_indexed_file> files_to_index_;
+    std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_;
     std::mutex files_mutex_;
     std::vector<std::thread> threads_;
 };
