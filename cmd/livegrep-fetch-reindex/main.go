@@ -279,8 +279,7 @@ func checkoutOne(r *config.RepoSpec) error {
 			args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
 		}
 		args = append(args, remote, r.Path)
-		err = callGit("git", args, username, password)
-		return err
+		return callGit("git", args, username, password)
 	}
 
 	if err := exec.Command("git", "-C", r.Path, "remote", "set-url", "origin", remote).Run(); err != nil {
