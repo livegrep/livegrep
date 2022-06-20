@@ -187,7 +187,7 @@ func callGetGetOutput(program string, args []string, username string, password s
 
 // calls cmd.Run() if returnOutput is false
 // and cmd.Output() otherwise
-// always returns an out []byte, but it will always be nill if returnOutput is false
+// always returns an out []byte, but it will always be nil if returnOutput is false
 func callGitInternal(program string, args []string, username string, password string, returnOutput bool) ([]byte, error) {
 	var err error
 	var out []byte
@@ -303,7 +303,7 @@ func checkoutOne(r *config.RepoSpec) error {
 	// 3. Compare them. If outdated, update the local to match remote - (git symbolic-ref HEAD new_ref)
 	// We use goroutines to call `git fetch -p` and `git ls-remote --symref origin HEAD` in "parallel"
 	// becase they each take ~1.5s.
-	g := new(errgroup.Group)
+	var g errgroup.Group
 
 	var remoteOut []byte
 	var remoteErr error
