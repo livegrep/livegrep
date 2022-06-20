@@ -28,7 +28,6 @@ var (
 	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to")
 	flagNumWorkers    = flag.Int("num-workers", 8, "Number of workers used to update repositories")
 	flagNoIndex       = flag.Bool("no-index", false, "Skip indexing after fetching")
-	flagUpdateHead    = flag.Bool("update-head", true, "update the local HEAD ref if it is different than remote. Done when updating already cloned repos.")
 )
 
 // Used to extract the refname from a line like the following:
@@ -278,12 +277,6 @@ func checkoutOne(r *config.RepoSpec) error {
 	args := []string{"--git-dir", r.Path, "fetch", "-p"}
 	if r.CloneOptions != nil && r.CloneOptions.Depth != 0 {
 		args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
-	}
-
-	// Call git-fetch and finish
-	if !(*flagUpdateHead) {
-		_, err = callGit("git", args, username, password, false)
-		return err
 	}
 
 	// We check and update (if needed) the HEAD ref to avoid scenarios where
