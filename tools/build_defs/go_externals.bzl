@@ -39,6 +39,7 @@ _externals = [
     _golang_x("oauth2", "a6bd8cefa1811bd24b86f8902872e4e8225f74c4"),
     _golang_x("sys", "33540a1f603772f9d4b761f416f5c10dade23e96"),
     _golang_x("crypto", "4b2356b1ed79e6be3deca3737a3db3d132d2847a"),
+    _golang_x("sync", "0de741cfad7ff3874b219dfbc1b9195b58c7c490"),
     struct(
         name = "org_golang_google_appengine",
         commit = "170382fa85b10b94728989dfcf6cc818b335c952",

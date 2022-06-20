@@ -17,6 +17,7 @@ import (
 
 	"github.com/livegrep/livegrep/src/proto/config"
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
@@ -303,30 +304,25 @@ func checkoutOne(r *config.RepoSpec) error {
 	// 3. Compare them. If outdated, update the local to match remote - (git symbolic-ref HEAD new_ref)
 	// We use goroutines to call `git fetch -p` and `git ls-remote --symref origin HEAD` in "parallel"
 	// becase they each take ~1.5s.
-	wg := sync.WaitGroup{}
-	wg.Add(2)
+	g := new(errgroup.Group)
 
 	var remoteOut []byte
-	var err1, err2 error
-	args2 := []string{"--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD"}
+	var remoteErr error
+	lsRemoteArgs := []string{"--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD"}
 
 	// git fetch -p
-	go func(outErr *error, wg *sync.WaitGroup) {
-		defer wg.Done()
-		*outErr = callGit("git", args, username, password)
-	}(&err1, &wg)
+	g.Go(func() error {
+		return callGit("git", args, username, password)
+	})
 
 	// git ls-remote --symref origin HEAD
-	go func(outBuff *[]byte, outErr *error, wg *sync.WaitGroup) {
-		defer wg.Done()
-		*outBuff, *outErr = callGetGetOutput("git", args2, username, password)
-	}(&remoteOut, &err2, &wg)
+	g.Go(func() error {
+		remoteOut, remoteErr = callGetGetOutput("git", lsRemoteArgs, username, password)
+		return remoteErr
+	})
 
-	wg.Wait()
-
-	// Brute concat the errors always
-	if err1 != nil || err2 != nil {
-		return fmt.Errorf("fetch err: %w; ls-remote err: %w", err1, err2)
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	currHeadOut, err := exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD").Output()
