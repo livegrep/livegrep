@@ -28,10 +28,6 @@ var (
 	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to")
 	flagNumWorkers    = flag.Int("num-workers", 8, "Number of workers used to update repositories")
 	flagNoIndex       = flag.Bool("no-index", false, "Skip indexing after fetching")
-	flagMetricsPath   = flag.String("metrics-out", "", "File that indexing metrics should be sent to")
-	flagStatsdOn      = flag.Bool("send-metrics-to-statsd", false, "Send indexing metrics to StatsD")
-	flagStatsdAddr    = flag.String("statsd-address", "", "address URI of statsd listener for metrics export")
-	flagStatsdPrefix  = flag.String("statsd-prefix", "", "optional prefix to apply to all metrics")
 	flagUpdateHead    = flag.Bool("update-head", true, "update the local HEAD ref if it is different than remote. Done when updating already cloned repos.")
 )
 
