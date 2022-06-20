@@ -172,10 +172,22 @@ if test "$1" = "get"; then
 fi
 `)
 
+// calls a `git ...` command. Output is printed to stdout/err
+func callGit(program string, args []string, username string, password string) error {
+	_, err := callGitInternal(program, args, username, password, false)
+	return err
+}
+
+// calls a `git ...` command. Output is added to a buffer and returned
+func callGetGetOutput(program string, args []string, username string, password string) ([]byte, error) {
+	buff, err := callGitInternal(program, args, username, password, true)
+	return buff, err
+}
+
 // calls cmd.Run() if returnOutput is false
 // and cmd.Output() otherwise
 // always returns an out []byte, but it will always be nill if returnOutput is false
-func callGit(program string, args []string, username string, password string, returnOutput bool) ([]byte, error) {
+func callGitInternal(program string, args []string, username string, password string, returnOutput bool) ([]byte, error) {
 	var err error
 	var out []byte
 
@@ -266,7 +278,7 @@ func checkoutOne(r *config.RepoSpec) error {
 			args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
 		}
 		args = append(args, remote, r.Path)
-		_, err = callGit("git", args, username, password, false)
+		err = callGit("git", args, username, password)
 		return err
 	}
 
@@ -301,13 +313,13 @@ func checkoutOne(r *config.RepoSpec) error {
 	// git fetch -p
 	go func(outErr *error, wg *sync.WaitGroup) {
 		defer wg.Done()
-		_, *outErr = callGit("git", args, username, password, false)
+		*outErr = callGit("git", args, username, password)
 	}(&err1, &wg)
 
 	// git ls-remote --symref origin HEAD
 	go func(outBuff *[]byte, outErr *error, wg *sync.WaitGroup) {
 		defer wg.Done()
-		*outBuff, *outErr = callGit("git", args2, username, password, true)
+		*outBuff, *outErr = callGetGetOutput("git", args2, username, password)
 	}(&remoteOut, &err2, &wg)
 
 	wg.Wait()
