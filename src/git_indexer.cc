@@ -156,20 +156,22 @@ void git_indexer::index_files() {
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = it->get();
 
-        /* const char *repopath = file->repopath.c_str(); */
+        const char *repopath = file->repopath.c_str();
+        char buf[GIT_OID_HEXSZ + 1];
+         git_oid_tostr(buf, sizeof(buf), file->oid.get());
 
-        /* fprintf(stderr, "indexing %s/%s\n", repopath, file->path.c_str()); */
+        fprintf(stderr, "indexing %s/%s - %s\n", repopath, file->path.c_str(), buf);
 
-        git_oid blob_id;
-        int err = git_oid_fromstr(&blob_id, file->id.c_str());
+        /* git_oid blob_id; */
+        /* int err = git_oid_fromstr(&blob_id, file->id.c_str()); */
 
-        if (err < 0) {
-            print_last_git_err_and_exit(err);
-        }
+        /* if (err < 0) { */
+        /*     print_last_git_err_and_exit(err); */
+        /* } */
 
-        const git_oid blob_id_static = static_cast<git_oid>(blob_id);
+        /* const git_oid blob_id_static = static_cast<git_oid>(blob_id); */
         git_blob *blob;
-        err = git_blob_lookup(&blob, file->repo, &blob_id_static);
+        int err = git_blob_lookup(&blob, file->repo, file->oid.get());
 
         if (err < 0) {
             print_last_git_err_and_exit(err);
@@ -267,7 +269,12 @@ void git_indexer::walk_tree(const string& pfx,
             file->score = score_file(full_path);
             file->repo = curr_repo;
 
-            /* fprintf(stderr, "indexing %s/%s\n", repopath.c_str(), file.path.c_str()); */
+            git_oid copy;
+            git_oid_cpy(&copy, git_blob_id(obj));
+            auto iod = std::make_unique<git_oid>(copy);
+            file->oid = std::move(iod);
+
+            fprintf(stderr, "indexing %s/%s - %s\n", repopath.c_str(), file->path.c_str(), blob_id_str);
             /* if (!files_to_index_local.get()) { */
             /*     files_to_index_local.put(new vector<pre_indexed_file>()); */
             /*     files_to_index_local.get()->reserve(100); */
@@ -306,7 +313,10 @@ void git_indexer::walk_tree(const string& pfx,
 
             walk(sub_repo, string(revstr), sub_repopath, string(sub_name), meta, walk_submodules, new_submodule_prefix, results);
 
-            git_repository_free(sub_repo);
+            // TODO: See if this is efficient enough. We're depending on
+            // libgi2's shutdown to close these submodule repos, while we
+            // manually close those that we append to open_git_repos_.
+            /* git_repository_free(sub_repo); */
         }
     }
 }
