@@ -30,6 +30,10 @@ git_indexer::git_indexer(code_searcher *cs,
 }
 
 git_indexer::~git_indexer() {
+    fprintf(stderr, "Closing open git repos\n");
+    for (auto it = open_git_repos_.begin(); it != open_git_repos_.end(); ++it) {
+        git_repository_free(*(it));
+    }
     git_libgit2_shutdown();
 }
 
@@ -46,7 +50,10 @@ void git_indexer::print_last_git_err_and_exit(int err) {
 // codesearch
 void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progress_indicator *tpi) {
 
+    std::vector<git_repository *> open_git_repos_local;
     std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_local;
+
+    open_git_repos_local.reserve(end - start);
     files_to_index_local.reserve((end - start) * 100); // 100 repos per
     /* fprintf(stderr, "walk_repositories_subset: %d-%d\n", start, end); */
     for (int i = start; i < end; ++i) {
@@ -63,6 +70,8 @@ void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progre
             print_last_git_err_and_exit(err);
         }
 
+        open_git_repos_local.push_back(curr_repo);
+
         for (auto &rev : repo.revisions()) {
             /* fprintf(stderr, "walking %s at %s \n", repopath, rev.c_str()); */
             walk(curr_repo, rev, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules(), "", files_to_index_local);
@@ -78,6 +87,7 @@ void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progre
     /* fprintf(stderr, "trying to do our wild mutex backed append\n"); */
     std::lock_guard<std::mutex> guard(files_mutex_);
     files_to_index_.insert(files_to_index_.end(), std::make_move_iterator(files_to_index_local.begin()), std::make_move_iterator(files_to_index_local.end()));
+    open_git_repos_.insert(open_git_repos_.end(), open_git_repos_local.begin(), open_git_repos_local.end());
 }
 
 void git_indexer::begin_indexing() {
@@ -146,14 +156,29 @@ void git_indexer::index_files() {
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = it->get();
 
-        /* const char *repopath = file.repopath.c_str(); */
+        /* const char *repopath = file->repopath.c_str(); */
 
-        /* fprintf(stderr, "indexing %s/%s\n", repopath, file.path.c_str()); */
+        /* fprintf(stderr, "indexing %s/%s\n", repopath, file->path.c_str()); */
+
+        git_oid blob_id;
+        int err = git_oid_fromstr(&blob_id, file->id.c_str());
+
+        if (err < 0) {
+            print_last_git_err_and_exit(err);
+        }
+
+        const git_oid blob_id_static = static_cast<git_oid>(blob_id);
+        git_blob *blob;
+        err = git_blob_lookup(&blob, file->repo, &blob_id_static);
+
+        if (err < 0) {
+            print_last_git_err_and_exit(err);
+        }
         
-        const char *data = static_cast<const char*>(git_blob_rawcontent(file->blob));
-        cs_->index_file(file->tree, file->path, StringPiece(data, git_blob_rawsize(file->blob)));
+        const char *data = static_cast<const char*>(git_blob_rawcontent(blob));
+        cs_->index_file(file->tree, file->path, StringPiece(data, git_blob_rawsize(blob)));
 
-        git_blob_free(file->blob);
+        git_blob_free(blob);
         tpi.tick();
     }
 }
@@ -219,24 +244,28 @@ void git_indexer::walk_tree(const string& pfx,
          it != ordered.end(); ++it) {
         
         // We manually free this object in index_files()
-        git_object *obj;
-        git_tree_entry_to_object(&obj, curr_repo, *it);
+        smart_object<git_object> obj;
+        git_tree_entry_to_object(obj, curr_repo, *it);
         string path = pfx + git_tree_entry_name(*it);
 
         /* fprintf(stderr, "walking obj with path: %s/%s\n", repopath.c_str(), path.c_str()); */
 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
-            walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, (git_tree*)obj, curr_repo, results);
+            walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, obj, curr_repo, results);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
+            const git_oid* blob_id = git_blob_id(obj);
+            char blob_id_str[GIT_OID_HEXSZ + 1];
+            git_oid_tostr(blob_id_str, GIT_OID_HEXSZ + 1, blob_id);
+
             const string full_path = submodule_prefix + path;
             auto file = std::make_unique<pre_indexed_file>();
 
+            file->id = string(blob_id_str);
             file->tree = idx_tree;
             file->repopath = repopath;
             file->path = path;
             file->score = score_file(full_path);
             file->repo = curr_repo;
-            file->blob = (git_blob*)obj;
 
             /* fprintf(stderr, "indexing %s/%s\n", repopath.c_str(), file.path.c_str()); */
             /* if (!files_to_index_local.get()) { */

@@ -24,9 +24,9 @@ struct pre_indexed_file {
     const indexed_tree *tree;
     std::string  repopath;
     std::string  path;
+    std::string id; // git oid
     int score;
     git_repository *repo;
-    git_blob *blob;
 };
 
 class git_indexer {
@@ -61,6 +61,7 @@ protected:
     std::string submodule_prefix_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
     std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_;
+    std::vector<git_repository *> open_git_repos_;
     std::mutex files_mutex_;
     std::vector<std::thread> threads_;
 };
