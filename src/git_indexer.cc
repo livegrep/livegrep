@@ -156,21 +156,12 @@ void git_indexer::index_files() {
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = it->get();
 
-        const char *repopath = file->repopath.c_str();
-        char buf[GIT_OID_HEXSZ + 1];
-         git_oid_tostr(buf, sizeof(buf), file->oid.get());
-
-        fprintf(stderr, "indexing %s/%s - %s\n", repopath, file->path.c_str(), buf);
-
-        /* git_oid blob_id; */
-        /* int err = git_oid_fromstr(&blob_id, file->id.c_str()); */
-
-        /* if (err < 0) { */
-        /*     print_last_git_err_and_exit(err); */
-        /* } */
-
-        /* const git_oid blob_id_static = static_cast<git_oid>(blob_id); */
         git_blob *blob;
+        // TODO: Test and ensure that duplicate files across repos have unique
+        // oid's. I believe the odds of duplicate id's, even across multiple
+        // files is extremely low
+        // However, since we have "all" repos open at the same time, what
+        // happens to git_blob_lookup if there are duplicated oid's present?
         int err = git_blob_lookup(&blob, file->repo, file->oid.get());
 
         if (err < 0) {
@@ -255,14 +246,14 @@ void git_indexer::walk_tree(const string& pfx,
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
             walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, obj, curr_repo, results);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
-            const git_oid* blob_id = git_blob_id(obj);
-            char blob_id_str[GIT_OID_HEXSZ + 1];
-            git_oid_tostr(blob_id_str, GIT_OID_HEXSZ + 1, blob_id);
+            /* const git_oid* blob_id = git_blob_id(obj); */
+            /* char blob_id_str[GIT_OID_HEXSZ + 1]; */
+            /* git_oid_tostr(blob_id_str, GIT_OID_HEXSZ + 1, blob_id); */
 
             const string full_path = submodule_prefix + path;
             auto file = std::make_unique<pre_indexed_file>();
 
-            file->id = string(blob_id_str);
+            /* file->id = string(blob_id_str); */
             file->tree = idx_tree;
             file->repopath = repopath;
             file->path = path;
@@ -274,7 +265,7 @@ void git_indexer::walk_tree(const string& pfx,
             auto iod = std::make_unique<git_oid>(copy);
             file->oid = std::move(iod);
 
-            fprintf(stderr, "indexing %s/%s - %s\n", repopath.c_str(), file->path.c_str(), blob_id_str);
+            /* fprintf(stderr, "indexing %s/%s - %s\n", repopath.c_str(), file->path.c_str(), blob_id_str); */
             /* if (!files_to_index_local.get()) { */
             /*     files_to_index_local.put(new vector<pre_indexed_file>()); */
             /*     files_to_index_local.get()->reserve(100); */
