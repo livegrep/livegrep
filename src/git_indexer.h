@@ -36,6 +36,8 @@ public:
     ~git_indexer();
     void begin_indexing();
 protected:
+    int get_next_repo_idx();
+    void process_repos(threadsafe_progress_indicator *tpi);
     void walk(git_repository *curr_repo,
             const std::string& ref,
             const std::string& repopath,

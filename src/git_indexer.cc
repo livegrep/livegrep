@@ -13,6 +13,7 @@
 #include "src/proto/config.pb.h"
 
 using namespace std;
+using namespace std::chrono;
 
 DEFINE_string(order_root, "", "Walk top-level directories in this order.");
 DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided");
@@ -37,27 +38,31 @@ git_indexer::~git_indexer() {
     git_libgit2_shutdown();
 }
 
+
+std::atomic<int> next_idx(0);
+// Used to get the next index of a repo a thread should focus on
+int git_indexer::get_next_repo_idx() {
+    if (next_idx == repositories_to_index_.size()) {
+        return -1;
+    }
+    return next_idx++;
+}
+
 void git_indexer::print_last_git_err_and_exit(int err) {
     const git_error *e = giterr_last();
     printf("Error %d/%d: %s\n", err, e->klass, e->message);
     exit(1);
 }
 
-// will be called by a thread to walk a subsection of repositories_to_index_
-// we then take the threads local `files_to_index_local` and append it to the
-// global `files_to_index_`.
-// we then call `index_files` to actaully submit the files to be indexed by
-// codesearch
-void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progress_indicator *tpi) {
-
+void git_indexer::process_repos(threadsafe_progress_indicator *tpi) {
+    int idx_to_process = get_next_repo_idx();
     std::vector<git_repository *> open_git_repos_local;
     std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_local;
 
-    open_git_repos_local.reserve(end - start);
-    files_to_index_local.reserve((end - start) * 100); // 100 repos per
-    /* fprintf(stderr, "walk_repositories_subset: %d-%d\n", start, end); */
-    for (int i = start; i < end; ++i) {
-        const auto &repo = repositories_to_index_[i];
+    while (idx_to_process >= 0) {
+        /* fprintf(stderr, "going to process: %d\n", idx_to_process); */
+        /* auto start = high_resolution_clock::now(); */
+        const auto &repo = repositories_to_index_[idx_to_process];
         const char *repopath = repo.path().c_str();
 
         /* fprintf(stderr, "walking repo: %s\n", repopath); */
@@ -78,17 +83,20 @@ void git_indexer::walk_repositories_subset(int start, int end, threadsafe_progre
             /* fprintf(stderr, "done walking %s at %s\n", repopath, rev.c_str()); */
             tpi->tick();
         }
+        /* auto stop = high_resolution_clock::now(); */
+        /* auto duration = duration_cast<seconds>(stop - start); */
+        /* cout << "took: " << duration.count() << " seconds to process_repos" << endl; */
 
-        /* git_repository_free(curr_repo); */
+        idx_to_process = get_next_repo_idx();
     }
 
-    // Then at the end we'll post to files_to_index_
-    // Then we're done
-    /* fprintf(stderr, "trying to do our wild mutex backed append\n"); */
     std::lock_guard<std::mutex> guard(files_mutex_);
     files_to_index_.insert(files_to_index_.end(), std::make_move_iterator(files_to_index_local.begin()), std::make_move_iterator(files_to_index_local.end()));
     open_git_repos_.insert(open_git_repos_.end(), open_git_repos_local.begin(), open_git_repos_local.end());
+
+    return;
 }
+
 
 void git_indexer::begin_indexing() {
 
@@ -103,32 +111,32 @@ void git_indexer::begin_indexing() {
         (length + min_per_thread - 1)/min_per_thread;
     unsigned long const hardware_threads = std::thread::hardware_concurrency();
     unsigned long const num_threads = std::min(hardware_threads!=0?hardware_threads:2, max_threads);
-    // We round block size up. the last thread may have less items to work with
-    // when length is uneven
-    unsigned long const block_size = (length + num_threads - 1) / (num_threads);
 
-    fprintf(stderr, "length=%lu min_per_thread=%lu max_threads=%lu hardware_threads=%lu num_threads=%lu block_size=%lu\n", length, min_per_thread, max_threads, hardware_threads, num_threads, block_size);
+    fprintf(stderr, "length=%lu min_per_thread=%lu max_threads=%lu hardware_threads=%lu num_threads=%lu\n", length, min_per_thread, max_threads, hardware_threads, num_threads);
 
     threadsafe_progress_indicator tpi(length, "Walking repos...", "Done");
 
     if (length < 2 * min_per_thread) {
         fprintf(stderr, "Not going to create any new threads.\n");
-        walk_repositories_subset(0, length, &tpi);
+        process_repos(&tpi);
         index_files();
         return;
     }
 
     threads_.reserve(num_threads - 1);
-    long block_start = 0;
+    auto start = high_resolution_clock::now();
     for (long i = 0; i < num_threads; ++i) {
-        long block_end = std::min(block_start + block_size, length);
-        threads_.emplace_back(&git_indexer::walk_repositories_subset, this, (int)block_start, (int)block_end, &tpi);
-        block_start = block_end;
+        threads_.emplace_back(&git_indexer::process_repos, this, &tpi);
     }
 
     for (long i = 0; i < num_threads; ++i) {
         threads_[i].join();
     }
+
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<seconds>(stop - start);
+    cout << "took: " << duration.count() << " seconds to process_repos" << endl;
+    /* exit(0); */
 
     index_files();
 }
