@@ -167,11 +167,6 @@ void git_indexer::index_files() {
         auto file = it->get();
 
         git_blob *blob;
-        // TODO: Test and ensure that duplicate files across repos have unique
-        // oid's. I believe the odds of duplicate id's, even across multiple
-        // files is extremely low
-        // However, since we have "all" repos open at the same time, what
-        // happens to git_blob_lookup if there are duplicated oid's present?
         int err = git_blob_lookup(&blob, file->repo, file->oid);
 
         if (err < 0) {
