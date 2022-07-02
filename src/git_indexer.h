@@ -24,7 +24,7 @@ struct pre_indexed_file {
     const indexed_tree *tree;
     std::string  repopath;
     std::string  path;
-    std::unique_ptr<git_oid> oid;
+    git_oid *oid;
     int score;
     git_repository *repo;
 };

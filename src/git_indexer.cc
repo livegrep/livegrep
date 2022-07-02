@@ -136,8 +136,8 @@ void git_indexer::begin_indexing() {
     }
 
     auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<seconds>(stop - start);
-    cout << "took: " << duration.count() << " seconds to process_repos" << endl;
+    auto duration = duration_cast<milliseconds>(stop - start);
+    cout << "took: " << duration.count() << " milliseconds to process_repos" << endl;
     /* exit(0); */
 
     index_files();
@@ -172,7 +172,7 @@ void git_indexer::index_files() {
         // files is extremely low
         // However, since we have "all" repos open at the same time, what
         // happens to git_blob_lookup if there are duplicated oid's present?
-        int err = git_blob_lookup(&blob, file->repo, file->oid.get());
+        int err = git_blob_lookup(&blob, file->repo, file->oid);
 
         if (err < 0) {
             print_last_git_err_and_exit(err);
@@ -246,7 +246,6 @@ void git_indexer::walk_tree(const string& pfx,
     for (vector<const git_tree_entry *>::iterator it = ordered.begin();
          it != ordered.end(); ++it) {
         
-        // We manually free this object in index_files()
         smart_object<git_object> obj;
         git_tree_entry_to_object(obj, curr_repo, *it);
         string path = pfx + git_tree_entry_name(*it);
@@ -256,32 +255,20 @@ void git_indexer::walk_tree(const string& pfx,
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
             walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, obj, curr_repo, results);
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
-            /* const git_oid* blob_id = git_blob_id(obj); */
-            /* char blob_id_str[GIT_OID_HEXSZ + 1]; */
-            /* git_oid_tostr(blob_id_str, GIT_OID_HEXSZ + 1, blob_id); */
 
             const string full_path = submodule_prefix + path;
+
             auto file = std::make_unique<pre_indexed_file>();
 
-            /* file->id = string(blob_id_str); */
             file->tree = idx_tree;
             file->repopath = repopath;
             file->path = path;
             file->score = score_file(full_path);
             file->repo = curr_repo;
+            file->oid = (git_oid *)malloc(sizeof(git_oid));
+            git_oid_cpy(file->oid, git_blob_id(obj));
 
-            git_oid copy;
-            git_oid_cpy(&copy, git_blob_id(obj));
-            auto iod = std::make_unique<git_oid>(copy);
-            file->oid = std::move(iod);
-
-            /* fprintf(stderr, "indexing %s/%s - %s\n", repopath.c_str(), file->path.c_str(), blob_id_str); */
-            /* if (!files_to_index_local.get()) { */
-            /*     files_to_index_local.put(new vector<pre_indexed_file>()); */
-            /*     files_to_index_local.get()->reserve(100); */
-            /* } */
             results.push_back(std::move(file));
-
         } else if (git_tree_entry_type(*it) == GIT_OBJ_COMMIT) {
             // Submodule
             if (!walk_submodules) {
