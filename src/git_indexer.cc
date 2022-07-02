@@ -142,8 +142,12 @@ void git_indexer::begin_indexing() {
     index_files();
 }
 
-bool compareFiles(const std::unique_ptr<pre_indexed_file>& a, const std::unique_ptr<pre_indexed_file>& b) {
+bool compareFilesByScore(const std::unique_ptr<pre_indexed_file>& a, const std::unique_ptr<pre_indexed_file>& b) {
     return a->score > b->score;
+}
+
+bool compareFilesByTree(const std::unique_ptr<pre_indexed_file>& a, const std::unique_ptr<pre_indexed_file>& b) {
+    return a->tree->name < b->tree->name;
 }
 
 // sorts `files_to_index_` based on score. This way, the lowest scoring files
@@ -156,8 +160,12 @@ bool compareFiles(const std::unique_ptr<pre_indexed_file>& a, const std::unique_
 // walks `files_to_index_`, looks up the repo & blob combination for each file
 // and then calls `cs->index_file` to actually index the file.
 void git_indexer::index_files() {
-    fprintf(stderr, "sorting files_to_index_... [%lu]\n", files_to_index_.size());
-    std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFiles);
+    fprintf(stderr, "sorting files_to_index_ by tree... [%lu]\n", files_to_index_.size());
+    std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByTree);
+    fprintf(stderr, "  done\n");
+
+    fprintf(stderr, "sorting files_to_index_ by score... [%lu]\n", files_to_index_.size());
+    std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByScore);
     fprintf(stderr, "  done\n");
 
     /* fprintf(stderr, "walking files_to_index_ ...\n"); */
