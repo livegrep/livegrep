@@ -41,10 +41,10 @@ git_indexer::~git_indexer() {
 
 // Used to get the next index of a repo a thread should focus on
 int git_indexer::get_next_repo_idx() {
-    if (next_repo_to_process_idx_ == repositories_to_index_length_) {
+    if (next_repo_to_process_idx_.load() == repositories_to_index_length_) {
         return -1;
     }
-    return next_repo_to_process_idx_++;
+    return next_repo_to_process_idx_.fetch_add(1, std::memory_order_relaxed);
 }
 
 void git_indexer::print_last_git_err_and_exit(int err) {
