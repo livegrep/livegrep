@@ -61,9 +61,11 @@ protected:
     code_searcher *cs_;
     std::string submodule_prefix_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
+    const int repositories_to_index_length_;
+    std::atomic<int> next_repo_to_process_idx_{0};
+    std::mutex files_mutex_;
     std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_;
     std::vector<git_repository *> open_git_repos_;
-    std::mutex files_mutex_;
     std::vector<std::thread> threads_;
 };
 

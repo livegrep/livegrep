@@ -20,7 +20,7 @@ DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided"
 
 git_indexer::git_indexer(code_searcher *cs,
                          const google::protobuf::RepeatedPtrField<RepoSpec>& repositories)
-    : cs_(cs), repositories_to_index_(repositories) {
+    : cs_(cs), repositories_to_index_(repositories), repositories_to_index_length_(repositories.size()) {
     int err;
     if ((err = git_libgit2_init()) < 0)
         die("git_libgit2_init: %s", giterr_last()->message);
@@ -39,13 +39,12 @@ git_indexer::~git_indexer() {
 }
 
 
-std::atomic<int> next_idx(0);
 // Used to get the next index of a repo a thread should focus on
 int git_indexer::get_next_repo_idx() {
-    if (next_idx == repositories_to_index_.size()) {
+    if (next_repo_to_process_idx_ == repositories_to_index_length_) {
         return -1;
     }
-    return next_idx++;
+    return next_repo_to_process_idx_++;
 }
 
 void git_indexer::print_last_git_err_and_exit(int err) {
