@@ -37,7 +37,7 @@ public:
     void begin_indexing();
 protected:
     int get_next_repo_idx();
-    void process_repos(threadsafe_progress_indicator *tpi);
+    void process_repos(int estimatedReposToProcess, threadsafe_progress_indicator *tpi);
     void walk(git_repository *curr_repo,
             const std::string& ref,
             const std::string& repopath,
@@ -57,7 +57,6 @@ protected:
                    std::vector<std::unique_ptr<pre_indexed_file>>& results);
     void index_files();
     void print_last_git_err_and_exit(int err);
-    void walk_repositories_subset(int start, int end, threadsafe_progress_indicator *tpi);
 
     code_searcher *cs_;
     std::string submodule_prefix_;

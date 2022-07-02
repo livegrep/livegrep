@@ -54,10 +54,13 @@ void git_indexer::print_last_git_err_and_exit(int err) {
     exit(1);
 }
 
-void git_indexer::process_repos(threadsafe_progress_indicator *tpi) {
+void git_indexer::process_repos(int estimatedReposToProcess, threadsafe_progress_indicator *tpi) {
     int idx_to_process = get_next_repo_idx();
     std::vector<git_repository *> open_git_repos_local;
     std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_local;
+
+    open_git_repos_local.reserve(estimatedReposToProcess);
+    files_to_index_local.reserve(estimatedReposToProcess * 100);
 
     while (idx_to_process >= 0) {
         /* fprintf(stderr, "going to process: %d\n", idx_to_process); */
@@ -93,8 +96,6 @@ void git_indexer::process_repos(threadsafe_progress_indicator *tpi) {
     std::lock_guard<std::mutex> guard(files_mutex_);
     files_to_index_.insert(files_to_index_.end(), std::make_move_iterator(files_to_index_local.begin()), std::make_move_iterator(files_to_index_local.end()));
     open_git_repos_.insert(open_git_repos_.end(), open_git_repos_local.begin(), open_git_repos_local.end());
-
-    return;
 }
 
 
@@ -118,15 +119,16 @@ void git_indexer::begin_indexing() {
 
     if (length < 2 * min_per_thread) {
         fprintf(stderr, "Not going to create any new threads.\n");
-        process_repos(&tpi);
+        process_repos(length, &tpi);
         index_files();
         return;
     }
 
+    int estimatedReposPerThread = length / num_threads;
     threads_.reserve(num_threads - 1);
     auto start = high_resolution_clock::now();
     for (long i = 0; i < num_threads; ++i) {
-        threads_.emplace_back(&git_indexer::process_repos, this, &tpi);
+        threads_.emplace_back(&git_indexer::process_repos, this, estimatedReposPerThread, &tpi);
     }
 
     for (long i = 0; i < num_threads; ++i) {
@@ -141,9 +143,9 @@ void git_indexer::begin_indexing() {
     index_files();
 }
 
-/* bool compareFiles(pre_indexed_file a, pre_indexed_file b) { */
-/*     return a.score > b.score; */
-/* } */
+bool compareFiles(const std::unique_ptr<pre_indexed_file>& a, const std::unique_ptr<pre_indexed_file>& b) {
+    return a->score > b->score;
+}
 
 // sorts `files_to_index_` based on score. This way, the lowest scoring files
 // get indexed last, and so show up in sorts results last. We use a stable sort
@@ -156,7 +158,7 @@ void git_indexer::begin_indexing() {
 // and then calls `cs->index_file` to actually index the file.
 void git_indexer::index_files() {
     fprintf(stderr, "sorting files_to_index_... [%lu]\n", files_to_index_.size());
-    /* std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFiles); */
+    std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFiles);
     fprintf(stderr, "  done\n");
 
     /* fprintf(stderr, "walking files_to_index_ ...\n"); */
