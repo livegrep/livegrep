@@ -10,13 +10,10 @@
 using re2::RE2;
 using std::string;
 
-static RE2 generated_re("min\\.js|js\\.map|_pb2|generated|\\/minified\\/|bundle\\.");
-static RE2 vendor_re("(node_modules|vendor||github.com|third_party|thirdparty)\\/");
-static RE2 test_re("test");
-static RE2 misc_re("package-lock.json");
+static RE2 generated_re("min\\.(js|css)|js\\.map|_pb2\\/|generated|minified|bundle\\.|package-lock\\.json|yarn\\.lock|go\\.sum");
+static RE2 vendor_re("(node_modules|vendor|github.com|third_party|thirdparty)\\/");
+static RE2 test_re("test|\\.spec\\.jsx");
 
-// We use file_path so we can downrank anything under, say, vendor/*
-// or test/*
 int score_file(const string& file_path) {
     int starting_score = 0;
 
@@ -35,11 +32,6 @@ int score_file(const string& file_path) {
         starting_score -= 50;
     }
 
-    if (RE2::PartialMatch(file_path, misc_re)) {
-        starting_score -= 50;
-    }
-
-    
     // Positively ranking a file is much harder. Some ideas
     // 1. Promote files that have many references to that file. E.g PageRank.
     //    This would be difficult to do with regex statements

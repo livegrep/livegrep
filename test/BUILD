@@ -11,6 +11,7 @@ cc_test(
         "main.cc",
         "planner_test.cc",
         "tagsearch_test.cc",
+        "score_test.cc",
     ],
     defines = select({
         ":darwin": [
