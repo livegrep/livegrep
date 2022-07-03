@@ -1,6 +1,10 @@
 #include <gflags/gflags.h>
 #include <sstream>
 
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#endif
+
 #include "src/lib/metrics.h"
 #include "src/lib/debug.h"
 #include "src/lib/threadsafe_progress_indicator.h"
@@ -55,6 +59,29 @@ void git_indexer::process_trees(int thread_id) {
     }
 }
 
+void IncreaseFDLimit() {
+#ifdef __APPLE__
+  // Bump the soft limit for the number of file descriptors from the default of
+  // 256 to
+  // the maximum (usually 10240).
+  struct rlimit limit;
+  getrlimit(RLIMIT_NOFILE, &limit);
+
+  // getrlimit() lies about the hard limit so we have to check sysctl.
+  int max_fd = 0;
+  size_t len = sizeof(max_fd);
+  ::sysctlbyname("kern.maxfilesperproc", &max_fd, &len, nullptr, 0);
+
+  limit.rlim_cur = max_fd;
+  int ret = setrlimit(RLIMIT_NOFILE, &limit);
+
+  if (ret == 0) {
+      std::cout << "Temporarily bumped fd to: " << max_fd <<std::endl;
+  }
+  return;
+#endif
+}
+
 void git_indexer::begin_indexing() {
 
     // min_per_thread will require tweaking. For example, even with only
@@ -87,6 +114,7 @@ void git_indexer::begin_indexing() {
     for (long i = 0; i < num_threads; ++i) {
         threads_.emplace_back(&git_indexer::process_trees, this, i);
     }
+    IncreaseFDLimit();
     threadsafe_progress_indicator tpi(repositories_to_index_length_, "Walking repos...", "Done");
     auto start = high_resolution_clock::now();
      for (const auto &repo : repositories_to_index_) {
@@ -110,7 +138,7 @@ void git_indexer::begin_indexing() {
         tpi.tick();
      }
 
-    fprintf(stderr, "walking inner trees trees...\n");
+    fprintf(stderr, "walking repo trees...\n");
 
     // we can close the trees, since we only add to trees_to_walk_ at the
     // root/unordered level
