@@ -108,7 +108,7 @@ void git_indexer::process_trees(int thread_id) {
         /* std::cout << "Name: " << d->name << " repopath: " << d->repopath << std::endl; */
 
         /* std::cout << "repopath: " << d->repopath << std::endl; */
-        fprintf(stderr, "thread[%d]: %s/%s\n", thread_id, d->repopath.c_str(), d->prefix.c_str());
+        /* fprintf(stderr, "thread[%d]: %s/%s\n", thread_id, d->repopath.c_str(), d->prefix.c_str()); */
 
         /* std::cout << "Id addr: " << tree << std::endl; */
               /* << "walk_submodules: " << tree->walk_submodules << std::endl */
@@ -175,10 +175,11 @@ void git_indexer::begin_indexing() {
         threads_.emplace_back(&git_indexer::process_trees, this, i);
     }
     threadsafe_progress_indicator tpi(repositories_to_index_length_, "Walking repos...", "Done");
+    auto start = high_resolution_clock::now();
      for (const auto &repo : repositories_to_index_) {
         const char *repopath = repo.path().c_str();
 
-        fprintf(stderr, "walking repo: %s\n", repopath);
+        /* fprintf(stderr, "walking repo: %s\n", repopath); */
         git_repository *curr_repo = NULL;
 
         // Is it safe to assume these are bare repos (or the mirror clones)
@@ -223,8 +224,6 @@ void git_indexer::begin_indexing() {
      // ahhh, this may have to be rethought. When we're done walking repos
      // it doesn't mean that all of the subdirectories have been traversed
      // So if we close this, we may run into problems.
-     trees_to_walk_.close();
-     fq_.close();
 
 
 
@@ -243,9 +242,14 @@ void git_indexer::begin_indexing() {
     /* } */
 
     fprintf(stderr, "waiting for threads\n");
+     trees_to_walk_.close();
+     fq_.close();
     for (long i = 0; i < num_threads; ++i) {
         threads_[i].join();
     }
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(stop - start);
+    cout << "took: " << duration.count() << " milliseconds to process_repos" << endl;
      pre_indexed_file *p;
 
 
@@ -255,9 +259,6 @@ void git_indexer::begin_indexing() {
         }
     fprintf(stderr, "done waiting\n");
 
-    /* auto stop = high_resolution_clock::now(); */
-    /* auto duration = duration_cast<milliseconds>(stop - start); */
-    /* cout << "took: " << duration.count() << " milliseconds to process_repos" << endl; */
     /* exit(0); */
 
     index_files();
@@ -294,7 +295,7 @@ void git_indexer::index_files() {
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = *it;
 
-        fprintf(stderr, "indexing: %s/%s\n", file->repopath.c_str(), file->path.c_str());
+        /* fprintf(stderr, "indexing: %s/%s\n", file->repopath.c_str(), file->path.c_str()); */
 
         git_blob *blob;
         int err = git_blob_lookup(&blob, file->repo, file->oid);
@@ -357,6 +358,7 @@ void git_indexer::walk_tree(std::string pfx,
         const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
         root[git_tree_entry_name(ent)] = ent;
     }
+    /* fprintf(stderr, "%s/%s filled git_tree_entry map ok\n", repopath.c_str(), pfx.c_str()); */
 
     istringstream stream(order);
     string dir;
@@ -385,6 +387,10 @@ void git_indexer::walk_tree(std::string pfx,
             // pool. In that way, a repo could "potentially" be walked by 10
             // threads at a time
             /* fprintf(stderr, "going to add repopath with %s\n", repopath.c_str()); */
+            if (depth == 1) { // don't add to the thread workload
+                walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, obj, curr_repo, 1);
+                return;
+            }
 
             tree_to_walk *t = new tree_to_walk;
             t->prefix = path + "/";
@@ -393,7 +399,10 @@ void git_indexer::walk_tree(std::string pfx,
             t->walk_submodules = walk_submodules;
             t->submodule_prefix = submodule_prefix;
             t->idx_tree = idx_tree;
-            t->tree = obj;
+
+            git_object *obj1; 
+            git_tree_entry_to_object(&obj1, curr_repo, *it);
+            t->tree = (git_tree *)(obj1);
             t->repo = curr_repo;
 
 
@@ -440,7 +449,7 @@ void git_indexer::walk_tree(std::string pfx,
             pre_indexed_file *file = new pre_indexed_file;
 
             file->tree = idx_tree;
-            file->repopath = "abcd";
+            file->repopath = repopath;
             file->path = path;
             file->score = score_file(full_path);
             file->repo = curr_repo;
