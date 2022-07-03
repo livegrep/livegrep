@@ -357,37 +357,26 @@ void git_indexer::walk_tree(std::string pfx,
     /*     return; */
     /* } */
     map<string, const git_tree_entry *> root;
-    vector<const git_tree_entry *> ordered;
     int entries = git_tree_entrycount(tree);
+
     /* fprintf(stderr, "repo: %s has %d entries\n", repopath.c_str(), entries); */
-    for (int i = 0; i < entries; ++i) { // TODO: we could divide each of these repos up by threads
-        const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
-        root[git_tree_entry_name(ent)] = ent;
-    }
     /* fprintf(stderr, "%s/%s filled git_tree_entry map ok\n", repopath.c_str(), pfx.c_str()); */
 
-    istringstream stream(order);
-    string dir;
-    while(stream >> dir) {
-        map<string, const git_tree_entry *>::iterator it = root.find(dir);
-        if (it == root.end())
-            continue;
-        ordered.push_back(it->second);
-        root.erase(it);
-    }
-    for (map<string, const git_tree_entry *>::iterator it = root.begin();
-         it != root.end(); ++it)
-        ordered.push_back(it->second);
-    for (vector<const git_tree_entry *>::iterator it = ordered.begin();
-         it != ordered.end(); ++it) {
+    /* for (map<string, const git_tree_entry *>::iterator it = root.begin(); */
+    /*      it != root.end(); ++it) */
+    /*     ordered.push_back(it->second); */
+
+    /* for (vector<const git_tree_entry *>::iterator it = ordered.begin(); it != ordered.end(); ++it) { */
+    for (int i = 0; i < entries; ++i) {
+        const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
         
         smart_object<git_object> obj;
-        git_tree_entry_to_object(obj, curr_repo, *it);
-        string path = pfx + git_tree_entry_name(*it);
+        git_tree_entry_to_object(obj, curr_repo, ent);
+        string path = pfx + git_tree_entry_name(ent);
 
         /* fprintf(stderr, "walking obj with path: %s/%s\n", repopath.c_str(), path.c_str()); */
 
-        if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
+        if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
             /* fprintf(stderr, "entry is git_tree\n"); */
             // But more likely, when depth == 1, we could add these to a thread
             // pool. In that way, a repo could "potentially" be walked by 10
@@ -395,24 +384,26 @@ void git_indexer::walk_tree(std::string pfx,
             /* fprintf(stderr, "going to add repopath with %s\n", repopath.c_str()); */
             if (depth == 1) { // don't add to the thread workload
                 walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, obj, curr_repo, 1);
-                return;
+                /* return; */
+            } else {
+                tree_to_walk *t = new tree_to_walk;
+                t->prefix = path + "/";
+                t->order = "";
+                t->repopath = repopath;
+                t->walk_submodules = walk_submodules;
+                t->submodule_prefix = submodule_prefix;
+                t->idx_tree = idx_tree;
+
+                git_object *obj1; 
+                git_tree_entry_to_object(&obj1, curr_repo, ent);
+                t->tree = (git_tree *)(obj1);
+                t->repo = curr_repo;
+
+
+                trees_to_walk_.push(t);
+
             }
 
-            tree_to_walk *t = new tree_to_walk;
-            t->prefix = path + "/";
-            t->order = "";
-            t->repopath = repopath;
-            t->walk_submodules = walk_submodules;
-            t->submodule_prefix = submodule_prefix;
-            t->idx_tree = idx_tree;
-
-            git_object *obj1; 
-            git_tree_entry_to_object(&obj1, curr_repo, *it);
-            t->tree = (git_tree *)(obj1);
-            t->repo = curr_repo;
-
-
-            trees_to_walk_.push(t);
 
             /* auto tree = std::make_unique<tree_to_walk>(); */
             /* tree_to_walk t{ */
@@ -447,7 +438,7 @@ void git_indexer::walk_tree(std::string pfx,
             /* trees_to_walk_.push(d); */
 
             /* walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, obj, curr_repo, results); */
-        } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
+        } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
             /* fprintf(stderr, "entry is blob\n"); */
 
             const string full_path = submodule_prefix + path;
@@ -465,7 +456,7 @@ void git_indexer::walk_tree(std::string pfx,
             /* results.push_back(std::move(file)); */
             /* fprintf(stderr, "about to push to global fq_\n"); */
             fq_.push(file);
-        } else if (git_tree_entry_type(*it) == GIT_OBJ_COMMIT) {
+        } else if (git_tree_entry_type(ent) == GIT_OBJ_COMMIT) {
             // Submodule
             if (!walk_submodules) {
                 continue;
@@ -481,7 +472,7 @@ void git_indexer::walk_tree(std::string pfx,
             string new_submodule_prefix = submodule_prefix + path + "/";
             Metadata meta;
 
-            const git_oid* rev = git_tree_entry_id(*it);
+            const git_oid* rev = git_tree_entry_id(ent);
             char revstr[GIT_OID_HEXSZ + 1];
             git_oid_tostr(revstr, GIT_OID_HEXSZ + 1, rev);
 
