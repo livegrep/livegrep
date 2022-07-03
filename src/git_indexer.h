@@ -11,8 +11,9 @@
 #include <string>
 #include "src/proto/config.pb.h"
 #include "src/smart_git.h"
-#include "src/lib/per_thread.h"
+/* #include "src/lib/per_thread.h" */
 #include "src/lib/threadsafe_progress_indicator.h"
+#include "src/lib/thread_queue.h"
 
 class code_searcher;
 class git_repository;
@@ -29,6 +30,24 @@ struct pre_indexed_file {
     git_repository *repo;
 };
 
+// used to thread directory walking
+struct tree_to_walk {
+    int id;
+    std::string prefix;
+    std::string order;
+    std::string repopath;
+    bool walk_submodules;
+    string submodule_prefix;
+    const indexed_tree *idx_tree;
+    git_tree *tree;
+    git_repository *repo;
+    /* std::vector<std::unique_ptr<pre_indexed_file>>& results; */
+};
+
+struct dummy {
+    std::string name;
+    std::string repopath;
+};
 class git_indexer {
 public:
     git_indexer(code_searcher *cs,
@@ -39,24 +58,24 @@ protected:
     int get_next_repo_idx();
     void process_repos(int estimatedReposToProcess, threadsafe_progress_indicator *tpi);
     void walk(git_repository *curr_repo,
-            const std::string& ref,
-            const std::string& repopath,
-            const std::string& name,
+            std::string ref,
+            std::string repopath,
+            std::string name,
             Metadata metadata,
             bool walk_submodules,
-            const std::string& submodule_prefix,
-            std::vector<std::unique_ptr<pre_indexed_file>>& results);
-    void walk_tree(const std::string& pfx,
-                   const std::string& order,
-                   const std::string& repopath,
+            std::string submodule_prefix);
+    void walk_tree(std::string pfx,
+                   std::string order,
+                   std::string repopath,
                    bool walk_submodules,
-                   const std::string& submodule_prefix,
+                   std::string submodule_prefix,
                    const indexed_tree *idx_tree,
                    git_tree *tree,
                    git_repository *curr_repo,
-                   std::vector<std::unique_ptr<pre_indexed_file>>& results);
+                   int depth);
     void index_files();
     void print_last_git_err_and_exit(int err);
+    void process_trees(int thread_id);
 
     code_searcher *cs_;
     std::string submodule_prefix_;
@@ -64,9 +83,11 @@ protected:
     const int repositories_to_index_length_;
     std::atomic<int> next_repo_to_process_idx_{0};
     std::mutex files_mutex_;
-    std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_;
+    std::vector<pre_indexed_file*> files_to_index_;
     std::vector<git_repository *> open_git_repos_;
     std::vector<std::thread> threads_;
+    thread_queue<tree_to_walk*> trees_to_walk_;
+    thread_queue<pre_indexed_file*> fq_;
 };
 
 #endif
