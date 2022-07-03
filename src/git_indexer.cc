@@ -242,21 +242,27 @@ void git_indexer::begin_indexing() {
     /* } */
 
     fprintf(stderr, "waiting for threads\n");
-     trees_to_walk_.close();
-     fq_.close();
+
+    // we can close the trees, since we only add to trees_to_walk_ at the
+    // root/unordered level
+    trees_to_walk_.close();
     for (long i = 0; i < num_threads; ++i) {
         threads_[i].join();
     }
+
+    // but we can't close the fq_ until all trees have been processed
+    fq_.close();
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
     cout << "took: " << duration.count() << " milliseconds to process_repos" << endl;
-     pre_indexed_file *p;
+    /* exit(0); */
+    pre_indexed_file *p;
 
 
-        while (fq_.pop(&p)) {
-            /* fprintf(stderr, "pushing back some stuff\n"); */
-            files_to_index_.push_back(p);
-        }
+    while (fq_.pop(&p)) {
+        /* fprintf(stderr, "pushing back some stuff\n"); */
+        files_to_index_.push_back(p);
+    }
     fprintf(stderr, "done waiting\n");
 
     /* exit(0); */
