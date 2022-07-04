@@ -108,7 +108,7 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
     }
 
         git_indexer g_indexer(cs, spec.repositories());
-        g_indexer.begin_indexing();
+        g_indexer.index_repos();
 }
 
 void initialize_search(code_searcher *search,

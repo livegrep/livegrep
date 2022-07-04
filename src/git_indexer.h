@@ -50,7 +50,7 @@ public:
     git_indexer(code_searcher *cs,
                 const google::protobuf::RepeatedPtrField<RepoSpec>& repositories);
     ~git_indexer();
-    void begin_indexing();
+    void index_repos();
 protected:
     void process_trees();
     void walk(git_repository *curr_repo,
@@ -71,11 +71,12 @@ protected:
                    int depth);
     void index_files();
     void print_last_git_err_and_exit(int err);
+    int get_num_threads_to_use();
 
     code_searcher *cs_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
     const int repositories_to_index_length_;
-    bool mode_singlethreaded_;
+    bool is_singlethreaded_;
     std::vector<std::thread> threads_;
     thread_queue<tree_to_walk*> trees_to_walk_;
 

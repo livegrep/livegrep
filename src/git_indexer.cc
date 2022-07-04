@@ -1,13 +1,10 @@
 #include <gflags/gflags.h>
 #include <sstream>
 
-#ifdef __APPLE__
-#include <sys/sysctl.h>
-#endif
-
 #include "src/lib/metrics.h"
 #include "src/lib/debug.h"
 #include "src/lib/threadsafe_progress_indicator.h"
+#include "src/lib/rlimits.h"
 
 #include "src/codesearch.h"
 #include "src/git_indexer.h"
@@ -21,6 +18,8 @@ using namespace std::chrono;
 
 DEFINE_string(order_root, "", "Walk top-level directories in this order.");
 DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided");
+DEFINE_bool(increase_fds, true, "Increase proc file descriptors from the soft limit to the hard limit");
+DEFINE_bool(allow_multithreading, true, "Allow multithreaded git repo walking");
 
 git_indexer::git_indexer(code_searcher *cs,
                          const google::protobuf::RepeatedPtrField<RepoSpec>& repositories)
@@ -60,56 +59,41 @@ void git_indexer::process_trees() {
     }
 }
 
-void increaseFDLimit() {
-#ifdef __APPLE__
-  // Bump the soft limit for the number of file descriptors from the default of
-  // 256 to
-  // the maximum (usually 10240).
-  struct rlimit limit;
-  getrlimit(RLIMIT_NOFILE, &limit);
-
-  // getrlimit() lies about the hard limit so we have to check sysctl.
-  int max_fd = 0;
-  size_t len = sizeof(max_fd);
-  ::sysctlbyname("kern.maxfilesperproc", &max_fd, &len, nullptr, 0);
-
-  limit.rlim_cur = max_fd;
-  int ret = setrlimit(RLIMIT_NOFILE, &limit);
-
-  if (ret == 0) {
-      std::cout << "Temporarily bumped fd to: " << max_fd <<std::endl;
-  }
-  return;
-#endif
-}
-
-void git_indexer::begin_indexing() {
-    /* unsigned long const length = repositories_to_index_.size(); */
+int git_indexer::get_num_threads_to_use() {
     unsigned long const min_per_thread = 16; 
     unsigned long const max_threads = (repositories_to_index_length_ + min_per_thread - 1) / min_per_thread;
     unsigned long const hardware_threads = std::thread::hardware_concurrency();
     unsigned long num_threads = std::min(hardware_threads, max_threads);
-
 
     // We enforce single-threaded behavior when someone has a specific order
     // they want to visit things in
     if (FLAGS_order_root != "") {
         fprintf(stderr, "order_root is set, walking repos in single-threaded mode...\n");
         num_threads = 0;
-    }
-
-    // 1 thread is pointless. It takes more time to spin up than indexing
-    // would take.
-    if (num_threads == 1) {
+    } else if (!FLAGS_allow_multithreading) {
+        fprintf(stderr, "Multithreading disabled, walking repos in single-threaded mode...\n");
+        num_threads = 0;
+    } else if (num_threads == 1) {
+        // 1 thread is pointless. It takes more time to spin up than indexing
+        // would take.
         num_threads = 0;
     }
-
-    mode_singlethreaded_ = num_threads == 0;
 
     fprintf(stderr, "length=%d min_per_thread=%lu max_threads=%lu hardware_threads=%lu num_threads=%lu\n", 
             repositories_to_index_length_, min_per_thread, max_threads, hardware_threads, num_threads);
 
-    files_to_index_.reserve(repositories_to_index_length_ * 10000);
+    return num_threads;
+}
+
+void git_indexer::index_repos() {
+    int num_threads = get_num_threads_to_use();
+    is_singlethreaded_ = num_threads == 0;
+
+
+    // we assume the average number of files per repo is 1000. This is very not
+    // true for most repos, but there are plenty of huge repos that have
+    // multiple thousands of files that make up the difference.
+    files_to_index_.reserve(repositories_to_index_length_ * 1000);
     open_git_repos_.reserve(repositories_to_index_length_);
     threads_.reserve(num_threads);
     for (long i = 0; i < num_threads; ++i) {
@@ -120,7 +104,9 @@ void git_indexer::begin_indexing() {
     // descriptors to the max allowed by the OS. We don't do any fancy attempts
     // at keeping the number of files <= max, we mostly just hope it will be
     // enough. We can definetely keep track of that if it becomes necessary.
-    increaseFDLimit();
+    if (FLAGS_increase_fds) {
+        increaseOpenFileLimitToMax();
+    }
 
     threadsafe_progress_indicator tpi(repositories_to_index_length_, "Walking repos...", "Done");
      for (const auto &repo : repositories_to_index_) {
@@ -168,7 +154,7 @@ void git_indexer::index_files() {
     // in multi-threaded mode, we sort by tree since a tree/repos files could
     // have ended up at any index. If FLAGS_order_root is set, then
     // multi-threading is disabled, so we don't have to re-check
-    if (!mode_singlethreaded_) {
+    if (!is_singlethreaded_) {
         fprintf(stderr, "sorting files_to_index_ by tree... [%lu]\n", files_to_index_.size());
         std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByTree);
         fprintf(stderr, "  done\n");
@@ -262,8 +248,8 @@ void git_indexer::walk_tree(std::string pfx,
         // try to access it, I'm assuming because the smart_object has been
         // released already. Not sure if I can avoid this somehow...
         // For now, use a plain git_object. If the object is a blob, we free it
-        // right away. If it's a tree we free it either right away if we're now
-        // spawning new work, or once the trees_to_walk_ has been walked (in process_trees).
+        // right away. If it's a tree we free it either right away or later
+        // depending on is_singlethreaded_.
         git_object *obj;
         git_tree_entry_to_object(&obj, curr_repo, it->second);
         string path = pfx + it->first;
@@ -273,7 +259,7 @@ void git_indexer::walk_tree(std::string pfx,
             // And if order is set, then we don't want to be unsure of which
             // tree is going to end up getting walked and posted to
             // files_to_index_ first.
-            if (mode_singlethreaded_ || depth == 1) {
+            if (is_singlethreaded_ || depth == 1) {
                 walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, (git_tree*)obj, curr_repo, 1);
                 git_object_free(obj);
                 continue;
