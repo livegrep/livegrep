@@ -20,34 +20,32 @@ class git_repository;
 class git_tree;
 struct indexed_tree;
 
-// This should be enough to recover a file/bob from a repo
+// We walk all repos and create a vector of pre_indexed_file(s)
+// We then sort that vector by score (and repo name)
+// In that way, low scoring files are indexed at the back of a chunk,
+// or are contained mostly in the last chunks, so higher ranked files
+// appear sooner in search results, since we search by chunk.
 struct pre_indexed_file {
     const indexed_tree *tree;
     std::string  repopath;
     std::string  path;
-    git_oid *oid;
     int score;
     git_repository *repo;
+    git_oid *oid;
 };
 
-// used to thread directory walking
+// used to walk a repos folders/trees in parallel using threads
 struct tree_to_walk {
     int id;
     std::string prefix;
-    std::string order;
     std::string repopath;
     bool walk_submodules;
     string submodule_prefix;
     const indexed_tree *idx_tree;
     git_tree *tree;
     git_repository *repo;
-    /* std::vector<std::unique_ptr<pre_indexed_file>>& results; */
 };
 
-struct dummy {
-    std::string name;
-    std::string repopath;
-};
 class git_indexer {
 public:
     git_indexer(code_searcher *cs,
@@ -81,13 +79,12 @@ protected:
     std::string submodule_prefix_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
     const int repositories_to_index_length_;
-    std::atomic<int> next_repo_to_process_idx_{0};
+    bool mode_singlethreaded_;
     std::mutex files_mutex_;
     std::vector<pre_indexed_file*> files_to_index_;
     std::vector<git_repository *> open_git_repos_;
     std::vector<std::thread> threads_;
     thread_queue<tree_to_walk*> trees_to_walk_;
-    thread_queue<pre_indexed_file*> fq_;
 };
 
 #endif

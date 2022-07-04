@@ -24,7 +24,7 @@ DEFINE_bool(revparse, false, "Display parsed revisions, rather than as-provided"
 
 git_indexer::git_indexer(code_searcher *cs,
                          const google::protobuf::RepeatedPtrField<RepoSpec>& repositories)
-    : cs_(cs), repositories_to_index_(repositories), repositories_to_index_length_(repositories.size()), trees_to_walk_(), fq_() {
+    : cs_(cs), repositories_to_index_(repositories), repositories_to_index_length_(repositories.size()), trees_to_walk_() {
     int err;
     if ((err = git_libgit2_init()) < 0)
         die("git_libgit2_init: %s", giterr_last()->message);
@@ -35,7 +35,6 @@ git_indexer::git_indexer(code_searcher *cs,
 }
 
 git_indexer::~git_indexer() {
-    fprintf(stderr, "Closing open git repos\n");
     for (auto it = open_git_repos_.begin(); it != open_git_repos_.end(); ++it) {
         git_repository_free(*(it));
     }
@@ -54,12 +53,13 @@ void git_indexer::process_trees(int thread_id) {
     tree_to_walk *d;
 
     while (trees_to_walk_.pop(&d)) {
-        walk_tree(d->prefix, d->order, d->repopath, d->walk_submodules, 
+        walk_tree(d->prefix, "", d->repopath, d->walk_submodules, 
                 d->submodule_prefix, d->idx_tree, d->tree, d->repo, 1);
+        git_tree_free(d->tree);
     }
 }
 
-void IncreaseFDLimit() {
+void increaseFDLimit() {
 #ifdef __APPLE__
   // Bump the soft limit for the number of file descriptors from the default of
   // 256 to
@@ -83,53 +83,54 @@ void IncreaseFDLimit() {
 }
 
 void git_indexer::begin_indexing() {
-
-    // min_per_thread will require tweaking. For example, even with only
-    // 2 repos, would it not be worth it to spin up two threads (if available)?
-    // Or would the overhead of the thread creation far outweigh the single-core
-    // performance for just a few repos.
-    
     /* unsigned long const length = repositories_to_index_.size(); */
-    /* unsigned long const min_per_thread = 16; */ 
-    /* unsigned long const max_threads = */ 
-    /*     (length + min_per_thread - 1)/min_per_thread; */
-    /* unsigned long const hardware_threads = std::thread::hardware_concurrency(); */
-    unsigned long const num_threads = std::thread::hardware_concurrency();
+    unsigned long const min_per_thread = 16; 
+    unsigned long const max_threads = (repositories_to_index_length_ + min_per_thread - 1) / min_per_thread;
+    unsigned long const hardware_threads = std::thread::hardware_concurrency();
+    unsigned long num_threads = std::min(hardware_threads, max_threads);
 
-    /* fprintf(stderr, "length=%lu min_per_thread=%lu max_threads=%lu hardware_threads=%lu num_threads=%lu\n", length, min_per_thread, max_threads, hardware_threads, num_threads); */
-    /* std::vector<git_repository *> open_git_repos_local; */
-    /* std::vector<std::unique_ptr<pre_indexed_file>> files_to_index_local; */
 
-    /* open_git_repos_local.reserve(estimatedReposToProcess); */
-    /* files_to_index_local.reserve(estimatedReposToProcess * 100); */
+    // We enforce single-threaded behavior when someone has a specific order
+    // they want to visit things in
+    if (FLAGS_order_root != "") {
+        fprintf(stderr, "order_root is set, walking repos in single-threaded mode...\n");
+        num_threads = 0;
+    }
 
-    // we should spin up n number of threads, that listen to a queue of trees_to_walks
-    // then walk_tree adds items to the queue whenenver it hits a tree
-    // Unfortunately that means we have n producers and n consumers
+    // 1 thread is pointless. It takes more time to spin up than indexing
+    // would take.
+    if (num_threads == 1) {
+        num_threads = 0;
+    }
 
-    // A single repo at a time
-    /* int idx = 0; */
+    mode_singlethreaded_ = num_threads == 0;
 
-    threads_.reserve(num_threads - 1);
+    fprintf(stderr, "length=%d min_per_thread=%lu max_threads=%lu hardware_threads=%lu num_threads=%lu\n", 
+            repositories_to_index_length_, min_per_thread, max_threads, hardware_threads, num_threads);
+
+    files_to_index_.reserve(repositories_to_index_length_ * 10000);
+    open_git_repos_.reserve(repositories_to_index_length_);
+    threads_.reserve(num_threads);
     for (long i = 0; i < num_threads; ++i) {
         threads_.emplace_back(&git_indexer::process_trees, this, i);
     }
-    IncreaseFDLimit();
+
+    // in both single and multi thread modes, try to bump the number of file
+    // descriptors to the max allowed by the OS. We don't do any fancy attempts
+    // at keeping the number of files <= max, we mostly just hope it will be
+    // enough. We can definetely keep track of that if it becomes necessary.
+    increaseFDLimit();
+
     threadsafe_progress_indicator tpi(repositories_to_index_length_, "Walking repos...", "Done");
-    auto start = high_resolution_clock::now();
      for (const auto &repo : repositories_to_index_) {
         const char *repopath = repo.path().c_str();
 
-        /* fprintf(stderr, "walking repo: %s\n", repopath); */
         git_repository *curr_repo = NULL;
 
-        // Is it safe to assume these are bare repos (or the mirror clones)
-        // that we create?. If so, we can use git_repository_open_bare
-        int err = git_repository_open_bare(&curr_repo, repopath);
+        int err = git_repository_open(&curr_repo, repopath);
         if (err < 0) {
             print_last_git_err_and_exit(err);
         }
-
         open_git_repos_.push_back(curr_repo);
 
         for (auto &rev : repo.revisions()) {
@@ -141,29 +142,13 @@ void git_indexer::begin_indexing() {
     fprintf(stderr, "walking repo trees...\n");
 
     // we can close the trees, since we only add to trees_to_walk_ at the
-    // root/unordered level
+    // root level of walk_tree, so once we've walked all repos we won't be
+    // adding anymore trees.
     trees_to_walk_.close();
     for (long i = 0; i < num_threads; ++i) {
         threads_[i].join();
     }
     fprintf(stderr, "    done.\n");
-
-    // but we can't close the fq_ until all trees have been processed
-    fq_.close();
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(stop - start);
-    cout << "took: " << duration.count() << " milliseconds to process_repos" << endl;
-    /* exit(0); */
-
-    pre_indexed_file *p;
-
-    while (fq_.pop(&p)) {
-        files_to_index_.push_back(p);
-    }
-    fprintf(stderr, "done waiting\n");
-
-    /* exit(0); */
-
     index_files();
 }
 
@@ -177,33 +162,24 @@ bool compareFilesByTree(pre_indexed_file *a, pre_indexed_file *b) {
 
 // sorts `files_to_index_` based on score. This way, the lowest scoring files
 // get indexed last, and so show up in sorts results last. We use a stable sort
-// so that most of a repos files are indexed together which has 2 benefits:
-//  1. If a term is matched in a lot of repos files, that repos files will end
-//     up grouped together in search results
-//  2. We can avoid many calls to git_repository_open/git_repository_free. At
-//     least until the end, where many repos "low" scoring files are found.
-// walks `files_to_index_`, looks up the repo & blob combination for each file
-// and then calls `cs->index_file` to actually index the file.
+// so that most of a repos files are indexed together
 void git_indexer::index_files() {
-    auto start = high_resolution_clock::now();
-    fprintf(stderr, "sorting files_to_index_ by tree... [%lu]\n", files_to_index_.size());
-    std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByTree);
-    fprintf(stderr, "  done\n");
+    // in multi-threaded mode, we sort by tree since a tree/repos files could
+    // have ended up at any index. If FLAGS_order_root is set, then
+    // multi-threading is disabled, so we don't have to re-check
+    if (!mode_singlethreaded_) {
+        fprintf(stderr, "sorting files_to_index_ by tree... [%lu]\n", files_to_index_.size());
+        std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByTree);
+        fprintf(stderr, "  done\n");
+    }
 
     fprintf(stderr, "sorting files_to_index_ by score... [%lu]\n", files_to_index_.size());
     std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByScore);
     fprintf(stderr, "  done\n");
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(stop - start);
-    cout << "took: " << duration.count() << " milliseconds to sort repos twice" << endl;
 
-
-    /* fprintf(stderr, "walking files_to_index_ ...\n"); */
     threadsafe_progress_indicator tpi(files_to_index_.size(), "Indexing files_to_index_...", "Done");
     for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
         auto file = *it;
-
-        /* fprintf(stderr, "indexing: %s/%s\n", file->repopath.c_str(), file->path.c_str()); */
 
         git_blob *blob;
         int err = git_blob_lookup(&blob, file->repo, file->oid);
@@ -234,7 +210,6 @@ void git_indexer::walk(git_repository *curr_repo,
         return;
     }
     git_commit_tree(tree, commit);
-    /* fprintf(stderr, "opened commit_tree for %s\n", repopath.c_str()); */
 
     char oidstr[GIT_OID_HEXSZ+1];
     string version = FLAGS_revparse ?
@@ -254,53 +229,85 @@ void git_indexer::walk_tree(std::string pfx,
                             git_tree *tree,
                             git_repository *curr_repo,
                             int depth) {
-    /* fprintf(stderr, "[%d] preparing to walk_tree for %s with prefix: %s \n", depth, repopath.c_str(), pfx.c_str()); */
     map<string, const git_tree_entry *> root;
+    vector<pair<const string, const git_tree_entry *>> ordered;
     int entries = git_tree_entrycount(tree);
 
     for (int i = 0; i < entries; ++i) {
         const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
+        root[git_tree_entry_name(ent)] = ent;
+    }
+
+    istringstream stream(order);
+    string dir;
+    while(stream >> dir) {
+        map<string, const git_tree_entry *>::iterator it = root.find(dir);
+        if (it == root.end())
+            continue;
+        ordered.push_back(make_pair(it->first, it->second));
+        root.erase(it);
+    }
+    for (map<string, const git_tree_entry *>::iterator it = root.begin();
+         it != root.end(); ++it)
+        ordered.push_back(make_pair(it->first, it->second));
+
+    for (vector<pair<const string, const git_tree_entry *>>::iterator it = ordered.begin();
+        it != ordered.end(); ++it) {
         
-        smart_object<git_object> obj;
-        git_tree_entry_to_object(obj, curr_repo, ent);
-        string path = pfx + git_tree_entry_name(ent);
+        // We use a plain git_object here rather than a smart object, since
+        // attatching a smart_object to tree_to_walk causes a segfault once we
+        // try to access it, I'm assuming because the smart_object has been
+        // released already. Not sure if I can avoid this somehow...
+        // For now, use a plain git_object. If the object is a blob, we free it
+        // right away. If it's a tree we free it either right away if we're now
+        // spawning new work, or once the trees_to_walk_ has been walked (in process_trees).
+        git_object *obj;
+        git_tree_entry_to_object(&obj, curr_repo, it->second);
+        string path = pfx + it->first;
 
-        /* fprintf(stderr, "walking obj with path: %s/%s\n", repopath.c_str(), path.c_str()); */
-
-        if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
-            if (depth == 1) { // don't add to the thread workload
-                walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, obj, curr_repo, 1);
-            } else {
-                tree_to_walk *t = new tree_to_walk;
-                t->prefix = path + "/";
-                t->order = "";
-                t->repopath = repopath;
-                t->walk_submodules = walk_submodules;
-                t->submodule_prefix = submodule_prefix;
-                t->idx_tree = idx_tree;
-
-                git_object *obj1; 
-                git_tree_entry_to_object(&obj1, curr_repo, ent);
-                t->tree = (git_tree *)(obj1);
-                t->repo = curr_repo;
-
-                trees_to_walk_.push(t);
+        if (git_tree_entry_type(it->second) == GIT_OBJ_TREE) {
+            // We only have threads chew through root level directories.
+            // And if order is set, then we don't want to be unsure of which
+            // tree is going to end up getting walked and posted to
+            // files_to_index_ first.
+            if (mode_singlethreaded_ || depth == 1) {
+                walk_tree(path + "/", "", repopath, walk_submodules, submodule_prefix, idx_tree, (git_tree*)obj, curr_repo, 1);
+                git_object_free(obj);
+                continue;
             }
-        } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB) {
+
+            // If this is a root tree, add it to the list of trees to walk concurrently
+            tree_to_walk *t = new tree_to_walk;
+            t->prefix = path + "/";
+            t->repopath = repopath;
+            t->walk_submodules = walk_submodules;
+            t->submodule_prefix = submodule_prefix;
+            t->idx_tree = idx_tree;
+            t->tree = (git_tree*)obj;
+            t->repo = curr_repo;
+
+            trees_to_walk_.push(t);
+
+        } else if (git_tree_entry_type(it->second) == GIT_OBJ_BLOB) {
             const string full_path = submodule_prefix + path;
 
             pre_indexed_file *file = new pre_indexed_file;
-
             file->tree = idx_tree;
             file->repopath = repopath;
             file->path = path;
             file->score = score_file(full_path);
             file->repo = curr_repo;
             file->oid = (git_oid *)malloc(sizeof(git_oid));
-            git_oid_cpy(file->oid, git_blob_id(obj));
+            git_oid_cpy(file->oid, git_object_id(obj));
 
-            fq_.push(file);
-        } else if (git_tree_entry_type(ent) == GIT_OBJ_COMMIT) {
+            git_object_free(obj); // free the blob
+
+            // This is as fast or faster, belive it or not, than using a queue
+            // per thread, then pushing the results onto the global list after
+            // each thread is done.
+            std::lock_guard<std::mutex> guard(files_mutex_);
+            files_to_index_.push_back(file);
+        } else if (git_tree_entry_type(it->second) == GIT_OBJ_COMMIT) {
             // Submodule
             if (!walk_submodules) {
                 continue;
@@ -316,14 +323,14 @@ void git_indexer::walk_tree(std::string pfx,
             string new_submodule_prefix = submodule_prefix + path + "/";
             Metadata meta;
 
-            const git_oid* rev = git_tree_entry_id(ent);
+            const git_oid* rev = git_tree_entry_id(it->second);
             char revstr[GIT_OID_HEXSZ + 1];
             git_oid_tostr(revstr, GIT_OID_HEXSZ + 1, rev);
 
             // Open the submodule repo
             git_repository *sub_repo;
 
-            int err = git_repository_open_bare(&sub_repo, sub_repopath.c_str());
+            int err = git_repository_open(&sub_repo, sub_repopath.c_str());
 
             if (err < 0) {
                 fprintf(stderr, "Unable to open subrepo: %s\n", sub_repopath.c_str());
@@ -332,10 +339,8 @@ void git_indexer::walk_tree(std::string pfx,
 
             walk(sub_repo, string(revstr), sub_repopath, string(sub_name), meta, walk_submodules, new_submodule_prefix);
 
-            // TODO: See if this is efficient enough. We're depending on
-            // libgi2's shutdown to close these submodule repos, while we
-            // manually close those that we append to open_git_repos_.
-            /* git_repository_free(sub_repo); */
+            std::lock_guard<std::mutex> guard(files_mutex_);
+            open_git_repos_.push_back(sub_repo);
         }
     }
 }
