@@ -11,7 +11,6 @@
 #include <string>
 #include "src/proto/config.pb.h"
 #include "src/smart_git.h"
-/* #include "src/lib/per_thread.h" */
 #include "src/lib/threadsafe_progress_indicator.h"
 #include "src/lib/thread_queue.h"
 
@@ -53,8 +52,7 @@ public:
     ~git_indexer();
     void begin_indexing();
 protected:
-    int get_next_repo_idx();
-    void process_repos(int estimatedReposToProcess, threadsafe_progress_indicator *tpi);
+    void process_trees();
     void walk(git_repository *curr_repo,
             std::string ref,
             std::string repopath,
@@ -73,18 +71,17 @@ protected:
                    int depth);
     void index_files();
     void print_last_git_err_and_exit(int err);
-    void process_trees(int thread_id);
 
     code_searcher *cs_;
-    std::string submodule_prefix_;
     const google::protobuf::RepeatedPtrField<RepoSpec>& repositories_to_index_;
     const int repositories_to_index_length_;
     bool mode_singlethreaded_;
+    std::vector<std::thread> threads_;
+    thread_queue<tree_to_walk*> trees_to_walk_;
+
     std::mutex files_mutex_;
     std::vector<pre_indexed_file*> files_to_index_;
     std::vector<git_repository *> open_git_repos_;
-    std::vector<std::thread> threads_;
-    thread_queue<tree_to_walk*> trees_to_walk_;
 };
 
 #endif

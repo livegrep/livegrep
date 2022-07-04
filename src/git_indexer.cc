@@ -49,7 +49,7 @@ void git_indexer::print_last_git_err_and_exit(int err) {
     exit(1);
 }
 
-void git_indexer::process_trees(int thread_id) {
+void git_indexer::process_trees() {
     tree_to_walk *d;
 
     while (trees_to_walk_.pop(&d)) {
@@ -112,7 +112,7 @@ void git_indexer::begin_indexing() {
     open_git_repos_.reserve(repositories_to_index_length_);
     threads_.reserve(num_threads);
     for (long i = 0; i < num_threads; ++i) {
-        threads_.emplace_back(&git_indexer::process_trees, this, i);
+        threads_.emplace_back(&git_indexer::process_trees, this);
     }
 
     // in both single and multi thread modes, try to bump the number of file
