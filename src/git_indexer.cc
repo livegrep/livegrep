@@ -56,6 +56,7 @@ void git_indexer::process_trees() {
         walk_tree(d->prefix, "", d->repopath, d->walk_submodules, 
                 d->submodule_prefix, d->idx_tree, d->tree, d->repo, 1);
         git_tree_free(d->tree);
+        delete(d);
     }
 }
 
@@ -183,6 +184,7 @@ void git_indexer::index_files() {
 
         git_blob *blob;
         int err = git_blob_lookup(&blob, file->repo, file->oid);
+        free(file->oid);
 
         if (err < 0) {
             print_last_git_err_and_exit(err);
@@ -192,6 +194,7 @@ void git_indexer::index_files() {
         cs_->index_file(file->tree, file->path, StringPiece(data, git_blob_rawsize(blob)));
 
         git_blob_free(blob);
+        delete(file);
         tpi.tick();
     }
 }
