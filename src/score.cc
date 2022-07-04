@@ -11,7 +11,7 @@ using re2::RE2;
 using std::string;
 
 static RE2 generated_re("min\\.(js|css)|js\\.map|_pb2\\/|generated|minified|bundle\\.|package-lock\\.json|yarn\\.lock|go\\.sum");
-static RE2 vendor_re("(node_modules|vendor|github.com|third_party|thirdparty)\\/");
+static RE2 vendor_re("(node_modules|vendor|github.com|third_party|thirdparty|external)\\/");
 static RE2 test_re("test|\\.spec\\.jsx");
 
 int score_file(const string& file_path) {

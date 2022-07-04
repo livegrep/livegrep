@@ -30,6 +30,7 @@ TEST(ScoreTest, ScoresFilesAsExpected) {
         {"github.com/cloud.google.com/go/iam/iam.go", -100},
         {"third_party/BUILD.divsufsort", -100},
         {"thirdparty/BUILD.divsufsort", -100},
+        {"external/libgit2/s.c", -100},
 
         // test code
         {"client/test/BUILD", -50},
