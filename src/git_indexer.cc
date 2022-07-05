@@ -206,12 +206,12 @@ void git_indexer::index_files() {
 }
 
 void git_indexer::walk(git_repository *curr_repo,
-        std::string ref, 
-        std::string repopath, 
-        std::string name,
+        const std::string& ref,
+        const std::string& repopath,
+        const std::string& name,
         Metadata metadata,
         bool walk_submodules,
-        std::string submodule_prefix) {
+        const std::string& submodule_prefix) {
     smart_object<git_commit> commit;
     smart_object<git_tree> tree;
     if (0 != git_revparse_single(commit, curr_repo, (ref + "^0").c_str())) {
@@ -229,11 +229,11 @@ void git_indexer::walk(git_repository *curr_repo,
 }
 
 
-void git_indexer::walk_tree(std::string pfx,
-                            std::string order,
-                            std::string repopath,
+void git_indexer::walk_tree(const std::string& pfx,
+                            const std::string& order,
+                            const std::string& repopath,
                             bool walk_submodules,
-                            std::string submodule_prefix,
+                            const std::string& submodule_prefix,
                             const indexed_tree *idx_tree,
                             git_tree *tree,
                             git_repository *curr_repo,

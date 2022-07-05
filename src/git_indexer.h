@@ -54,17 +54,17 @@ public:
 protected:
     void process_trees();
     void walk(git_repository *curr_repo,
-            std::string ref,
-            std::string repopath,
-            std::string name,
+            const std::string& ref,
+            const std::string& repopath,
+            const std::string& name,
             Metadata metadata,
             bool walk_submodules,
-            std::string submodule_prefix);
-    void walk_tree(std::string pfx,
-                   std::string order,
-                   std::string repopath,
+            const std::string& submodule_prefix);
+    void walk_tree(const std::string& pfx,
+                   const std::string& order,
+                   const std::string& repopath,
                    bool walk_submodules,
-                   std::string submodule_prefix,
+                   const std::string& submodule_prefix,
                    const indexed_tree *idx_tree,
                    git_tree *tree,
                    git_repository *curr_repo,
