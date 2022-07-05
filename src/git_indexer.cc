@@ -108,8 +108,8 @@ void git_indexer::index_repos() {
         increaseOpenFileLimitToMax();
     }
 
-    threadsafe_progress_indicator tpi(repositories_to_index_length_, "Walking repos...", "Done");
-     for (const auto &repo : repositories_to_index_) {
+    int idx = 1;
+    for (const auto &repo : repositories_to_index_) {
         const char *repopath = repo.path().c_str();
 
         git_repository *curr_repo = NULL;
@@ -120,22 +120,42 @@ void git_indexer::index_repos() {
         }
         open_git_repos_.push_back(curr_repo);
 
+        fprintf(stderr, "Walking repo_spec [%d/%d] name=%s, path=%s (including submodules: %s)\n",
+                idx, repositories_to_index_length_, repo.name().c_str(), repo.path().c_str(), 
+                repo.walk_submodules() ? "true" : "false");
         for (auto &rev : repo.revisions()) {
+            fprintf(stderr, " walking %s... ", rev.c_str());
             walk(curr_repo, rev, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules(), "");
+            fprintf(stderr, "done\n");
         }
-        tpi.tick();
-     }
-
-    fprintf(stderr, "walking repo trees...\n");
+        idx += 1;
+    }
 
     // we can close the trees, since we only add to trees_to_walk_ at the
     // root level of walk_tree, so once we've walked all repos we won't be
     // adding anymore trees.
     trees_to_walk_.close();
-    for (long i = 0; i < num_threads; ++i) {
-        threads_[i].join();
+
+    // this is a compromise between performance and wanting to give the user
+    // some indication of progress. We poll at some interval that doesn't
+    // intrude on the mutex too much, until there are no trees to work on.
+    // Once size is 0, that doesn't mean there are no trees being worked on, 
+    // so we still have to wait for the threads to join
+    fprintf(stderr, "\nwalking repo trees...\n");
+    for(;;)
+    {
+        // We get the current size of the thing 
+        int curr = trees_to_walk_.size();
+        if (curr == 0) break;
+        fprintf(stderr, "    %d remaining\n", curr);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+
+    for (auto it = threads_.begin(); it != threads_.end(); ++it) {
+        it->join();
     }
     fprintf(stderr, "    done.\n");
+    
     index_files();
 }
 
@@ -155,12 +175,12 @@ void git_indexer::index_files() {
     // have ended up at any index. If FLAGS_order_root is set, then
     // multi-threading is disabled, so we don't have to re-check
     if (!is_singlethreaded_) {
-        fprintf(stderr, "sorting files_to_index_ by tree... [%lu]\n", files_to_index_.size());
+        fprintf(stderr, "sorting files_to_index_ by tree...\n");
         std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByTree);
         fprintf(stderr, "  done\n");
     }
 
-    fprintf(stderr, "sorting files_to_index_ by score... [%lu]\n", files_to_index_.size());
+    fprintf(stderr, "sorting files_to_index_ by score...\n");
     std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByScore);
     fprintf(stderr, "  done\n");
 

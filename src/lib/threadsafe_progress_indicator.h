@@ -30,7 +30,7 @@ class threadsafe_progress_indicator {
                 << work_done_ << "/" << work_todo_ << "]";
 
             if (work_todo_ == work_done_) {
-                os << " " << done_suffix_ << "\n";
+                os << "\n" << "    " << done_suffix_ << "\n";
                 wrote_done_suffix_ = true;
                 os << std::flush;
             }
