@@ -1,3 +1,10 @@
+/********************************************************************
+ * livegrep -- score.cc
+ * Copyright (c) 2022 Rodrigo Silva Mendoza
+ *
+ * This program is free software. You may use, redistribute, and/or
+ * modify it under the terms listed in the COPYING file.
+ ********************************************************************/
 #include <stdio.h>
 #include <string.h>
 

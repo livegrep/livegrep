@@ -1,5 +1,5 @@
 /********************************************************************
- * livegrep -- rlimit.h
+ * livegrep -- score.h
  * Copyright (c) 2022 Rodrigo Silva Mendoza
  *
  * This program is free software. You may use, redistribute, and/or
