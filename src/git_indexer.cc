@@ -103,7 +103,7 @@ void git_indexer::index_repos() {
     // in both single and multi thread modes, try to bump the number of file
     // descriptors to the max allowed by the OS. We don't do any fancy attempts
     // at keeping the number of files <= max, we mostly just hope it will be
-    // enough. We can definetely keep track of that if it becomes necessary.
+    // enough. We can definitely keep track of that if it becomes necessary.
     if (FLAGS_increase_fds) {
         increaseOpenFileLimitToMax();
     }
@@ -144,7 +144,6 @@ void git_indexer::index_repos() {
     fprintf(stderr, "\nwalking repo trees...\n");
     for(;;)
     {
-        // We get the current size of the thing 
         int curr = trees_to_walk_.size();
         if (curr == 0) break;
         fprintf(stderr, "    %d remaining\n", curr);
@@ -264,7 +263,7 @@ void git_indexer::walk_tree(std::string pfx,
         it != ordered.end(); ++it) {
         
         // We use a plain git_object here rather than a smart object, since
-        // attatching a smart_object to tree_to_walk causes a segfault once we
+        // attaching a smart_object to tree_to_walk causes a segfault once we
         // try to access it, I'm assuming because the smart_object has been
         // released already. Not sure if I can avoid this somehow...
         // For now, use a plain git_object. If the object is a blob, we free it
@@ -311,7 +310,7 @@ void git_indexer::walk_tree(std::string pfx,
 
             git_object_free(obj); // free the blob
 
-            // This is as fast or faster, belive it or not, than using a queue
+            // This is as fast or faster, believe it or not, than using a queue
             // per thread, then pushing the results onto the global list after
             // each thread is done.
             std::lock_guard<std::mutex> guard(files_mutex_);

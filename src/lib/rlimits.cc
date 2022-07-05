@@ -36,7 +36,7 @@ void increaseOpenFileLimitToMax() {
         uint32_t real_limit;
         size_t len = sizeof(real_limit);
         if (sysctlbyname("kern.maxfilesperproc", &real_limit, &len, nullptr, 0) != 0) {
-            fprintf(stderr, "failed to get sysctlbyname('kern.maxfilesperproc'). Can't bumpt open file descriptors\n");
+            fprintf(stderr, "failed to get sysctlbyname('kern.maxfilesperproc'). Can't bump open file descriptors\n");
             return;
         }
 
