@@ -170,7 +170,8 @@ bool compareFilesByTree(pre_indexed_file *a, pre_indexed_file *b) {
 // get indexed last, and so show up in sorts results last. We use a stable sort
 // so that most of a repos files are indexed together
 void git_indexer::index_files() {
-    // in multi-threaded mode, we sort by tree since a tree/repos files could
+
+    // in multi-threaded mode, we also sort by tree since a tree/repos files could
     // have ended up at any index. If FLAGS_order_root is set, then
     // multi-threading is disabled, so we don't have to re-check
     if (!is_singlethreaded_) {
