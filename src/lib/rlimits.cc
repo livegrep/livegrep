@@ -40,7 +40,7 @@ void increaseOpenFileLimitToMax() {
             return;
         }
 
-        l.rlim_max = limit;
+        l.rlim_max = real_limit;
     }
 #endif
 
