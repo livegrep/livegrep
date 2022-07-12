@@ -180,7 +180,7 @@ func callGit(program string, args []string, username string, password string) er
 }
 
 // calls a `git ...` command. Output is added to a buffer and returned
-func callGetGetOutput(program string, args []string, username string, password string) ([]byte, error) {
+func callGetGitOutput(program string, args []string, username string, password string) ([]byte, error) {
 	buff, err := callGitInternal(program, args, username, password, true)
 	return buff, err
 }
@@ -316,12 +316,19 @@ func checkoutOne(r *config.RepoSpec) error {
 
 	// git ls-remote --symref origin HEAD
 	g.Go(func() error {
-		remoteOut, remoteErr = callGetGetOutput("git", lsRemoteArgs, username, password)
+		remoteOut, remoteErr = callGetGitOutput("git", lsRemoteArgs, username, password)
 		return remoteErr
 	})
 
 	if err := g.Wait(); err != nil {
 		return err
+	}
+
+	// If there is no remote out, then we have an empty repository.
+	// We should skip and do nothing at this point
+	if remoteOut == nil || len(remoteOut) == 0 {
+		log.Printf("Repository %s at %s is empty, skipping", r.Name, r.Path)
+		return nil
 	}
 
 	currHeadOut, err := exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD").Output()
