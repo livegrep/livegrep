@@ -324,15 +324,22 @@ func checkoutOne(r *config.RepoSpec) error {
 		return err
 	}
 
+	// Early check, if there's no remote HEAD we can't do anything
+	remoteOutClean := strings.TrimSpace(string(remoteOut))
+	if remoteOutClean == "" {
+		log.Printf("%s: Won't update HEAD. Empty `git ls-remote --symref origin HEAD` (empty repo?)\n", r.Name)
+		return nil
+	}
+
 	currHeadOut, err := exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD").Output()
 	if err != nil {
 		return err
 	}
 	currHead := strings.TrimSpace(string(currHeadOut))
 
-	submatches := remoteHeadRefExtractorReg.FindStringSubmatch(string(remoteOut))
-	if len(submatches) == 1 {
-		return errors.New("could not parse ls-remote --symref origin HEAD output")
+	submatches := remoteHeadRefExtractorReg.FindStringSubmatch(remoteOutClean)
+	if len(submatches) < 2 {
+		return errors.New(fmt.Sprintf("%s: could not parse `ls-remote --symref origin HEAD` output: %s\n", r.Name, remoteOutClean))
 	}
 	remoteHead := strings.TrimSpace(submatches[1])
 
