@@ -326,7 +326,7 @@ func checkoutOne(r *config.RepoSpec) error {
 
 	// If there is no remote out, then we have an empty repository.
 	// We should skip and do nothing at this point
-	if remoteOut == nil || len(remoteOut) == 0 {
+	if len(remoteOut) == 0 {
 		log.Printf("Repository %s at %s is empty, skipping", r.Name, r.Path)
 		return nil
 	}
