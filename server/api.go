@@ -48,8 +48,13 @@ func writeQueryError(ctx context.Context, w http.ResponseWriter, err error) {
 }
 
 func extractQuery(ctx context.Context, r *http.Request) (pb.Query, bool, error) {
-	params := r.URL.Query()
 	var query pb.Query
+
+	if err := r.ParseForm(); err != nil {
+		return query, false, err
+	}
+
+	params := r.Form
 	var err error
 
 	regex := true

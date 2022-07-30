@@ -348,8 +348,12 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
 
+	// GET (with query parameters) is for backward compatibility; the UI now
+	// uses POST (with form parameters).
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
+	m.Add("POST", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
+	m.Add("POST", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 
 	var h http.Handler = m
 

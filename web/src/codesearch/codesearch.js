@@ -38,9 +38,12 @@ var Codesearch = function() {
         repo: opts.repo
       };
 
-      url = url + "?" + $.param(q);
-
-      var xhr = $.getJSON(url);
+      var xhr = $.ajax({
+        method: 'POST',
+        url: url,
+        data: q,
+        dataType: "json",
+      });
       var start = new Date();
       xhr.done(function (data) {
         var elapsed = new Date() - start;
