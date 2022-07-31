@@ -9,9 +9,10 @@ can see a running instance at
 Building
 --------
 
-livegrep builds using [bazel][bazel]. You will need to
-[install][bazel-install] a fairly recent version: as of this writing
-we test on bazel 4.0.0.
+livegrep builds using [bazel][bazel]. You will need to 
+[install][bazel-install] with a version matching that in `.bazelversion`.
+Running bazel via [bazelisk][bazelisk] will download the right version
+automatically.
 
 livegrep vendors and/or fetches all of its dependencies using `bazel`,
 and so should only require a relatively recent C++ compiler to build.
@@ -25,6 +26,7 @@ dependencies. These will be cached once downloaded.
 
 [bazel]: http://www.bazel.io/
 [bazel-install]: http://www.bazel.io/docs/install.html
+[bazelisk]: https://bazel.build/install/bazelisk
 
 Invoking
 --------
