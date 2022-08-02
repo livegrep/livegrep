@@ -22,7 +22,7 @@ runfiles_tmpl = '''#!/bin/bash -eu
 #       to prevent Python from prepending '' to sys.path and allowing
 #       modules from $PWD to be imported as top level modules.
 
-STUBPATH=$(/usr/bin/env python -ESs <(echo "import os.path; print(os.path.realpath(os.path.abspath('$0').split('.runfiles')[0]));"))
+STUBPATH=$(/usr/bin/env python3 -ESs <(echo "import os.path; print(os.path.realpath(os.path.abspath('$0').split('.runfiles')[0]));"))
 STUBPATH=$STUBPATH.runfiles
 
 export RUNFILES=$STUBPATH/{workspace_name}
