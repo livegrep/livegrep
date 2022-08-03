@@ -4,8 +4,8 @@
     --color-background-hover: #d4d4d4;
     --color-background-modal-overlay: rgba(0, 0, 0, 0.1);
     --color-foreground: #000000;
-    --color-foreground-muted: #404040;
-    --color-foreground-subtle: #7d7d7d;
+    --color-foreground-muted: hsl(0, 0%, 25%);
+    --color-foreground-subtle: hsl(0, 0%, 40%);
     --color-foreground-emphasis: #000000;
     --color-shadow: rgba(0, 0, 0, 0.25);
 
@@ -55,8 +55,8 @@
         --color-background-hover: hsl(214, 21%, 17%);
         --color-background-modal-overlay: rgba(0, 0, 0, 0.1);
         --color-foreground: #c9d1d9;
-        --color-foreground-muted: #8b949e;
-        --color-foreground-subtle: #6e7681;
+        --color-foreground-muted: hsl(215, 8%, 47%);
+        --color-foreground-subtle: hsl(212, 9%, 58%);
         --color-foreground-emphasis: #ffffff;
         --color-shadow: rgba(0, 0, 0, 0.25);
 
@@ -460,7 +460,7 @@ a:hover {
 }
 
 .matchlinks {
-    opacity: 0.3;
+    opacity: 0.7;
     text-align: right;
 }
 
