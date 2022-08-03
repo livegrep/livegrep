@@ -22,7 +22,7 @@ runfiles_tmpl = '''#!/bin/bash -eu
 #       to prevent Python from prepending '' to sys.path and allowing
 #       modules from $PWD to be imported as top level modules.
 
-STUBPATH=$(/usr/bin/env python -ESs <(echo "import os.path; print(os.path.realpath(os.path.abspath('$0').split('.runfiles')[0]));"))
+STUBPATH=$(/usr/bin/env python3 -ESs <(echo "import os.path; print(os.path.realpath(os.path.abspath('$0').split('.runfiles')[0]));"))
 STUBPATH=$STUBPATH.runfiles
 
 export RUNFILES=$STUBPATH/{workspace_name}
@@ -144,12 +144,6 @@ def _npm_library_impl(ctx):
     if ctx.attr.npm_installer_extra_args:
         command_args.extend(ctx.attr.npm_installer_extra_args)
 
-    env = {}
-    if "HTTP_PROXY" in ctx.var:
-        env["HTTP_PROXY"] = ctx.var["HTTP_PROXY"]
-    if "HTTPS_PROXY" in ctx.var:
-        env["HTTPS_PROXY"] = ctx.var["HTTPS_PROXY"]
-
     ctx.actions.run(
         inputs = [shrinkwrap],
         outputs = node_modules_srcs_dict.values(),
@@ -157,7 +151,7 @@ def _npm_library_impl(ctx):
         arguments = command_args,
         progress_message = "installing node modules from {}".format(shrinkwrap.path),
         mnemonic = "InstallNPMModules",
-        env = env,
+        use_default_shell_env = True,
     )
 
     all_node_modules = _new_all_node_modules()
