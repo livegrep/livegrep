@@ -1,14 +1,160 @@
+:root {
+    --color-background: #ffffff;
+    --color-background-subtle: #f8f8f8;
+    --color-background-hover: #d4d4d4;
+    --color-background-modal-overlay: rgba(0, 0, 0, 0.1);
+    --color-foreground: #000000;
+    --color-foreground-muted: #404040;
+    --color-foreground-subtle: #7d7d7d;
+    --color-foreground-emphasis: #000000;
+    --color-shadow: rgba(0, 0, 0, 0.25);
+
+    --color-foreground-matchstr: inherit;
+    --color-background-matchstr: rgba(255, 234, 170, 0.75);
+    --color-outline-highlight-focus: rgba(255, 234, 170, 0.5);
+    --color-background-highlight-focus: rgba(255, 234, 170, 0.33);
+
+    --color-foreground-symlink: rgba(60, 60, 60);
+    --color-foreground-symlink-target: rgba(115, 115, 115);
+
+    --color-foreground-accent: #337ab7;
+    --color-foreground-error: #dd3b38;
+
+    --color-border-default: rgb(230, 230, 230);
+    --color-border-subtle: rgb(192, 192, 192);
+
+    --color-file-group-background: rgb(233, 237, 245);
+    --color-file-group-accent: #a0d1fa;
+
+    --color-prefixed-input-border: rgba(0, 0, 0, 0.1);
+    --color-prefixed-input-border-hover: rgba(0, 126, 229, 0.1);
+    --color-prefixed-input-border-focus: rgba(0, 126, 229, 0.25);
+    --color-prefixed-input-border-valid: rgba(0, 0, 0, 0.4);
+    --color-prefixed-input-border-valid-hover: rgba(0, 126, 229, 0.45);
+    --color-prefixed-input-border-valid-focus: rgba(0, 126, 229, 0.75);
+
+    --color-syntax-comment: #999988;
+    --color-syntax-string: #e3116c;
+    --color-syntax-punctuation: #393a34;
+    --color-syntax-entity: #007c7b;
+    --color-syntax-keyword: #0075a9;
+    --color-syntax-function: #9a050f;
+    --color-syntax-tag: #00009f;
+
+    --color-bootstrap-button-background: var(--color-background-subtle);
+    --color-bootstrap-select-background: var(--color-background-subtle);
+    --color-bootstrap-select-background-hover: var(--color-background-hover);
+
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-background: #0d1117;
+        --color-background-subtle: #161b22;
+        --color-background-hover: hsl(214, 21%, 17%);
+        --color-background-modal-overlay: rgba(0, 0, 0, 0.1);
+        --color-foreground: #c9d1d9;
+        --color-foreground-muted: #8b949e;
+        --color-foreground-subtle: #6e7681;
+        --color-foreground-emphasis: #ffffff;
+        --color-shadow: rgba(0, 0, 0, 0.25);
+
+        --color-foreground-matchstr: inherit;
+        --color-background-matchstr: rgb(198, 140, 40, 0.4);
+        --color-outline-highlight-focus: rgba(187, 128, 9, 0.4);
+        --color-background-highlight-focus: rgba(187, 128, 9, 0.15);
+
+        --color-foreground-symlink: rgba(60, 60, 60);
+        --color-foreground-symlink-target: rgba(115, 115, 115);
+
+        --color-foreground-accent: #417dc1;
+        --color-foreground-error: #d73a49;
+
+        --color-border-default: #30363d;
+        --color-border-subtle: #6e7681;
+
+        --color-file-group-background: var(--color-background-subtle);
+        --color-file-group-accent: #6e6e6e;
+
+        --color-prefixed-input-border: rgb(45, 51, 59);
+        --color-prefixed-input-border-hover: hsl(208, 17%, 45%);
+        --color-prefixed-input-border-focus: hsl(208, 47%, 44%);
+        --color-prefixed-input-border-valid: hsl(208, 0%, 60%);
+        --color-prefixed-input-border-valid-hover: rgb(63, 121, 168);
+        --color-prefixed-input-border-valid-focus: rgb(72, 167, 244);
+
+        --color-syntax-comment: #8b949e;
+        --color-syntax-string: #a5d6ff;
+        --color-syntax-punctuation: #79c0ff;
+        --color-syntax-entity: #7ee787;
+        --color-syntax-keyword: #ff7b72;
+        --color-syntax-function: #d2a8ff;
+        --color-syntax-tag: #7ee787;
+
+        --color-bootstrap-button-background: var(--color-background-subtle);
+        --color-bootstrap-select-background: var(--color-background-subtle);
+        --color-bootstrap-select-background-hover: var(--color-background-hover);
+
+        color-scheme: dark;
+    }
+}
+
+.bootstrap-select.btn-group .dropdown-menu .notify,
+.bootstrap-select.btn-group .no-results {
+    background: var(--color-bootstrap-select-background);
+}
+
+.bootstrap-select.btn-group .btn {
+    background: var(--color-bootstrap-select-background);
+    border-color: var(--color-border-default);
+    color: var(--color-foreground-muted);
+}
+
+.bootstrap-select.btn-group .btn:hover {
+    background: var(--color-bootstrap-select-background-hover);
+    border-color: var(--color-border-default);
+    color: var(--color-foreground) !important;
+}
+
+.bootstrap-select.btn-group .no-results {
+    background-color: inherit !important;
+}
+
+.dropdown-menu > .active > a,
+.dropdown-menu > .active > a:hover,
+.dropdown-menu > .active > a:focus {
+    background-color: var(--color-background-hover);
+}
+
+
+.dropdown-menu {
+    background: var(--color-bootstrap-select-background);
+}
+
+.dropdown-menu > li > a {
+    color: var(--color-foreground);
+}
+.dropdown-menu > li > a:hover {
+    color: var(--color-foreground);
+    background: var(--color-bootstrap-select-background-hover);
+}
+
 body {
+    background: var(--color-background);
+    color: var(--color-foreground);
     margin: 0;
     font-family: sans-serif;
 }
 
 a {
     text-decoration: none;
+    color: var(--color-foreground-accent);
 }
 
 a:hover {
     text-decoration: underline;
+    color: var(--color-foreground-accent);
 }
 
 #searcharea {
@@ -20,7 +166,7 @@ a:hover {
     margin-right: auto;
     position: relative;
     padding: 20px;
-    background: white;
+    background: var(--color-background);
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -34,7 +180,7 @@ a:hover {
 .prefixed-input input[type=text] {
     vertical-align: bottom;
     border: none;
-    border-bottom: solid 2px rgba(0, 0, 0, 0.1);
+    border-bottom: solid 2px var(--color-prefixed-input-border);
     padding: 10px 0 5px 0;
     transition: border 150ms;
     width: 100%;
@@ -42,24 +188,24 @@ a:hover {
 
 .prefixed-input input[type=text]:hover {
     outline: none;
-    border-color: rgba(0, 126, 229, 0.1);
+    border-color: var(--color-prefixed-input-border-hover);
 }
 
 .prefixed-input input[type=text]:focus {
     outline: none;
-    border-color: rgba(0, 126, 229, 0.25);
+    border-color: var(--color-prefixed-input-border-focus)
 }
 
 .prefixed-input input[type=text]:valid {
-    border-color: rgba(0, 0, 0, 0.4);
+    border-color: var(--color-prefixed-input-border-valid)
 }
 
 .prefixed-input input[type=text]:valid:hover {
-    border-color: rgba(0, 126, 229, 0.45);
+    border-color: var(--color-prefixed-input-border-valid-hover)
 }
 
 .prefixed-input input[type=text]:valid:focus {
-    border-color: rgba(0, 126, 229, 0.75);
+    border-color: var(--color-prefixed-input-border-valid-focus)
 }
 
 #searcharea #searchbox {
@@ -70,13 +216,13 @@ a:hover {
     padding-top: 5px;
     font-size: 11px;
     font-style: italic;
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--color-foreground-subtle);
 }
 
 .query-hint code {
-    border: 1px solid rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 3px;
-    background: #f8f8f8;
+    background: var(--color-background-subtle);
     font-style: normal;
     margin: 0px 1px;
     padding: 1px 3px;
@@ -100,7 +246,7 @@ a:hover {
 }
 
 #errortext {
-    color: #DD3B38;
+    color: var(--color-foreground-error);
     font-size: 14px;
 }
 
@@ -113,7 +259,7 @@ a:hover {
 .prefixed-input .prefix-label {
     position: absolute;
     top: 12px;
-    color: #000;
+    color: var(--color-foreground);
     font-size: 12px;
     font-weight: bold;
 }
@@ -129,7 +275,7 @@ a:hover {
 /* END */
 
 .tooltip-target {
-    border-bottom: 1px dotted #000;
+    border-bottom: 1px dotted var(--color-foreground-emphasis);
     position: relative;
     cursor: help;
 }
@@ -138,10 +284,10 @@ a:hover {
     display: none;
     position: absolute;
     top: 20px;
-    border: 1px solid black;
+    border: 1px solid var(--color-foreground-emphasis);
     border-radius: 3px;
     padding: 0px 4px;
-    background-color: #fff;
+    background-color: var(--color-background);
 }
 
 .tooltip-target:hover .tooltip {
@@ -177,7 +323,7 @@ a:hover {
 .credit {
     text-align: center;
     font-size: smaller;
-    color: #999;
+    color: var(--color-foreground-subtle);
 }
 
 .label {
@@ -198,10 +344,10 @@ a:hover {
 }
 
 .file-group {
-    background: rgba(19, 61, 153, 0.09);   
+    background: var(--color-file-group-background);
     margin-bottom: 15px;
-    border: solid 1px rgba(0, 0, 0, 0.1);
-    border-left: solid 3px #A0D1FA;
+    border: solid 1px var(--color-border-default);
+    border-left: solid 3px var(--color-file-group-accent);
 }
 
 .file-group .header {
@@ -221,7 +367,7 @@ a:hover {
 }
 
 .result-path {
-    color: #3d464d;
+    color: var(--color-foreground-muted);
     font-family: "Menlo", "Consolas", "Monaco", monospace;
     font-size: 12px;
     font-weight: normal;
@@ -232,16 +378,16 @@ a:hover {
 }
 
 .result-path .repo, .result-path .version {
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--color-foreground-muted);
 }
 
 .match {
     display: block;
-    background-color: #fff;
+    background-color: var(--color-background);
 }
 
 .match + .match {
-    border: solid 1px rgba(0, 0, 0, 0.15);
+    border: solid 1px var(--color-border-default);
     margin-top: 5px;
 }
 
@@ -265,7 +411,7 @@ a:hover {
     font-family: "Menlo", "Consolas", "Monaco", monospace;
     font-size: 12px;
     padding: 10px 5px;
-    color: #000;
+    color: var(--color-foreground);
     margin: 0;
 }
 
@@ -300,7 +446,7 @@ a:hover {
 }
 
 .lno-link {
-    color: #3d464d;
+    color: var(--color-foreground-subtle);
     padding-right: 1em;
     text-align: right;
 }
@@ -319,7 +465,7 @@ a:hover {
 }
 
 .match:hover {
-    background-color: #f5f5f5;
+    background-color: var(--color-background-subtle);
 }
 
 .match:hover .matchlinks {
@@ -327,7 +473,8 @@ a:hover {
 }
 
 .matchstr {
-    background: rgba(255, 234, 170, 0.75);
+    background: var(--color-background-matchstr);
+    color: var(--color-foreground-matchstr);
     font-weight: bold;
 }
 
@@ -345,7 +492,7 @@ a:hover {
 
 #header li:before {
     content: "∙";
-    color: #999;
+    color: var(--color-foreground-subtle);
     text-decoration: none;
     margin: 5px;
 }
@@ -358,7 +505,7 @@ a:hover {
 
 #header {
     font-size: 12px;
-    color: #999;
+    color: var(--color-foreground-subtle);
     margin: 1em auto;
     width: 40em;
     text-align: center;
@@ -392,17 +539,17 @@ a:hover {
        of the code block. This will align the header content with the code. */
     padding-left: 95px;
 
-    background-color: white;
-    border-bottom: solid 1px rgba(0,0,0,0.15);
-    box-shadow: 0 0 5px rgba(0,0,0,0.15);
+    background-color: var(--color-background-subtle);
+    border-bottom: solid 1px var(--color-border-default);
+    box-shadow: 0 0 5px var(--color-shadow);
 }
 
 .file-viewer .header .repo {
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--color-foreground-muted);
 }
 
 .file-viewer .header .repo:hover {
-    color: rgba(0, 0, 0, 1.0);
+    color: var(--color-foreground-emphasis);
 }
 
 .file-viewer .header-title {
@@ -445,29 +592,30 @@ a:hover {
 }
 
 .file-viewer .line-numbers a:focus {
-    outline: solid 1px rgba(255, 234, 170, 0.5);
-    background: rgba(255, 234, 170, 0.33);
+    outline: solid 1px var(--color-outline-highlight-focus);
+    background: var(--color-background-highlight-focus);
 }
 
 .file-viewer .line-numbers .highlighted {
-    background: rgba(255, 234, 170, 0.75);
+    background: var(--color-background-matchstr);
     left: 0;
     width: 100%;
 }
 
 .file-viewer .line-numbers a.highlighted:focus {
-    background: rgba(255, 234, 170, 0.75);
+    background: var(--color-background-matchstr);
 }
 
 .file-viewer .line-numbers a {
     display: block;
     width: 100%;
-    color: rgba(0, 0, 0, 0.25);
+    color: var(--color-foreground-subtle);
+    padding-right: 3px;
     text-decoration: none;
 }
 
 .file-viewer .line-numbers a:hover {
-    color: rgba(0, 0, 0, 1);
+    color: var(--color-foreground-muted);
     text-decoration: underline;
 }
 .file-viewer .code-pane {
@@ -490,8 +638,8 @@ a:hover {
 }
 
 .file-viewer .help-screen .keyboard-shortcut {
-    background: rgba(0,0,0,0.05);
-    border: solid 1px rgba(0,0,0,0.05);
+    background: var(--color-background-subtle);
+    border: solid 1px var(--color-border-default);
     padding: 0px 3px;
     font-weight: bold;
 }
@@ -511,13 +659,13 @@ a:hover {
     font-size: 13px;
     margin: 0;
     padding: 0 0 0 5px;
-    color: rgba(0, 0, 0, 0.5);
-    border-left: solid 2px rgba(0, 0, 0, 0.1);
+    color: var(--color-foreground-muted);
+    border-left: solid 2px var(--color-border-default);
     transition: border-color 0.8s;
 }
 
 .header-actions:hover {
-    border-color: rgba(0, 0, 0, 0.25);
+    border-color: var(--color-border-default);
 }
 
 .header-action {
@@ -527,17 +675,17 @@ a:hover {
 }
 
 .header-action .keyboard-hint {
-    color: rgba(0, 0, 0, 0.25);
+    color: var(--color-foreground-muted);
     font-size: 10px;
 }
 
 .header-action a {
     text-decoration: none;
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--color-foreground-subtle);
 }
 
 .header-action a:hover, .header-action a:focus {
-    color: rgba(0, 0, 0, 1);
+    color: var(--color-foreground);
 }
 
 .header-action .shortcut {
@@ -562,11 +710,11 @@ a:hover {
 }
 
 .file-list-entry.is-symlink {
-    color: rgba(0, 0, 0, 0.75);
+    color: var(--color-foreground-symlink);
 }
 
 .file-list-entry .symlink-target {
-    color: rgba(0, 0, 0, 0.55);
+    color: var(--color-foreground-symlink-target);
 }
 /* END */
 
@@ -589,14 +737,14 @@ a:hover {
     padding: 60px;
     margin: 0;
     text-align: center;
-    background: rgba(0, 0, 0, 0.1);
+    background: var(--color-background-modal-overlay);
 }
 
 .u-modal-content {
     z-index: 1;
-    background: white;
-    border:  solid 1px rgba(0,0,0,0.25);
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.25);
+    background: var(--color-background);
+    border:  solid 1px var(--color-border-default);
+    box-shadow: 0 0 50px var(--color-shadow);
     text-align: left;
     display: inline-block;
 }
@@ -656,11 +804,13 @@ div.example {
    with color 00a4db darkened to 0075a9 to improve contrast.
 */
 
+
 .token.comment,
 .token.prolog,
 .token.doctype,
 .token.cdata {
-    color: #999988; font-style: italic;
+    color: var(--color-syntax-comment);
+    font-style: italic;
 }
 
 .token.namespace {
@@ -669,11 +819,11 @@ div.example {
 
 .token.string,
 .token.attr-value {
-    color: #e3116c;
+    color: var(--color-syntax-string);
 }
 .token.punctuation,
 .token.operator {
-    color: #393A34; /* no highlight */
+    color: var(--color-syntax-punctuation); /* no highlight */
 }
 
 .token.entity,
@@ -686,26 +836,26 @@ div.example {
 .token.property,
 .token.regex,
 .token.inserted {
-    color: #007c7b;
+    color: var(--color-syntax-entity);
 }
 
 .token.atrule,
 .token.keyword,
 .token.attr-name,
 .language-autohotkey .token.selector {
-    color: #0075a9;
+    color: var(--color-syntax-keyword);
 }
 
 .token.function,
 .token.deleted,
 .language-autohotkey .token.tag {
-    color: #9a050f;
+    color: var(--color-syntax-function);
 }
 
 .token.tag,
 .token.selector,
 .language-autohotkey .token.keyword {
-    color: #00009f;
+    color: var(--color-syntax-tag);
 }
 
 .token.important,
