@@ -16,7 +16,7 @@
             "revisions": [ "HEAD" ],
             "metadata": {
                 "github": "livegrep/livegrep",
-                "url_pattern": "https://github.com/{name}/blob/{version}/src/{path}#L{lno}"
+                "url_pattern": "https://github.com/livegrep/livegrep/blob/{version}/src/{path}#L{lno}"
             }
         }
     ]
