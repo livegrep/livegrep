@@ -92,13 +92,23 @@ struct index_info {
     vector<indexed_tree> trees;
 };
 
+struct match_bound {
+    int matchleft;
+    int matchright;
+};
+
+// empty bounds mean no match for q.line_pat on this line
+struct result_line {
+    StringPiece line;
+    vector<match_bound> match_bounds;
+};
+
 struct match_result {
     indexed_file *file;
     int lno;
-    vector<StringPiece> context_before;
-    vector<StringPiece> context_after;
-    StringPiece line;
-    int matchleft, matchright;
+    result_line line;
+    vector<result_line> context_before;
+    vector<result_line> context_after;
 };
 
 struct file_result {

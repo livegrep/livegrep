@@ -142,6 +142,15 @@ public:
         }
     }
 
+    void record_n_matches(int n) {
+        int matches = matches_ += n;
+        if (exit_reason_)
+            return;
+        if (max_matches_ && matches >= max_matches_) {
+            exit_reason_ = kExitMatchLimit;
+        }
+    }
+
 protected:
     atomic_int matches_;
     int max_matches_;
@@ -291,6 +300,13 @@ p     * which contain `match', which is contained within `line'.
     void try_match(const StringPiece&,
                    const StringPiece&,
                    indexed_file *);
+
+    /*
+     * Given a line, find all matches and return their bounds. Starts 
+     * at startPos, in the case that we already know of some number of
+     * existing matches. Uses a cache based on `line`.
+     */
+    vector<match_bound> find_matches_in_line(const StringPiece& line, int startPos);
 
     static int line_start(const chunk *chunk, int pos) {
         const unsigned char *start = static_cast<const unsigned char*>
@@ -988,6 +1004,22 @@ void searcher::find_match(const chunk *chunk,
     }
 }
 
+vector<match_bound> find_matches_in_line(const StringPiece& line, int startPos) {
+    StringPiece match;
+    vector<match_bound> bounds;
+    int i = start;
+    int line_len = line.length(); 
+
+    while (i < line_len && query_->line_pat->Match(line, i, line_len, RE2::UNANCHORED, &match, 1)) {
+        match_bound mb;
+        mb.matchleft = utf8::distance(line.data(), match.data());
+        mb.matchright = mb.matchleft + utf8::distance(match.data(), match.data() + match.size());
+        bounds.push_back(mb);
+        i = mb.matchright + 1;
+    }
+
+    return bounds;
+}
 
 void searcher::try_match(const StringPiece& line,
                          const StringPiece& match,
@@ -1020,10 +1052,22 @@ void searcher::try_match(const StringPiece& line,
         m->matchright = m->matchleft +
             utf8::distance(match.data(), match.data() + match.size());
 
+        // turn the existing match into the new type
+        match_bound first_bound;
+        first_bound.matchleft = m->matchleft;
+        first_bound.matchright = m->matchright;
+
+        // find all matches in the initial line
+        vector<match_bound> mbs = find_matches_in_line(line, m->matchright + 1);
+        mbs.insert(mbs.begin(), first_bound); // inefficient but ok for now
+        m->match_bounds_v2 = mbs;
+
+
         // iterators for forward and backward context
         auto fit = it, bit = it;
         StringPiece l = line;
         int i = 0;
+        int matches_found = mbs.size();
 
         for (i = 0; i < query_->context_lines; i++) {
             if (l.data() == bit->data()) {
@@ -1033,7 +1077,14 @@ void searcher::try_match(const StringPiece& line,
                 l = StringPiece(bit->data() + bit->size() + 1, 0);
             }
             l = find_line(*bit, StringPiece(l.data() - 1, 0));
+            vector<match_bound> mbs = find_matches_in_line(l, 0);
+
             m->context_before.push_back(l);
+            context_line cl;
+            cl.line = l;
+            cl.match_bounds = mbs;
+            m->context_before_v2.push_back(cl);
+            matches_found += mbs.size();
         }
 
         l = line;
@@ -1045,12 +1096,20 @@ void searcher::try_match(const StringPiece& line,
                 l = StringPiece(fit->data() - 1, 0);
             }
             l = find_line(*fit, StringPiece(l.data() + l.size() + 1, 0));
+            vector<match_bound> mbs = find_matches_in_line(l, 0);
+
             m->context_after.push_back(l);
+
+            context_line cl;
+            cl.line = l;
+            cl.match_bounds = mbs;
+            m->context_after_v2.push_back(cl);
+            matches_found += mbs.size();
         }
 
         if (!transform_ || transform_(m)) {
             queue_.push(m);
-            limiter_.record_match();
+            limiter_.record_n_matches(matches_found);
         }
         if (limiter_.exit_early())
             break;
