@@ -355,7 +355,7 @@ p     * which contain `match', which is contained within `line'.
     timer sort_time_;
     timer analyze_time_;
     vector<uint8_t> files_;
-    map<StringPiece, vector<match_bound>> re2_match_cache_;
+    map<StringPiece, pair<int, vector<match_bound>>> re2_match_cache_;
 
     /*
      * The approximate ratio of how many files match file_pat and
@@ -1008,10 +1008,8 @@ void searcher::find_match(const chunk *chunk,
 int searcher::find_matches_in_line(const StringPiece& line, int startPos, vector<match_bound>& bounds) {
     auto cached_bounds = re2_match_cache_.find(line);
     if (cached_bounds != re2_match_cache_.end()) {
-        bounds = cached_bounds->second;
-        // TODO: return the actual length, since
-        // we merge the bounds
-        return bounds.size();
+        bounds = cached_bounds->second.second;
+        return cached_bounds->second.first;
     }
 
     StringPiece match;
@@ -1041,7 +1039,7 @@ int searcher::find_matches_in_line(const StringPiece& line, int startPos, vector
         i = mb.matchright;
     }
 
-    re2_match_cache_[line] = bounds;
+    re2_match_cache_[line] = pair<int, vector<match_bound>>(num_matches, bounds);
     return num_matches;
 }
 
