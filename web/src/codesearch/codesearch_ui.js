@@ -188,9 +188,27 @@ var MatchView = Backbone.View.extend({
     }
     var line = this.model.get('line');
     var bounds = this.model.get('bounds');
-    var pieces = [line.substring(0, bounds[0]),
-                  line.substring(bounds[0], bounds[1]),
-                  line.substring(bounds[1])];
+
+    var pieces = []; 
+    var currIdx = 0;
+    for (var i = 0; i < bounds.length; i++) {
+      var bound = bounds[i]; 
+
+      // push a prefix, if any
+      if (bound[0] > currIdx) {
+        pieces.push(line.substring(currIdx, bound[0]))
+      }
+
+      currIdx = bound[1];
+
+      // push the actual match
+      pieces.push(h.span({cls: 'matchstr'}, [ line.substring(bound[0], bound[1]) ])); 
+
+      // if we're out ouf bounds to process, but there is still line remaining
+      if (i == bounds.length - 1 && currIdx <= line.length) {
+        pieces.push(line.substring(currIdx, line.length)); 
+      }
+    }
 
     var classes = ['match'];
     if(clip_before !== undefined) classes.push('clip-before');
@@ -211,7 +229,7 @@ var MatchView = Backbone.View.extend({
         ctx_before,
         [
             this._renderLno(lno, true),
-            h.span({cls: 'matchline'}, [pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]]),
+            h.span({cls: 'matchline'}, pieces),
             h.span({cls: 'matchlinks'}, links)
         ],
         ctx_after

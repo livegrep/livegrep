@@ -97,18 +97,16 @@ struct match_bound {
     int matchright;
 };
 
-// empty bounds mean no match for q.line_pat on this line
-struct result_line {
-    StringPiece line;
-    vector<match_bound> match_bounds;
-};
-
 struct match_result {
     indexed_file *file;
     int lno;
-    result_line line;
-    vector<result_line> context_before;
-    vector<result_line> context_after;
+    vector<StringPiece> context_before; 
+    vector<StringPiece> context_after;
+    StringPiece line;
+    int matchleft, matchright;
+
+    vector<match_bound> match_bounds;
+    int num_matches;
 };
 
 struct file_result {

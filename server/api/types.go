@@ -35,7 +35,7 @@ type Result struct {
 	LineNumber    int      `json:"lno"`
 	ContextBefore []string `json:"context_before"`
 	ContextAfter  []string `json:"context_after"`
-	Bounds        [2]int   `json:"bounds"`
+	Bounds        [][2]int `json:"bounds"`
 	Line          string   `json:"line"`
 }
 
