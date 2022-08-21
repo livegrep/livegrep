@@ -482,7 +482,7 @@ TEST_F(codesearch_test, ConsecutiveMatchBoundsMerged) {
     ASSERT_EQ(3, first_bound.right());
 }
 
-TEST_F(codesearch_test, WOperatorWithRepetition) {
+TEST_F(codesearch_test, WRegexOperator) {
     cs_.index_file(tree_, "/file1", "there should be five words");
     cs_.finalize();
 
