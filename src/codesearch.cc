@@ -1013,12 +1013,11 @@ int searcher::find_matches_in_line(const StringPiece& line, int startPos, vector
     }
 
     StringPiece match;
-    int i = startPos;
     int line_len = line.length(); 
     int num_matches = bounds.size(); // this should only ever be 0 or 1
 
     run_timer run(re2_time_);
-    while (!limiter_.exit_early() && i < line_len && query_->line_pat->Match(line, i, line_len, RE2::UNANCHORED, &match, 1)) {
+    while (!limiter_.exit_early() && startPos < line_len && query_->line_pat->Match(line, startPos, line_len, RE2::UNANCHORED, &match, 1)) {
         num_matches += 1;
 
         int matchleft = match.data() - line.data();
@@ -1028,7 +1027,7 @@ int searcher::find_matches_in_line(const StringPiece& line, int startPos, vector
         // update the previous bounds - e.g., "merge" the intervals
         if (bounds.size() > 0 && bounds.back().matchright == matchleft) {
             bounds.back().matchright = matchright; 
-            i = matchright;
+            startPos = matchright;
             continue;
         }
 
@@ -1036,7 +1035,7 @@ int searcher::find_matches_in_line(const StringPiece& line, int startPos, vector
         mb.matchleft = matchleft;
         mb.matchright = matchright;
         bounds.push_back(mb);
-        i = mb.matchright;
+        startPos = mb.matchright;
     }
 
     re2_match_cache_[line] = pair<int, vector<match_bound>>(num_matches, bounds);
