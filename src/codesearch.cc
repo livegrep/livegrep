@@ -1069,17 +1069,15 @@ void searcher::try_match(const StringPiece& line,
         m->file = sf;
         m->lno  = lno;
         m->line = line;
-        m->matchleft = utf8::distance(line.data(), match.data());
-        m->matchright = m->matchleft +
-            utf8::distance(match.data(), match.data() + match.size());
 
         vector<match_bound> mbs;
         match_bound first_bound;
-        first_bound.matchleft = m->matchleft;
-        first_bound.matchright = m->matchright;
+        first_bound.matchleft = utf8::distance(line.data(), match.data());
+        first_bound.matchright = first_bound.matchleft + 
+            utf8::distance(match.data(), match.data() + match.size());
         mbs.push_back(first_bound);
 
-        int matches_found = find_matches_in_line(line, m->matchright, mbs);
+        int matches_found = find_matches_in_line(line, first_bound.matchright, mbs);
         m->match_bounds = mbs;
         m->num_matches = matches_found;
 

@@ -100,11 +100,9 @@ struct match_bound {
 struct match_result {
     indexed_file *file;
     int lno;
-    vector<StringPiece> context_before; 
+    vector<StringPiece> context_before;
     vector<StringPiece> context_after;
     StringPiece line;
-    int matchleft, matchright;
-
     vector<match_bound> match_bounds;
     int num_matches;
 };

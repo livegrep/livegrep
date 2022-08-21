@@ -119,14 +119,16 @@ bool tag_searcher::transform(query *q, match_result *m) const {
     m->line = *line_it;
 
     StringPiece match;
+    match_bound first_bound;
     if (q->line_pat->Match(m->line, 0, m->line.size(),
                            RE2::UNANCHORED, &match, 1)) {
-        m->matchleft = utf8::distance(m->line.data(), match.data());
-        m->matchright = m->matchleft + utf8::distance(match.data(), match.data() + match.size());
+        first_bound.matchleft = utf8::distance(m->line.data(), match.data());
+        first_bound.matchright = first_bound.matchleft + utf8::distance(match.data(), match.data() + match.size());
     } else {
-        m->matchleft = line_it->find(name);
-        m->matchright = m->matchleft + name.size();
+        first_bound.matchleft = line_it->find(name);
+        first_bound.matchright = first_bound.matchleft + name.size();
     }
+    m->match_bounds = vector<match_bound>{first_bound};
     ++line_it;
 
     // context after
