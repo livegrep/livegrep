@@ -37,6 +37,7 @@ type Result struct {
 	ContextAfter  []string `json:"context_after"`
 	Bounds        [][2]int `json:"bounds"`
 	Line          string   `json:"line"`
+	NumMatches    int      `json:"num_matches"`
 }
 
 type FileResult struct {

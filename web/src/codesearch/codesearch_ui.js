@@ -339,8 +339,15 @@ var SearchResultSet = Backbone.Collection.extend({
   },
 
   num_matches: function() {
+    console.log(this);
     return this.reduce(function(memo, file_group) {
-      return memo + file_group.matches.length;
+      var numMatches = 0;
+      for (var i = 0; i < file_group.matches.length; i++) {
+        var match = file_group.matches[i];
+        numMatches += match.get('num_matches');
+        console.log('num_matches[' + i + ']=' + match.get('num_matches'));
+      }
+      return memo + numMatches;
     }, 0);
   }
 });
