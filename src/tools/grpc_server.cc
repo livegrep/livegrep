@@ -191,13 +191,11 @@ public:
         }
 
         for (auto &mb : m->match_bounds) {
-            auto insert = result->add_new_bounds();
+            auto insert = result->add_bounds();
             insert->set_left(mb.matchleft);
             insert->set_right(mb.matchright);
         }
 
-        result->mutable_bounds()->set_left(m->matchleft);
-        result->mutable_bounds()->set_right(m->matchright);
         result->set_line(m->line.ToString());
     }
 

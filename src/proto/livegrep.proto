@@ -28,10 +28,8 @@ message SearchResult {
     int64 line_number = 4;
     repeated string context_before = 5;
     repeated string context_after = 6;
-    Bounds bounds = 7;
+    repeated Bounds bounds = 7;
     string line = 8;
-
-    repeated Bounds new_bounds = 9;
 }
 
 message FileResult {

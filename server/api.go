@@ -170,7 +170,7 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 			LineNumber:    int(r.LineNumber),
 			ContextBefore: stringSlice(r.ContextBefore),
 			ContextAfter:  stringSlice(r.ContextAfter),
-			Bounds:        convertBounds(r.NewBounds),
+			Bounds:        convertBounds(r.Bounds),
 			Line:          r.Line,
 		})
 	}
