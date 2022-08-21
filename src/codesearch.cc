@@ -1190,7 +1190,7 @@ void code_searcher::search_thread::match(const query &q,
 
     if (!q.filename_only) {
         while (search.queue_.pop(&m)) {
-            matches++;
+            matches += m->num_matches;
             cb(m);
             delete m;
         }

@@ -196,7 +196,6 @@ public:
             insert->set_right(mb.matchright);
         }
 
-        result->set_num_matches(m->num_matches);
         result->mutable_bounds()->set_left(m->matchleft);
         result->mutable_bounds()->set_right(m->matchright);
         result->set_line(m->line.ToString());
@@ -378,6 +377,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
     out_stats->set_index_time(timeval_ms(stats.index_time));
     out_stats->set_analyze_time(timeval_ms(stats.analyze_time));
     out_stats->set_total_time(timeval_ms(search_tm.elapsed()));
+    out_stats->set_num_matches(stats.matches);
     switch (stats.why) {
     case kExitNone:
         out_stats->set_exit_reason(SearchStats::NONE);

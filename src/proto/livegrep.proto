@@ -32,7 +32,6 @@ message SearchResult {
     string line = 8;
 
     repeated Bounds new_bounds = 9;
-    int64 num_matches = 10;
 }
 
 message FileResult {
@@ -49,6 +48,7 @@ message SearchStats {
     int64 index_time = 4;
     int64 analyze_time = 5;
     int64 total_time = 7;
+    int64 num_matches = 8;
     enum ExitReason {
         NONE = 0;
         TIMEOUT = 1;

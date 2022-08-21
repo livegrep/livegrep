@@ -336,19 +336,6 @@ var SearchResultSet = Backbone.Collection.extend({
       this.add(file_group);
     }
     file_group.add_match(match);
-  },
-
-  num_matches: function() {
-    console.log(this);
-    return this.reduce(function(memo, file_group) {
-      var numMatches = 0;
-      for (var i = 0; i < file_group.matches.length; i++) {
-        var match = file_group.matches[i];
-        numMatches += match.get('num_matches');
-        console.log('num_matches[' + i + ']=' + match.get('num_matches'));
-      }
-      return memo + numMatches;
-    }, 0);
   }
 });
 
@@ -412,7 +399,8 @@ var SearchState = Backbone.Model.extend({
       error: null,
       search_type: "",
       time: null,
-      why: null
+      why: null,
+      numMatches: 0,
     };
   },
 
@@ -522,11 +510,11 @@ var SearchState = Backbone.Model.extend({
     fm.backend = this.search_map[search].backend;
     this.file_search_results.add(new FileMatch(fm));
   },
-  handle_done: function (search, time, search_type, why) {
+  handle_done: function (search, time, search_type, why, numMatches) {
     if (search < this.get('displaying'))
       return false;
     this.set('displaying', search);
-    this.set({time: time, search_type: search_type, why: why});
+    this.set({time: time, search_type: search_type, why: why, numMatches: numMatches});
     this.search_results.trigger('search-complete');
   }
 });
@@ -776,12 +764,7 @@ var ResultView = Backbone.View.extend({
       this.$('#searchtimebox').hide();
     }
 
-    var results;
-    if (this.model.get('search_type') == 'filename_only') {
-      results = '' + this.model.file_search_results.length;
-    } else {
-      results = '' + this.model.search_results.num_matches();
-    }
+    var results = '' + this.model.get('numMatches');
     if (this.model.get('why') !== 'NONE')
       results = results + '+';
     this.results.text(results);
@@ -1010,8 +993,8 @@ var CodesearchUI = function() {
     file_match: function(search, file_match) {
       CodesearchUI.state.handle_file_match(search, file_match);
     },
-    search_done: function(search, time, search_type, why) {
-      CodesearchUI.state.handle_done(search, time, search_type, why);
+    search_done: function(search, time, search_type, why, numMatches) {
+      CodesearchUI.state.handle_done(search, time, search_type, why, numMatches);
     },
     repo_urls: {}
   };

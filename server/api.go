@@ -172,7 +172,6 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 			ContextAfter:  stringSlice(r.ContextAfter),
 			Bounds:        convertBounds(r.NewBounds),
 			Line:          r.Line,
-			NumMatches:    int(r.NumMatches),
 		})
 	}
 
@@ -193,6 +192,7 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 		AnalyzeTime: search.Stats.AnalyzeTime,
 		TotalTime:   int64(time.Since(start) / time.Millisecond),
 		ExitReason:  search.Stats.ExitReason.String(),
+		NumMatches:  int(search.Stats.NumMatches),
 	}
 	return reply, nil
 }
