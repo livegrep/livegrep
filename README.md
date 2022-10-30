@@ -1,4 +1,4 @@
-Livegrep [![Build Status](https://circleci.com/gh/livegrep/livegrep.png?branch=master)](https://circleci.com/gh/livegrep/livegrep)
+Livegrep [![Build Status](https://github.com/livegrep/livegrep/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/livegrep/livegrep/actions/workflows/ci.yaml)
 ========
 
 Livegrep is a tool, partially inspired by Google Code Search, for
@@ -88,8 +88,8 @@ By default, `livegrep` will connect to a single local codesearch
 instance on port `9999`, and listen for HTTP connections on port
 `8910`.
 
-[server.json]: https://github.com/livegrep/livegrep/blob/master/doc/examples/livegrep/server.json
-[config.go]: https://github.com/livegrep/livegrep/blob/master/server/config/config.go
+[server.json]: https://github.com/livegrep/livegrep/blob/main/doc/examples/livegrep/server.json
+[config.go]: https://github.com/livegrep/livegrep/blob/main/server/config/config.go
 
 ## github integration
 
@@ -182,7 +182,7 @@ livegrep.com][docker-compose] in the `livegrep/livegrep.com`
 repository.
 
 [docker]: https://github.com/orgs/livegrep/packages
-[docker-compose]: https://github.com/livegrep/livegrep.com/tree/master/compose
+[docker-compose]: https://github.com/livegrep/livegrep.com/tree/main/compose
 
 Resource Usage
 --------------
