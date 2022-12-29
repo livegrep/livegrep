@@ -88,7 +88,7 @@ git_repository(
     name = "com_github_grpc_grpc",
     commit = "591d56e1300b6d11948e1b821efac785a295989c",  # 1.44.0
     remote = "https://github.com/grpc/grpc.git",
-    shallow_since = "1644573434 +0100"
+    shallow_since = "1644573434 +0100",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
@@ -105,15 +105,6 @@ git_repository(
     remote = "https://github.com/bazelbuild/buildifier.git",
 )
 
-local_repository(
-    name = "org_dropbox_rules_node",
-    path = "tools/org_dropbox_rules_node",
-)
-
-load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
-
-node_repositories()
-
 git_repository(
     name = "com_grail_bazel_compdb",
     commit = "7658de071fcd072163c24cc96d78e9891d4d81f5",
@@ -125,3 +116,33 @@ git_repository(
     commit = "0ea2d8f8fa1601abb9ce713b7414e7b86f90bc61",
     remote = "https://github.com/google/googletest",
 )
+
+http_archive(
+    name = "aspect_rules_js",
+    sha256 = "66ecc9f56300dd63fb86f11cfa1e8affcaa42d5300e2746dba08541916e913fd",
+    strip_prefix = "rules_js-1.13.0",
+    url = "https://github.com/aspect-build/rules_js/archive/refs/tags/v1.13.0.tar.gz",
+)
+
+load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
+
+rules_js_dependencies()
+
+load("@rules_nodejs//nodejs:repositories.bzl", "DEFAULT_NODE_VERSION", "nodejs_register_toolchains")
+
+nodejs_register_toolchains(
+    name = "nodejs",
+    node_version = DEFAULT_NODE_VERSION,
+)
+
+load("@aspect_rules_js//npm:npm_import.bzl", "npm_translate_lock")
+
+npm_translate_lock(
+    name = "npm",
+    pnpm_lock = "//web:pnpm-lock.yaml",
+    verify_node_modules_ignored = "//:.bazelignore",
+)
+
+load("@npm//:repositories.bzl", "npm_repositories")
+
+npm_repositories()

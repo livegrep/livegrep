@@ -1,0 +1,9 @@
+{
+  "name": "com_github_livegrep_livegrep_web",
+  "private": "true",
+  "devDependencies": {
+    "css-loader": "^0.28.7",
+    "style-loader": "^0.18.2",
+    "webpack": "^3.4.1"
+  }
+}

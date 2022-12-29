@@ -1,1 +1,0 @@
-require('internal_module');
