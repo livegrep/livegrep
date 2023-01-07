@@ -1,7 +1,13 @@
+load("@npm//:defs.bzl", "npm_link_all_packages")
+load("@npm//web:webpack/package_json.bzl", webpack_bin = "bin")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
 package(default_visibility = ["//visibility:public"])
 
-load("@org_dropbox_rules_node//node:defs.bzl", "webpack_build")
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+npm_link_all_packages(
+    name = "node_modules",
+)
 
 filegroup(
     name = "templates",
@@ -13,21 +19,34 @@ filegroup(
     srcs = glob(["htdocs/**"]),
 )
 
-webpack_build(
-    name = "webpack_build",
+js_library(
+    name = "lib",
     srcs = glob([
         "src/**",
     ]),
+    deps = [
+        ":node_modules/css-loader",
+        ":node_modules/style-loader",
+        ":node_modules/webpack",
+        "//web/3d:html",
+    ],
+)
+
+webpack_bin.webpack(
+    name = "webpack_build",
+    srcs = [
+        "webpack.config.js",
+        ":lib",
+    ],
     outs = [
         "htdocs/assets/js/bundle.js",
     ],
-    config = "webpack.config.js",
-    deps = [
-        "//web/3d:html",
-        "//web/npm/css-loader",
-        "//web/npm/style-loader",
-        "@org_dropbox_rules_node//node/dbx-bazel-utils",
+    args = [
+        "--config",
+        "webpack.config.js",
     ],
+    chdir = package_name(),
+    log_level = "debug",
 )
 
 genrule(

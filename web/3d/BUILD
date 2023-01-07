@@ -1,9 +1,8 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+
 package(default_visibility = ["//visibility:public"])
 
-load("@org_dropbox_rules_node//node:defs.bzl", "node_internal_module")
-
-node_internal_module(
+js_library(
     name = "html",
     srcs = ["html.js"],
-    main = "html.js",
 )

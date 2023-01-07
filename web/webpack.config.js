@@ -1,8 +1,5 @@
 var path = require('path');
-var env = {outputRoot: __dirname};
-
-var dbxBazelUtils = require('dbx-bazel-utils');
-env = dbxBazelUtils.initBazelEnv(__dirname);
+var env = { outputRoot: path.resolve(__dirname) };
 
 var webpack = require('webpack');
 
@@ -33,6 +30,9 @@ module.exports = {
       path.resolve(__dirname, "src"),
       path.resolve(__dirname, "node_modules")
     ],
+    alias: {
+      'html': path.resolve(__dirname, "3d/html")
+    }
   },
 
   plugins: [
