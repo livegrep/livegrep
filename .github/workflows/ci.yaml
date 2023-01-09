@@ -17,7 +17,7 @@ jobs:
   ci:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Switch to CI bazelrc
         run: cp .bazelrc.ci .bazelrc
       # Credit to the tensorboard repo for the cache configuration step
@@ -54,7 +54,7 @@ jobs:
           fi
       - name: upload build output
         if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: "${{ env.build_output_file_name }}"
           path: "builds/${{ env.build_output_file_name }}.tgz"
