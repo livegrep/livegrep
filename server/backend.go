@@ -2,13 +2,17 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Tree struct {
@@ -32,7 +36,13 @@ type Backend struct {
 }
 
 func NewBackend(id string, addr string) (*Backend, error) {
-	client, err := grpc.Dial(addr, grpc.WithInsecure())
+	creds := insecure.NewCredentials()
+	if val := os.Getenv("TLS_SKIP_VERIFY"); val != "" {
+		creds = credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true,
+		})
+	}
+	client, err := grpc.Dial(addr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, err
 	}
