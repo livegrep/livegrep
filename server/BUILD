@@ -30,6 +30,7 @@ go_library(
         "@com_github_honeycombio_libhoney_go//:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//credentials:go_default_library",
         "@org_golang_google_grpc//metadata:go_default_library",
         "@org_golang_x_net//context:go_default_library",
     ],
