@@ -173,6 +173,15 @@ a:hover {
     box-sizing: border-box;
 }
 
+#recentsearchbox {
+    align-items: center;
+    color: #999;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    width: 100%;
+}
+
 #searcharea > div {
     flex: 1 1 auto;
 }

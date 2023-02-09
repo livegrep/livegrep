@@ -4,6 +4,7 @@ var Cookies = require('js-cookie');
 
 var Codesearch = require('codesearch/codesearch.js').Codesearch;
 var RepoSelector = require('codesearch/repo_selector.js');
+var CodeSearchConstant = require("codesearch/codesearch_constants.js");
 
 var KeyCodes = {
   SLASH_OR_QUESTION_MARK: 191
@@ -735,6 +736,7 @@ var ResultView = Backbone.View.extend({
        this.model.get('error')) {
       this.$el.hide();
       $('#helparea').show();
+      $('#recentsearchbox').show();
       return this;
     }
 
@@ -742,6 +744,7 @@ var ResultView = Backbone.View.extend({
 
     this.$el.show();
     $('#helparea').hide();
+    $('#recentsearchbox').hide();
 
     if (this.model.get('time')) {
       this.$('#searchtimebox').show();
@@ -783,6 +786,7 @@ var CodesearchUI = function() {
       CodesearchUI.inputs_case = $('input[name=fold_case]');
       CodesearchUI.input_regex = $('input[name=regex]');
       CodesearchUI.input_context = $('input[name=context]');
+      CodesearchUI.recent_search_box = $('#recentsearchbox');
 
       if (CodesearchUI.inputs_case.filter(':checked').length == 0) {
           CodesearchUI.inputs_case.filter('[value=auto]').attr('checked', true);
@@ -792,6 +796,7 @@ var CodesearchUI = function() {
       CodesearchUI.update_repo_options();
 
       CodesearchUI.init_query();
+      CodesearchUI.renderRecentSearchHistory();
 
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
@@ -1000,7 +1005,19 @@ var CodesearchUI = function() {
     search_done: function(search, time, search_type, why) {
       CodesearchUI.state.handle_done(search, time, search_type, why);
     },
-    repo_urls: {}
+    repo_urls: {},
+    repo_urls: {},
+    renderRecentSearchHistory: function() { 
+      const recentSearchesString = localStorage.getItem(CodeSearchConstant.LIVEGREP_STORAGE_KEY);
+      if (recentSearchesString) { 
+        const recentSearches = recentSearchesString.split(CodeSearchConstant.RECENT_SEARCHES_DELIMITER);
+        CodesearchUI.recent_search_box.append("<h5>Recent searches</h5>");
+        recentSearches.forEach(function (search) {
+          const name = new URLSearchParams(search.split("?")[1]).get("q");
+          CodesearchUI.recent_search_box.append("<a href='" + search + "'>" + name + "</a>");
+        });
+      }
+    }
   };
 }();
 
