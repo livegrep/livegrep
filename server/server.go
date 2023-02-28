@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"github.com/bmizerany/pat"
 	libhoney "github.com/honeycombio/libhoney-go"
@@ -315,8 +316,20 @@ func New(cfg *config.Config) (http.Handler, error) {
 		srv.honey.Dataset = cfg.Honeycomb.Dataset
 	}
 
+	dialOpts := []grpc.DialOption{}
+	callOpts := []grpc.CallOption{}
+	if cfg.GrpcMaxRecvMessageSize != 0 {
+		callOpts = append(callOpts, grpc.MaxRecvMsgSizeCallOption{cfg.GrpcMaxRecvMessageSize})
+	}
+	if cfg.GrpcMaxSendMessageSize != 0 {
+		callOpts = append(callOpts, grpc.MaxSendMsgSizeCallOption{cfg.GrpcMaxSendMessageSize})
+	}
+	if len(callOpts) > 0 {
+		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(callOpts...))
+	}
+
 	for _, bk := range srv.config.Backends {
-		be, e := NewBackend(bk.Id, bk.Addr)
+		be, e := NewBackend(bk.Id, bk.Addr, dialOpts...)
 		if e != nil {
 			return nil, e
 		}

@@ -31,8 +31,10 @@ type Backend struct {
 	Codesearch pb.CodeSearchClient
 }
 
-func NewBackend(id string, addr string) (*Backend, error) {
-	client, err := grpc.Dial(addr, grpc.WithInsecure())
+func NewBackend(id string, addr string, extraOpts ...grpc.DialOption) (*Backend, error) {
+	dialOpts := []grpc.DialOption{grpc.WithInsecure()}
+	dialOpts = append(dialOpts, extraOpts...)
+	client, err := grpc.Dial(addr, dialOpts...)
 	if err != nil {
 		return nil, err
 	}

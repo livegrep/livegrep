@@ -63,6 +63,12 @@ type Config struct {
 	DefaultSearchRepos []string `json:"default_search_repos"`
 
 	LinkConfigs []LinkConfig `json:"file_links"`
+
+	// Maximum gRPC receive message size in bytes: this allows larger result sets from codesearch
+	GrpcMaxRecvMessageSize int `json:"grpc_max_recv_message_size"`
+
+	// Maximum gRPC send message size in bytes: this allows larger queries to codesearch
+	GrpcMaxSendMessageSize int `json:"grpc_max_send_message_size"`
 }
 
 type IndexConfig struct {
