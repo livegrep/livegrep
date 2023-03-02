@@ -524,6 +524,21 @@ var FileGroupView = Backbone.View.extend({
 
     var first_match = this.model.matches[0];
 
+    // Ready link to filter results to current file's repo
+    var repo_filter_anchor = h.div();
+    var searchParam = new URLSearchParams(window.location.search);
+    // Only show filter link if repo name exists and is not already selected
+    if (!!tree && searchParam.getAll(CodeSearchConstant.REPO_FILTER).indexOf(tree) < 0) { 
+      // Unselect other repo filters
+      if (searchParam.has(CodeSearchConstant.REPO_FILTER)) { 
+        searchParam.delete(CodeSearchConstant.REPO_FILTER)
+      }
+
+      // Filter only to repo of this result
+      searchParam.append(CodeSearchConstant.REPO_FILTER, tree)
+      repo_filter_anchor = h.a({href: "?" + searchParam.toString()}, ["Repo filter: " + tree])
+    }
+    
     var headerChildren = [
       h.span(
         {cls: 'header-path'},
@@ -543,7 +558,9 @@ var FileGroupView = Backbone.View.extend({
         {cls: 'header-links'},
         renderLinkConfigs(CodesearchUI.linkConfigs, tree, version, path, first_match.get('lno'))
       ),
+      repo_filter_anchor
     ];
+
     return h.div({cls: 'header'}, headerChildren);
   },
 
@@ -1005,7 +1022,6 @@ var CodesearchUI = function() {
     search_done: function(search, time, search_type, why) {
       CodesearchUI.state.handle_done(search, time, search_type, why);
     },
-    repo_urls: {},
     repo_urls: {},
     renderRecentSearchHistory: function() { 
       const recentSearchesString = localStorage.getItem(CodeSearchConstant.LIVEGREP_STORAGE_KEY);
