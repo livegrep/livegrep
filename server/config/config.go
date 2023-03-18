@@ -88,4 +88,5 @@ type LinkConfig struct {
 	Label            string `json:"label"`
 	UrlTemplate      string `json:"url_template"`
 	WhitelistPattern string `json:"whitelist_pattern"`
+	Target           string `json:"target"`
 }

@@ -120,17 +120,21 @@ function renderLinkConfigs(linkConfigs, tree, version, path, lno) {
 
   var links = linkConfigs.map(
     function(linkConfig) {
+      var attrs = {
+        cls: "file-action-link",
+        href: externalUrl(
+          linkConfig.url_template,
+          tree,
+          version,
+          path,
+          lno
+        ),
+      };
+      if (linkConfig.target) {
+        attrs.target = linkConfig.target;
+      }
       return h.a(
-        {
-          cls: "file-action-link",
-          href: externalUrl(
-            linkConfig.url_template,
-            tree,
-            version,
-            path,
-            lno
-          ),
-        },
+        attrs,
         [linkConfig.label]
       );
     }
