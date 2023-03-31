@@ -80,10 +80,17 @@ func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.R
 	http.Redirect(w, r, "/search", 303)
 }
 
-func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+type searchScriptData struct {
+	RepoUrls           map[string]map[string]string `json:"repo_urls"`
+	InternalViewRepos  map[string]config.RepoConfig `json:"internal_view_repos"`
+	DefaultSearchRepos []string                     `json:"default_search_repos"`
+	LinkConfigs        []config.LinkConfig          `json:"link_configs"`
+}
+
+func (s *server) makeSearchScriptData() (script_data *searchScriptData, backends []*Backend, sampleRepo string) {
 	urls := make(map[string]map[string]string, len(s.bk))
-	backends := make([]*Backend, 0, len(s.bk))
-	sampleRepo := ""
+	backends = make([]*Backend, 0, len(s.bk))
+	sampleRepo = ""
 	for _, bkId := range s.bkOrder {
 		bk := s.bk[bkId]
 		backends = append(backends, bk)
@@ -99,12 +106,20 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		bk.I.Unlock()
 	}
 
-	script_data := &struct {
-		RepoUrls           map[string]map[string]string `json:"repo_urls"`
-		InternalViewRepos  map[string]config.RepoConfig `json:"internal_view_repos"`
-		DefaultSearchRepos []string                     `json:"default_search_repos"`
-		LinkConfigs        []config.LinkConfig          `json:"link_configs"`
-	}{urls, s.repos, s.config.DefaultSearchRepos, s.config.LinkConfigs}
+	script_data = &searchScriptData{urls, s.repos, s.config.DefaultSearchRepos, s.config.LinkConfigs}
+
+	return script_data, backends, sampleRepo
+}
+
+// Serve the page initialization data that is usually injected into the index.html go text template.
+// This is useful in a custom frontend to initialize a repo list, links to GitHub, etc.
+func (s *server) ServeRepoInfo(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	script_data, _, _ := s.makeSearchScriptData()
+	replyJSON(ctx, w, 200, script_data)
+}
+
+func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	script_data, backends, sampleRepo := s.makeSearchScriptData()
 
 	s.renderPage(ctx, w, r, "index.html", &page{
 		Title:         "code search",
@@ -367,6 +382,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 	m.Add("POST", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("POST", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
+	m.Add("GET", "/api/v1/repos", srv.Handler(srv.ServeRepoInfo))
 
 	var h http.Handler = m
 
