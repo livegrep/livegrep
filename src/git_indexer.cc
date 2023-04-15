@@ -83,7 +83,16 @@ void git_indexer::walk_tree(const string& pfx,
     for (vector<const git_tree_entry *>::iterator it = ordered.begin();
          it != ordered.end(); ++it) {
         smart_object<git_object> obj;
-        git_tree_entry_to_object(obj, repo_, *it);
+        char oid[GIT_OID_HEXSZ + 1];
+
+        const git_oid* entry_oid = git_tree_entry_id(*it);
+        git_oid_tostr(oid, GIT_OID_HEXSZ + 1, entry_oid);
+
+        if (git_tree_entry_to_object(obj, repo_, *it) != 0) {
+            fprintf(stderr, "Unable to convert git tree entry %s to object, skipping\n", oid);
+            continue;
+        }
+
         string path = pfx + git_tree_entry_name(*it);
 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
@@ -108,11 +117,7 @@ void git_indexer::walk_tree(const string& pfx,
             git_indexer sub_indexer(cs_, sub_repopath, string(sub_name), meta, walk_submodules_);
             sub_indexer.submodule_prefix_ = submodule_prefix_ + path + "/";
 
-            const git_oid* rev = git_tree_entry_id(*it);
-            char revstr[GIT_OID_HEXSZ + 1];
-            git_oid_tostr(revstr, GIT_OID_HEXSZ + 1, rev);
-
-            sub_indexer.walk(string(revstr));
+            sub_indexer.walk(string(oid));
         }
     }
 }
