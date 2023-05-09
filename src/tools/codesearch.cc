@@ -39,6 +39,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/string_file.hpp>
 #include "re2/regexp.h"
 #include "re2/walker-inl.h"
 
