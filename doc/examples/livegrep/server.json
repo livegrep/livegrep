@@ -9,5 +9,8 @@
     "feedback": {
         "mailto": "nelhage@nelhage.com"
     },
-    "listen": "0.0.0.0:8910"
+    "listen": "0.0.0.0:8910",
+    "file_ext_to_lang": {
+        ".tf": "HCL"
+    }
 }

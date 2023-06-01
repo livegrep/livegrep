@@ -69,6 +69,9 @@ type Config struct {
 
 	// Maximum gRPC send message size in bytes: this allows larger queries to codesearch
 	GrpcMaxSendMessageSize int `json:"grpc_max_send_message_size"`
+
+	// Additional file extensions to highlight with PrismJS in the built-in fileview
+	FileExtToLang map[string]string `json:"file_ext_to_lang"`
 }
 
 type IndexConfig struct {

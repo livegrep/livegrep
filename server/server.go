@@ -359,6 +359,10 @@ func New(cfg *config.Config) (http.Handler, error) {
 		repoNames = append(repoNames, r.Name)
 	}
 
+	for ext, lang := range srv.config.FileExtToLang {
+		extToLangMap[ext] = lang
+	}
+
 	serveFilePathRegex, err := buildRepoRegex(repoNames)
 	if err != nil {
 		return nil, err
