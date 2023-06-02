@@ -71,6 +71,13 @@ var extToLangMap map[string]string = map[string]string{
 	".yaml":        "yaml",
 	".yml":         "yaml",
 }
+var fileFirstLineToLangMap map[*regexp.Regexp]string = map[*regexp.Regexp]string{
+	regexp.MustCompile(`^#!.*\bpython[23]?\b`): "python",
+	regexp.MustCompile(`^#!.*\bbash\b`):        "bash",
+	regexp.MustCompile(`^#!.*\bsh\b`):          "bash",
+	regexp.MustCompile(`^#!.*\bruby\b`):        "ruby",
+	regexp.MustCompile(`^#!.*\bperl\b`):        "perl",
+}
 
 // Grabbed from the extensions GitHub supports here - https://github.com/github/markup
 var supportedReadmeExtensions = []string{
@@ -241,6 +248,15 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo c
 	}
 }
 
+func languageFromFirstLine(line string) string {
+	for regex, lang := range fileFirstLineToLangMap {
+		if regex.MatchString(line) {
+			return lang
+		}
+	}
+	return ""
+}
+
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
 	commitHash := commit
 	out, err := gitCommitHash(commit, repo.Path)
@@ -309,6 +325,12 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		language := filenameToLangMap[filepath.Base(cleanPath)]
 		if language == "" {
 			language = extToLangMap[filepath.Ext(cleanPath)]
+		}
+		if language == "" {
+			firstLine, _, found := strings.Cut(string(content), "\n")
+			if found {
+				language = languageFromFirstLine(firstLine)
+			}
 		}
 		fileContent = &sourceFileContent{
 			Content:   content,

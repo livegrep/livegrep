@@ -359,6 +359,18 @@ func New(cfg *config.Config) (http.Handler, error) {
 		repoNames = append(repoNames, r.Name)
 	}
 
+	for ext, lang := range srv.config.FileExtToLang {
+		extToLangMap[ext] = lang
+	}
+
+	for regexStr, lang := range srv.config.FileFirstLineRegexToLang {
+		regex, err := regexp.Compile(regexStr)
+		if err != nil {
+			return nil, err
+		}
+		fileFirstLineToLangMap[regex] = lang
+	}
+
 	serveFilePathRegex, err := buildRepoRegex(repoNames)
 	if err != nil {
 		return nil, err

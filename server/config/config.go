@@ -69,6 +69,14 @@ type Config struct {
 
 	// Maximum gRPC send message size in bytes: this allows larger queries to codesearch
 	GrpcMaxSendMessageSize int `json:"grpc_max_send_message_size"`
+
+	// Additional file extensions to highlight with PrismJS in the built-in fileview
+	FileExtToLang map[string]string `json:"file_ext_to_lang"`
+
+	// Regular expression to match the first line of a file to determine its
+	// language.  This is used to override the language detection for files that
+	// don't have a recognized extension.
+	FileFirstLineRegexToLang map[string]string `json:"file_first_line_regex_to_lang"`
 }
 
 type IndexConfig struct {
