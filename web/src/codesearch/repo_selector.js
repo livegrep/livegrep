@@ -46,8 +46,9 @@ function updateOptions(newOptions) {
     if (_.isEqual(currentOptions, newOptions)) {
         return;
     }
-    
+
     $('#repos').empty();
+    newOptions.sort()
 
     for (var i = 0; i < newOptions.length; i++) {
         var path = newOptions[i].split('/');
