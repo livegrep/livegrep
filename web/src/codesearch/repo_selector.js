@@ -48,17 +48,25 @@ function updateOptions(newOptions) {
     }
 
     $('#repos').empty();
+
     newOptions.sort()
+    var groups = new Map()
+    groups.set('/', $('#repos'))
 
     for (var i = 0; i < newOptions.length; i++) {
         var path = newOptions[i].split('/');
         var group = path.slice(0, path.length - 1).join('/') + '/';
-        var groupQuery = '#repos' + (path.length == 1 ? '' : ' optgroup[data-path="' + group + '"]');
         var option = path[path.length - 1];
 
-        if (!$(groupQuery).length) $('#repos').append($('<optgroup>').attr('label', group).attr('data-path', group));
-        $(groupQuery).append($('<option>').attr('value', group + option).text(option));
+        if (!groups.has(group)) {
+            var groupDOM = $('<optgroup>').attr('label', group)
+            $('#repos').append(groupDOM);
+            groups.set(group, groupDOM)
+        }
+        groups.get(group).append($('<option>').attr('value', group + option).text(option));
     }
+
+    groups.clear()
     $('#repos').selectpicker('refresh');
 }
 
