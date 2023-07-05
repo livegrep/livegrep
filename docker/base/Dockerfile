@@ -1,5 +1,8 @@
 FROM ubuntu:20.04
-RUN apt-get update && apt-get -y dist-upgrade
+RUN apt-get update \
+    && apt-get -y dist-upgrade \
+    && apt-get install -y git \
+    && apt-get clean
 
 ARG livegrep_version
 COPY ./builds/${livegrep_version}.tgz /livegrep.tgz

@@ -161,7 +161,7 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	data, err := buildFileData(path, repo, commit)
 	if err != nil {
-		http.Error(w, "Error reading file", 500)
+		http.Error(w, "Error reading file: "+err.Error(), 500)
 		return
 	}
 
