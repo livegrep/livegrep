@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
 RUN apt-get update \
     && apt-get -y dist-upgrade \
-    && apt-get install -y git \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y git \
     && apt-get clean
 
 ARG livegrep_version
