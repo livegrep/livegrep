@@ -1,6 +1,6 @@
 FROM livegrep/base
 RUN apt-get update && apt-get -y dist-upgrade
-RUN apt-get -y install nginx
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install nginx
 
 # the base image adds ./livegrep/nginx.conf for us, messy, but
 # works for now
