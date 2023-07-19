@@ -18,7 +18,7 @@ function init() {
             var optgroup = $('#repos optgroup[label="' + $(this).text() + '"]')
             var allSelected = !optgroup.children('option:not(:selected)').length;
             optgroup.children().prop('selected', !allSelected);
-            $("#repos").selectpicker('refresh');
+            $("#repos").selectpicker('refresh').trigger("change");
         });
     });
     $(window).on('keyup', '.bootstrap-select .bs-searchbox input', function(event) {
