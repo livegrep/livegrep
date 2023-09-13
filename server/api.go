@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -47,14 +48,8 @@ func writeQueryError(ctx context.Context, w http.ResponseWriter, err error) {
 	}
 }
 
-func extractQuery(ctx context.Context, r *http.Request) (pb.Query, bool, error) {
+func extractQuery(ctx context.Context, r *http.Request, params url.Values) (pb.Query, bool, error) {
 	var query pb.Query
-
-	if err := r.ParseForm(); err != nil {
-		return query, false, err
-	}
-
-	params := r.Form
 	var err error
 
 	regex := true
@@ -203,7 +198,12 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		}
 	}
 
-	q, is_regex, err := extractQuery(ctx, r)
+	err := r.ParseForm()
+	if err != nil {
+		writeError(ctx, w, 400, "bad_query", err.Error())
+		return
+	}
+	q, is_regex, err := extractQuery(ctx, r, r.Form)
 
 	if err != nil {
 		writeError(ctx, w, 400, "bad_query", err.Error())
