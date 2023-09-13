@@ -63,6 +63,7 @@ function shorten(ref) {
   return ref;
 }
 
+// Keep these URL functions in sync with server.go.
 function url(tree, version, path, lno) {
   if (tree in CodesearchUI.internalViewRepos) {
     return internalUrl(tree, path, lno);

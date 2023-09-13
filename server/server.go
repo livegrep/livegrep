@@ -2,13 +2,17 @@ package server
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 	texttemplate "text/template"
 	"time"
 
@@ -25,6 +29,10 @@ import (
 )
 
 var serveUrlParseError = fmt.Errorf("failed to parse repo and path from URL")
+
+// When the search page is requested with this query parameter, if the query
+// matches a single result, the user is redirected to view that result.
+const feelingLuckyParam = "lucky"
 
 type page struct {
 	Title         string
@@ -118,8 +126,96 @@ func (s *server) ServeRepoInfo(ctx context.Context, w http.ResponseWriter, r *ht
 	replyJSON(ctx, w, 200, script_data)
 }
 
+// Produces the URL to view a match, either in the internal viewer or external code host.
+// If this is updated, codesearch_ui.js should be updated accordingly.
+func urlForMatch(script_data *searchScriptData, backendName string, tree string, version string, path string, lno int) string {
+	path = strings.TrimPrefix(path, "/")
+	if _, ok := script_data.InternalViewRepos[tree]; ok {
+		return internalUrlForMatch(tree, version, path, lno)
+	}
+
+	return externalUrlForMatch(script_data.RepoUrls[backendName][tree], tree, version, path, lno)
+}
+
+func internalUrlForMatch(tree string, version string, path string, lno int) string {
+	if lno <= 0 {
+		return fmt.Sprintf("/view/%s/%s", tree, path)
+	}
+	return fmt.Sprintf("/view/%s/%s#L%d", tree, path, lno)
+}
+
+func externalUrlForMatch(url string, tree string, version string, path string, lno int) string {
+	url = strings.ReplaceAll(url, "{lno}", strconv.Itoa(lno))
+	url = strings.ReplaceAll(url, "{version}", version)
+	url = strings.ReplaceAll(url, "{name}", tree)
+	treeParts := strings.SplitN(tree, "/", 2)
+	if len(treeParts) > 0 {
+		url = strings.ReplaceAll(url, "{basename}", treeParts[1])
+	}
+	url = strings.ReplaceAll(url, "{path}", path)
+	return url
+}
+
+// Redirects to view the full source for a match if there is only one, returning true.
+// If there is no match or more than one match, or an error, returns false.
+func (s *server) maybeRedirectToSingleMatch(ctx context.Context, w http.ResponseWriter, r *http.Request, script_data *searchScriptData, backends []*Backend) (bool, error) {
+	if len(backends) == 0 {
+		return false, errors.New("no backends configured")
+	}
+	backend := backends[0]
+
+	queryParams, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return false, err
+	}
+	if !queryParams.Has(feelingLuckyParam) {
+		return false, nil
+	}
+
+	q, _, err := extractQuery(ctx, r, queryParams)
+	if err != nil {
+		return false, errors.New(fmt.Sprintf("extractQuery(ctx, r, %q): %v", r.URL.Query(), err))
+	}
+	if q.Line == "" {
+		return false, errors.New(fmt.Sprintf("no literal/regex to match: query=%v", q))
+	}
+	q.MaxMatches = 2
+
+	reply, err := s.doSearch(ctx, backend, &q)
+	if err != nil {
+		return false, err
+	}
+
+	content_matches := len(reply.Results)
+	file_matches := len(reply.FileResults)
+	if (content_matches + file_matches) == 1 {
+		var url string
+		if content_matches == 1 {
+			match := reply.Results[0]
+			url = urlForMatch(script_data, backend.Id, match.Tree, match.Version, match.Path, match.LineNumber)
+		} else {
+			match := reply.FileResults[0]
+			url = urlForMatch(script_data, backend.Id, match.Tree, match.Version, match.Path, 1)
+		}
+		http.Redirect(w, r, url, 303)
+		return true, nil
+	}
+	return false, nil
+}
+
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	script_data, backends, sampleRepo := s.makeSearchScriptData()
+
+	ok, err := s.maybeRedirectToSingleMatch(ctx, w, r, script_data, backends)
+	if err != nil {
+		// Only log that it happened... if we have an error in the query, for
+		// example, that's an error we'll re-surface on the frontend when it
+		// tries the query again.
+		log.Printf(ctx, "warning: feeling lucky search failed err=%s", err)
+	} else if ok {
+		// We found a single match and redirected to it.
+		return
+	}
 
 	s.renderPage(ctx, w, r, "index.html", &page{
 		Title:         "code search",
