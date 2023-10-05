@@ -1,5 +1,9 @@
 startup --host_jvm_args=-Dbazel.DigestFunction=sha256
 
+# abseil requires at least C++14, as of Jan 2023
+# https://github.com/abseil/abseil-cpp/releases/tag/20230125.3
+build --host_cxxopt=-std=c++14 --cxxopt=-std=c++14
+
 # Ensure sandboxing is on to increase hermeticity.
 build --spawn_strategy=sandboxed
 
