@@ -29,7 +29,7 @@ func TestParseQuery(t *testing.T) {
 			"line file:.rb",
 			pb.Query{
 				Line:     "line",
-				File:     ".rb",
+				File:     []string{".rb"},
 				FoldCase: true,
 			},
 			true,
@@ -56,12 +56,12 @@ func TestParseQuery(t *testing.T) {
 		},
 		{
 			"case:abc file:^kernel/",
-			pb.Query{Line: "abc", FoldCase: false, File: "^kernel/"},
+			pb.Query{Line: "abc", FoldCase: false, File: []string{"^kernel/"}},
 			true,
 		},
 		{
 			"case:abc file:( )",
-			pb.Query{Line: "abc", FoldCase: false, File: "( )"},
+			pb.Query{Line: "abc", FoldCase: false, File: []string{"( )"}},
 			true,
 		},
 		{
@@ -71,12 +71,12 @@ func TestParseQuery(t *testing.T) {
 		},
 		{
 			`a file:\(`,
-			pb.Query{Line: "a", File: `\(`, FoldCase: true},
+			pb.Query{Line: "a", File: []string{`\(`}, FoldCase: true},
 			true,
 		},
 		{
 			`a file:(\()`,
-			pb.Query{Line: "a", File: `(\()`, FoldCase: true},
+			pb.Query{Line: "a", File: []string{`(\()`}, FoldCase: true},
 			true,
 		},
 		{
@@ -96,12 +96,12 @@ func TestParseQuery(t *testing.T) {
 		},
 		{
 			`-file:Godep re`,
-			pb.Query{Line: "re", NotFile: "Godep", FoldCase: true},
+			pb.Query{Line: "re", NotFile: []string{"Godep"}, FoldCase: true},
 			true,
 		},
 		{
 			`-file:. -repo:Godep re`,
-			pb.Query{Line: "re", NotFile: ".", NotRepo: "Godep", FoldCase: true},
+			pb.Query{Line: "re", NotFile: []string{"."}, NotRepo: "Godep", FoldCase: true},
 			true,
 		},
 		{
@@ -136,44 +136,44 @@ func TestParseQuery(t *testing.T) {
 		},
 		{
 			`file:hello`,
-			pb.Query{Line: "hello", FoldCase: true, FilenameOnly: true},
+			pb.Query{Line: "hello", File: []string{"hello"}, FoldCase: true, FilenameOnly: true},
 			true,
 		},
 		{
 			`file:HELLO`,
-			pb.Query{Line: "HELLO", FoldCase: false, FilenameOnly: true},
+			pb.Query{Line: "HELLO", File: []string{"HELLO"}, FoldCase: false, FilenameOnly: true},
 			true,
 		},
 		{
 			`lit:a( file:b`,
-			pb.Query{Line: `a\(`, File: "b", FoldCase: false},
+			pb.Query{Line: `a\(`, File: []string{"b"}, FoldCase: false},
 			true,
 		},
 		{
 			`lit:a(b file:c`,
-			pb.Query{Line: `a\(b`, File: "c", FoldCase: false},
+			pb.Query{Line: `a\(b`, File: []string{"c"}, FoldCase: false},
 			true,
 		},
 		{
 			`[(] file:\.c`,
-			pb.Query{Line: `[(]`, File: "\\.c", FoldCase: true},
+			pb.Query{Line: `[(]`, File: []string{"\\.c"}, FoldCase: true},
 			true,
 		},
 		{
 			`[ ] file:\.c`,
-			pb.Query{Line: `[ ]`, File: "\\.c", FoldCase: true},
+			pb.Query{Line: `[ ]`, File: []string{"\\.c"}, FoldCase: true},
 			true,
 		},
 		{
 			`[ \]] file:\.c`,
-			pb.Query{Line: `[ \]]`, File: "\\.c", FoldCase: true},
+			pb.Query{Line: `[ \]]`, File: []string{"\\.c"}, FoldCase: true},
 			true,
 		},
 
 		// literal parse mode
 		{
 			"a( file:b",
-			pb.Query{Line: `a\(`, File: "b", FoldCase: true},
+			pb.Query{Line: `a\(`, File: []string{"b"}, FoldCase: true},
 			false,
 		},
 		{
@@ -208,8 +208,18 @@ func TestParseQuery(t *testing.T) {
 		},
 		{
 			"file:a( b",
-			pb.Query{Line: `b`, File: `a\(`, FoldCase: true},
+			pb.Query{Line: `b`, File: []string{`a\(`}, FoldCase: true},
 			false,
+		},
+		{
+			`file:a file:b path:c path:\.rb$ zoo`,
+			pb.Query{Line: "zoo", File: []string{"a", "b", "c", `\.rb$`}, FoldCase: true},
+			true,
+		},
+		{
+			`-file:a -path:b -file:c -path:\.rb$ zoo`,
+			pb.Query{Line: "zoo", NotFile: []string{"a", "c", "b", `\.rb$`}, FoldCase: true},
+			true,
 		},
 	}
 
@@ -237,6 +247,8 @@ func TestParseQueryError(t *testing.T) {
 		{"a max_matches:a"},
 		{"a file:b c"},
 		{"a file:((abc()())()) c"},
+		{"a repo:b repo:c"},
+		{"a -repo:b -repo:c"},
 	}
 
 	for _, tc := range cases {
