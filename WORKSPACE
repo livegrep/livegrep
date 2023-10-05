@@ -83,6 +83,13 @@ http_archive(
     url = "https://github.com/libgit2/libgit2/archive/v0.27.9.tar.gz",
 )
 
+http_archive(
+    name = "com_google_absl",
+    sha256 = "497ebdc3a4885d9209b9bd416e8c3f71e7a1fb8af249f6c2a80b7cbeefcd7e21",
+    strip_prefix = "abseil-cpp-20230802.1/",
+    url = "https://github.com/abseil/abseil-cpp/archive/refs/tags/20230802.1.zip",
+)
+
 git_repository(
     name = "com_github_grpc_grpc",
     commit = "591d56e1300b6d11948e1b821efac785a295989c",  # 1.44.0
