@@ -153,10 +153,10 @@ class code_searcher;
 struct match_finger;
 
 bool accept(const query *q, const indexed_file *file) {
-    if (q->file_pat &&
-        !q->file_pat->Match(file->path, 0, file->path.size(),
-                            RE2::UNANCHORED, 0, 0))
-        return false;
+    for (const auto &pat : q->file_pats)
+        if (!pat->Match(file->path, 0, file->path.size(),
+                        RE2::UNANCHORED, 0, 0))
+            return false;
 
     if (q->tree_pat &&
         !q->tree_pat->Match(file->tree->name, 0,
@@ -164,10 +164,9 @@ bool accept(const query *q, const indexed_file *file) {
                             RE2::UNANCHORED, 0, 0))
         return false;
 
-    if (q->negate.file_pat &&
-        q->negate.file_pat->Match(file->path, 0,
-                                  file->path.size(),
-                                  RE2::UNANCHORED, 0, 0))
+    for (const auto &pat : q->negate.file_pats)
+        if (pat->Match(file->path, 0, file->path.size(),
+                       RE2::UNANCHORED, 0, 0))
         return false;
 
     if (q->negate.tree_pat &&
@@ -783,7 +782,7 @@ void searcher::search_lines(uint32_t *indexes, int count,
         return;
     }
 
-    if ((query_->file_pat || query_->tree_pat) &&
+    if ((!query_->file_pats.empty() || query_->tree_pat) &&
         double(count * 30) / chunk->size > files_density()) {
         full_search(chunk);
         return;
@@ -827,7 +826,7 @@ void searcher::full_search(const chunk *chunk)
 void searcher::next_range(match_finger *finger,
                           int& pos, int& endpos, int maxpos)
 {
-    if ((!query_->file_pat && !query_->tree_pat) || !FLAGS_index)
+    if ((query_->file_pats.empty() && !query_->tree_pat) || !FLAGS_index)
         return;
 
     debug(kDebugSearch, "next_range(%d, %d, %d)", pos, endpos, maxpos);
