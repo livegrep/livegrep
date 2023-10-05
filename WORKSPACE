@@ -111,11 +111,17 @@ git_repository(
     remote = "https://github.com/bazelbuild/buildifier.git",
 )
 
-git_repository(
-    name = "com_grail_bazel_compdb",
-    commit = "7658de071fcd072163c24cc96d78e9891d4d81f5",
-    remote = "https://github.com/grailbio/bazel-compilation-database.git",
+http_archive(
+    name = "hedron_compile_commands",
+
+    url = "https://github.com/hedronvision/bazel-compile-commands-extractor/archive/e16062717d9b098c3c2ac95717d2b3e661c50608.tar.gz",
+    sha256 = "ed5aea1dc87856aa2029cb6940a51511557c5cac3dbbcb05a4abd989862c36b4",
+    strip_prefix = "bazel-compile-commands-extractor-e16062717d9b098c3c2ac95717d2b3e661c50608",
 )
+
+load("@hedron_compile_commands//:workspace_setup.bzl", "hedron_compile_commands_setup")
+
+hedron_compile_commands_setup()
 
 git_repository(
     name = "com_google_googletest",
