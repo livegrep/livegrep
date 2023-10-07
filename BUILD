@@ -1,11 +1,12 @@
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
-load("@com_grail_bazel_compdb//:aspects.bzl", "compilation_database")
+load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
 
-compilation_database(
+refresh_compile_commands(
     name = "compilation_db",
     targets = [
         "//src/tools:codesearch",
         "//src/tools:codesearchtool",
+        "//test:codesearch_test",
     ],
 )
 

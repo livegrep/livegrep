@@ -30,11 +30,13 @@ TEST(tagsearch_test, TagLinesFromQuery) {
        interpolated, and (b) in at least one case varies how it is
        anchored correctly. */
 
-    q.file_pat.reset(new RE2("models.py"));
+    q.file_pats.clear();
+    q.file_pats.emplace_back(new RE2("models.py"));
     r = tag_searcher::create_tag_line_regex_from_query(&q);
     ASSERT_EQ(r, "^(User)\t[^\t]*(models.py)[^\t]*\t");
 
-    q.file_pat.reset(new RE2("^models.py"));
+    q.file_pats.clear();
+    q.file_pats.emplace_back(new RE2("^models.py"));
     r = tag_searcher::create_tag_line_regex_from_query(&q);
     ASSERT_EQ(r, "^(User)\t(models.py)[^\t]*\t");
 
@@ -42,7 +44,7 @@ TEST(tagsearch_test, TagLinesFromQuery) {
     r = tag_searcher::create_tag_line_regex_from_query(&q);
     ASSERT_EQ(r, "^(User)\t(models.py)[^\t]*\t\\d+;\"\t.*(c).*$");
 
-    q.file_pat.reset();
+    q.file_pats.clear();
     r = tag_searcher::create_tag_line_regex_from_query(&q);
     ASSERT_EQ(r, "^(User)\t[^\t]+\t\\d+;\"\t.*(c).*$");
 }

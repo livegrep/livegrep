@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <string.h>
 #include "gtest/gtest.h"
 
@@ -142,7 +143,7 @@ TEST_F(codesearch_test, RestrictFiles) {
     grpc::Status st;
 
     request.set_line("contents");
-    request.set_file("file1");
+    request.add_file("file1");
 
     st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
@@ -163,7 +164,7 @@ TEST_F(codesearch_test, RestrictFiles) {
     EXPECT_EQ("repo", matches.results(1).tree());
 
     request.clear_repo();
-    request.set_not_file("file1");
+    request.add_not_file("file1");
 
     matches.Clear();
     st = srv->Search(&ctx, &request, &matches);
@@ -172,6 +173,48 @@ TEST_F(codesearch_test, RestrictFiles) {
     ASSERT_EQ(2, matches.results_size());
     EXPECT_EQ("/file2", matches.results(0).path());
     EXPECT_EQ("/file2", matches.results(1).path());
+}
+
+
+TEST_F(codesearch_test, RestrictMultipleFiles) {
+    // tree_ is "repo"
+    cs_.index_file(tree_, "/file1", "contents");
+    cs_.index_file(tree_, "/file2", "contents");
+    cs_.index_file(tree_, "/file3", "contents");
+    // other is "OTHER"
+    const indexed_tree *other = cs_.open_tree("OTHER", "REV0");
+    cs_.index_file(other, "/path1", "contents");
+    cs_.index_file(other, "/path2", "contents");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    Query request;
+    CodeSearchResult matches;
+    grpc::ServerContext ctx;
+    grpc::Status st;
+
+    request.set_line("contents");
+    request.add_file("file");
+    request.add_file("1|2");
+
+    st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(2, matches.results_size());
+    EXPECT_EQ("/file1", matches.results(0).path());
+    EXPECT_EQ("/file2", matches.results(1).path());
+
+    request.clear_file();
+    request.add_not_file("2");
+    request.add_not_file("p\\w{3}");
+
+    matches.Clear();
+    st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(2, matches.results_size());
+    EXPECT_EQ("/file1", matches.results(0).path());
+    EXPECT_EQ("/file3", matches.results(1).path());
 }
 
 
@@ -247,7 +290,7 @@ TEST_F(codesearch_test, LineCaseAndFileCaseAreIndependent) {
         Query request;
         request.set_line("c");
         request.set_fold_case(true);
-        request.set_file("FILE1");
+        request.add_file("FILE1");
         grpc::ServerContext ctx;
         grpc::Status st = srv->Search(&ctx, &request, &matches);
         ASSERT_TRUE(st.ok());
@@ -258,7 +301,7 @@ TEST_F(codesearch_test, LineCaseAndFileCaseAreIndependent) {
         Query request;
         request.set_line("CONTENTS");
         request.set_fold_case(false);
-        request.set_file("file2");
+        request.add_file("file2");
         grpc::ServerContext ctx;
         grpc::Status st = srv->Search(&ctx, &request, &matches);
         ASSERT_TRUE(st.ok());
@@ -370,6 +413,52 @@ TEST_F(codesearch_test, FilenameOnlyTest) {
     ASSERT_EQ(0, matches.results_size());
     ASSERT_EQ(1, matches.file_results_size());
     ASSERT_EQ("/file1", matches.file_results(0).path());
+}
+
+TEST_F(codesearch_test, MultiFilenameOnlyTest) {
+    cs_.index_file(tree_, "/bin/foo/BUILD.bazel", "contents");
+    cs_.index_file(tree_, "/bin/bar/build.sh", "mention of file1");
+    cs_.index_file(tree_, "/WORKSPACE.bazel", "contents");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    CodeSearchResult matches;
+    Query request;
+    grpc::ServerContext ctx;
+    grpc::Status st;
+
+    // Multi-filename support changed the format slightly:
+    // a single term is present in Line, and multiple are
+    // carried in File
+    request.set_line("SPACE");
+    request.add_file("SPACE");
+    request.set_filename_only(true);
+
+    st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(0, matches.results_size());
+    ASSERT_EQ(1, matches.file_results_size());
+    ASSERT_EQ("/WORKSPACE.bazel", matches.file_results(0).path());
+
+    request.clear_file();
+    request.set_line("in/");
+    request.add_file("in/");
+    request.add_file("build");
+
+    matches.Clear();
+    st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(0, matches.results_size());
+    ASSERT_EQ(2, matches.file_results_size());
+    ASSERT_EQ("/bin/foo/BUILD.bazel", matches.file_results(0).path());
+    ASSERT_EQ("/bin/bar/build.sh", matches.file_results(1).path());
+
+    // we expect the highlighted bounds to be the term in Line
+    // in this case, "in/" of "/bin/..."
+    ASSERT_EQ(2, matches.file_results(0).bounds().left());
+    ASSERT_EQ(5, matches.file_results(0).bounds().right());
 }
 
 TEST_F(codesearch_test, BadUTF8) {

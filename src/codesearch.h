@@ -114,11 +114,11 @@ struct query {
     int32_t max_matches;
 
     std::shared_ptr<RE2> line_pat;
-    std::shared_ptr<RE2> file_pat;
+    vector<std::shared_ptr<RE2>> file_pats;
     std::shared_ptr<RE2> tree_pat;
     std::shared_ptr<RE2> tags_pat;
     struct {
-        std::shared_ptr<RE2> file_pat;
+        vector<std::shared_ptr<RE2>> file_pats;
         std::shared_ptr<RE2> tree_pat;
         std::shared_ptr<RE2> tags_pat;
     } negate;

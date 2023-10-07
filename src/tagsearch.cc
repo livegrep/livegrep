@@ -77,9 +77,9 @@ bool tag_searcher::transform(query *q, match_result *m) const {
     }
 
     // check the negation constraints
-    if (q->negate.file_pat &&
-        q->negate.file_pat->Match(tags_path, 0, tags_path.size(), RE2::UNANCHORED, NULL, 0))
-        return false;
+    for (const auto &pat : q->negate.file_pats)
+        if (pat->Match(tags_path, 0, tags_path.size(), RE2::UNANCHORED, NULL, 0))
+            return false;
     if (q->negate.tags_pat &&
         q->negate.tags_pat->Match(tags, 0, tags.size(), RE2::UNANCHORED, NULL, 0))
         return false;
@@ -152,8 +152,11 @@ std::string tag_searcher::create_tag_line_regex_from_query(query *q) {
     std::string regex("^");
     regex += create_partial_regex(q->line_pat.get(), "[^\t]");
     regex += "\t";
-    if (q->file_pat || q->tags_pat) {
-        regex += create_partial_regex(q->file_pat.get(), "[^\t]");
+    if (!q->file_pats.empty() || q->tags_pat) {
+        /* This doesn't consider that the original query may actually want to
+         * match multiple paths! Sorry... it's too inefficient to implement
+         * simply by translating to regex. */
+        regex += create_partial_regex(q->file_pats.empty() ? nullptr : q->file_pats.at(0).get(), "[^\t]");
         regex += "\t";
         if (q->tags_pat) {
             regex += "\\d+;\"\t";

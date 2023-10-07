@@ -75,9 +75,18 @@ func extractQuery(ctx context.Context, r *http.Request) (pb.Query, bool, error) 
 		}
 	}
 	if file, ok := params["file"]; ok {
-		query.File = file[0]
+		query.File = []string{file[0]}
 		if !regex {
-			query.File = regexp.QuoteMeta(query.File)
+			query.File = []string{regexp.QuoteMeta(file[0])}
+		}
+	}
+	if files, ok := params["file"]; ok {
+		query.File = files
+		if !regex {
+			query.File = make([]string, len(files))
+			for _, f := range files {
+				query.File = append(query.File, regexp.QuoteMeta(f))
+			}
 		}
 	}
 	if repo, ok := params["repo"]; ok {
@@ -88,7 +97,7 @@ func extractQuery(ctx context.Context, r *http.Request) (pb.Query, bool, error) 
 	}
 
 	// New-style repo multiselect, only if "repo:" is not in the query.
-	if query.Repo == "" {
+	if len(query.Repo) == 0 {
 		if newRepos, ok := params["repo[]"]; ok {
 			for i := range newRepos {
 				newRepos[i] = "^" + regexp.QuoteMeta(newRepos[i]) + "$"

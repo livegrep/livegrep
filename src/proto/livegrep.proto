@@ -4,11 +4,13 @@ import "src/proto/config.proto";
 
 message Query {
     string line = 1;
-    string file = 2;
+    // file contains a list of regular expressions to match a file's path
+    // against. A file must match *all* given patterns.
+    repeated string file = 2;
     string repo = 3;
     string tags = 4;
     bool fold_case = 5;
-    string not_file = 6;
+    repeated string not_file = 6;
     string not_repo = 7;
     string not_tags = 8;
     int32 max_matches = 9;

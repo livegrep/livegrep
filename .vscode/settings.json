@@ -1,0 +1,20 @@
+{
+  "go.toolsEnvVars": {
+    "GOPACKAGESDRIVER": "${workspaceFolder}/tools/gopackagesdriver.sh"
+  },
+  "gopls": {
+    "build.directoryFilters": [
+      "-bazel-bin",
+      "-bazel-out",
+      "-bazel-testlogs",
+      "-bazel-livegrep"
+    ],
+    "formatting.gofumpt": false,
+    "formatting.local": "github.com/livegrep/livegrep",
+    "ui.completion.usePlaceholders": true,
+    "ui.semanticTokens": true,
+  },
+  "go.useLanguageServer": true,
+  "go.lintOnSave": "off",
+  "go.vetOnSave": "off"
+}

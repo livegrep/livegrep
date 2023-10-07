@@ -16,11 +16,13 @@
 #include <cctype>
 #include <functional>
 #include <future>
+#include <numeric>
 #include <string>
 
 #include "utf8.h"
 
 #include <boost/bind.hpp>
+#include "absl/strings/str_join.h"
 
 using grpc::ServerContext;
 using grpc::Status;
@@ -128,17 +130,54 @@ Status extract_regex(std::shared_ptr<RE2> *out,
     return extract_regex(out, label, input, case_sensitive);
 }
 
+Status extract_regexes(vector<std::shared_ptr<RE2>> *out,
+                     const std::string &label,
+                     const google::protobuf::RepeatedPtrField<std::string> &inputs,
+                     bool case_sensitive) {
+    if (inputs.empty()) {
+        out->clear();
+        return Status::OK;
+    }
+
+    RE2::Options opts;
+    default_re2_options(opts);
+    opts.set_case_sensitive(case_sensitive);
+
+    out->reserve(inputs.size());
+    for (const auto &input : inputs) {
+        std::shared_ptr<RE2> re(new RE2(input, opts));
+        if (!re->ok()) {
+            return Status(StatusCode::INVALID_ARGUMENT, label + ": " + re->error());
+        }
+        out->push_back(std::move(re));
+    }
+    return Status::OK;
+}
+
+Status extract_regexes(vector<std::shared_ptr<RE2>> *out,
+                     const std::string &label,
+                     const google::protobuf::RepeatedPtrField<std::string> &inputs) {
+    if (inputs.empty()) {
+        out->clear();
+        return Status::OK;
+    }
+    bool case_sensitive = std::any_of(inputs.begin(), inputs.end(), [](const std::string &s) {
+        return std::any_of(std::begin(s), std::end(s), isupper);
+    });
+    return extract_regexes(out, label, inputs, case_sensitive);
+}
+
 Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* response) {
     Status status = Status::OK;
     status = extract_regex(&q->line_pat, "line", request->line(), !request->fold_case());
     if (status.ok())
-        status = extract_regex(&q->file_pat, "file", request->file());
+        status = extract_regexes(&q->file_pats, "file", request->file());
     if (status.ok())
         status = extract_regex(&q->tree_pat, "repo", request->repo());
     if (status.ok())
         status = extract_regex(&q->tags_pat, "tags", request->tags());
     if (status.ok())
-        status = extract_regex(&q->negate.file_pat, "-file", request->not_file());
+        status = extract_regexes(&q->negate.file_pats, "-file", request->not_file());
     if (status.ok())
         status = extract_regex(&q->negate.tree_pat, "-repo", request->not_repo());
     if (status.ok())
@@ -220,13 +259,13 @@ static void run_tags_search(const query& main_query, std::string regex,
     // (unfortunately, we can't construct a line query that checks these)
     query constraints;
     constraints.line_pat = main_query.line_pat;  // tell it what to highlight
-    constraints.negate.file_pat.swap(q.negate.file_pat);
+    constraints.negate.file_pats.swap(q.negate.file_pats);
     constraints.negate.tags_pat.swap(q.negate.tags_pat);
 
     // modify the line pattern to match the constraints that we can handle now
     regex = tag_searcher::create_tag_line_regex_from_query(&q);
     q.line_pat.reset(new RE2(regex, q.line_pat->options()));
-    q.file_pat.reset();
+    q.file_pats.clear();
     q.tags_pat.reset();
 
     code_searcher::search_thread search(tagdata);
@@ -241,6 +280,17 @@ static std::string pat(const std::shared_ptr<RE2> &p) {
     if (p.get() == 0)
         return "";
     return p->pattern();
+}
+
+// returns a comma-separated string of patterns
+static std::string pat(const vector<std::shared_ptr<RE2>> &ps) {
+    if (ps.size() == 0)
+        return "";
+    if (ps.size() == 1)
+        return ps.at(0)->pattern();
+    std::vector<std::string> pats(ps.size());
+    std::transform(std::begin(ps), std::end(ps), std::begin(pats), [](std::shared_ptr<RE2> p) { return p->pattern(); });
+    return absl::StrJoin(pats, ",");
 }
 
 void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, match_stats& stats) {
@@ -302,19 +352,28 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
     }
 
     log(q.trace_id,
-        "processing query line='%s' file='%s' tree='%s' tags='%s' "
-        "not_file='%s' not_tree='%s' not_tags='%s' max_matches='%d'",
+        "processing query line='%s' file=%s tree='%s' tags='%s' "
+        "not_file=%s not_tree='%s' not_tags='%s' max_matches='%d'",
         pat(q.line_pat).c_str(),
-        pat(q.file_pat).c_str(),
+        pat(q.file_pats).c_str(),
         pat(q.tree_pat).c_str(),
         pat(q.tags_pat).c_str(),
-        pat(q.negate.file_pat).c_str(),
+        pat(q.negate.file_pats).c_str(),
         pat(q.negate.tree_pat).c_str(),
         pat(q.negate.tags_pat).c_str(),
         q.max_matches);
 
     if (q.line_pat->ProgramSize() > kMaxProgramSize) {
         log("program too large size=%d", q.line_pat->ProgramSize());
+        return Status(StatusCode::INVALID_ARGUMENT, "Parse error");
+    }
+
+    auto file_pat_size =
+        std::accumulate(std::begin(q.file_pats), std::end(q.file_pats), 0,
+                        [](int i, std::shared_ptr<RE2> re) { return re->ProgramSize(); });
+
+    if (file_pat_size > kMaxProgramSize) {
+        log("file list program too large size=%d", file_pat_size);
         return Status(StatusCode::INVALID_ARGUMENT, "Parse error");
     }
 

@@ -1,2 +1,6 @@
 # c.f. https://github.com/grpc/grpc/pull/13929
 build --copt=-DGRPC_BAZEL_BUILD
+
+# abseil requires at least C++14, as of Jan 2023
+# https://github.com/abseil/abseil-cpp/releases/tag/20230125.3
+build --host_cxxopt=-std=c++14 --cxxopt=-std=c++14
