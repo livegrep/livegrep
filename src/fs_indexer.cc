@@ -52,7 +52,7 @@ void fs_indexer::walk(const fs::path& path) {
     if (!fs::exists(path)) return;
     fs::directory_iterator end_itr;
     if (fs::is_directory(path)) {
-        for (fs::directory_iterator itr(path);
+        for (fs::directory_iterator itr(path, fs::directory_options::skip_permission_denied);
                 itr != end_itr;
                 ++itr) {
             if (fs::is_directory(itr->status()) ) {
