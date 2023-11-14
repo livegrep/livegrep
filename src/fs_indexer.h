@@ -21,7 +21,8 @@ public:
     fs_indexer(code_searcher *cs,
                const string& repopath,
                const string& name,
-               const Metadata &metadata);
+               const Metadata &metadata,
+               const bool& ignore_symlinks);
     ~fs_indexer();
     void walk(const boost::filesystem::path& path);
     void walk_contents_file(const boost::filesystem::path& contents_file_path);
@@ -30,6 +31,7 @@ protected:
     std::string repopath_;
     std::string name_;
     const indexed_tree *tree_;
+    bool ignore_symlinks_;
 
     void read_file(const boost::filesystem::path& path);
 };

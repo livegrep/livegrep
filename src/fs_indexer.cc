@@ -17,8 +17,9 @@ namespace fs = boost::filesystem;
 fs_indexer::fs_indexer(code_searcher *cs,
                        const string& repopath,
                        const string& name,
-                       const Metadata &metadata)
-    : cs_(cs), repopath_(repopath), name_(name) {
+                       const Metadata &metadata,
+                       const bool& ignore_symlinks)
+    : cs_(cs), repopath_(repopath), name_(name), ignore_symlinks_(ignore_symlinks) {
     tree_ = cs->open_tree(name, metadata, "");
 }
 
@@ -56,6 +57,9 @@ void fs_indexer::walk(const fs::path& path) {
                 itr != end_itr;
                 ++itr) {
             boost::system::error_code ec;
+            if (ignore_symlinks_ && fs::is_symlink(itr->path())) {
+                continue;
+            }
             if (fs::is_directory(itr->status(ec)) ) {
                 fs_indexer::walk(itr->path());
             } else if (fs::is_regular_file(itr->status(ec)) ) {

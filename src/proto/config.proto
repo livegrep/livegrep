@@ -24,6 +24,7 @@ message PathSpec {
     string name = 2             [json_name = "name"];
     string ordered_contents = 3 [json_name = "ordered_contents"];
     Metadata metadata = 4       [json_name = "metadata"];
+    bool ignore_symlinks = 5    [json_name = "ignore_symlinks"];
 }
 
 message RepoSpec {
