@@ -52,13 +52,17 @@ void fs_indexer::walk(const fs::path& path) {
     if (!fs::exists(path)) return;
     fs::directory_iterator end_itr;
     if (fs::is_directory(path)) {
-        for (fs::directory_iterator itr(path);
+        for (fs::directory_iterator itr(path, fs::directory_options::skip_permission_denied);
                 itr != end_itr;
                 ++itr) {
-            if (fs::is_directory(itr->status()) ) {
+            boost::system::error_code ec;
+            if (fs::is_directory(itr->status(ec)) ) {
                 fs_indexer::walk(itr->path());
-            } else if (fs::is_regular_file(itr->status()) ) {
+            } else if (fs::is_regular_file(itr->status(ec)) ) {
                 fs_indexer::read_file(itr->path());
+            }
+            if (ec != boost::system::errc::success) {
+                fprintf(stderr, "WARN: %s is inaccessible.\n", itr->path().c_str());
             }
         }
     } else if (fs::is_regular_file(path)) {
