@@ -1,5 +1,6 @@
 $ = require('jquery');
 _ = require('underscore');
+var CodeSearchConstant = require("codesearch/codesearch_constants.js");
 
 "use strict";
 var Codesearch = function() {
@@ -72,7 +73,35 @@ var Codesearch = function() {
       xhr.always(function() {
         Codesearch.in_flight = null;
         setTimeout(Codesearch.dispatch, 0);
+        Codesearch.setRecentSearchHistory();
       });
+    },
+    setRecentSearchHistory: function () {
+      Codesearch.clear_timer();
+      // Timeout ensures only the intended search text is recorded
+      Codesearch.timer = setTimeout(function () { 
+        if (window.location.search) { 
+          var recentSearchesString = localStorage.getItem(CodeSearchConstant.LIVEGREP_STORAGE_KEY);
+          var recentSearches = [];
+          if (recentSearchesString) { 
+            recentSearches = recentSearchesString.split(CodeSearchConstant.RECENT_SEARCHES_DELIMITER);
+          }
+
+          const query = window.location.pathname + window.location.search;
+          if (recentSearches.indexOf(query) < 0) { 
+            if (recentSearches.length >= 5)
+              recentSearches.shift();
+            recentSearches.push(query);
+            localStorage.setItem(CodeSearchConstant.LIVEGREP_STORAGE_KEY, recentSearches.join(CodeSearchConstant.RECENT_SEARCHES_DELIMITER));
+          }
+        }
+      }, 300)
+    },
+    clear_timer: function () {
+      if (Codesearch.timer) {
+        clearTimeout(Codesearch.timer);
+        Codesearch.timer = null;
+      }
     }
   };
 }();
