@@ -130,6 +130,15 @@ func stringSlice(ss []string) []string {
 	return []string{}
 }
 
+func convertBounds(bounds []*pb.Bounds) [][2]int {
+	convertedBounds := make([][2]int, 0, len(bounds))
+	for _, bound := range bounds {
+		convertedBounds = append(convertedBounds, [2]int{int(bound.Left), int(bound.Right)})
+	}
+
+	return convertedBounds
+}
+
 func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearch, error) {
 	var search *pb.CodeSearchResult
 	var err error
@@ -170,7 +179,7 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 			LineNumber:    int(r.LineNumber),
 			ContextBefore: stringSlice(r.ContextBefore),
 			ContextAfter:  stringSlice(r.ContextAfter),
-			Bounds:        [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+			Bounds:        convertBounds(r.Bounds),
 			Line:          r.Line,
 		})
 	}
@@ -192,6 +201,7 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 		AnalyzeTime: search.Stats.AnalyzeTime,
 		TotalTime:   int64(time.Since(start) / time.Millisecond),
 		ExitReason:  search.Stats.ExitReason.String(),
+		NumMatches:  int(search.Stats.NumMatches),
 	}
 	return reply, nil
 }
