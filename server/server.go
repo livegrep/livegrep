@@ -121,15 +121,19 @@ func (s *server) ServeRepoInfo(ctx context.Context, w http.ResponseWriter, r *ht
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	script_data, backends, sampleRepo := s.makeSearchScriptData()
 
+	backend := r.URL.Query().Get(":backend")
+
 	s.renderPage(ctx, w, r, "index.html", &page{
 		Title:         "code search",
 		ScriptName:    "codesearch",
 		ScriptData:    script_data,
 		IncludeHeader: true,
 		Data: struct {
+			Backend    string
 			Backends   []*Backend
 			SampleRepo string
 		}{
+			Backend:    backend,
 			Backends:   backends,
 			SampleRepo: sampleRepo,
 		},
