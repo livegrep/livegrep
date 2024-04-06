@@ -42,11 +42,12 @@
     </div>
 
     {{if gt (.Data.Backends | len) 1 }}
+      {{ $backend := .Data.Backend }}
       <div class="search-option">
         <span class="label">Search:</span>
         <select id='backend' tabindex="7">
         {{range .Data.Backends}}
-          <option value="{{.Id}}">{{.I.Name}}</option>
+          <option value="{{.Id}}" {{if eq .Id $backend}}selected{{end}}>{{.I.Name}}</option>
         {{end}}
         </select>
       </div>
