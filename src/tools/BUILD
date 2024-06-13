@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 cc_library(
     name = "grpc_server",
