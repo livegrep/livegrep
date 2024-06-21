@@ -3,6 +3,16 @@
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+    {{if .Config.GoogleAnalyticsId}}
+    <!-- Google tag (gtag.js) -->
+    <script{{.Nonce}} async src="https://www.googletagmanager.com/gtag/js?id={{.Config.GoogleAnalyticsId}}"></script>
+    <script{{.Nonce}}>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '{{.Config.GoogleAnalyticsId}}');
+    </script>
+    {{end}}
     <title>{{.Title}}</title>
     {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
     {{linkTag .Nonce "stylesheet" "/assets/3d/bootstrap.min.css" .AssetHashes}}
@@ -32,20 +42,9 @@
       Raven.config({{.Config.Sentry.URI}}, {}).install();
     </script>
     {{end}}
-
-    {{if .Config.GoogleAnalyticsId}}
-    <script{{.Nonce}} type="text/javascript">
-
-      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{.Config.GoogleAnalyticsId}}');
-
-    </script>
-    {{end}}
     <link{{.Nonce}} rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Code Search" />
   </head>
   <body>
-    {{if .Config.GoogleAnalyticsId}}
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{.Config.GoogleAnalyticsId}}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    {{end}}
     {{if .IncludeHeader}}
     <div id='header'>
       {{if .Config.HeaderHTML}}
