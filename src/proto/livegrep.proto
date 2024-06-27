@@ -30,7 +30,7 @@ message SearchResult {
     int64 line_number = 4;
     repeated string context_before = 5;
     repeated string context_after = 6;
-    Bounds bounds = 7;
+    repeated Bounds bounds = 7;
     string line = 8;
 }
 
@@ -48,6 +48,7 @@ message SearchStats {
     int64 index_time = 4;
     int64 analyze_time = 5;
     int64 total_time = 7;
+    int64 num_matches = 8;
     enum ExitReason {
         NONE = 0;
         TIMEOUT = 1;

@@ -26,6 +26,7 @@ type Stats struct {
 	AnalyzeTime int64  `json:"analyze_time"`
 	TotalTime   int64  `json:"total_time"`
 	ExitReason  string `json:"why"`
+	NumMatches  int    `json:"num_matches"`
 }
 
 type Result struct {
@@ -35,7 +36,7 @@ type Result struct {
 	LineNumber    int      `json:"lno"`
 	ContextBefore []string `json:"context_before"`
 	ContextAfter  []string `json:"context_after"`
-	Bounds        [2]int   `json:"bounds"`
+	Bounds        [][2]int `json:"bounds"`
 	Line          string   `json:"line"`
 }
 
