@@ -4,10 +4,10 @@
         {
             "name": "livegrep/livegrep",
             "path": "src/",
-            "ordered-contents": "ordered-contents.txt",
+            "ordered_contents": "ordered-contents.txt",
             "metadata": {
                 "url_pattern": "https://github.com/{name}/blob/{version}/src/{path}#L{lno}"
             }
         }
-    ],
+    ]
 }
