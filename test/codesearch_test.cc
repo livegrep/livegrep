@@ -21,6 +21,34 @@ const char *file1 = "The quick brown fox\n" \
     "jumps over the lazy\n\n\n" \
     "dog.\n";
 
+std::vector<std::string> buildHighlightedStringFromBounds(CodeSearchResult matches) {
+    // we use the first result's bounds
+    std::vector<std::string> pieces;
+
+    int bounds_len = matches.results(0).bounds().size();
+    auto line = matches.results(0).line();
+
+    // this is a dup of the logic found in web/src/codesearch/codesearch_ui.js#L192
+    int currIdx = 0;
+    for (int i = 0; i < bounds_len; i++) {
+        auto bound = matches.results(0).bounds(i);  
+
+        if (bound.left() > currIdx) {
+            pieces.push_back(line.substr(currIdx, bound.left() - currIdx));
+        }
+
+        currIdx = bound.right();
+
+        pieces.push_back("<span>" + line.substr(bound.left(), bound.right() - bound.left()) + "</span>");
+
+        if (i == bounds_len - 1 && currIdx <= line.length()) {
+            pieces.push_back(line.substr(currIdx, line.length() - currIdx));
+        }
+    }
+
+    return pieces;
+}
+
 TEST_F(codesearch_test, IndexTest) {
     cs_.index_file(tree_, "/data/file1", file1);
     cs_.finalize();
@@ -489,4 +517,160 @@ TEST_F(codesearch_test, BadUTF8) {
     st = srv->Search(&ctx, &request, &matches);
     ASSERT_TRUE(st.ok());
     ASSERT_EQ(0, matches.results_size());
+}
+
+TEST_F(codesearch_test, AllMatchesOnLineFound) {
+    cs_.index_file(tree_, "/file1", "test --test-timeout=60s");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    Query request;
+    CodeSearchResult matches;
+    request.set_line("test");
+    
+    grpc::ServerContext ctx;
+
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(1, matches.results_size());
+    ASSERT_EQ(2, matches.results(0).bounds().size());
+    ASSERT_EQ(2, matches.stats().num_matches());
+
+    // bounds should be [[0, 4], [7, 11]]
+    auto first_bound = matches.results(0).bounds(0);
+    auto second_bound = matches.results(0).bounds(1);
+
+    ASSERT_EQ(0, first_bound.left());
+    ASSERT_EQ(4, first_bound.right());
+
+    ASSERT_EQ(7, second_bound.left());
+    ASSERT_EQ(11, second_bound.right());
+}
+
+TEST_F(codesearch_test, ConsecutiveMatchBoundsMerged) {
+    cs_.index_file(tree_, "/file1", "ttt merge");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    Query request;
+    CodeSearchResult matches;
+    request.set_line("t");
+    
+    grpc::ServerContext ctx;
+
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(1, matches.results_size());
+    ASSERT_EQ(1, matches.results(0).bounds().size());
+    ASSERT_EQ(3, matches.stats().num_matches());
+
+    auto first_bound = matches.results(0).bounds(0);
+    ASSERT_EQ(0, first_bound.left());
+    ASSERT_EQ(3, first_bound.right());
+}
+
+TEST_F(codesearch_test, WRegexOperator) {
+    cs_.index_file(tree_, "/file1", "there should be five words");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    Query request;
+    CodeSearchResult matches;
+    request.set_line("(\\w+)");
+    
+    grpc::ServerContext ctx;
+
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(1, matches.results_size());
+    ASSERT_EQ(5, matches.results(0).bounds().size());
+    ASSERT_EQ(5, matches.stats().num_matches());
+
+
+    std::vector<std::vector<int>> v = {{0,5}, {6,12}, {13,15}, {16,20}, {21, 26}}; 
+
+    for (int i = 0; i < v.size(); i++) {
+        auto bound = matches.results(0).bounds(i);
+        ASSERT_EQ(v[i][0], bound.left());
+        ASSERT_EQ(v[i][1], bound.right());
+    }
+
+    // Now that we attempt to find all matches on a line, no matter the input,
+    // any regex operator will act as if it wrapped in a repetition operator
+    // so, for example, (\w) should act the same as (\w+) - at a high level
+    matches.Clear();
+    request.set_line("(\\w)");
+    st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(1, matches.results_size());
+    // bounds will be the same size as before, because we merge consecutive
+    ASSERT_EQ(5, matches.results(0).bounds().size());
+    // however, since we're matching an inidivudal \w at a time, we'll have way
+    // more matches than before (5)
+    ASSERT_EQ(22, matches.stats().num_matches());
+
+    for (int i = 0; i < v.size(); i++) {
+        auto bound = matches.results(0).bounds(i);
+        ASSERT_EQ(v[i][0], bound.left());
+        ASSERT_EQ(v[i][1], bound.right());
+    }
+}
+
+TEST_F(codesearch_test, UnicodeLines) {
+    cs_.index_file(tree_, "/file1", 
+            "/ \u21B4 / /\n"
+            "\u25BC\n"
+            "line 3");
+    cs_.finalize();
+
+    std::unique_ptr<CodeSearch::Service> srv(build_grpc_server(&cs_, nullptr, nullptr));
+    Query request;
+    CodeSearchResult matches;
+    request.set_line("/");
+    
+    grpc::ServerContext ctx;
+
+    grpc::Status st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+    ASSERT_EQ(1, matches.results_size());
+    ASSERT_EQ(1, matches.results(0).line_number());
+    ASSERT_EQ(3, matches.results(0).bounds().size());
+    ASSERT_EQ(3, matches.stats().num_matches());
+
+
+    // but again, bounds are the same as before because of bounds merging
+    std::vector<std::vector<int>> v = {{0,1}, {6,7}, {8,9}}; 
+
+    for (int i = 0; i < v.size(); i++) {
+        auto bound = matches.results(0).bounds(i);
+        ASSERT_EQ(v[i][0], bound.left());
+        ASSERT_EQ(v[i][1], bound.right());
+    }
+
+    // now, we take our first line, and make sure we can reconstruct
+    // a "highlighted" version of it
+    std::vector<std::string> expected = {"<span>/</span>", " \u21B4 ", "<span>/</span>", " ", "<span>/</span>", ""};
+    std::vector<std::string> pieces = buildHighlightedStringFromBounds(matches);
+    ASSERT_EQ(expected, pieces);
+
+
+    // --------------------------
+    matches.Clear();
+    request.set_line("\u25BC");
+    st = srv->Search(&ctx, &request, &matches);
+    ASSERT_TRUE(st.ok());
+
+
+    ASSERT_EQ(1, matches.results_size());
+    ASSERT_EQ(2, matches.results(0).line_number());
+    ASSERT_EQ(1, matches.results(0).bounds().size());
+
+    ASSERT_EQ(0, matches.results(0).bounds(0).left());
+    ASSERT_EQ(1, matches.results(0).bounds(0).right());
+
 }

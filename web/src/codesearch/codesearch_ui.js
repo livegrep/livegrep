@@ -192,9 +192,27 @@ var MatchView = Backbone.View.extend({
     }
     var line = this.model.get('line');
     var bounds = this.model.get('bounds');
-    var pieces = [line.substring(0, bounds[0]),
-                  line.substring(bounds[0], bounds[1]),
-                  line.substring(bounds[1])];
+
+    var pieces = []; 
+    var currIdx = 0;
+    for (var i = 0; i < bounds.length; i++) {
+      var bound = bounds[i]; 
+
+      // push a prefix, if any
+      if (bound[0] > currIdx) {
+        pieces.push(line.substring(currIdx, bound[0]))
+      }
+
+      currIdx = bound[1];
+
+      // push the actual match
+      pieces.push(h.span({cls: 'matchstr'}, [ line.substring(bound[0], bound[1]) ])); 
+
+      // if we're out ouf bounds to process, but there is still line remaining
+      if (i == bounds.length - 1 && currIdx <= line.length) {
+        pieces.push(line.substring(currIdx, line.length)); 
+      }
+    }
 
     var classes = ['match'];
     if(clip_before !== undefined) classes.push('clip-before');
@@ -215,7 +233,7 @@ var MatchView = Backbone.View.extend({
         ctx_before,
         [
             this._renderLno(lno, true),
-            h.span({cls: 'matchline'}, [pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]]),
+            h.span({cls: 'matchline'}, pieces),
             h.span({cls: 'matchlinks'}, links)
         ],
         ctx_after
@@ -322,12 +340,6 @@ var SearchResultSet = Backbone.Collection.extend({
       this.add(file_group);
     }
     file_group.add_match(match);
-  },
-
-  num_matches: function() {
-    return this.reduce(function(memo, file_group) {
-      return memo + file_group.matches.length;
-    }, 0);
   }
 });
 
@@ -391,7 +403,8 @@ var SearchState = Backbone.Model.extend({
       error: null,
       search_type: "",
       time: null,
-      why: null
+      why: null,
+      numMatches: 0,
     };
   },
 
@@ -501,11 +514,11 @@ var SearchState = Backbone.Model.extend({
     fm.backend = this.search_map[search].backend;
     this.file_search_results.add(new FileMatch(fm));
   },
-  handle_done: function (search, time, search_type, why) {
+  handle_done: function (search, time, search_type, why, numMatches) {
     if (search < this.get('displaying'))
       return false;
     this.set('displaying', search);
-    this.set({time: time, search_type: search_type, why: why});
+    this.set({time: time, search_type: search_type, why: why, numMatches: numMatches});
     this.search_results.trigger('search-complete');
   }
 });
@@ -755,12 +768,7 @@ var ResultView = Backbone.View.extend({
       this.$('#searchtimebox').hide();
     }
 
-    var results;
-    if (this.model.get('search_type') == 'filename_only') {
-      results = '' + this.model.file_search_results.length;
-    } else {
-      results = '' + this.model.search_results.num_matches();
-    }
+    var results = '' + this.model.get('numMatches');
     if (this.model.get('why') !== 'NONE')
       results = results + '+';
     this.results.text(results);
@@ -1001,8 +1009,8 @@ var CodesearchUI = function() {
     file_match: function(search, file_match) {
       CodesearchUI.state.handle_file_match(search, file_match);
     },
-    search_done: function(search, time, search_type, why) {
-      CodesearchUI.state.handle_done(search, time, search_type, why);
+    search_done: function(search, time, search_type, why, numMatches) {
+      CodesearchUI.state.handle_done(search, time, search_type, why, numMatches);
     },
     repo_urls: {}
   };

@@ -92,13 +92,19 @@ struct index_info {
     vector<indexed_tree> trees;
 };
 
+struct match_bound {
+    int matchleft;
+    int matchright;
+};
+
 struct match_result {
     indexed_file *file;
     int lno;
     vector<StringPiece> context_before;
     vector<StringPiece> context_after;
     StringPiece line;
-    int matchleft, matchright;
+    vector<match_bound> match_bounds;
+    int num_matches;
 };
 
 struct file_result {
