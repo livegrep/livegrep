@@ -153,6 +153,8 @@ func main() {
 	}
 	if *flagRevparse {
 		args = append(args, "--revparse")
+	} else {
+		args = append(args, "--revparse=false")
 	}
 	if *flagSkipMissing {
 		args = append(args, "--skip-missing")
