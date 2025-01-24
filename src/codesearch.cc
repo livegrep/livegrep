@@ -142,6 +142,15 @@ public:
         }
     }
 
+    void record_n_matches(int n) {
+        int matches = matches_ += n;
+        if (exit_reason_)
+            return;
+        if (max_matches_ && matches >= max_matches_) {
+            exit_reason_ = kExitMatchLimit;
+        }
+    }
+
 protected:
     atomic_int matches_;
     int max_matches_;
@@ -291,6 +300,13 @@ p     * which contain `match', which is contained within `line'.
                    const StringPiece&,
                    indexed_file *);
 
+    /*
+     * Given a line, find all matches and return their bounds. Starts 
+     * at startPos, in the case that we already know of some number of
+     * existing matches. Uses a cache based on `line`.
+     */
+    int find_matches_in_line(const StringPiece& line, int startPos, vector<match_bound>& bounds);
+
     static int line_start(const chunk *chunk, int pos) {
         const unsigned char *start = static_cast<const unsigned char*>
             (memrchr(chunk->data, '\n', pos));
@@ -338,6 +354,7 @@ p     * which contain `match', which is contained within `line'.
     timer sort_time_;
     timer analyze_time_;
     vector<uint8_t> files_;
+    map<StringPiece, pair<int, vector<match_bound>>> re2_match_cache_;
 
     /*
      * The approximate ratio of how many files match file_pat and
@@ -987,6 +1004,42 @@ void searcher::find_match(const chunk *chunk,
     }
 }
 
+int searcher::find_matches_in_line(const StringPiece& line, int startPos, vector<match_bound>& bounds) {
+    auto cached_bounds = re2_match_cache_.find(line);
+    if (cached_bounds != re2_match_cache_.end()) {
+        bounds = cached_bounds->second.second;
+        return cached_bounds->second.first;
+    }
+
+    StringPiece match;
+    int line_len = line.length(); 
+    int num_matches = bounds.size(); // this should only ever be 0 or 1
+
+    run_timer run(re2_time_);
+    while (!limiter_.exit_early() && startPos < line_len && query_->line_pat->Match(line, startPos, line_len, RE2::UNANCHORED, &match, 1)) {
+        num_matches += 1;
+
+        int matchleft = match.data() - line.data();
+        int matchright = matchleft + match.length();
+
+        // if the previous bounds matchright == this bounds matchleft, just
+        // update the previous bounds - e.g., "merge" the intervals
+        if (bounds.size() > 0 && bounds.back().matchright == matchleft) {
+            bounds.back().matchright = matchright; 
+            startPos = matchright;
+            continue;
+        }
+
+        match_bound mb;
+        mb.matchleft = matchleft;
+        mb.matchright = matchright;
+        bounds.push_back(mb);
+        startPos = mb.matchright;
+    }
+
+    re2_match_cache_[line] = pair<int, vector<match_bound>>(num_matches, bounds);
+    return num_matches;
+}
 
 void searcher::try_match(const StringPiece& line,
                          const StringPiece& match,
@@ -1015,9 +1068,18 @@ void searcher::try_match(const StringPiece& line,
         m->file = sf;
         m->lno  = lno;
         m->line = line;
-        m->matchleft = utf8::distance(line.data(), match.data());
-        m->matchright = m->matchleft +
+
+        vector<match_bound> mbs;
+        match_bound first_bound;
+        first_bound.matchleft = utf8::distance(line.data(), match.data());
+        first_bound.matchright = first_bound.matchleft + 
             utf8::distance(match.data(), match.data() + match.size());
+        mbs.push_back(first_bound);
+
+        int matches_found = find_matches_in_line(line, first_bound.matchright, mbs);
+        m->match_bounds = mbs;
+        m->num_matches = matches_found;
+
 
         // iterators for forward and backward context
         auto fit = it, bit = it;
@@ -1049,7 +1111,7 @@ void searcher::try_match(const StringPiece& line,
 
         if (!transform_ || transform_(m)) {
             queue_.push(m);
-            limiter_.record_match();
+            limiter_.record_n_matches(matches_found);
         }
         if (limiter_.exit_early())
             break;
@@ -1122,7 +1184,7 @@ void code_searcher::search_thread::match(const query &q,
 
     if (!q.filename_only) {
         while (search.queue_.pop(&m)) {
-            matches++;
+            matches += m->num_matches;
             cb(m);
             delete m;
         }

@@ -228,8 +228,13 @@ public:
         for (auto &piece : m->context_after) {
             insert_string_back(result->mutable_context_after(), piece);
         }
-        result->mutable_bounds()->set_left(m->matchleft);
-        result->mutable_bounds()->set_right(m->matchright);
+
+        for (auto &mb : m->match_bounds) {
+            auto insert = result->add_bounds();
+            insert->set_left(mb.matchleft);
+            insert->set_right(mb.matchright);
+        }
+
         result->set_line(m->line.ToString());
     }
 
@@ -429,6 +434,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
     out_stats->set_index_time(timeval_ms(stats.index_time));
     out_stats->set_analyze_time(timeval_ms(stats.analyze_time));
     out_stats->set_total_time(timeval_ms(search_tm.elapsed()));
+    out_stats->set_num_matches(stats.matches);
     switch (stats.why) {
     case kExitNone:
         out_stats->set_exit_reason(SearchStats::NONE);
