@@ -7,7 +7,6 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//server/api:go_default_library",
-        "@com_github_nelhage_go_cli//config:go_default_library",
     ],
 )
 

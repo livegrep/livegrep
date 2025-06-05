@@ -1,3 +1,4 @@
+# gazelle:ignore
 package(default_visibility = ["//visibility:public"])
 
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
