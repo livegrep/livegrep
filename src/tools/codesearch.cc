@@ -39,7 +39,6 @@
 
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/filesystem/string_file.hpp>
 #include "re2/regexp.h"
 #include "re2/walker-inl.h"
 
@@ -76,9 +75,9 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
         exit(1);
     }
 
-    fs::path config_file_path(argv[1]);
-    std::string json_text;
-    fs::load_string_file(config_file_path, json_text);
+    std::ifstream config_file(argv[1], std::ios_base::binary | std::ios_base::in);
+    using Iterator = std::istreambuf_iterator<char>;
+    std::string json_text(Iterator{config_file}, Iterator{});
 
     IndexSpec spec;
     auto status = google::protobuf::util::JsonStringToMessage(json_text, &spec, google::protobuf::util::JsonParseOptions());
