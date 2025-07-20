@@ -1,5 +1,5 @@
 # gazelle:ignore
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
@@ -49,6 +49,6 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//src/proto:go_proto",
-        "@io_bazel_rules_go//go/tools/bazel",
+        "@rules_go//go/tools/bazel",
     ],
 )

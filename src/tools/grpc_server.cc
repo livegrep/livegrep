@@ -193,7 +193,7 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
 class add_match {
     void insert_string_back(google::protobuf::RepeatedPtrField<string> *field, StringPiece str) const {
         if (utf8::is_valid(str.begin(), str.end())) {
-            field->Add(str.ToString());
+            field->Add(string(str));
         } else {
             field->Add("<invalid utf-8>");
         }
@@ -230,7 +230,7 @@ public:
         }
         result->mutable_bounds()->set_left(m->matchleft);
         result->mutable_bounds()->set_right(m->matchright);
-        result->set_line(m->line.ToString());
+        result->set_line(string(m->line));
     }
 
     void operator()(const file_result *f) const {

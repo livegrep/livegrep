@@ -75,6 +75,7 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
         exit(1);
     }
 
+    fs::path config_file_path = argv[1];
     std::ifstream config_file(argv[1], std::ios_base::binary | std::ios_base::in);
     using Iterator = std::istreambuf_iterator<char>;
     std::string json_text(Iterator{config_file}, Iterator{});
@@ -101,7 +102,8 @@ void build_index(code_searcher *cs, const vector<std::string> &argv) {
             indexer.walk(path.path());
         } else {
             fprintf(stderr, "  walking paths from ordered contents list\n");
-            fs::path contents_file_path = fs::canonical(path.ordered_contents(), config_file_path.remove_filename());
+            fs::path contents_file_path = fs::canonical(path.ordered_contents(),
+                                                        config_file_path.remove_filename());
             indexer.walk_contents_file(contents_file_path);
         }
         fprintf(stderr, "done\n");

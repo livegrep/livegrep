@@ -1,6 +1,6 @@
-package(default_visibility = ["//visibility:public"])
-
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+
+package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "grpc_server",
@@ -12,9 +12,9 @@ cc_library(
     deps = [
         "//src:codesearch",
         "//src/proto:cc_proto",
-        "@boost//:bind",
-        "@com_github_grpc_grpc//:grpc++",
-        "@com_github_grpc_grpc//:grpc++_reflection",
+        "@boost.bind//:boost.bind",
+        "@grpc//:grpc++",
+        "@grpc//:grpc++_reflection",
     ],
 )
 
@@ -33,8 +33,8 @@ cc_binary(
         "//src:codesearch",
         "//src/proto:cc_config_proto",
         "//src/proto:cc_proto",
-        "@boost//:bind",
-        "@com_github_libgit2//:libgit2",
+        "@boost.bind//:boost.bind",
+        "@libgit2//:libgit2",
     ],
 )
 

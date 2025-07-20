@@ -35,7 +35,7 @@ TEST_F(codesearch_test, IndexTest) {
 
     for (auto it = f->content->begin(cs_.alloc());
          it != f->content->end(cs_.alloc()); ++it) {
-        content += it->ToString();
+        content += *it;
         content += "\n";
     }
 
@@ -70,7 +70,7 @@ TEST_F(codesearch_test, NoTrailingNewLine) {
 
     for (auto it = f->content->begin(cs_.alloc());
          it != f->content->end(cs_.alloc()); ++it) {
-        content += it->ToString();
+        content += *it;
         content += "\n";
     }
 

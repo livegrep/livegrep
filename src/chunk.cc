@@ -17,11 +17,9 @@
 
 #include <limits>
 
-using re2::StringPiece;
-
 DECLARE_bool(index);
 
-void chunk::add_chunk_file(indexed_file *sf, const StringPiece& line)
+void chunk::add_chunk_file(indexed_file *sf, const string_view& line)
 {
     int l = (unsigned char*)line.data() - data;
     int r = l + line.size();
