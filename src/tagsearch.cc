@@ -72,7 +72,8 @@ bool tag_searcher::transform(query *q, match_result *m) const {
         create_tag_line_regex("([^\t]+)", "([^\t]+)", "(\\d+)", "(.+)");
     StringPiece name, tags_path, tags;
     if (!RE2::FullMatch(m->line, regex, &name, &tags_path, &m->lno, &tags)) {
-        log(q->trace_id, "unknown ctags format: %s\n", m->line.as_string().c_str());
+        log(q->trace_id, "unknown ctags format: %.*s\n",
+            int(m->line.size()), m->line.data());
         return false;
     }
 
@@ -87,7 +88,7 @@ bool tag_searcher::transform(query *q, match_result *m) const {
     // lookup the indexed_file base on repo and path
     path lookup = path(m->file->tree->name) /
         path(m->file->path).parent_path() /
-        path(tags_path.as_string());
+        path(tags_path);
     auto value = path_to_file_map_.find(lookup.string());
     if (value == path_to_file_map_.end()) {
         log(q->trace_id,

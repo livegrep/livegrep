@@ -22,12 +22,8 @@
 #include <stdint.h>
 
 struct indexed_file;
-namespace re2 {
-    class StringPiece;
-}
 
 using namespace std;
-using re2::StringPiece;
 
 /*
  * A chunk_file in a given chunk's `files' list means that some or all
@@ -95,7 +91,7 @@ struct chunk {
         : size(0), files(), cf_root(),
           suffixes(suffixes), data(data) { }
 
-    void add_chunk_file(indexed_file *sf, const StringPiece& line);
+    void add_chunk_file(indexed_file *sf, const string_view& line);
     void finish_file();
     void finalize();
     void finalize_files();

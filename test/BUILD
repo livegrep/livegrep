@@ -25,7 +25,7 @@ cc_test(
     deps = [
         "//src:codesearch",
         "//src/tools:grpc_server",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )
 
