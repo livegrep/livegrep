@@ -1,6 +1,8 @@
 module github.com/livegrep/livegrep
 
-go 1.24.4
+go 1.23.0
+
+toolchain go1.23.6
 
 require (
 	github.com/bazelbuild/rules_go v0.55.1
