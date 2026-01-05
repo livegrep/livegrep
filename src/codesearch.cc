@@ -999,10 +999,9 @@ void searcher::try_match(const StringPiece& line,
         for (;it != sf->content->end(cc_->alloc_.get()); ++it) {
             if (line.data() >= it->data() &&
                 line.data() <= it->data() + it->size()) {
-                lno += count(it->data(), line.data(), '\n');
                 break;
             } else {
-                lno += count(it->data(), it->data() + it->size(), '\n') + 1;
+                lno += 1;
             }
         }
 
