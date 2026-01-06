@@ -88,18 +88,25 @@ void git_indexer::walk_tree(const string& pfx,
         const git_oid* entry_oid = git_tree_entry_id(*it);
         git_oid_tostr(oid, GIT_OID_HEXSZ + 1, entry_oid);
 
-        if (git_tree_entry_to_object(obj, repo_, *it) != 0) {
-            fprintf(stderr, "Unable to convert git tree entry %s to object, skipping\n", oid);
-            continue;
-        }
+        const bool is_object_from_repo = (git_tree_entry_to_object(obj, repo_, *it) == 0);
 
         string path = pfx + git_tree_entry_name(*it);
 
         if (git_tree_entry_type(*it) == GIT_OBJ_TREE) {
-            walk_tree(path + "/", "", obj);
+            if (is_object_from_repo) {
+                walk_tree(path + "/", "", obj);
+            } else {
+                fprintf(stderr, "Unable to convert git tree entry %s to object, skipping\n", oid);
+                continue;
+            }
         } else if (git_tree_entry_type(*it) == GIT_OBJ_BLOB) {
-            const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
-            cs_->index_file(idx_tree_, submodule_prefix_ + path, StringPiece(data, git_blob_rawsize(obj)));
+            if (is_object_from_repo) {
+                const char *data = static_cast<const char*>(git_blob_rawcontent(obj));
+                cs_->index_file(idx_tree_, submodule_prefix_ + path, StringPiece(data, git_blob_rawsize(obj)));
+            } else {
+                fprintf(stderr, "Unable to convert git tree entry %s to object, skipping\n", oid);
+                continue;
+            }
         } else if (git_tree_entry_type(*it) == GIT_OBJ_COMMIT) {
             // Submodule
             if (!walk_submodules_) {
