@@ -4,6 +4,7 @@ var Cookies = require('js-cookie');
 
 var Codesearch = require('codesearch/codesearch.js').Codesearch;
 var RepoSelector = require('codesearch/repo_selector.js');
+var CodeSearchConstant = require("codesearch/codesearch_constants.js");
 
 var KeyCodes = {
   SLASH_OR_QUESTION_MARK: 191
@@ -527,6 +528,21 @@ var FileGroupView = Backbone.View.extend({
 
     var first_match = this.model.matches[0];
 
+    // Ready link to filter results to current file's repo
+    var repo_filter_anchor = h.div();
+    var searchParam = new URLSearchParams(window.location.search);
+    // Only show filter link if repo name exists and is not already selected
+    if (!!tree && searchParam.getAll(CodeSearchConstant.REPO_FILTER).indexOf(tree) < 0) { 
+      // Unselect other repo filters
+      if (searchParam.has(CodeSearchConstant.REPO_FILTER)) { 
+        searchParam.delete(CodeSearchConstant.REPO_FILTER)
+      }
+
+      // Filter only to repo of this result
+      searchParam.append(CodeSearchConstant.REPO_FILTER, tree)
+      repo_filter_anchor = h.a({href: "?" + searchParam.toString()}, ["Repo filter: " + tree])
+    }
+    
     var headerChildren = [
       h.span(
         {cls: 'header-path'},
@@ -546,7 +562,9 @@ var FileGroupView = Backbone.View.extend({
         {cls: 'header-links'},
         renderLinkConfigs(CodesearchUI.linkConfigs, tree, version, path, first_match.get('lno'))
       ),
+      repo_filter_anchor
     ];
+
     return h.div({cls: 'header'}, headerChildren);
   },
 
@@ -739,6 +757,7 @@ var ResultView = Backbone.View.extend({
        this.model.get('error')) {
       this.$el.hide();
       $('#helparea').show();
+      $('#recentsearchbox').show();
       return this;
     }
 
@@ -746,6 +765,7 @@ var ResultView = Backbone.View.extend({
 
     this.$el.show();
     $('#helparea').hide();
+    $('#recentsearchbox').hide();
 
     if (this.model.get('time')) {
       this.$('#searchtimebox').show();
@@ -787,6 +807,7 @@ var CodesearchUI = function() {
       CodesearchUI.inputs_case = $('input[name=fold_case]');
       CodesearchUI.input_regex = $('input[name=regex]');
       CodesearchUI.input_context = $('input[name=context]');
+      CodesearchUI.recent_search_box = $('#recentsearchbox');
 
       if (CodesearchUI.inputs_case.filter(':checked').length == 0) {
           CodesearchUI.inputs_case.filter('[value=auto]').attr('checked', true);
@@ -796,6 +817,7 @@ var CodesearchUI = function() {
       CodesearchUI.update_repo_options();
 
       CodesearchUI.init_query();
+      CodesearchUI.renderRecentSearchHistory();
 
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
@@ -1004,7 +1026,18 @@ var CodesearchUI = function() {
     search_done: function(search, time, search_type, why) {
       CodesearchUI.state.handle_done(search, time, search_type, why);
     },
-    repo_urls: {}
+    repo_urls: {},
+    renderRecentSearchHistory: function() { 
+      const recentSearchesString = localStorage.getItem(CodeSearchConstant.LIVEGREP_STORAGE_KEY);
+      if (recentSearchesString) { 
+        const recentSearches = recentSearchesString.split(CodeSearchConstant.RECENT_SEARCHES_DELIMITER);
+        CodesearchUI.recent_search_box.append("<h5>Recent searches</h5>");
+        recentSearches.forEach(function (search) {
+          const name = new URLSearchParams(search.split("?")[1]).get("q");
+          CodesearchUI.recent_search_box.append("<a href='" + search + "'>" + name + "</a>");
+        });
+      }
+    }
   };
 }();
 
