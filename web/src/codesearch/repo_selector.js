@@ -37,6 +37,10 @@ function init() {
     });
 }
 
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function updateOptions(newOptions) {
     // Skip update if the options are the same, to avoid losing selected state.
     var currentOptions = [];
@@ -47,26 +51,32 @@ function updateOptions(newOptions) {
         return;
     }
 
-    $('#repos').empty();
+    newOptions.sort();
 
-    newOptions.sort()
-    var groups = new Map()
-    groups.set('/', $('#repos'))
-
+    // Build HTML string in one pass instead of creating DOM elements individually.
+    var html = '';
+    var currentGroup = null;
     for (var i = 0; i < newOptions.length; i++) {
-        var path = newOptions[i].split('/');
-        var group = path.slice(0, path.length - 1).join('/') + '/';
-        var option = path[path.length - 1];
+        var parts = newOptions[i].split('/');
+        var group = parts.slice(0, parts.length - 1).join('/') + '/';
+        var option = parts[parts.length - 1];
+        var value = group + option;
 
-        if (!groups.has(group)) {
-            var groupDOM = $('<optgroup>').attr('label', group)
-            $('#repos').append(groupDOM);
-            groups.set(group, groupDOM)
+        if (group !== '/' && group !== currentGroup) {
+            if (currentGroup !== null && currentGroup !== '/') {
+                html += '</optgroup>';
+            }
+            currentGroup = group;
+            html += '<optgroup label="' + escapeHtml(group) + '">';
         }
-        groups.get(group).append($('<option>').attr('value', group + option).text(option));
+
+        html += '<option value="' + escapeHtml(value) + '">' + escapeHtml(option) + '</option>';
+    }
+    if (currentGroup !== null && currentGroup !== '/') {
+        html += '</optgroup>';
     }
 
-    groups.clear()
+    $('#repos').html(html);
     $('#repos').selectpicker('refresh');
 }
 

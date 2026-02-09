@@ -82,7 +82,7 @@ func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.R
 
 type searchScriptData struct {
 	RepoUrls           map[string]map[string]string `json:"repo_urls"`
-	InternalViewRepos  map[string]config.RepoConfig `json:"internal_view_repos"`
+	InternalViewRepos  []string                     `json:"internal_view_repos"`
 	DefaultSearchRepos []string                     `json:"default_search_repos"`
 	LinkConfigs        []config.LinkConfig          `json:"link_configs"`
 }
@@ -106,7 +106,12 @@ func (s *server) makeSearchScriptData() (script_data *searchScriptData, backends
 		bk.I.Unlock()
 	}
 
-	script_data = &searchScriptData{urls, s.repos, s.config.DefaultSearchRepos, s.config.LinkConfigs}
+	internalRepoNames := make([]string, 0, len(s.repos))
+	for name := range s.repos {
+		internalRepoNames = append(internalRepoNames, name)
+	}
+
+	script_data = &searchScriptData{urls, internalRepoNames, s.config.DefaultSearchRepos, s.config.LinkConfigs}
 
 	return script_data, backends, sampleRepo
 }

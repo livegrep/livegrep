@@ -792,11 +792,6 @@ var CodesearchUI = function() {
           CodesearchUI.inputs_case.filter('[value=auto]').attr('checked', true);
       }
 
-      RepoSelector.init();
-      CodesearchUI.update_repo_options();
-
-      CodesearchUI.init_query();
-
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
       CodesearchUI.input.focus();
@@ -819,6 +814,14 @@ var CodesearchUI = function() {
       });
 
       CodesearchUI.toggle_context();
+
+      // Defer heavy repo dropdown initialization so the page can paint first.
+      // RepoSelector.init() creates the bootstrap-select widget (expensive with many repos).
+      setTimeout(function() {
+        RepoSelector.init();
+        CodesearchUI.update_repo_options();
+        CodesearchUI.init_query();
+      }, 0);
 
       Codesearch.connect(CodesearchUI);
       $('.query-hint code').click(function(e) {
@@ -1009,7 +1012,9 @@ var CodesearchUI = function() {
 }();
 
 CodesearchUI.repo_urls = initData.repo_urls;
-CodesearchUI.internalViewRepos = initData.internal_view_repos;
+var ivr = {};
+initData.internal_view_repos.forEach(function(name) { ivr[name] = true; });
+CodesearchUI.internalViewRepos = ivr;
 CodesearchUI.defaultSearchRepos = initData.default_search_repos;
 CodesearchUI.linkConfigs = (initData.link_configs || []).map(function(link_config) {
   if (link_config.whitelist_pattern) {
